@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import JSZip from 'jszip';
 
@@ -13,12 +12,10 @@ export async function POST(request: NextRequest) {
     // Create a ZIP file
     const zip = new JSZip();
     
-    // Add the generated code as main.txt (will upgrade to full project later)
     zip.file("generated-app/README.md", `# NiskBuild Generated App\n\nGenerated from: "${prompt?.substring(0, 100) || 'Unknown prompt'}"\n\nDate: ${new Date().toISOString()}\n\n## How to use\n1. Extract this ZIP\n2. Open the code in your editor\n3. Run locally or deploy\n\n---\nBuilt with NiskBuild - Local-first, privacy-first AI builder\n`);
     
     zip.file("generated-app/src/code.txt", code);
     
-    // Add a simple HTML wrapper to preview
     const htmlWrapper = `<!DOCTYPE html>
 <html>
 <head>
@@ -44,8 +41,11 @@ export async function POST(request: NextRequest) {
     // Generate the ZIP file as a buffer
     const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
     
+    // ✅ THE FIX: Convert Buffer to Uint8Array
+    const zipData = new Uint8Array(zipBuffer);
+    
     // Return as downloadable file
-    return new NextResponse(zipBuffer, {
+    return new NextResponse(zipData, {
       status: 200,
       headers: {
         'Content-Type': 'application/zip',
