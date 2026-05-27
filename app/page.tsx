@@ -5,6 +5,20 @@ import { supabase } from "@/lib/supabaseClient";
 
 type TabType = "builder" | "blueprint" | "insights" | "config";
 
+// Define types for Supabase session
+interface SupabaseSession {
+  user: {
+    id: string;
+    email?: string;
+  } | null;
+}
+
+interface SupabaseAuthResponse {
+  data: {
+    session: SupabaseSession | null;
+  };
+}
+
 export default function Home() {
   // Auth State
   const [user, setUser] = useState<any>(null);
@@ -229,14 +243,17 @@ export default function Home() {
       return;
     }
     
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Fixed: Proper typing for Supabase response
+    supabase.auth.getSession().then((response: SupabaseAuthResponse) => {
+      const session = response.data.session;
       setUser(session?.user ?? null);
       if (session?.user) {
         loadProjects(session.user.id);
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Fixed: Proper typing for auth state change
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: string, session: SupabaseSession | null) => {
       setUser(session?.user ?? null);
       if (session?.user) {
         loadProjects(session.user.id);
