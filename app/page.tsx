@@ -34,6 +34,11 @@ export default function Home() {
   const [showPreview, setShowPreview] = useState(false);
   const [previewHtml, setPreviewHtml] = useState("<div style='padding:20px; color:#888; text-align:center;'>✨ Generate an app above, then click Live Preview to see it here!</div>");
 
+  // Check if Supabase is available
+  const isSupabaseAvailable = () => {
+    return supabase && typeof supabase === 'object' && supabase.auth;
+  };
+
   // Load telemetry preference from localStorage
   useEffect(() => {
     const saved = localStorage.getItem('telemetryEnabled');
@@ -113,8 +118,13 @@ export default function Home() {
     return cleaned;
   };
 
-  // Load saved projects from Supabase
+  // Load saved projects from Supabase (only if available)
   const loadProjects = async (userId: string) => {
+    if (!isSupabaseAvailable()) {
+      console.warn('Supabase not available - skipping project load');
+      return;
+    }
+    
     const { data, error } = await supabase
       .from('projects')
       .select('*')
@@ -126,8 +136,13 @@ export default function Home() {
     }
   };
 
-  // Save current project to Supabase
+  // Save current project to Supabase (only if available)
   const saveCurrentProject = async () => {
+    if (!isSupabaseAvailable()) {
+      alert("⚠️ Supabase is not configured. Please add environment variables.");
+      return;
+    }
+    
     if (!user) {
       setShowAuthModal(true);
       return;
@@ -161,8 +176,13 @@ export default function Home() {
     setActiveTab("builder");
   };
 
-  // Authentication handlers
+  // Authentication handlers (only if Supabase available)
   const handleAuth = async () => {
+    if (!isSupabaseAvailable()) {
+      alert("⚠️ Supabase is not configured. Please contact support.");
+      return;
+    }
+    
     setAuthLoading(true);
     if (authMode === 'signup') {
       const { error } = await supabase.auth.signUp({
@@ -186,13 +206,19 @@ export default function Home() {
   };
 
   const handleSignOut = async () => {
+    if (!isSupabaseAvailable()) return;
     await supabase.auth.signOut();
     setUser(null);
     setSavedProjects([]);
   };
 
-  // Check auth status on load
+  // Check auth status on load (only if Supabase available)
   useEffect(() => {
+    if (!isSupabaseAvailable()) {
+      console.warn('Supabase not available - auth disabled');
+      return;
+    }
+    
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
