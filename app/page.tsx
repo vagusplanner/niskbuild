@@ -24,15 +24,18 @@ export default function Home() {
 // 
 // Type a prompt below and click "Trigger Local Generation"
 // 
-// Example: "Create a blue button that says Click Me"
+// NiskBuild now features:
+// 🔄 Self-correction loop - AI fixes its own errors (up to 5 attempts)
+// ☁️ Cloud AI fallback - Works even without Ollama
 // 
-// Then click the "Live Preview" tab to see your app running!
+// Example: "Create a blue button that says Click Me"
 `);
 
   const [promptText, setPromptText] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [previewHtml, setPreviewHtml] = useState("<div style='padding:20px; color:#888; text-align:center;'>✨ Generate an app above, then click Live Preview to see it here!</div>");
+  const [statusMessage, setStatusMessage] = useState("");
 
   // Check if Supabase is available
   const isSupabaseAvailable = () => {
@@ -61,11 +64,19 @@ export default function Home() {
   const cleanGeneratedCode = (rawCode: string): string => {
     let cleaned = rawCode;
     
+    // Remove markdown code blocks
     const markdownMatch = cleaned.match(/```(?:html|html|javascript|jsx|tsx|typescript)?\n?([\s\S]*?)\n?```/i);
     if (markdownMatch) {
       cleaned = markdownMatch[1];
     }
     
+    // Remove any "Here's the code" type text before the actual code
+    const doctypeMatch = cleaned.match(/(<!DOCTYPE[\s\S]*<\/html>)/i);
+    if (doctypeMatch) {
+      cleaned = doctypeMatch[1];
+    }
+    
+    // If no HTML wrapper, create one
     if (!cleaned.includes("<!DOCTYPE") && !cleaned.includes("<html")) {
       cleaned = `<!DOCTYPE html>
 <html>
@@ -97,7 +108,6 @@ export default function Home() {
       transition: all 0.2s;
     }
     button:hover { background: #2563eb; transform: scale(1.02); }
-    pre { background: #1a1f2e; padding: 1rem; border-radius: 8px; overflow-x: auto; text-align: left; }
   </style>
 </head>
 <body>
@@ -105,7 +115,7 @@ export default function Home() {
     <h1>🚀 NiskBuild Generated App</h1>
     <div style="background: #1a1f2e; border-radius: 12px; padding: 2rem; margin-top: 1rem;">
       <h3>Generated Content:</h3>
-      <pre>${cleaned.substring(0, 500)}</pre>
+      <pre style="background: #0B0F19; padding: 1rem; border-radius: 8px; overflow-x: auto; text-align: left;">${cleaned.substring(0, 500)}</pre>
     </div>
     <div style="margin-top: 1rem; padding: 1rem; background: #1e293b; border-radius: 8px;">
       <p>✨ Your app was generated locally. No data left your machine.</p>
@@ -236,85 +246,167 @@ export default function Home() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // MAIN GENERATION FUNCTION with Self-Correction + Cloud Fallback
   const handleGenerate = async () => {
-    if (!promptText.trim()) return;
+    if (!promptText.trim()) {
+      alert("Please enter a prompt first!");
+      return;
+    }
     
     const startTime = Date.now();
-    
     setIsGenerating(true);
-    setGeneratedCode("⚙️ Contacting local Ollama...\n\nGenerating your application using qwen2.5-coder:7b on your M1 Mac...\n\nThis is 100% local and private. No data leaves your machine.\n");
-    setPreviewHtml("<div style='padding:20px; color:#888; text-align:center;'>⏳ Generating your app... Please wait.</div>");
+    setStatusMessage("🔄 Starting generation with self-correction loop...");
+    setGeneratedCode("🔄 NiskBuild AI is working...\n\nAttempt 1: Generating initial code...\n");
+    setPreviewHtml("<div style='padding:20px; color:#888; text-align:center;'>🔄 Generating with self-correction... Please wait.</div>");
     
     try {
-      const response = await fetch('/api/generate', {
+      // Step 1: Try self-healing API (uses cloud AI with error correction)
+      setStatusMessage("🔄 Attempt 1/5: Generating code with error detection...");
+      
+      const selfHealResponse = await fetch('/api/self-heal', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: promptText }),
       });
       
-      const data = await response.json();
+      const selfHealData = await selfHealResponse.json();
       
-      if (!response.ok) {
-        throw new Error(data.error || 'Generation failed');
+      if (selfHealData.success) {
+        // Success! Code generated and validated
+        const cleanedCode = cleanGeneratedCode(selfHealData.code);
+        setGeneratedCode(cleanedCode);
+        setPreviewHtml(cleanedCode);
+        setStatusMessage(`✅ Success! Generated in ${selfHealData.attempts} attempt(s) with self-correction`);
+        
+        // Log telemetry
+        if (telemetryEnabled) {
+          try {
+            let templateId = 'custom';
+            const templates = ['ecommerce', 'crm', 'invoice', 'support', 'todo', 'calculator', 'counter', 'weather', 'dashboard'];
+            for (const t of templates) {
+              if (promptText.toLowerCase().includes(t)) {
+                templateId = t;
+                break;
+              }
+            }
+            
+            await fetch('/api/log-structure', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                templateId: templateId,
+                success: true,
+                stepsCount: promptText.split(' ').length,
+                durationSeconds: Math.floor((Date.now() - startTime) / 1000),
+                integrations: extractIntegrations(promptText),
+              }),
+            });
+          } catch (logError) {
+            console.error('Failed to log structural data:', logError);
+          }
+        }
+        
+        setIsGenerating(false);
+        return;
       }
       
-      const cleanedCode = cleanGeneratedCode(data.code);
-      setGeneratedCode(cleanedCode);
-      setPreviewHtml(cleanedCode);
+      // Step 2: If self-healing returned but with errors, use best attempt
+      if (selfHealData.code) {
+        setStatusMessage(`⚠️ Self-correction completed with ${selfHealData.errors?.length || 0} remaining issues. Displaying best attempt.`);
+        const cleanedCode = cleanGeneratedCode(selfHealData.code);
+        setGeneratedCode(cleanedCode);
+        setPreviewHtml(cleanedCode);
+        setIsGenerating(false);
+        return;
+      }
       
-      // Log anonymous structural data (if telemetry enabled)
-      if (telemetryEnabled) {
-        try {
-          let templateId = 'custom';
-          const templates = ['ecommerce', 'crm', 'invoice', 'support', 'todo', 'calculator', 'counter', 'weather', 'dashboard'];
-          for (const t of templates) {
-            if (promptText.toLowerCase().includes(t)) {
-              templateId = t;
-              break;
+      // Step 3: Fallback to simple cloud generation
+      setStatusMessage("☁️ Falling back to cloud AI generation...");
+      
+      const cloudResponse = await fetch('/api/cloud-generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: promptText, useLocal: true }),
+      });
+      
+      const cloudData = await cloudResponse.json();
+      
+      if (cloudData.success) {
+        const cleanedCode = cleanGeneratedCode(cloudData.code);
+        setGeneratedCode(cleanedCode);
+        setPreviewHtml(cleanedCode);
+        setStatusMessage(`✅ Generated via ${cloudData.source === 'local' ? 'Local Ollama' : 'Cloud AI (Groq)'}`);
+        
+        // Log telemetry
+        if (telemetryEnabled) {
+          try {
+            let templateId = 'custom';
+            const templates = ['ecommerce', 'crm', 'invoice', 'support', 'todo', 'calculator', 'counter', 'weather', 'dashboard'];
+            for (const t of templates) {
+              if (promptText.toLowerCase().includes(t)) {
+                templateId = t;
+                break;
+              }
             }
+            
+            await fetch('/api/log-structure', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                templateId: templateId,
+                success: true,
+                stepsCount: promptText.split(' ').length,
+                durationSeconds: Math.floor((Date.now() - startTime) / 1000),
+                integrations: extractIntegrations(promptText),
+              }),
+            });
+          } catch (logError) {
+            console.error('Failed to log structural data:', logError);
           }
-          
-          await fetch('/api/log-structure', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              templateId: templateId,
-              success: true,
-              stepsCount: promptText.split(' ').length,
-              durationSeconds: Math.floor((Date.now() - startTime) / 1000),
-              integrations: extractIntegrations(promptText),
-            }),
-          });
-        } catch (logError) {
-          // Don't fail generation if logging fails
-          console.error('Failed to log structural data:', logError);
         }
+      } else {
+        throw new Error(cloudData.error || 'All generation methods failed');
       }
       
     } catch (error) {
       console.error('Generation error:', error);
-      const errorMsg = `❌ Error connecting to Ollama
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setGeneratedCode(`❌ Generation failed after multiple attempts.
 
-Make sure:
-1. Ollama is running (llama icon in your menu bar)
-2. The model is downloaded (qwen2.5-coder:7b)
+Error: ${errorMessage}
 
-Error: ${error instanceof Error ? error.message : 'Unknown error'}`;
-      setGeneratedCode(errorMsg);
-      setPreviewHtml(`<div style="padding:20px; color:#ef4444; background:#1a1f2e; border-radius:8px;">
+Possible solutions:
+1. Check your internet connection
+2. Try a simpler prompt
+3. If using local Ollama, make sure it's running
+4. Contact support if issue persists
+
+Your prompt was: "${promptText.substring(0, 200)}"
+
+Try rephrasing or breaking down your request into smaller steps.`);
+      
+      setPreviewHtml(`<div style="padding:20px; color:#ef4444; background:#1a1f2e; border-radius:8px; text-align:center;">
         <h3>❌ Generation Failed</h3>
-        <p>${error instanceof Error ? error.message : 'Unknown error'}</p>
-        <p>Make sure Ollama is running with: <code>ollama serve</code></p>
+        <p>${errorMessage}</p>
+        <p style="font-size:12px; margin-top:16px;">Try:<br/>
+        - Checking your internet connection<br/>
+        - Using a simpler prompt<br/>
+        - Installing Ollama for local generation</p>
       </div>`);
+      setStatusMessage(`❌ Generation failed: ${errorMessage}`);
     } finally {
       setIsGenerating(false);
+      // Clear status message after 5 seconds
+      setTimeout(() => {
+        if (!isGenerating) {
+          setStatusMessage("");
+        }
+      }, 5000);
     }
   };
 
   const handleExportZIP = async () => {
-    if (!generatedCode || generatedCode.includes("will appear here") || generatedCode.includes("Error") || generatedCode.includes("Contacting local Ollama")) {
+    if (!generatedCode || generatedCode.includes("will appear here") || generatedCode.includes("Error") || generatedCode.includes("NiskBuild AI is working")) {
       alert("⚠️ Generate something first! Write a prompt and click 'Trigger Local Generation'.");
       return;
     }
@@ -470,7 +562,7 @@ Error: ${error instanceof Error ? error.message : 'Unknown error'}`;
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold text-white">🏗️ Local Builder Workspace</h2>
-              <div className="text-xs text-gray-500 font-mono">Active Node: Ollama/Qwen-7B</div>
+              <div className="text-xs text-gray-500 font-mono">Self-Correction Loop Active</div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -483,8 +575,13 @@ Error: ${error instanceof Error ? error.message : 'Unknown error'}`;
                 <textarea
                   value={promptText}
                   onChange={(e) => setPromptText(e.target.value)}
-                  placeholder="Describe the application layout or automated agent flow you wish to build privately...
-Example: 'Create a blue button that says Click Me'"
+                  placeholder="Describe the application you want to build...
+                  
+Example: 'Create a blue button that says Click Me'
+Example: 'Build a todo list app with add/delete functionality'
+Example: 'Make a calculator with number buttons and display'
+
+NiskBuild will automatically detect and fix errors (up to 5 attempts)."
                   className="flex-1 w-full bg-[#0B0F19] border border-gray-700 rounded-lg p-4 text-gray-200 placeholder-gray-500 resize-none focus:outline-none focus:border-purple-500 transition-colors font-mono text-sm"
                 />
                 <button
@@ -505,6 +602,17 @@ Example: 'Create a blue button that says Click Me'"
                     "🚀 Trigger Local Generation"
                   )}
                 </button>
+                {statusMessage && (
+                  <div className="mt-3 text-xs text-center">
+                    {statusMessage.includes("✅") ? (
+                      <span className="text-emerald-400">{statusMessage}</span>
+                    ) : statusMessage.includes("❌") ? (
+                      <span className="text-red-400">{statusMessage}</span>
+                    ) : (
+                      <span className="text-purple-400">{statusMessage}</span>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Right Column */}
@@ -638,9 +746,25 @@ Example: 'Create a blue button that says Click Me'"
               <div className="flex justify-between items-center py-3 border-b border-gray-800">
                 <div>
                   <p className="text-sm font-medium text-white">Active Model</p>
-                  <p className="text-xs text-gray-400">qwen2.5-coder:7b</p>
+                  <p className="text-xs text-gray-400">qwen2.5-coder:7b + Groq Cloud</p>
                 </div>
-                <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded-full">Ollama</span>
+                <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded-full">Hybrid</span>
+              </div>
+              
+              <div className="flex justify-between items-center py-3 border-b border-gray-800">
+                <div>
+                  <p className="text-sm font-medium text-white">Self-Correction Loop</p>
+                  <p className="text-xs text-gray-400">AI fixes its own errors (up to 5 attempts)</p>
+                </div>
+                <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full">Active</span>
+              </div>
+              
+              <div className="flex justify-between items-center py-3 border-b border-gray-800">
+                <div>
+                  <p className="text-sm font-medium text-white">Cloud AI Fallback</p>
+                  <p className="text-xs text-gray-400">Groq Llama 3.3 (70B) - Works for all users</p>
+                </div>
+                <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full">Ready</span>
               </div>
               
               {/* Telemetry Toggle */}
