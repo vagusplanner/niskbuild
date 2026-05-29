@@ -74,10 +74,12 @@ export default function AdminDashboard() {
         .select('app_category');
       
       const categoryCounts: Record<string, number> = {};
-      (categoryData as CategoryData[] | null)?.forEach((log: CategoryData) => {
-        const cat = log.app_category || 'unknown';
-        categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
-      });
+      if (categoryData && categoryData.length > 0) {
+        (categoryData as CategoryData[]).forEach((log: CategoryData) => {
+          const cat = log.app_category || 'unknown';
+          categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+        });
+      }
       const topCategories = Object.entries(categoryCounts)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 5);
@@ -88,11 +90,15 @@ export default function AdminDashboard() {
         .select('features_list');
       
       const featureCounts: Record<string, number> = {};
-      (featureData as FeatureData[] | null)?.forEach((log: FeatureData) => {
-        log.features_list?.forEach((feature: string) => {
-          featureCounts[feature] = (featureCounts[feature] || 0) + 1;
+      if (featureData && featureData.length > 0) {
+        (featureData as FeatureData[]).forEach((log: FeatureData) => {
+          if (log.features_list && log.features_list.length > 0) {
+            log.features_list.forEach((feature: string) => {
+              featureCounts[feature] = (featureCounts[feature] || 0) + 1;
+            });
+          }
         });
-      });
+      }
       const topFeatures = Object.entries(featureCounts)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 10);
@@ -102,15 +108,24 @@ export default function AdminDashboard() {
         .from('metadata_logs')
         .select('prompts_count');
       
-      const avgPrompts = (promptsData as PromptsData[] | null)?.reduce((sum, log) => sum + (log.prompts_count || 0), 0) / ((promptsData?.length || 1));
+      let avgPrompts = 0;
+      if (promptsData && promptsData.length > 0) {
+        const totalPrompts = (promptsData as PromptsData[]).reduce((sum: number, log: PromptsData) => {
+          return sum + (log.prompts_count || 0);
+        }, 0);
+        avgPrompts = totalPrompts / promptsData.length;
+      }
       
       // Get export rate
       const { data: exportData } = await supabase
         .from('metadata_logs')
         .select('exported_locally');
       
-      const exportsCount = (exportData as ExportData[] | null)?.filter(log => log.exported_locally === true).length || 0;
-      const exportRate = (exportsCount / (exportData?.length || 1)) * 100;
+      let exportRate = 0;
+      if (exportData && exportData.length > 0) {
+        const exportsCount = (exportData as ExportData[]).filter((log: ExportData) => log.exported_locally === true).length;
+        exportRate = (exportsCount / exportData.length) * 100;
+      }
       
       setData({
         totalBuilds: totalBuilds || 0,
@@ -142,6 +157,7 @@ export default function AdminDashboard() {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-red-400 mb-4">Unauthorized</h1>
           <p className="text-gray-400">You don't have permission to view this page.</p>
+          <p className="text-gray-500 text-sm mt-2">Please sign in with your admin account.</p>
         </div>
       </div>
     );
@@ -156,19 +172,19 @@ export default function AdminDashboard() {
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
-            <div className="text-3xl font-bold text-purple-400">{data?.totalBuilds}</div>
+            <div className="text-3xl font-bold text-purple-400">{data?.totalBuilds || 0}</div>
             <div className="text-sm text-gray-400">Total Builds (All Time)</div>
           </div>
           <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
-            <div className="text-3xl font-bold text-emerald-400">{data?.buildsToday}</div>
+            <div className="text-3xl font-bold text-emerald-400">{data?.buildsToday || 0}</div>
             <div className="text-sm text-gray-400">Builds Today</div>
           </div>
           <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
-            <div className="text-3xl font-bold text-blue-400">{data?.avgPrompts}</div>
+            <div className="text-3xl font-bold text-blue-400">{data?.avgPrompts || '0'}</div>
             <div className="text-sm text-gray-400">Avg Prompts Per Build</div>
           </div>
           <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
-            <div className="text-3xl font-bold text-yellow-400">{data?.exportRate}%</div>
+            <div className="text-3xl font-bold text-yellow-400">{data?.exportRate || '0'}%</div>
             <div className="text-sm text-gray-400">Export Rate (ZIP)</div>
           </div>
         </div>
@@ -177,38 +193,46 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
             <h2 className="text-lg font-semibold text-white mb-4">🔥 Top 5 App Categories</h2>
-            <div className="space-y-3">
-              {data?.topCategories.map(([category, count], i: number) => (
-                <div key={category} className="flex items-center gap-3">
-                  <div className="w-8 text-gray-400">#{i + 1}</div>
-                  <div className="flex-1">
-                    <div className="flex justify-between mb-1">
-                      <span className="text-white capitalize">{category}</span>
-                      <span className="text-purple-400">{count} builds</span>
-                    </div>
-                    <div className="w-full bg-gray-800 rounded-full h-2">
-                      <div 
-                        className="bg-purple-500 h-2 rounded-full transition-all"
-                        style={{ width: `${(count / (data.topCategories[0]?.[1] || 1)) * 100}%` }}
-                      />
+            {data?.topCategories && data.topCategories.length > 0 ? (
+              <div className="space-y-3">
+                {data.topCategories.map(([category, count], i: number) => (
+                  <div key={category} className="flex items-center gap-3">
+                    <div className="w-8 text-gray-400">#{i + 1}</div>
+                    <div className="flex-1">
+                      <div className="flex justify-between mb-1">
+                        <span className="text-white capitalize">{category}</span>
+                        <span className="text-purple-400">{count} builds</span>
+                      </div>
+                      <div className="w-full bg-gray-800 rounded-full h-2">
+                        <div 
+                          className="bg-purple-500 h-2 rounded-full transition-all"
+                          style={{ width: `${(count / (data.topCategories[0]?.[1] || 1)) * 100}%` }}
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-400 text-sm">No data yet. Generate some apps first!</p>
+            )}
           </div>
           
           {/* Top Features */}
           <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
             <h2 className="text-lg font-semibold text-white mb-4">🔧 Top 10 Features Used</h2>
-            <div className="space-y-2 max-h-80 overflow-y-auto">
-              {data?.topFeatures.map(([feature, count]) => (
-                <div key={feature} className="flex justify-between items-center py-2 border-b border-gray-800">
-                  <span className="text-gray-300 capitalize">{feature}</span>
-                  <span className="text-emerald-400 text-sm">{count} apps</span>
-                </div>
-              ))}
-            </div>
+            {data?.topFeatures && data.topFeatures.length > 0 ? (
+              <div className="space-y-2 max-h-80 overflow-y-auto">
+                {data.topFeatures.map(([feature, count]) => (
+                  <div key={feature} className="flex justify-between items-center py-2 border-b border-gray-800">
+                    <span className="text-gray-300 capitalize">{feature}</span>
+                    <span className="text-emerald-400 text-sm">{count} apps</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-400 text-sm">No data yet. Features will appear as users build apps.</p>
+            )}
           </div>
         </div>
         
