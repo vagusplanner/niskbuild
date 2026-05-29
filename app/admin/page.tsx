@@ -3,13 +3,39 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
+// Define types for the data structure
+interface CategoryData {
+  app_category: string | null;
+}
+
+interface FeatureData {
+  features_list: string[] | null;
+}
+
+interface PromptsData {
+  prompts_count: number | null;
+}
+
+interface ExportData {
+  exported_locally: boolean | null;
+}
+
+interface DashboardData {
+  totalBuilds: number;
+  buildsToday: number;
+  topCategories: [string, number][];
+  topFeatures: [string, number][];
+  avgPrompts: string;
+  exportRate: string;
+}
+
 export default function AdminDashboard() {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState(false);
 
   // 🔐 CHANGE THIS TO YOUR EMAIL ADDRESS
-  const AUTHORIZED_EMAIL = 'nishatismailkemih@gmail.com';
+  const AUTHORIZED_EMAIL = 'sofiane.kemih@gmail.com';
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -48,7 +74,7 @@ export default function AdminDashboard() {
         .select('app_category');
       
       const categoryCounts: Record<string, number> = {};
-      categoryData?.forEach(log => {
+      (categoryData as CategoryData[] | null)?.forEach((log: CategoryData) => {
         const cat = log.app_category || 'unknown';
         categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
       });
@@ -62,7 +88,7 @@ export default function AdminDashboard() {
         .select('features_list');
       
       const featureCounts: Record<string, number> = {};
-      featureData?.forEach(log => {
+      (featureData as FeatureData[] | null)?.forEach((log: FeatureData) => {
         log.features_list?.forEach((feature: string) => {
           featureCounts[feature] = (featureCounts[feature] || 0) + 1;
         });
@@ -76,14 +102,14 @@ export default function AdminDashboard() {
         .from('metadata_logs')
         .select('prompts_count');
       
-      const avgPrompts = promptsData?.reduce((sum, log) => sum + (log.prompts_count || 0), 0) / (promptsData?.length || 1);
+      const avgPrompts = (promptsData as PromptsData[] | null)?.reduce((sum, log) => sum + (log.prompts_count || 0), 0) / ((promptsData?.length || 1));
       
       // Get export rate
       const { data: exportData } = await supabase
         .from('metadata_logs')
         .select('exported_locally');
       
-      const exportsCount = exportData?.filter(log => log.exported_locally === true).length || 0;
+      const exportsCount = (exportData as ExportData[] | null)?.filter(log => log.exported_locally === true).length || 0;
       const exportRate = (exportsCount / (exportData?.length || 1)) * 100;
       
       setData({
@@ -152,7 +178,7 @@ export default function AdminDashboard() {
           <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
             <h2 className="text-lg font-semibold text-white mb-4">🔥 Top 5 App Categories</h2>
             <div className="space-y-3">
-              {data?.topCategories.map(([category, count]: [string, number], i: number) => (
+              {data?.topCategories.map(([category, count], i: number) => (
                 <div key={category} className="flex items-center gap-3">
                   <div className="w-8 text-gray-400">#{i + 1}</div>
                   <div className="flex-1">
@@ -163,7 +189,7 @@ export default function AdminDashboard() {
                     <div className="w-full bg-gray-800 rounded-full h-2">
                       <div 
                         className="bg-purple-500 h-2 rounded-full transition-all"
-                        style={{ width: `${(count / data.topCategories[0][1]) * 100}%` }}
+                        style={{ width: `${(count / (data.topCategories[0]?.[1] || 1)) * 100}%` }}
                       />
                     </div>
                   </div>
@@ -176,7 +202,7 @@ export default function AdminDashboard() {
           <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
             <h2 className="text-lg font-semibold text-white mb-4">🔧 Top 10 Features Used</h2>
             <div className="space-y-2 max-h-80 overflow-y-auto">
-              {data?.topFeatures.map(([feature, count]: [string, number], i: number) => (
+              {data?.topFeatures.map(([feature, count]) => (
                 <div key={feature} className="flex justify-between items-center py-2 border-b border-gray-800">
                   <span className="text-gray-300 capitalize">{feature}</span>
                   <span className="text-emerald-400 text-sm">{count} apps</span>
