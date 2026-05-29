@@ -41,6 +41,7 @@ export default function Home() {
 // NiskBuild now features:
 // 🔄 Self-correction loop - AI fixes its own errors (up to 5 attempts)
 // ☁️ Cloud AI fallback - Works even without Ollama
+// 📊 Anonymous telemetry - Helps improve the platform
 // 
 // Example: "Create a blue button that says Click Me"
 `);
@@ -50,6 +51,10 @@ export default function Home() {
   const [showPreview, setShowPreview] = useState(false);
   const [previewHtml, setPreviewHtml] = useState("<div style='padding:20px; color:#888; text-align:center;'>✨ Generate an app above, then click Live Preview to see it here!</div>");
   const [statusMessage, setStatusMessage] = useState("");
+
+  // ========== METADATA TRACKING STATE (NEW) ==========
+  const [sessionPrompts, setSessionPrompts] = useState<string[]>([]);
+  const [sessionStartTime, setSessionStartTime] = useState<number>(Date.now());
 
   // Check if Supabase is available
   const isSupabaseAvailable = () => {
@@ -72,6 +77,55 @@ export default function Home() {
       if (prompt.toLowerCase().includes(kw)) integrations.push(kw);
     });
     return integrations;
+  };
+
+  // ========== METADATA HELPER FUNCTIONS (NEW) ==========
+  // Helper to extract app category from prompt
+  const extractAppCategory = (prompt: string): string => {
+    const categories = ['ecommerce', 'crm', 'todo', 'calculator', 'dashboard', 'chat', 'form', 'landing', 'blog', 'portfolio', 'weather', 'counter'];
+    for (const cat of categories) {
+      if (prompt.toLowerCase().includes(cat)) {
+        return cat;
+      }
+    }
+    return 'other';
+  };
+
+  // Helper to log metadata to Supabase
+  const logBuildMetadata = async (exported: boolean) => {
+    if (!telemetryEnabled) return;
+    
+    const buildDuration = (Date.now() - sessionStartTime) / 1000 / 60;
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      await fetch('/api/log-build', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: session?.user?.id || null,
+          sessionId: session?.user?.id ? `${session.user.id}-${Date.now()}` : `anon-${Date.now()}`,
+          appCategory: extractAppCategory(promptText),
+          prompts: sessionPrompts,
+          successCount: sessionPrompts.length,
+          failCount: 0,
+          buildDurationMinutes: Math.floor(buildDuration),
+          exportedLocally: exported,
+          subscriptionTier: 'free',
+          locale: navigator.language,
+          telemetryEnabled: telemetryEnabled,
+        }),
+      });
+      
+      console.log('📊 Metadata logged for:', exported ? 'export' : 'session end');
+    } catch (error) {
+      console.error('Failed to log metadata:', error);
+    }
+    
+    // Reset session tracking after logging
+    setSessionPrompts([]);
+    setSessionStartTime(Date.now());
   };
 
   // Helper function to clean markdown from AI responses
@@ -198,6 +252,9 @@ export default function Home() {
     setGeneratedCode(project.generated_code);
     setPreviewHtml(cleanGeneratedCode(project.generated_code));
     setActiveTab("builder");
+    // Reset session tracking when loading a project
+    setSessionPrompts([]);
+    setSessionStartTime(Date.now());
   };
 
   // Authentication handlers (only if Supabase available)
@@ -272,6 +329,10 @@ export default function Home() {
     
     const startTime = Date.now();
     setIsGenerating(true);
+    
+    // ========== TRACK THIS PROMPT FOR METADATA (NEW) ==========
+    setSessionPrompts(prev => [...prev, promptText]);
+    
     setStatusMessage("🔄 Starting generation with self-correction loop...");
     setGeneratedCode("🔄 NiskBuild AI is working...\n\nAttempt 1: Generating initial code...\n");
     setPreviewHtml("<div style='padding:20px; color:#888; text-align:center;'>🔄 Generating with self-correction... Please wait.</div>");
@@ -454,6 +515,9 @@ Try rephrasing or breaking down your request into smaller steps.`);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      
+      // ========== LOG METADATA WHEN USER EXPORTS (NEW) ==========
+      await logBuildMetadata(true);
       
       alert("✅ Export complete! Your code is now yours forever. No watermarks, no lock-in.");
     } catch (error) {
@@ -729,6 +793,9 @@ NiskBuild will automatically detect and fix errors (up to 5 attempts)."
                 <div key={i} className="bg-gray-900/50 rounded-xl border border-gray-800 p-4 hover:border-purple-500 transition-all cursor-pointer" onClick={() => {
                   setPromptText(template.prompt);
                   setActiveTab("builder");
+                  // Reset session tracking when using a template
+                  setSessionPrompts([]);
+                  setSessionStartTime(Date.now());
                 }}>
                   <div className="text-3xl mb-2">{template.emoji}</div>
                   <h3 className="font-medium text-white text-sm">{template.name}</h3>
