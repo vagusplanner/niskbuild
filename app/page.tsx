@@ -52,7 +52,7 @@ export default function Home() {
   const [previewHtml, setPreviewHtml] = useState("<div style='padding:20px; color:#888; text-align:center;'>✨ Generate an app above, then click Live Preview to see it here!</div>");
   const [statusMessage, setStatusMessage] = useState("");
 
-  // ========== METADATA TRACKING STATE (NEW) ==========
+  // Metadata tracking state
   const [sessionPrompts, setSessionPrompts] = useState<string[]>([]);
   const [sessionStartTime, setSessionStartTime] = useState<number>(Date.now());
 
@@ -79,7 +79,6 @@ export default function Home() {
     return integrations;
   };
 
-  // ========== METADATA HELPER FUNCTIONS (NEW) ==========
   // Helper to extract app category from prompt
   const extractAppCategory = (prompt: string): string => {
     const categories = ['ecommerce', 'crm', 'todo', 'calculator', 'dashboard', 'chat', 'form', 'landing', 'blog', 'portfolio', 'weather', 'counter'];
@@ -123,7 +122,6 @@ export default function Home() {
       console.error('Failed to log metadata:', error);
     }
     
-    // Reset session tracking after logging
     setSessionPrompts([]);
     setSessionStartTime(Date.now());
   };
@@ -132,19 +130,16 @@ export default function Home() {
   const cleanGeneratedCode = (rawCode: string): string => {
     let cleaned = rawCode;
     
-    // Remove markdown code blocks
     const markdownMatch = cleaned.match(/```(?:html|html|javascript|jsx|tsx|typescript)?\n?([\s\S]*?)\n?```/i);
     if (markdownMatch) {
       cleaned = markdownMatch[1];
     }
     
-    // Remove any "Here's the code" type text before the actual code
     const doctypeMatch = cleaned.match(/(<!DOCTYPE[\s\S]*<\/html>)/i);
     if (doctypeMatch) {
       cleaned = doctypeMatch[1];
     }
     
-    // If no HTML wrapper, create one
     if (!cleaned.includes("<!DOCTYPE") && !cleaned.includes("<html")) {
       cleaned = `<!DOCTYPE html>
 <html>
@@ -196,7 +191,7 @@ export default function Home() {
     return cleaned;
   };
 
-  // Load saved projects from Supabase (only if available)
+  // Load saved projects from Supabase
   const loadProjects = async (userId: string) => {
     if (!isSupabaseAvailable()) {
       console.warn('Supabase not available - skipping project load');
@@ -214,7 +209,7 @@ export default function Home() {
     }
   };
 
-  // Save current project to Supabase (only if available)
+  // Save current project to Supabase
   const saveCurrentProject = async () => {
     if (!isSupabaseAvailable()) {
       alert("⚠️ Supabase is not configured. Please add environment variables.");
@@ -252,12 +247,11 @@ export default function Home() {
     setGeneratedCode(project.generated_code);
     setPreviewHtml(cleanGeneratedCode(project.generated_code));
     setActiveTab("builder");
-    // Reset session tracking when loading a project
     setSessionPrompts([]);
     setSessionStartTime(Date.now());
   };
 
-  // Authentication handlers (only if Supabase available)
+  // ========== FIXED AUTHENTICATION HANDLERS ==========
   const handleAuth = async () => {
     if (!isSupabaseAvailable()) {
       alert("⚠️ Supabase is not configured. Please contact support.");
@@ -265,25 +259,65 @@ export default function Home() {
     }
     
     setAuthLoading(true);
-    if (authMode === 'signup') {
-      const { error } = await supabase.auth.signUp({
-        email: authEmail,
-        password: authPassword,
-      });
-      if (error) alert(error.message);
-      else {
-        alert('Check your email for confirmation!');
-        setShowAuthModal(false);
+    
+    try {
+      if (authMode === 'signup') {
+        // Sign up
+        const { data, error } = await supabase.auth.signUp({
+          email: authEmail,
+          password: authPassword,
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            data: {
+              full_name: authEmail.split('@')[0],
+            },
+          },
+        });
+        
+        if (error) {
+          alert(error.message);
+        } else if (data.user) {
+          // Auto-create profile for new user
+          await supabase.from('profiles').upsert({
+            id: data.user.id,
+            email: authEmail,
+            subscription_tier: 'free',
+            created_at: new Date().toISOString(),
+          });
+          
+          alert("✅ Account created! You can now sign in.");
+          setShowAuthModal(false);
+          setAuthMode('signin');
+          setAuthEmail('');
+          setAuthPassword('');
+        } else {
+          alert("⚠️ Please check your email for confirmation link.");
+          setShowAuthModal(false);
+        }
+      } else {
+        // Sign in
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: authEmail,
+          password: authPassword,
+        });
+        
+        if (error) {
+          alert(error.message);
+        } else if (data.user) {
+          alert("✅ Signed in successfully!");
+          setShowAuthModal(false);
+          setAuthEmail('');
+          setAuthPassword('');
+          setUser(data.user);
+          loadProjects(data.user.id);
+        }
       }
-    } else {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: authEmail,
-        password: authPassword,
-      });
-      if (error) alert(error.message);
-      else setShowAuthModal(false);
+    } catch (err) {
+      console.error('Auth error:', err);
+      alert("An error occurred during authentication. Please try again.");
+    } finally {
+      setAuthLoading(false);
     }
-    setAuthLoading(false);
   };
 
   const handleSignOut = async () => {
@@ -293,14 +327,13 @@ export default function Home() {
     setSavedProjects([]);
   };
 
-  // Check auth status on load (only if Supabase available)
+  // Check auth status on load
   useEffect(() => {
     if (!isSupabaseAvailable()) {
       console.warn('Supabase not available - auth disabled');
       return;
     }
     
-    // Fixed: Proper typing for Supabase response
     supabase.auth.getSession().then((response: SupabaseAuthResponse) => {
       const session = response.data.session;
       setUser(session?.user ?? null);
@@ -309,7 +342,6 @@ export default function Home() {
       }
     });
 
-    // Fixed: Proper typing for auth state change
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: string, session: SupabaseSession | null) => {
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -320,7 +352,6 @@ export default function Home() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // MAIN GENERATION FUNCTION with Self-Correction + Cloud Fallback
   const handleGenerate = async () => {
     if (!promptText.trim()) {
       alert("Please enter a prompt first!");
@@ -330,7 +361,6 @@ export default function Home() {
     const startTime = Date.now();
     setIsGenerating(true);
     
-    // ========== TRACK THIS PROMPT FOR METADATA (NEW) ==========
     setSessionPrompts(prev => [...prev, promptText]);
     
     setStatusMessage("🔄 Starting generation with self-correction loop...");
@@ -338,7 +368,6 @@ export default function Home() {
     setPreviewHtml("<div style='padding:20px; color:#888; text-align:center;'>🔄 Generating with self-correction... Please wait.</div>");
     
     try {
-      // Step 1: Try self-healing API (uses cloud AI with error correction)
       setStatusMessage("🔄 Attempt 1/5: Generating code with error detection...");
       
       const selfHealResponse = await fetch('/api/self-heal', {
@@ -350,13 +379,11 @@ export default function Home() {
       const selfHealData = await selfHealResponse.json();
       
       if (selfHealData.success) {
-        // Success! Code generated and validated
         const cleanedCode = cleanGeneratedCode(selfHealData.code);
         setGeneratedCode(cleanedCode);
         setPreviewHtml(cleanedCode);
         setStatusMessage(`✅ Success! Generated in ${selfHealData.attempts} attempt(s) with self-correction`);
         
-        // Log telemetry
         if (telemetryEnabled) {
           try {
             let templateId = 'custom';
@@ -388,7 +415,6 @@ export default function Home() {
         return;
       }
       
-      // Step 2: If self-healing returned but with errors, use best attempt
       if (selfHealData.code) {
         setStatusMessage(`⚠️ Self-correction completed with ${selfHealData.errors?.length || 0} remaining issues. Displaying best attempt.`);
         const cleanedCode = cleanGeneratedCode(selfHealData.code);
@@ -398,7 +424,6 @@ export default function Home() {
         return;
       }
       
-      // Step 3: Fallback to simple cloud generation
       setStatusMessage("☁️ Falling back to cloud AI generation...");
       
       const cloudResponse = await fetch('/api/cloud-generate', {
@@ -415,7 +440,6 @@ export default function Home() {
         setPreviewHtml(cleanedCode);
         setStatusMessage(`✅ Generated via ${cloudData.source === 'local' ? 'Local Ollama' : 'Cloud AI (Groq)'}`);
         
-        // Log telemetry
         if (telemetryEnabled) {
           try {
             let templateId = 'custom';
@@ -457,24 +481,16 @@ Possible solutions:
 1. Check your internet connection
 2. Try a simpler prompt
 3. If using local Ollama, make sure it's running
-4. Contact support if issue persists
 
-Your prompt was: "${promptText.substring(0, 200)}"
-
-Try rephrasing or breaking down your request into smaller steps.`);
+Your prompt was: "${promptText.substring(0, 200)}"`);
       
       setPreviewHtml(`<div style="padding:20px; color:#ef4444; background:#1a1f2e; border-radius:8px; text-align:center;">
         <h3>❌ Generation Failed</h3>
         <p>${errorMessage}</p>
-        <p style="font-size:12px; margin-top:16px;">Try:<br/>
-        - Checking your internet connection<br/>
-        - Using a simpler prompt<br/>
-        - Installing Ollama for local generation</p>
       </div>`);
       setStatusMessage(`❌ Generation failed: ${errorMessage}`);
     } finally {
       setIsGenerating(false);
-      // Clear status message after 5 seconds
       setTimeout(() => {
         if (!isGenerating) {
           setStatusMessage("");
@@ -516,7 +532,6 @@ Try rephrasing or breaking down your request into smaller steps.`);
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       
-      // ========== LOG METADATA WHEN USER EXPORTS (NEW) ==========
       await logBuildMetadata(true);
       
       alert("✅ Export complete! Your code is now yours forever. No watermarks, no lock-in.");
@@ -793,7 +808,6 @@ NiskBuild will automatically detect and fix errors (up to 5 attempts)."
                 <div key={i} className="bg-gray-900/50 rounded-xl border border-gray-800 p-4 hover:border-purple-500 transition-all cursor-pointer" onClick={() => {
                   setPromptText(template.prompt);
                   setActiveTab("builder");
-                  // Reset session tracking when using a template
                   setSessionPrompts([]);
                   setSessionStartTime(Date.now());
                 }}>
@@ -882,43 +896,54 @@ NiskBuild will automatically detect and fix errors (up to 5 attempts)."
         )}
       </main>
 
-      {/* Auth Modal */}
+      {/* Auth Modal - FIXED VERSION */}
       {showAuthModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-gray-900 rounded-xl border border-gray-700 p-6 w-96">
+          <div className="bg-gray-900 rounded-xl border border-gray-700 p-6 w-96 max-w-[90vw]">
             <h2 className="text-xl font-bold text-white mb-4">
               {authMode === 'signin' ? 'Sign In' : 'Create Account'}
             </h2>
+            
             <input
               type="email"
-              placeholder="Email"
+              placeholder="Email address"
               value={authEmail}
               onChange={(e) => setAuthEmail(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2 mb-3 text-white"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 mb-3 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
             />
+            
             <input
               type="password"
-              placeholder="Password"
+              placeholder="Password (min 6 characters)"
               value={authPassword}
               onChange={(e) => setAuthPassword(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2 mb-4 text-white"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 mb-4 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
             />
+            
             <button
               onClick={handleAuth}
-              disabled={authLoading}
-              className="w-full bg-purple-600 hover:bg-purple-500 text-white py-2 rounded-lg mb-2"
+              disabled={authLoading || !authEmail || !authPassword}
+              className="w-full bg-purple-600 hover:bg-purple-500 text-white py-3 rounded-lg mb-3 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {authLoading ? 'Loading...' : (authMode === 'signin' ? 'Sign In' : 'Create Account')}
             </button>
+            
             <button
-              onClick={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')}
-              className="w-full text-sm text-gray-400 hover:text-gray-300"
+              onClick={() => {
+                setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
+                setAuthEmail('');
+                setAuthPassword('');
+              }}
+              className="w-full text-sm text-gray-400 hover:text-gray-300 text-center"
             >
-              {authMode === 'signin' ? 'Need an account? Sign Up' : 'Already have an account? Sign In'}
+              {authMode === 'signin' 
+                ? "Don't have an account? Sign Up" 
+                : "Already have an account? Sign In"}
             </button>
+            
             <button
               onClick={() => setShowAuthModal(false)}
-              className="w-full text-sm text-gray-500 hover:text-gray-400 mt-2"
+              className="w-full text-sm text-gray-500 hover:text-gray-400 text-center mt-3"
             >
               Cancel
             </button>
