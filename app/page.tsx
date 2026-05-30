@@ -251,7 +251,7 @@ export default function Home() {
     setSessionStartTime(Date.now());
   };
 
-  // ========== FIXED AUTHENTICATION HANDLERS ==========
+  // Authentication handlers
   const handleAuth = async () => {
     if (!isSupabaseAvailable()) {
       alert("⚠️ Supabase is not configured. Please contact support.");
@@ -259,18 +259,16 @@ export default function Home() {
     }
     
     setAuthLoading(true);
-
-    const normalizedEmail = authEmail.trim().toLowerCase();
-    const normalizedPassword = authPassword.trim();
     
     try {
+      const normalizedEmail = authEmail.trim().toLowerCase();
+      const normalizedPassword = authPassword.trim();
+      
       if (authMode === 'signup') {
-        // Sign up
         const { data, error } = await supabase.auth.signUp({
           email: normalizedEmail,
           password: normalizedPassword,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
             data: {
               full_name: normalizedEmail.split('@')[0],
             },
@@ -280,46 +278,48 @@ export default function Home() {
         if (error) {
           alert(error.message);
         } else if (data.user) {
-          // Auto-create profile for new user
-          await supabase.from('profiles').upsert({
-            id: data.user.id,
-            email: normalizedEmail,
-            subscription_tier: 'free',
-            created_at: new Date().toISOString(),
-          });
-
           if (data.session) {
-            // Email confirmation is OFF - user can sign in immediately
+            await supabase.from('profiles').upsert({
+              id: data.user.id,
+              email: normalizedEmail,
+              subscription_tier: 'free',
+              created_at: new Date().toISOString(),
+            });
             alert("✅ Account created! You are now signed in.");
             setShowAuthModal(false);
             setUser(data.user);
             loadProjects(data.user.id);
           } else {
-            // Email confirmation is ON - user must confirm email first
             alert("✅ Account created! Please check your email to confirm your account before signing in.");
             setShowAuthModal(false);
           }
           setAuthEmail('');
           setAuthPassword('');
-        } else {
-          alert("⚠️ Please check your email for confirmation link.");
-          setShowAuthModal(false);
         }
       } else {
-        // Sign in
         const { data, error } = await supabase.auth.signInWithPassword({
           email: normalizedEmail,
           password: normalizedPassword,
         });
         
         if (error) {
-          alert(error.message);
+          if (error.message.includes('Invalid login credentials')) {
+            alert("❌ Invalid email or password. Please try again.");
+          } else {
+            alert(error.message);
+          }
         } else if (data.user) {
           alert("✅ Signed in successfully!");
           setShowAuthModal(false);
           setAuthEmail('');
           setAuthPassword('');
           setUser(data.user);
+          await supabase.from('profiles').upsert({
+            id: data.user.id,
+            email: data.user.email,
+            subscription_tier: 'free',
+            created_at: new Date().toISOString(),
+          });
           loadProjects(data.user.id);
         }
       }
@@ -610,6 +610,7 @@ Your prompt was: "${promptText.substring(0, 200)}"`);
           </div>
         </div>
 
+        {/* Navigation with Pricing Button */}
         <nav className="flex-1 pt-8">
           <button
             onClick={() => setActiveTab("builder")}
@@ -622,6 +623,7 @@ Your prompt was: "${promptText.substring(0, 200)}"`);
             <span className="text-xl">🔨</span>
             <span className="text-sm font-medium">Local Builder</span>
           </button>
+
           <button
             onClick={() => setActiveTab("blueprint")}
             className={`w-full text-left px-6 py-3 flex items-center gap-3 transition-all duration-200 ${
@@ -633,6 +635,7 @@ Your prompt was: "${promptText.substring(0, 200)}"`);
             <span className="text-xl">📦</span>
             <span className="text-sm font-medium">Blueprint Store</span>
           </button>
+
           <button
             onClick={() => setActiveTab("insights")}
             className={`w-full text-left px-6 py-3 flex items-center gap-3 transition-all duration-200 ${
@@ -644,6 +647,7 @@ Your prompt was: "${promptText.substring(0, 200)}"`);
             <span className="text-xl">📊</span>
             <span className="text-sm font-medium">Market Insights</span>
           </button>
+
           <button
             onClick={() => setActiveTab("config")}
             className={`w-full text-left px-6 py-3 flex items-center gap-3 transition-all duration-200 ${
@@ -654,6 +658,18 @@ Your prompt was: "${promptText.substring(0, 200)}"`);
           >
             <span className="text-xl">⚙️</span>
             <span className="text-sm font-medium">Node Config</span>
+          </button>
+
+          {/* Divider */}
+          <div className="my-4 mx-6 h-px bg-gray-800"></div>
+
+          {/* Pricing Button - NEW */}
+          <button
+            onClick={() => window.location.href = '/pricing'}
+            className="w-full text-left px-6 py-3 flex items-center gap-3 transition-all duration-200 text-emerald-400 hover:text-emerald-300 hover:bg-gray-900/50"
+          >
+            <span className="text-xl">💳</span>
+            <span className="text-sm font-medium">Pricing & Upgrade</span>
           </button>
         </nav>
 
@@ -907,7 +923,7 @@ NiskBuild will automatically detect and fix errors (up to 5 attempts)."
         )}
       </main>
 
-      {/* Auth Modal - FIXED VERSION */}
+      {/* Auth Modal */}
       {showAuthModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
           <div className="bg-gray-900 rounded-xl border border-gray-700 p-6 w-96 max-w-[90vw]">
