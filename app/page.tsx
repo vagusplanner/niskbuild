@@ -259,17 +259,20 @@ export default function Home() {
     }
     
     setAuthLoading(true);
+
+    const normalizedEmail = authEmail.trim().toLowerCase();
+    const normalizedPassword = authPassword.trim();
     
     try {
       if (authMode === 'signup') {
         // Sign up
         const { data, error } = await supabase.auth.signUp({
-          email: authEmail,
-          password: authPassword,
+          email: normalizedEmail,
+          password: normalizedPassword,
           options: {
             emailRedirectTo: `${window.location.origin}/auth/callback`,
             data: {
-              full_name: authEmail.split('@')[0],
+              full_name: normalizedEmail.split('@')[0],
             },
           },
         });
@@ -280,14 +283,22 @@ export default function Home() {
           // Auto-create profile for new user
           await supabase.from('profiles').upsert({
             id: data.user.id,
-            email: authEmail,
+            email: normalizedEmail,
             subscription_tier: 'free',
             created_at: new Date().toISOString(),
           });
-          
-          alert("✅ Account created! You can now sign in.");
-          setShowAuthModal(false);
-          setAuthMode('signin');
+
+          if (data.session) {
+            // Email confirmation is OFF - user can sign in immediately
+            alert("✅ Account created! You are now signed in.");
+            setShowAuthModal(false);
+            setUser(data.user);
+            loadProjects(data.user.id);
+          } else {
+            // Email confirmation is ON - user must confirm email first
+            alert("✅ Account created! Please check your email to confirm your account before signing in.");
+            setShowAuthModal(false);
+          }
           setAuthEmail('');
           setAuthPassword('');
         } else {
@@ -297,8 +308,8 @@ export default function Home() {
       } else {
         // Sign in
         const { data, error } = await supabase.auth.signInWithPassword({
-          email: authEmail,
-          password: authPassword,
+          email: normalizedEmail,
+          password: normalizedPassword,
         });
         
         if (error) {
