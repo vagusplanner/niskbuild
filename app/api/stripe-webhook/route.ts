@@ -28,28 +28,45 @@ export async function POST(request: NextRequest) {
     
     if (userId) {
       // Update user to Pro in Supabase
-      await supabase
+      const { error } = await supabase
         .from('profiles')
         .update({ subscription_tier: 'pro', updated_at: new Date().toISOString() })
         .eq('id', userId);
       
-      console.log(`✅ User ${userId} upgraded to Pro`);
+      if (error) {
+        console.error('Failed to update user to pro:', error);
+      } else {
+        console.log(`✅ User ${userId} upgraded to Pro`);
+      }
     }
   }
 
   // Handle subscription cancellation
   if (event.type === 'customer.subscription.deleted') {
     const subscription = event.data.object;
-    const customer = await stripe.customers.retrieve(subscription.customer as string);
-    const email = customer.email;
+    const customerId = subscription.customer as string;
     
-    if (email) {
-      await supabase
-        .from('profiles')
-        .update({ subscription_tier: 'free' })
-        .eq('email', email);
+    try {
+      // Retrieve customer - check if it still exists
+      const customer = await stripe.customers.retrieve(customerId);
       
-      console.log(`📉 User ${email} downgraded to Free`);
+      // Only proceed if customer is not deleted (has email)
+      if (!customer.deleted && customer.email) {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ subscription_tier: 'free' })
+          .eq('email', customer.email);
+        
+        if (error) {
+          console.error('Failed to downgrade user:', error);
+        } else {
+          console.log(`📉 User ${customer.email} downgraded to Free`);
+        }
+      } else {
+        console.log(`⚠️ Customer ${customerId} was deleted, skipping downgrade`);
+      }
+    } catch (err) {
+      console.error('Error processing customer:', err);
     }
   }
 

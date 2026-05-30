@@ -7,6 +7,13 @@ export async function POST(request: NextRequest) {
   try {
     const { userId, email, successUrl, cancelUrl } = await request.json();
 
+    if (!email) {
+      return NextResponse.json(
+        { error: 'Email is required' },
+        { status: 400 }
+      );
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
@@ -20,7 +27,7 @@ export async function POST(request: NextRequest) {
       success_url: successUrl || `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=true`,
       cancel_url: cancelUrl || `${process.env.NEXT_PUBLIC_APP_URL}/pricing?canceled=true`,
       metadata: {
-        userId: userId,
+        userId: userId || '',
       },
     });
 
