@@ -42,6 +42,7 @@ export default function Home() {
 // 🔄 Self-correction loop - AI fixes its own errors (up to 5 attempts)
 // ☁️ Cloud AI fallback - Works even without Ollama
 // 📊 Anonymous telemetry - Helps improve the platform
+// 💳 Pro tier - Unlimited projects for $49/month
 // 
 // Example: "Create a blue button that says Click Me"
 `);
@@ -88,6 +89,51 @@ export default function Home() {
       }
     }
     return 'other';
+  };
+
+  // ========== PRO LIMITS: Check if user can create a new project ==========
+  const canCreateProject = async (userId: string): Promise<boolean> => {
+    try {
+      // Check if user is Pro
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('subscription_tier')
+        .eq('id', userId)
+        .single();
+      
+      if (profileError) {
+        console.error('Profile fetch error:', profileError);
+        return false;
+      }
+      
+      // Pro users have unlimited projects
+      if (profile?.subscription_tier === 'pro') {
+        return true;
+      }
+      
+      // Free users: count their existing projects
+      const { count, error: countError } = await supabase
+        .from('projects')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId);
+      
+      if (countError) {
+        console.error('Project count error:', countError);
+        return false;
+      }
+      
+      // Max 3 projects for free tier
+      const canCreate = (count || 0) < 3;
+      
+      if (!canCreate) {
+        console.log(`Free user ${userId} has ${count} projects, limit reached (3 max)`);
+      }
+      
+      return canCreate;
+    } catch (error) {
+      console.error('Error checking project limit:', error);
+      return false;
+    }
   };
 
   // Helper to log metadata to Supabase
@@ -209,7 +255,7 @@ export default function Home() {
     }
   };
 
-  // Save current project to Supabase
+  // ========== SAVE CURRENT PROJECT WITH PRO LIMITS CHECK ==========
   const saveCurrentProject = async () => {
     if (!isSupabaseAvailable()) {
       alert("⚠️ Supabase is not configured. Please add environment variables.");
@@ -221,7 +267,25 @@ export default function Home() {
       return;
     }
 
-    const title = prompt('Project name:', promptText.substring(0, 50));
+    // Check if user has valid generated code
+    if (!generatedCode || generatedCode.includes("will appear here") || generatedCode.includes("NiskBuild AI is working")) {
+      alert("⚠️ Please generate an app first before saving.");
+      return;
+    }
+
+    // Check project limit for free users
+    const allowed = await canCreateProject(user.id);
+    if (!allowed) {
+      const confirmUpgrade = confirm(
+        "❌ Free tier limit reached (3 projects max).\n\nWould you like to upgrade to Pro for unlimited projects?"
+      );
+      if (confirmUpgrade) {
+        window.location.href = '/pricing';
+      }
+      return;
+    }
+
+    const title = prompt('Project name:', promptText.substring(0, 50) || 'Untitled Project');
     if (!title) return;
 
     const { error } = await supabase
@@ -236,7 +300,7 @@ export default function Home() {
     if (error) {
       alert('Error saving project: ' + error.message);
     } else {
-      alert('Project saved!');
+      alert('✅ Project saved successfully!');
       loadProjects(user.id);
     }
   };
@@ -610,7 +674,7 @@ Your prompt was: "${promptText.substring(0, 200)}"`);
           </div>
         </div>
 
-        {/* Navigation with Pricing Button */}
+        {/* Navigation */}
         <nav className="flex-1 pt-8">
           <button
             onClick={() => setActiveTab("builder")}
@@ -663,7 +727,16 @@ Your prompt was: "${promptText.substring(0, 200)}"`);
           {/* Divider */}
           <div className="my-4 mx-6 h-px bg-gray-800"></div>
 
-          {/* Pricing Button - NEW */}
+          {/* Marketplace Button */}
+          <button
+            onClick={() => window.location.href = '/marketplace'}
+            className="w-full text-left px-6 py-3 flex items-center gap-3 transition-all duration-200 text-blue-400 hover:text-blue-300 hover:bg-gray-900/50"
+          >
+            <span className="text-xl">🏪</span>
+            <span className="text-sm font-medium">Marketplace</span>
+          </button>
+
+          {/* Pricing Button */}
           <button
             onClick={() => window.location.href = '/pricing'}
             className="w-full text-left px-6 py-3 flex items-center gap-3 transition-all duration-200 text-emerald-400 hover:text-emerald-300 hover:bg-gray-900/50"
@@ -803,7 +876,12 @@ NiskBuild will automatically detect and fix errors (up to 5 attempts)."
             {/* Saved Projects Section */}
             {savedProjects.length > 0 && (
               <div className="mt-6">
-                <h3 className="text-sm font-medium text-gray-300 mb-3">📁 My Saved Projects</h3>
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-sm font-medium text-gray-300">📁 My Saved Projects</h3>
+                  {user && savedProjects.length >= 3 && (
+                    <span className="text-xs text-yellow-500">⚠️ Free limit: {savedProjects.length}/3 projects</span>
+                  )}
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {savedProjects.map((project) => (
                     <div
@@ -890,6 +968,14 @@ NiskBuild will automatically detect and fix errors (up to 5 attempts)."
                   <p className="text-xs text-gray-400">Groq Llama 3.3 (70B) - Works for all users</p>
                 </div>
                 <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full">Ready</span>
+              </div>
+              
+              <div className="flex justify-between items-center py-3 border-b border-gray-800">
+                <div>
+                  <p className="text-sm font-medium text-white">Free Tier Limit</p>
+                  <p className="text-xs text-gray-400">3 projects max - Upgrade to Pro for unlimited</p>
+                </div>
+                <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">Active</span>
               </div>
               
               {/* Telemetry Toggle */}
