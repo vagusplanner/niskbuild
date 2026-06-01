@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import SubscriptionGuard from "@/app/components/SubscriptionGuard";
 
 type TabType = "builder" | "blueprint" | "insights" | "config";
 
@@ -42,7 +43,8 @@ export default function Home() {
 // 🔄 Self-correction loop - AI fixes its own errors (up to 5 attempts)
 // ☁️ Cloud AI fallback - Works even without Ollama
 // 📊 Anonymous telemetry - Helps improve the platform
-// 💳 Pro tier - Unlimited projects for $49/month
+// 💳 Pro tier - Unlimited projects
+// 🔒 License heartbeat - Active subscription required
 // 
 // Example: "Create a blue button that says Click Me"
 `);
@@ -91,13 +93,13 @@ export default function Home() {
     return 'other';
   };
 
-  // ========== PRO LIMITS: Check if user can create a new project ==========
+  // Check if user can create a new project (based on subscription tier)
   const canCreateProject = async (userId: string): Promise<boolean> => {
     try {
-      // Check if user is Pro
+      // Check user's subscription tier
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('subscription_tier')
+        .select('subscription_tier, subscription_status')
         .eq('id', userId)
         .single();
       
@@ -106,12 +108,16 @@ export default function Home() {
         return false;
       }
       
-      // Pro users have unlimited projects
-      if (profile?.subscription_tier === 'pro') {
-        return true;
+      // Check if subscription is active
+      const isActive = profile?.subscription_status === 'active';
+      const tier = profile?.subscription_tier || 'free';
+      
+      // Pro, Agency, Scale, White-Label tiers have unlimited projects
+      if (tier === 'pro' || tier === 'agency' || tier === 'scale' || tier === 'white_label') {
+        return isActive;
       }
       
-      // Free users: count their existing projects
+      // Free users: count their existing projects (max 1 for sandbox)
       const { count, error: countError } = await supabase
         .from('projects')
         .select('*', { count: 'exact', head: true })
@@ -122,11 +128,11 @@ export default function Home() {
         return false;
       }
       
-      // Max 3 projects for free tier
-      const canCreate = (count || 0) < 3;
+      // Sandbox/Free tier: max 1 project
+      const canCreate = (count || 0) < 1;
       
       if (!canCreate) {
-        console.log(`Free user ${userId} has ${count} projects, limit reached (3 max)`);
+        console.log(`Free user ${userId} has ${count} projects, limit reached (1 max)`);
       }
       
       return canCreate;
@@ -255,7 +261,7 @@ export default function Home() {
     }
   };
 
-  // ========== SAVE CURRENT PROJECT WITH PRO LIMITS CHECK ==========
+  // Save current project to Supabase with limit check
   const saveCurrentProject = async () => {
     if (!isSupabaseAvailable()) {
       alert("⚠️ Supabase is not configured. Please add environment variables.");
@@ -267,17 +273,15 @@ export default function Home() {
       return;
     }
 
-    // Check if user has valid generated code
     if (!generatedCode || generatedCode.includes("will appear here") || generatedCode.includes("NiskBuild AI is working")) {
       alert("⚠️ Please generate an app first before saving.");
       return;
     }
 
-    // Check project limit for free users
     const allowed = await canCreateProject(user.id);
     if (!allowed) {
       const confirmUpgrade = confirm(
-        "❌ Free tier limit reached (3 projects max).\n\nWould you like to upgrade to Pro for unlimited projects?"
+        "❌ Free tier limit reached (1 project max).\n\nWould you like to upgrade to Pro for unlimited projects?"
       );
       if (confirmUpgrade) {
         window.location.href = '/pricing';
@@ -347,6 +351,7 @@ export default function Home() {
               id: data.user.id,
               email: normalizedEmail,
               subscription_tier: 'free',
+              subscription_status: 'active',
               created_at: new Date().toISOString(),
             });
             alert("✅ Account created! You are now signed in.");
@@ -382,6 +387,7 @@ export default function Home() {
             id: data.user.id,
             email: data.user.email,
             subscription_tier: 'free',
+            subscription_status: 'active',
             created_at: new Date().toISOString(),
           });
           loadProjects(data.user.id);
@@ -620,449 +626,456 @@ Your prompt was: "${promptText.substring(0, 200)}"`);
     alert("🚀 Deploy Live feature coming soon!\n\nPro feature: One-click deploy to Vercel for $12/month.");
   };
 
+  // The main JSX is wrapped in SubscriptionGuard
   return (
-    <div className="min-h-screen bg-[#0B0F19] text-gray-200">
-      {/* Top Global Header */}
-      <header className="fixed top-0 left-0 right-0 h-14 bg-[#0B0F19]/95 backdrop-blur-sm border-b border-gray-800 z-20 px-6 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-            <span className="text-xs font-mono text-emerald-400 tracking-wide">
-              ⚡ 100% Sovereign Local Core Active
-            </span>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          {user ? (
-            <>
-              <button
-                onClick={saveCurrentProject}
-                className="text-xs bg-purple-600 hover:bg-purple-500 px-3 py-1.5 rounded-full transition-colors"
-              >
-                💾 Save Project
-              </button>
-              <span className="text-xs text-gray-400 hidden sm:inline">{user.email?.split('@')[0]}</span>
-              <button
-                onClick={handleSignOut}
-                className="text-xs text-gray-400 hover:text-gray-200 px-2 py-1"
-              >
-                Sign Out
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => setShowAuthModal(true)}
-              className="text-xs bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded-full transition-colors"
-            >
-              Sign In / Sign Up
-            </button>
-          )}
-          <div className="text-xs font-mono text-gray-400 bg-gray-900/50 px-3 py-1 rounded-full">
-            🧠 M1 Node Memory: <span className="text-emerald-400 font-bold">16GB Unified</span>
-          </div>
-        </div>
-      </header>
-
-      {/* Permanent Left Sidebar */}
-      <aside className="fixed left-0 top-14 bottom-0 w-64 bg-[#0B0F19] border-r border-gray-800 z-10 flex flex-col">
-        <div className="h-20 flex items-center justify-center border-b border-gray-800">
-          <div className="text-center">
-            <h1 className="text-xl font-bold tracking-wider bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-              NISK BUILD
-            </h1>
-            <p className="text-[10px] text-gray-500 mt-1">local-first · sovereign</p>
-          </div>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 pt-8">
-          <button
-            onClick={() => setActiveTab("builder")}
-            className={`w-full text-left px-6 py-3 flex items-center gap-3 transition-all duration-200 ${
-              activeTab === "builder"
-                ? "bg-purple-500/10 border-r-2 border-purple-500 text-purple-400"
-                : "text-gray-400 hover:text-gray-200 hover:bg-gray-900/50"
-            }`}
-          >
-            <span className="text-xl">🔨</span>
-            <span className="text-sm font-medium">Local Builder</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("blueprint")}
-            className={`w-full text-left px-6 py-3 flex items-center gap-3 transition-all duration-200 ${
-              activeTab === "blueprint"
-                ? "bg-purple-500/10 border-r-2 border-purple-500 text-purple-400"
-                : "text-gray-400 hover:text-gray-200 hover:bg-gray-900/50"
-            }`}
-          >
-            <span className="text-xl">📦</span>
-            <span className="text-sm font-medium">Blueprint Store</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("insights")}
-            className={`w-full text-left px-6 py-3 flex items-center gap-3 transition-all duration-200 ${
-              activeTab === "insights"
-                ? "bg-purple-500/10 border-r-2 border-purple-500 text-purple-400"
-                : "text-gray-400 hover:text-gray-200 hover:bg-gray-900/50"
-            }`}
-          >
-            <span className="text-xl">📊</span>
-            <span className="text-sm font-medium">Market Insights</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("config")}
-            className={`w-full text-left px-6 py-3 flex items-center gap-3 transition-all duration-200 ${
-              activeTab === "config"
-                ? "bg-purple-500/10 border-r-2 border-purple-500 text-purple-400"
-                : "text-gray-400 hover:text-gray-200 hover:bg-gray-900/50"
-            }`}
-          >
-            <span className="text-xl">⚙️</span>
-            <span className="text-sm font-medium">Node Config</span>
-          </button>
-
-          {/* Divider */}
-          <div className="my-4 mx-6 h-px bg-gray-800"></div>
-
-          {/* Marketplace Button */}
-          <button
-            onClick={() => window.location.href = '/marketplace'}
-            className="w-full text-left px-6 py-3 flex items-center gap-3 transition-all duration-200 text-blue-400 hover:text-blue-300 hover:bg-gray-900/50"
-          >
-            <span className="text-xl">🏪</span>
-            <span className="text-sm font-medium">Marketplace</span>
-          </button>
-
-          {/* Pricing Button */}
-          <button
-            onClick={() => window.location.href = '/pricing'}
-            className="w-full text-left px-6 py-3 flex items-center gap-3 transition-all duration-200 text-emerald-400 hover:text-emerald-300 hover:bg-gray-900/50"
-          >
-            <span className="text-xl">💳</span>
-            <span className="text-sm font-medium">Pricing & Upgrade</span>
-          </button>
-        </nav>
-
-        <div className="p-4 border-t border-gray-800 text-[10px] text-gray-500 text-center">
-          <div>🔒 Fully Local · No Telemetry</div>
-          <div className="mt-1">v0.1.0 · NiskBuild Core</div>
-        </div>
-      </aside>
-
-      {/* Dynamic Central Workspace */}
-      <main className="ml-64 mt-14 p-6 min-h-[calc(100vh-3.5rem)]">
-        {activeTab === "builder" && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-white">🏗️ Local Builder Workspace</h2>
-              <div className="text-xs text-gray-500 font-mono">Self-Correction Loop Active</div>
+    <SubscriptionGuard>
+      <div className="min-h-screen bg-[#0B0F19] text-gray-200">
+        {/* Top Global Header */}
+        <header className="fixed top-0 left-0 right-0 h-14 bg-[#0B0F19]/95 backdrop-blur-sm border-b border-gray-800 z-20 px-6 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+              <span className="text-xs font-mono text-emerald-400 tracking-wide">
+                ⚡ 100% Sovereign Local Core Active
+              </span>
             </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {user ? (
+              <>
+                <button
+                  onClick={saveCurrentProject}
+                  className="text-xs bg-purple-600 hover:bg-purple-500 px-3 py-1.5 rounded-full transition-colors"
+                >
+                  💾 Save Project
+                </button>
+                <span className="text-xs text-gray-400 hidden sm:inline">{user.email?.split('@')[0]}</span>
+                <button
+                  onClick={handleSignOut}
+                  className="text-xs text-gray-400 hover:text-gray-200 px-2 py-1"
+                >
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setShowAuthModal(true)}
+                className="text-xs bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded-full transition-colors"
+              >
+                Sign In / Sign Up
+              </button>
+            )}
+            <div className="text-xs font-mono text-gray-400 bg-gray-900/50 px-3 py-1 rounded-full">
+              🧠 M1 Node Memory: <span className="text-emerald-400 font-bold">16GB Unified</span>
+            </div>
+          </div>
+        </header>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Left Column */}
-              <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-5 flex flex-col h-[calc(100vh-180px)]">
-                <label className="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                  Prompt to Build
-                </label>
-                <textarea
-                  value={promptText}
-                  onChange={(e) => setPromptText(e.target.value)}
-                  placeholder="Describe the application you want to build...
-                  
+        {/* Permanent Left Sidebar */}
+        <aside className="fixed left-0 top-14 bottom-0 w-64 bg-[#0B0F19] border-r border-gray-800 z-10 flex flex-col">
+          <div className="h-20 flex items-center justify-center border-b border-gray-800">
+            <div className="text-center">
+              <h1 className="text-xl font-bold tracking-wider bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                NISK BUILD
+              </h1>
+              <p className="text-[10px] text-gray-500 mt-1">local-first · sovereign</p>
+            </div>
+          </div>
+
+          <nav className="flex-1 pt-8">
+            <button
+              onClick={() => setActiveTab("builder")}
+              className={`w-full text-left px-6 py-3 flex items-center gap-3 transition-all duration-200 ${
+                activeTab === "builder"
+                  ? "bg-purple-500/10 border-r-2 border-purple-500 text-purple-400"
+                  : "text-gray-400 hover:text-gray-200 hover:bg-gray-900/50"
+              }`}
+            >
+              <span className="text-xl">🔨</span>
+              <span className="text-sm font-medium">Local Builder</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("blueprint")}
+              className={`w-full text-left px-6 py-3 flex items-center gap-3 transition-all duration-200 ${
+                activeTab === "blueprint"
+                  ? "bg-purple-500/10 border-r-2 border-purple-500 text-purple-400"
+                  : "text-gray-400 hover:text-gray-200 hover:bg-gray-900/50"
+              }`}
+            >
+              <span className="text-xl">📦</span>
+              <span className="text-sm font-medium">Blueprint Store</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("insights")}
+              className={`w-full text-left px-6 py-3 flex items-center gap-3 transition-all duration-200 ${
+                activeTab === "insights"
+                  ? "bg-purple-500/10 border-r-2 border-purple-500 text-purple-400"
+                  : "text-gray-400 hover:text-gray-200 hover:bg-gray-900/50"
+              }`}
+            >
+              <span className="text-xl">📊</span>
+              <span className="text-sm font-medium">Market Insights</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("config")}
+              className={`w-full text-left px-6 py-3 flex items-center gap-3 transition-all duration-200 ${
+                activeTab === "config"
+                  ? "bg-purple-500/10 border-r-2 border-purple-500 text-purple-400"
+                  : "text-gray-400 hover:text-gray-200 hover:bg-gray-900/50"
+              }`}
+            >
+              <span className="text-xl">⚙️</span>
+              <span className="text-sm font-medium">Node Config</span>
+            </button>
+
+            <div className="my-4 mx-6 h-px bg-gray-800"></div>
+
+            <button
+              onClick={() => window.location.href = '/marketplace'}
+              className="w-full text-left px-6 py-3 flex items-center gap-3 transition-all duration-200 text-blue-400 hover:text-blue-300 hover:bg-gray-900/50"
+            >
+              <span className="text-xl">🏪</span>
+              <span className="text-sm font-medium">Marketplace</span>
+            </button>
+
+            <button
+              onClick={() => window.location.href = '/pricing'}
+              className="w-full text-left px-6 py-3 flex items-center gap-3 transition-all duration-200 text-emerald-400 hover:text-emerald-300 hover:bg-gray-900/50"
+            >
+              <span className="text-xl">💳</span>
+              <span className="text-sm font-medium">Pricing & Upgrade</span>
+            </button>
+          </nav>
+
+          <div className="p-4 border-t border-gray-800 text-[10px] text-gray-500 text-center">
+            <div>🔒 Fully Local · No Telemetry</div>
+            <div className="mt-1">v0.1.0 · NiskBuild Core</div>
+          </div>
+        </aside>
+
+        {/* Dynamic Central Workspace */}
+        <main className="ml-64 mt-14 p-6 min-h-[calc(100vh-3.5rem)]">
+          {activeTab === "builder" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-white">🏗️ Local Builder Workspace</h2>
+                <div className="text-xs text-gray-500 font-mono">Self-Correction Loop Active</div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Left Column */}
+                <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-5 flex flex-col h-[calc(100vh-180px)]">
+                  <label className="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                    Prompt to Build
+                  </label>
+                  <textarea
+                    value={promptText}
+                    onChange={(e) => setPromptText(e.target.value)}
+                    placeholder="Describe the application you want to build...
+                    
 Example: 'Create a blue button that says Click Me'
 Example: 'Build a todo list app with add/delete functionality'
 Example: 'Make a calculator with number buttons and display'
 
 NiskBuild will automatically detect and fix errors (up to 5 attempts)."
-                  className="flex-1 w-full bg-[#0B0F19] border border-gray-700 rounded-lg p-4 text-gray-200 placeholder-gray-500 resize-none focus:outline-none focus:border-purple-500 transition-colors font-mono text-sm"
-                />
-                <button
-                  onClick={handleGenerate}
-                  disabled={isGenerating || !promptText.trim()}
-                  className={`mt-4 w-full py-3 rounded-lg font-medium transition-all duration-200 ${
-                    isGenerating || !promptText.trim()
-                      ? "bg-gray-700 cursor-not-allowed text-gray-400"
-                      : "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20"
-                  }`}
-                >
-                  {isGenerating ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                      Generating...
-                    </span>
-                  ) : (
-                    "🚀 Trigger Local Generation"
-                  )}
-                </button>
-                {statusMessage && (
-                  <div className="mt-3 text-xs text-center">
-                    {statusMessage.includes("✅") ? (
-                      <span className="text-emerald-400">{statusMessage}</span>
-                    ) : statusMessage.includes("❌") ? (
-                      <span className="text-red-400">{statusMessage}</span>
+                    className="flex-1 w-full bg-[#0B0F19] border border-gray-700 rounded-lg p-4 text-gray-200 placeholder-gray-500 resize-none focus:outline-none focus:border-purple-500 transition-colors font-mono text-sm"
+                  />
+                  <button
+                    onClick={handleGenerate}
+                    disabled={isGenerating || !promptText.trim()}
+                    className={`mt-4 w-full py-3 rounded-lg font-medium transition-all duration-200 ${
+                      isGenerating || !promptText.trim()
+                        ? "bg-gray-700 cursor-not-allowed text-gray-400"
+                        : "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20"
+                    }`}
+                  >
+                    {isGenerating ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                        Generating...
+                      </span>
                     ) : (
-                      <span className="text-purple-400">{statusMessage}</span>
+                      "🚀 Trigger Local Generation"
+                    )}
+                  </button>
+                  {statusMessage && (
+                    <div className="mt-3 text-xs text-center">
+                      {statusMessage.includes("✅") ? (
+                        <span className="text-emerald-400">{statusMessage}</span>
+                      ) : statusMessage.includes("❌") ? (
+                        <span className="text-red-400">{statusMessage}</span>
+                      ) : (
+                        <span className="text-purple-400">{statusMessage}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Right Column */}
+                <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-5 flex flex-col h-[calc(100vh-180px)]">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setShowPreview(false)}
+                        className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${
+                          !showPreview
+                            ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
+                            : "text-gray-400 hover:text-gray-300"
+                        }`}
+                      >
+                        📄 Code
+                      </button>
+                      <button
+                        onClick={() => setShowPreview(true)}
+                        className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${
+                          showPreview
+                            ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                            : "text-gray-400 hover:text-gray-300"
+                        }`}
+                      >
+                        👁️ Live Preview
+                      </button>
+                    </div>
+                    <span className="text-[10px] font-mono text-gray-500">.nisk/workspace</span>
+                  </div>
+
+                  <div className="flex-1 bg-[#0B0F19] rounded-lg border border-gray-700 overflow-hidden">
+                    {!showPreview ? (
+                      <pre className="p-4 text-xs font-mono text-gray-300 whitespace-pre-wrap break-words h-full overflow-auto">
+                        <code>{generatedCode}</code>
+                      </pre>
+                    ) : (
+                      <iframe
+                        srcDoc={previewHtml}
+                        title="App Live Preview"
+                        className="w-full h-full border-0"
+                        sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-top-navigation"
+                      />
                     )}
                   </div>
-                )}
-              </div>
 
-              {/* Right Column */}
-              <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-5 flex flex-col h-[calc(100vh-180px)]">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex gap-2">
+                  <div className="mt-4 flex gap-3">
                     <button
-                      onClick={() => setShowPreview(false)}
-                      className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${
-                        !showPreview
-                          ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
-                          : "text-gray-400 hover:text-gray-300"
-                      }`}
+                      onClick={handleExportZIP}
+                      className="flex-1 py-2.5 rounded-lg border border-gray-700 text-gray-300 font-medium hover:bg-gray-800 transition-all duration-200 flex items-center justify-center gap-2"
                     >
-                      📄 Code
+                      <span>📦</span>
+                      Export clean ZIP (Freedom)
                     </button>
                     <button
-                      onClick={() => setShowPreview(true)}
-                      className={`px-3 py-1.5 text-sm rounded-lg transition-all duration-200 ${
-                        showPreview
-                          ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                          : "text-gray-400 hover:text-gray-300"
-                      }`}
+                      onClick={handleDeployLive}
+                      className="flex-1 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition-all duration-200 shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
                     >
-                      👁️ Live Preview
+                      <span>🌐</span>
+                      Deploy Live Web Page
                     </button>
                   </div>
-                  <span className="text-[10px] font-mono text-gray-500">.nisk/workspace</span>
+                </div>
+              </div>
+
+              {/* Saved Projects Section */}
+              {savedProjects.length > 0 && (
+                <div className="mt-6">
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-sm font-medium text-gray-300">📁 My Saved Projects</h3>
+                    {user && savedProjects.length >= 1 && (
+                      <span className="text-xs text-yellow-500">⚠️ Free limit: {savedProjects.length}/1 project</span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {savedProjects.map((project) => (
+                      <div
+                        key={project.id}
+                        onClick={() => loadProject(project)}
+                        className="bg-gray-900/50 border border-gray-800 rounded-lg p-3 cursor-pointer hover:border-purple-500 transition-all"
+                      >
+                        <h4 className="text-white text-sm font-medium">{project.title}</h4>
+                        <p className="text-gray-400 text-xs mt-1 truncate">{project.prompt}</p>
+                        <p className="text-gray-500 text-xs mt-2">{new Date(project.created_at).toLocaleDateString()}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "blueprint" && (
+            <div className="space-y-6">
+              <h2 className="text-xl font-semibold text-white">📦 Blueprint Store</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  { emoji: "🛒", name: "Ecommerce Dashboard", desc: "Products, orders, customers", prompt: "Create an ecommerce dashboard with product listing, shopping cart, and order management with blue styling" },
+                  { emoji: "📞", name: "CRM System", desc: "Contacts, deals, tasks", prompt: "Create a CRM system with contact management, deal pipeline, and task tracking with modern UI" },
+                  { emoji: "🧾", name: "Invoice Generator", desc: "Create, send, track", prompt: "Create an invoice generator with create/edit/delete, PDF export, and client management" },
+                  { emoji: "🤖", name: "Customer Support Agent", desc: "Chat + ticket system", prompt: "Create a customer support agent with chat interface, ticket dashboard, and email integration" }
+                ].map((template, i) => (
+                  <div key={i} className="bg-gray-900/50 rounded-xl border border-gray-800 p-4 hover:border-purple-500 transition-all cursor-pointer" onClick={() => {
+                    setPromptText(template.prompt);
+                    setActiveTab("builder");
+                    setSessionPrompts([]);
+                    setSessionStartTime(Date.now());
+                  }}>
+                    <div className="text-3xl mb-2">{template.emoji}</div>
+                    <h3 className="font-medium text-white text-sm">{template.name}</h3>
+                    <p className="text-xs text-gray-400 mt-1">{template.desc}</p>
+                    <button className="mt-3 text-xs text-purple-400 hover:text-purple-300">Use Template →</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === "insights" && (
+            <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-12 text-center">
+              <div className="text-6xl mb-4">📈</div>
+              <h3 className="text-lg font-medium text-white mb-2">Anonymous Build Intelligence</h3>
+              <p className="text-gray-400 text-sm">Coming after 100+ builds</p>
+              <p className="text-xs text-gray-500 mt-4">🔒 No private data collected. Only anonymous patterns.</p>
+            </div>
+          )}
+
+          {activeTab === "config" && (
+            <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-6 max-w-2xl">
+              <div className="space-y-4">
+                <div className="flex justify-between items-center py-3 border-b border-gray-800">
+                  <div>
+                    <p className="text-sm font-medium text-white">Local LLM Endpoint</p>
+                    <p className="text-xs text-gray-400">http://localhost:11434</p>
+                  </div>
+                  <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full">Active</span>
+                </div>
+                
+                <div className="flex justify-between items-center py-3 border-b border-gray-800">
+                  <div>
+                    <p className="text-sm font-medium text-white">Active Model</p>
+                    <p className="text-xs text-gray-400">qwen2.5-coder:7b + Groq Cloud</p>
+                  </div>
+                  <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded-full">Hybrid</span>
+                </div>
+                
+                <div className="flex justify-between items-center py-3 border-b border-gray-800">
+                  <div>
+                    <p className="text-sm font-medium text-white">Self-Correction Loop</p>
+                    <p className="text-xs text-gray-400">AI fixes its own errors (up to 5 attempts)</p>
+                  </div>
+                  <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full">Active</span>
+                </div>
+                
+                <div className="flex justify-between items-center py-3 border-b border-gray-800">
+                  <div>
+                    <p className="text-sm font-medium text-white">Cloud AI Fallback</p>
+                    <p className="text-xs text-gray-400">Groq Llama 3.3 (70B) - Works for all users</p>
+                  </div>
+                  <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full">Ready</span>
+                </div>
+                
+                <div className="flex justify-between items-center py-3 border-b border-gray-800">
+                  <div>
+                    <p className="text-sm font-medium text-white">Free Tier Limit</p>
+                    <p className="text-xs text-gray-400">1 project max - Upgrade to Pro for unlimited</p>
+                  </div>
+                  <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">Active</span>
                 </div>
 
-                <div className="flex-1 bg-[#0B0F19] rounded-lg border border-gray-700 overflow-hidden">
-                  {!showPreview ? (
-                    <pre className="p-4 text-xs font-mono text-gray-300 whitespace-pre-wrap break-words h-full overflow-auto">
-                      <code>{generatedCode}</code>
-                    </pre>
-                  ) : (
-                    <iframe
-                      srcDoc={previewHtml}
-                      title="App Live Preview"
-                      className="w-full h-full border-0"
-                      sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-top-navigation"
-                    />
-                  )}
+                <div className="flex justify-between items-center py-3 border-b border-gray-800">
+                  <div>
+                    <p className="text-sm font-medium text-white">License Heartbeat</p>
+                    <p className="text-xs text-gray-400">Active subscription required every 60 minutes</p>
+                  </div>
+                  <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full">Active</span>
                 </div>
-
-                <div className="mt-4 flex gap-3">
+                
+                {/* Telemetry Toggle */}
+                <div className="flex justify-between items-center py-3 border-b border-gray-800">
+                  <div>
+                    <p className="text-sm font-medium text-white">Anonymous Telemetry</p>
+                    <p className="text-xs text-gray-400">Share anonymous build patterns to improve templates (earns free months)</p>
+                  </div>
                   <button
-                    onClick={handleExportZIP}
-                    className="flex-1 py-2.5 rounded-lg border border-gray-700 text-gray-300 font-medium hover:bg-gray-800 transition-all duration-200 flex items-center justify-center gap-2"
+                    onClick={() => {
+                      const newValue = !telemetryEnabled;
+                      setTelemetryEnabled(newValue);
+                      localStorage.setItem('telemetryEnabled', String(newValue));
+                      if (newValue) {
+                        console.log('🔒 PRIVACY DEPLOYMENT SECURED: Anonymous telemetry enabled');
+                      } else {
+                        console.log('🔒 Telemetry disabled. No data will be collected.');
+                      }
+                    }}
+                    className={`px-3 py-1 rounded-full text-xs transition-colors ${
+                      telemetryEnabled 
+                        ? 'bg-emerald-500/20 text-emerald-400' 
+                        : 'bg-gray-700 text-gray-400'
+                    }`}
                   >
-                    <span>📦</span>
-                    Export clean ZIP (Freedom)
-                  </button>
-                  <button
-                    onClick={handleDeployLive}
-                    className="flex-1 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition-all duration-200 shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
-                  >
-                    <span>🌐</span>
-                    Deploy Live Web Page
+                    {telemetryEnabled ? '✅ Opt Out → On' : '❌ Opt In → Off'}
                   </button>
                 </div>
               </div>
             </div>
+          )}
+        </main>
 
-            {/* Saved Projects Section */}
-            {savedProjects.length > 0 && (
-              <div className="mt-6">
-                <div className="flex justify-between items-center mb-3">
-                  <h3 className="text-sm font-medium text-gray-300">📁 My Saved Projects</h3>
-                  {user && savedProjects.length >= 3 && (
-                    <span className="text-xs text-yellow-500">⚠️ Free limit: {savedProjects.length}/3 projects</span>
-                  )}
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {savedProjects.map((project) => (
-                    <div
-                      key={project.id}
-                      onClick={() => loadProject(project)}
-                      className="bg-gray-900/50 border border-gray-800 rounded-lg p-3 cursor-pointer hover:border-purple-500 transition-all"
-                    >
-                      <h4 className="text-white text-sm font-medium">{project.title}</h4>
-                      <p className="text-gray-400 text-xs mt-1 truncate">{project.prompt}</p>
-                      <p className="text-gray-500 text-xs mt-2">{new Date(project.created_at).toLocaleDateString()}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === "blueprint" && (
-          <div className="space-y-6">
-            <h2 className="text-xl font-semibold text-white">📦 Blueprint Store</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {[
-                { emoji: "🛒", name: "Ecommerce Dashboard", desc: "Products, orders, customers", prompt: "Create an ecommerce dashboard with product listing, shopping cart, and order management with blue styling" },
-                { emoji: "📞", name: "CRM System", desc: "Contacts, deals, tasks", prompt: "Create a CRM system with contact management, deal pipeline, and task tracking with modern UI" },
-                { emoji: "🧾", name: "Invoice Generator", desc: "Create, send, track", prompt: "Create an invoice generator with create/edit/delete, PDF export, and client management" },
-                { emoji: "🤖", name: "Customer Support Agent", desc: "Chat + ticket system", prompt: "Create a customer support agent with chat interface, ticket dashboard, and email integration" }
-              ].map((template, i) => (
-                <div key={i} className="bg-gray-900/50 rounded-xl border border-gray-800 p-4 hover:border-purple-500 transition-all cursor-pointer" onClick={() => {
-                  setPromptText(template.prompt);
-                  setActiveTab("builder");
-                  setSessionPrompts([]);
-                  setSessionStartTime(Date.now());
-                }}>
-                  <div className="text-3xl mb-2">{template.emoji}</div>
-                  <h3 className="font-medium text-white text-sm">{template.name}</h3>
-                  <p className="text-xs text-gray-400 mt-1">{template.desc}</p>
-                  <button className="mt-3 text-xs text-purple-400 hover:text-purple-300">Use Template →</button>
-                </div>
-              ))}
+        {/* Auth Modal */}
+        {showAuthModal && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+            <div className="bg-gray-900 rounded-xl border border-gray-700 p-6 w-96 max-w-[90vw]">
+              <h2 className="text-xl font-bold text-white mb-4">
+                {authMode === 'signin' ? 'Sign In' : 'Create Account'}
+              </h2>
+              
+              <input
+                type="email"
+                placeholder="Email address"
+                value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 mb-3 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+              />
+              
+              <input
+                type="password"
+                placeholder="Password (min 6 characters)"
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 mb-4 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+              />
+              
+              <button
+                onClick={handleAuth}
+                disabled={authLoading || !authEmail || !authPassword}
+                className="w-full bg-purple-600 hover:bg-purple-500 text-white py-3 rounded-lg mb-3 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {authLoading ? 'Loading...' : (authMode === 'signin' ? 'Sign In' : 'Create Account')}
+              </button>
+              
+              <button
+                onClick={() => {
+                  setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
+                  setAuthEmail('');
+                  setAuthPassword('');
+                }}
+                className="w-full text-sm text-gray-400 hover:text-gray-300 text-center"
+              >
+                {authMode === 'signin' 
+                  ? "Don't have an account? Sign Up" 
+                  : "Already have an account? Sign In"}
+              </button>
+              
+              <button
+                onClick={() => setShowAuthModal(false)}
+                className="w-full text-sm text-gray-500 hover:text-gray-400 text-center mt-3"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         )}
-
-        {activeTab === "insights" && (
-          <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-12 text-center">
-            <div className="text-6xl mb-4">📈</div>
-            <h3 className="text-lg font-medium text-white mb-2">Anonymous Build Intelligence</h3>
-            <p className="text-gray-400 text-sm">Coming after 100+ builds</p>
-            <p className="text-xs text-gray-500 mt-4">🔒 No private data collected. Only anonymous patterns.</p>
-          </div>
-        )}
-
-        {activeTab === "config" && (
-          <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-6 max-w-2xl">
-            <div className="space-y-4">
-              <div className="flex justify-between items-center py-3 border-b border-gray-800">
-                <div>
-                  <p className="text-sm font-medium text-white">Local LLM Endpoint</p>
-                  <p className="text-xs text-gray-400">http://localhost:11434</p>
-                </div>
-                <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full">Active</span>
-              </div>
-              
-              <div className="flex justify-between items-center py-3 border-b border-gray-800">
-                <div>
-                  <p className="text-sm font-medium text-white">Active Model</p>
-                  <p className="text-xs text-gray-400">qwen2.5-coder:7b + Groq Cloud</p>
-                </div>
-                <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded-full">Hybrid</span>
-              </div>
-              
-              <div className="flex justify-between items-center py-3 border-b border-gray-800">
-                <div>
-                  <p className="text-sm font-medium text-white">Self-Correction Loop</p>
-                  <p className="text-xs text-gray-400">AI fixes its own errors (up to 5 attempts)</p>
-                </div>
-                <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full">Active</span>
-              </div>
-              
-              <div className="flex justify-between items-center py-3 border-b border-gray-800">
-                <div>
-                  <p className="text-sm font-medium text-white">Cloud AI Fallback</p>
-                  <p className="text-xs text-gray-400">Groq Llama 3.3 (70B) - Works for all users</p>
-                </div>
-                <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full">Ready</span>
-              </div>
-              
-              <div className="flex justify-between items-center py-3 border-b border-gray-800">
-                <div>
-                  <p className="text-sm font-medium text-white">Free Tier Limit</p>
-                  <p className="text-xs text-gray-400">3 projects max - Upgrade to Pro for unlimited</p>
-                </div>
-                <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">Active</span>
-              </div>
-              
-              {/* Telemetry Toggle */}
-              <div className="flex justify-between items-center py-3 border-b border-gray-800">
-                <div>
-                  <p className="text-sm font-medium text-white">Anonymous Telemetry</p>
-                  <p className="text-xs text-gray-400">Share anonymous build patterns to improve templates (earns free months)</p>
-                </div>
-                <button
-                  onClick={() => {
-                    const newValue = !telemetryEnabled;
-                    setTelemetryEnabled(newValue);
-                    localStorage.setItem('telemetryEnabled', String(newValue));
-                    if (newValue) {
-                      console.log('🔒 PRIVACY DEPLOYMENT SECURED: Anonymous telemetry enabled');
-                    } else {
-                      console.log('🔒 Telemetry disabled. No data will be collected.');
-                    }
-                  }}
-                  className={`px-3 py-1 rounded-full text-xs transition-colors ${
-                    telemetryEnabled 
-                      ? 'bg-emerald-500/20 text-emerald-400' 
-                      : 'bg-gray-700 text-gray-400'
-                  }`}
-                >
-                  {telemetryEnabled ? '✅ Opt Out → On' : '❌ Opt In → Off'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </main>
-
-      {/* Auth Modal */}
-      {showAuthModal && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-gray-900 rounded-xl border border-gray-700 p-6 w-96 max-w-[90vw]">
-            <h2 className="text-xl font-bold text-white mb-4">
-              {authMode === 'signin' ? 'Sign In' : 'Create Account'}
-            </h2>
-            
-            <input
-              type="email"
-              placeholder="Email address"
-              value={authEmail}
-              onChange={(e) => setAuthEmail(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 mb-3 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
-            />
-            
-            <input
-              type="password"
-              placeholder="Password (min 6 characters)"
-              value={authPassword}
-              onChange={(e) => setAuthPassword(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 mb-4 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
-            />
-            
-            <button
-              onClick={handleAuth}
-              disabled={authLoading || !authEmail || !authPassword}
-              className="w-full bg-purple-600 hover:bg-purple-500 text-white py-3 rounded-lg mb-3 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {authLoading ? 'Loading...' : (authMode === 'signin' ? 'Sign In' : 'Create Account')}
-            </button>
-            
-            <button
-              onClick={() => {
-                setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
-                setAuthEmail('');
-                setAuthPassword('');
-              }}
-              className="w-full text-sm text-gray-400 hover:text-gray-300 text-center"
-            >
-              {authMode === 'signin' 
-                ? "Don't have an account? Sign Up" 
-                : "Already have an account? Sign In"}
-            </button>
-            
-            <button
-              onClick={() => setShowAuthModal(false)}
-              className="w-full text-sm text-gray-500 hover:text-gray-400 text-center mt-3"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+      </div>
+    </SubscriptionGuard>
   );
 }
