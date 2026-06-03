@@ -32,7 +32,6 @@ export default function AdminUsersPage() {
   const fetchUsers = async () => {
     setLoading(true);
     
-    // Fetch all profiles
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
       .select('*')
@@ -40,27 +39,29 @@ export default function AdminUsersPage() {
     
     if (profilesError) {
       console.error('Error fetching profiles:', profilesError);
-    } else {
-      // Fetch project counts for each user
-      const usersWithCounts = await Promise.all(
-        (profiles || []).map(async (profile) => {
-          const { count, error } = await supabase
-            .from('projects')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', profile.id);
-          
-          return {
-            ...profile,
-            project_count: count || 0,
-          };
-        })
-      );
+      setUsers([]);
+    } else if (profiles) {
+      const usersWithCounts = [];
+      
+      for (const profile of profiles) {
+        const { count } = await supabase
+          .from('projects')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', profile.id);
+        
+        usersWithCounts.push({
+          ...profile,
+          project_count: count || 0,
+        });
+      }
+      
       setUsers(usersWithCounts);
     }
     
     setLoading(false);
   };
 
+  // FIXED: Proper Supabase update syntax
   const updateUserTier = async (userId: string, newTier: string) => {
     setUpdating(userId);
     
