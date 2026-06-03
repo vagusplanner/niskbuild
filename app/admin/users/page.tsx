@@ -76,7 +76,7 @@ export default function AdminUsersPage() {
       alert('Error updating user: ' + error.message);
     } else {
       alert(`✅ User updated to ${newTier}`);
-      fetchUsers(); // Refresh the list
+      fetchUsers();
     }
     
     setUpdating(null);
@@ -133,7 +133,7 @@ export default function AdminUsersPage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-800/50 border-b border-gray-800">
-                </table>
+                <tr>
                   <th className="text-left p-4 text-gray-300 font-medium">Email</th>
                   <th className="text-left p-4 text-gray-300 font-medium">Current Tier</th>
                   <th className="text-left p-4 text-gray-300 font-medium">Projects</th>
