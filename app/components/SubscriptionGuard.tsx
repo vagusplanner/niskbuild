@@ -14,53 +14,52 @@ export default function SubscriptionGuard({ children, onLock }: SubscriptionGuar
   const [lastCheck, setLastCheck] = useState<Date>(new Date());
   const [showWarning, setShowWarning] = useState(false);
   const [minutesUntilLock, setMinutesUntilLock] = useState(60);
+  const [subscriptionTier, setSubscriptionTier] = useState<string>('free');
 
   // Check subscription status
   const checkSubscription = async () => {
+    console.log('🔍 [License Heartbeat] Checking subscription status...');
+    
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        // Not logged in - don't lock, just return
+        console.log('🔍 [License Heartbeat] No user session - skipping check');
         setIsActive(true);
         setIsChecking(false);
         return;
       }
 
-      // Get user's subscription from profiles table
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('subscription_tier, subscription_status, subscription_end_date')
-        .eq('id', session.user.id)
-        .single();
+      console.log('🔍 [License Heartbeat] User session found, verifying subscription...');
 
-      if (error) {
-        console.error('Error fetching subscription:', error);
-        // Don't lock on error - assume active
-        setIsActive(true);
-      } else {
-        // Check if subscription is active
-        const isSubscriptionActive = 
-          profile?.subscription_status === 'active' ||
-          profile?.subscription_tier === 'pro' ||
-          profile?.subscription_tier === 'agency' ||
-          profile?.subscription_tier === 'scale' ||
-          profile?.subscription_tier === 'white_label';
+      // Try to get subscription status from API
+      try {
+        const response = await fetch('/api/subscription/status', {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`
+          }
+        });
         
-        setIsActive(isSubscriptionActive);
-        
-        if (!isSubscriptionActive) {
-          console.log('⚠️ Subscription inactive - workspace will lock');
-          onLock?.();
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✅ [License Heartbeat] Subscription status:', data);
+          setIsActive(data.active !== false);
+          setSubscriptionTier(data.tier || 'free');
+        } else {
+          console.warn('⚠️ [License Heartbeat] API error, assuming active');
+          setIsActive(true);
         }
+      } catch (apiError) {
+        console.warn('⚠️ [License Heartbeat] API fetch error, assuming active:', apiError);
+        setIsActive(true);
       }
     } catch (err) {
-      console.error('Subscription check error:', err);
-      // Don't lock on error
+      console.error('❌ [License Heartbeat] Check error:', err);
       setIsActive(true);
     } finally {
       setIsChecking(false);
       setLastCheck(new Date());
+      console.log(`🔒 [License Heartbeat] Next check in 60 minutes. Status: ${isActive ? 'ACTIVE' : 'INACTIVE'}`);
     }
   };
 
@@ -81,23 +80,30 @@ export default function SubscriptionGuard({ children, onLock }: SubscriptionGuar
 
   // Initial check and set up interval
   useEffect(() => {
+    console.log('🔒 [License Heartbeat] Initializing license heartbeat system...');
+    
     // Initial check
     checkSubscription();
     
     // Set up interval to check every 60 minutes
     const interval = setInterval(() => {
+      console.log('⏰ [License Heartbeat] 60-minute check triggered');
       checkSubscription();
     }, 60 * 60 * 1000); // 60 minutes
     
-    // Also check when tab becomes visible again (user returns after being away)
+    // Also check when tab becomes visible again
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
+        console.log('👁️ [License Heartbeat] Tab became visible, checking subscription...');
         checkSubscription();
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
+    console.log('✅ [License Heartbeat] System initialized - checking every 60 minutes');
+    
     return () => {
+      console.log('🔒 [License Heartbeat] Shutting down...');
       clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
@@ -116,7 +122,7 @@ export default function SubscriptionGuard({ children, onLock }: SubscriptionGuar
 
   if (!isActive) {
     return (
-      <div className="min-h-[400px] flex items-center justify-center p-8">
+      <div className="min-h-screen bg-[#0B0F19] flex items-center justify-center p-8">
         <div className="max-w-md text-center">
           <div className="text-6xl mb-4">🔒</div>
           <h2 className="text-2xl font-bold text-white mb-3">Subscription Required</h2>
@@ -147,5 +153,20 @@ export default function SubscriptionGuard({ children, onLock }: SubscriptionGuar
     );
   }
 
-  return <>{children}</>;
+  const isPaidUser = subscriptionTier !== 'free';
+  
+  return (
+    <>
+      {isPaidUser && (
+        <div className="fixed bottom-4 left-4 z-50">
+          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-full px-3 py-1 backdrop-blur-sm">
+            <span className="text-emerald-400 text-xs">
+              ⚡ {subscriptionTier.charAt(0).toUpperCase() + subscriptionTier.slice(1)} Plan Active
+            </span>
+          </div>
+        </div>
+      )}
+      {children}
+    </>
+  );
 }

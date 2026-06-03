@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import SubscriptionGuard from "@/app/components/SubscriptionGuard";
+import ProjectLimitBadge from "@/app/components/ProjectLimitBadge";
 
 type TabType = "builder" | "blueprint" | "insights" | "config";
 
@@ -19,6 +20,9 @@ interface SupabaseAuthResponse {
     session: SupabaseSession | null;
   };
 }
+
+// Admin email - only this email will see the Admin Panel link
+const ADMIN_EMAIL = "sofiane.kemih@gmail.com";
 
 export default function Home() {
   // Auth State
@@ -93,10 +97,10 @@ export default function Home() {
     return 'other';
   };
 
-  // Check if user can create a new project (based on subscription tier)
+  // Project Slot Caps Based on Subscription Tier
   const canCreateProject = async (userId: string): Promise<boolean> => {
     try {
-      // Check user's subscription tier
+      // Get user's subscription tier and status
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('subscription_tier, subscription_status')
@@ -108,16 +112,10 @@ export default function Home() {
         return false;
       }
       
-      // Check if subscription is active
-      const isActive = profile?.subscription_status === 'active';
       const tier = profile?.subscription_tier || 'free';
+      const isActive = profile?.subscription_status === 'active';
       
-      // Pro, Agency, Scale, White-Label tiers have unlimited projects
-      if (tier === 'pro' || tier === 'agency' || tier === 'scale' || tier === 'white_label') {
-        return isActive;
-      }
-      
-      // Free users: count their existing projects (max 1 for sandbox)
+      // Count existing projects
       const { count, error: countError } = await supabase
         .from('projects')
         .select('*', { count: 'exact', head: true })
@@ -128,14 +126,26 @@ export default function Home() {
         return false;
       }
       
-      // Sandbox/Free tier: max 1 project
-      const canCreate = (count || 0) < 1;
+      const projectCount = count || 0;
+      
+      // Define project limits per tier
+      const limits: Record<string, number> = {
+        free: 1,
+        pro: 3,
+        agency: 15,
+        scale: 999999,
+        white_label: 999999,
+      };
+      
+      const limit = limits[tier] || 1;
+      const canCreate = projectCount < limit;
       
       if (!canCreate) {
-        console.log(`Free user ${userId} has ${count} projects, limit reached (1 max)`);
+        console.log(`⚠️ User ${userId} (${tier}) has ${projectCount}/${limit} projects - limit reached`);
       }
       
-      return canCreate;
+      return canCreate && isActive;
+      
     } catch (error) {
       console.error('Error checking project limit:', error);
       return false;
@@ -280,8 +290,27 @@ export default function Home() {
 
     const allowed = await canCreateProject(user.id);
     if (!allowed) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('subscription_tier')
+        .eq('id', user.id)
+        .single();
+      
+      const tier = profile?.subscription_tier || 'free';
+      
+      let upgradeMessage = "";
+      if (tier === 'free') {
+        upgradeMessage = "Free tier is limited to 1 project. Upgrade to Pro for 3 projects, or Scale for unlimited projects.";
+      } else if (tier === 'pro') {
+        upgradeMessage = "Pro tier is limited to 3 projects. Upgrade to Agency Studio for 15 projects, or Scale for unlimited projects.";
+      } else if (tier === 'agency') {
+        upgradeMessage = "Agency tier is limited to 15 projects. Upgrade to Scale for unlimited projects.";
+      } else {
+        upgradeMessage = "Project limit reached. Please upgrade your plan for more projects.";
+      }
+      
       const confirmUpgrade = confirm(
-        "❌ Free tier limit reached (1 project max).\n\nWould you like to upgrade to Pro for unlimited projects?"
+        `❌ Project limit reached.\n\n${upgradeMessage}\n\nWould you like to view our pricing plans?`
       );
       if (confirmUpgrade) {
         window.location.href = '/pricing';
@@ -306,6 +335,27 @@ export default function Home() {
     } else {
       alert('✅ Project saved successfully!');
       loadProjects(user.id);
+    }
+  };
+
+  // Delete a project
+  const deleteProject = async (projectId: string, projectTitle: string) => {
+    if (!confirm(`Delete "${projectTitle}"? This cannot be undone.`)) {
+      return;
+    }
+    
+    const { error } = await supabase
+      .from('projects')
+      .delete()
+      .eq('id', projectId);
+    
+    if (error) {
+      alert('Error deleting project: ' + error.message);
+    } else {
+      alert('✅ Project deleted');
+      if (user) {
+        loadProjects(user.id);
+      }
     }
   };
 
@@ -347,10 +397,16 @@ export default function Home() {
           alert(error.message);
         } else if (data.user) {
           if (data.session) {
+            const { data: existingProfile } = await supabase
+              .from('profiles')
+              .select('subscription_tier')
+              .eq('id', data.user.id)
+              .single();
+            
             await supabase.from('profiles').upsert({
               id: data.user.id,
               email: normalizedEmail,
-              subscription_tier: 'free',
+              subscription_tier: existingProfile?.subscription_tier || 'free',
               subscription_status: 'active',
               created_at: new Date().toISOString(),
             });
@@ -383,10 +439,17 @@ export default function Home() {
           setAuthEmail('');
           setAuthPassword('');
           setUser(data.user);
+          
+          const { data: existingProfile } = await supabase
+            .from('profiles')
+            .select('subscription_tier')
+            .eq('id', data.user.id)
+            .single();
+          
           await supabase.from('profiles').upsert({
             id: data.user.id,
             email: data.user.email,
-            subscription_tier: 'free',
+            subscription_tier: existingProfile?.subscription_tier || 'free',
             subscription_status: 'active',
             created_at: new Date().toISOString(),
           });
@@ -519,7 +582,7 @@ export default function Home() {
         const cleanedCode = cleanGeneratedCode(cloudData.code);
         setGeneratedCode(cleanedCode);
         setPreviewHtml(cleanedCode);
-        setStatusMessage(`✅ Generated via ${cloudData.source === 'local' ? 'Local Ollama' : 'Cloud AI (Groq)'}`);
+        setStatusMessage(`✅ Generated via ${cloudData.source === 'local' ? 'Local Ollama' : 'Cloud AI'}`);
         
         if (telemetryEnabled) {
           try {
@@ -623,14 +686,12 @@ Your prompt was: "${promptText.substring(0, 200)}"`);
   };
 
   const handleDeployLive = () => {
-    alert("🚀 Deploy Live feature coming soon!\n\nPro feature: One-click deploy to Vercel for $12/month.");
+    alert("🚀 Deploy Live feature coming soon!\n\nPro feature: One-click deploy to Vercel for $69/month.");
   };
 
-  // The main JSX is wrapped in SubscriptionGuard
   return (
     <SubscriptionGuard>
       <div className="min-h-screen bg-[#0B0F19] text-gray-200">
-        {/* Top Global Header */}
         <header className="fixed top-0 left-0 right-0 h-14 bg-[#0B0F19]/95 backdrop-blur-sm border-b border-gray-800 z-20 px-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
@@ -671,7 +732,6 @@ Your prompt was: "${promptText.substring(0, 200)}"`);
           </div>
         </header>
 
-        {/* Permanent Left Sidebar */}
         <aside className="fixed left-0 top-14 bottom-0 w-64 bg-[#0B0F19] border-r border-gray-800 z-10 flex flex-col">
           <div className="h-20 flex items-center justify-center border-b border-gray-800">
             <div className="text-center">
@@ -748,6 +808,20 @@ Your prompt was: "${promptText.substring(0, 200)}"`);
               <span className="text-xl">💳</span>
               <span className="text-sm font-medium">Pricing & Upgrade</span>
             </button>
+
+            {/* Admin Panel Link - Only visible to admin email */}
+            {user?.email === ADMIN_EMAIL && (
+              <>
+                <div className="my-4 mx-6 h-px bg-gray-800"></div>
+                <button
+                  onClick={() => window.location.href = '/admin/users'}
+                  className="w-full text-left px-6 py-3 flex items-center gap-3 transition-all duration-200 text-red-400 hover:text-red-300 hover:bg-gray-900/50"
+                >
+                  <span className="text-xl">👑</span>
+                  <span className="text-sm font-medium">Admin Panel</span>
+                </button>
+              </>
+            )}
           </nav>
 
           <div className="p-4 border-t border-gray-800 text-[10px] text-gray-500 text-center">
@@ -756,7 +830,6 @@ Your prompt was: "${promptText.substring(0, 200)}"`);
           </div>
         </aside>
 
-        {/* Dynamic Central Workspace */}
         <main className="ml-64 mt-14 p-6 min-h-[calc(100vh-3.5rem)]">
           {activeTab === "builder" && (
             <div className="space-y-6">
@@ -766,7 +839,6 @@ Your prompt was: "${promptText.substring(0, 200)}"`);
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Left Column */}
                 <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-5 flex flex-col h-[calc(100vh-180px)]">
                   <label className="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-blue-500"></span>
@@ -775,13 +847,7 @@ Your prompt was: "${promptText.substring(0, 200)}"`);
                   <textarea
                     value={promptText}
                     onChange={(e) => setPromptText(e.target.value)}
-                    placeholder="Describe the application you want to build...
-                    
-Example: 'Create a blue button that says Click Me'
-Example: 'Build a todo list app with add/delete functionality'
-Example: 'Make a calculator with number buttons and display'
-
-NiskBuild will automatically detect and fix errors (up to 5 attempts)."
+                    placeholder="Describe the application you want to build..."
                     className="flex-1 w-full bg-[#0B0F19] border border-gray-700 rounded-lg p-4 text-gray-200 placeholder-gray-500 resize-none focus:outline-none focus:border-purple-500 transition-colors font-mono text-sm"
                   />
                   <button
@@ -804,18 +870,11 @@ NiskBuild will automatically detect and fix errors (up to 5 attempts)."
                   </button>
                   {statusMessage && (
                     <div className="mt-3 text-xs text-center">
-                      {statusMessage.includes("✅") ? (
-                        <span className="text-emerald-400">{statusMessage}</span>
-                      ) : statusMessage.includes("❌") ? (
-                        <span className="text-red-400">{statusMessage}</span>
-                      ) : (
-                        <span className="text-purple-400">{statusMessage}</span>
-                      )}
+                      <span className="text-purple-400">{statusMessage}</span>
                     </div>
                   )}
                 </div>
 
-                {/* Right Column */}
                 <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-5 flex flex-col h-[calc(100vh-180px)]">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex gap-2">
@@ -877,25 +936,40 @@ NiskBuild will automatically detect and fix errors (up to 5 attempts)."
                 </div>
               </div>
 
-              {/* Saved Projects Section */}
+              {/* Saved Projects Section with Delete Button */}
               {savedProjects.length > 0 && (
                 <div className="mt-6">
                   <div className="flex justify-between items-center mb-3">
                     <h3 className="text-sm font-medium text-gray-300">📁 My Saved Projects</h3>
-                    {user && savedProjects.length >= 1 && (
-                      <span className="text-xs text-yellow-500">⚠️ Free limit: {savedProjects.length}/1 project</span>
+                    {user && (
+                      <ProjectLimitBadge userId={user.id} currentCount={savedProjects.length} />
                     )}
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {savedProjects.map((project) => (
                       <div
                         key={project.id}
-                        onClick={() => loadProject(project)}
-                        className="bg-gray-900/50 border border-gray-800 rounded-lg p-3 cursor-pointer hover:border-purple-500 transition-all"
+                        className="bg-gray-900/50 border border-gray-800 rounded-lg p-3 cursor-pointer hover:border-purple-500 transition-all group"
                       >
-                        <h4 className="text-white text-sm font-medium">{project.title}</h4>
-                        <p className="text-gray-400 text-xs mt-1 truncate">{project.prompt}</p>
-                        <p className="text-gray-500 text-xs mt-2">{new Date(project.created_at).toLocaleDateString()}</p>
+                        <div className="flex justify-between items-start">
+                          <div 
+                            className="flex-1"
+                            onClick={() => loadProject(project)}
+                          >
+                            <h4 className="text-white text-sm font-medium">{project.title}</h4>
+                            <p className="text-gray-400 text-xs mt-1 truncate">{project.prompt}</p>
+                            <p className="text-gray-500 text-xs mt-2">{new Date(project.created_at).toLocaleDateString()}</p>
+                          </div>
+                          <button
+                            onClick={() => deleteProject(project.id, project.title)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-300 p-1"
+                            aria-label="Delete project"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -953,7 +1027,7 @@ NiskBuild will automatically detect and fix errors (up to 5 attempts)."
                 <div className="flex justify-between items-center py-3 border-b border-gray-800">
                   <div>
                     <p className="text-sm font-medium text-white">Active Model</p>
-                    <p className="text-xs text-gray-400">qwen2.5-coder:7b + Groq Cloud</p>
+                    <p className="text-xs text-gray-400">qwen2.5-coder:7b + Groq + Together AI</p>
                   </div>
                   <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded-full">Hybrid</span>
                 </div>
@@ -969,17 +1043,17 @@ NiskBuild will automatically detect and fix errors (up to 5 attempts)."
                 <div className="flex justify-between items-center py-3 border-b border-gray-800">
                   <div>
                     <p className="text-sm font-medium text-white">Cloud AI Fallback</p>
-                    <p className="text-xs text-gray-400">Groq Llama 3.3 (70B) - Works for all users</p>
+                    <p className="text-xs text-gray-400">Groq → Together AI → Fallback chain</p>
                   </div>
                   <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full">Ready</span>
                 </div>
                 
                 <div className="flex justify-between items-center py-3 border-b border-gray-800">
                   <div>
-                    <p className="text-sm font-medium text-white">Free Tier Limit</p>
-                    <p className="text-xs text-gray-400">1 project max - Upgrade to Pro for unlimited</p>
+                    <p className="text-sm font-medium text-white">Project Limits</p>
+                    <p className="text-xs text-gray-400">Free:1 | Pro:3 | Agency:15 | Scale:Unlimited</p>
                   </div>
-                  <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">Active</span>
+                  <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">Enforced</span>
                 </div>
 
                 <div className="flex justify-between items-center py-3 border-b border-gray-800">
@@ -990,7 +1064,6 @@ NiskBuild will automatically detect and fix errors (up to 5 attempts)."
                   <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full">Active</span>
                 </div>
                 
-                {/* Telemetry Toggle */}
                 <div className="flex justify-between items-center py-3 border-b border-gray-800">
                   <div>
                     <p className="text-sm font-medium text-white">Anonymous Telemetry</p>
@@ -1021,7 +1094,6 @@ NiskBuild will automatically detect and fix errors (up to 5 attempts)."
           )}
         </main>
 
-        {/* Auth Modal */}
         {showAuthModal && (
           <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
             <div className="bg-gray-900 rounded-xl border border-gray-700 p-6 w-96 max-w-[90vw]">
