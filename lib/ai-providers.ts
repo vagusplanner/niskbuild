@@ -1,21 +1,41 @@
 import Groq from 'groq-sdk';
-import Anthropic from '@anthropic-ai/sdk';
-import OpenAI from 'openai';
 
-// Initialize providers
+// Initialize Groq (required)
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+// Optional providers - only initialize if API key exists
+let anthropic: any = null;
+let openai: any = null;
+let together: any = null;
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Only initialize Anthropic if API key exists
+if (process.env.ANTHROPIC_API_KEY) {
+  const Anthropic = require('@anthropic-ai/sdk');
+  anthropic = new Anthropic({
+    apiKey: process.env.ANTHROPIC_API_KEY,
+  });
+}
 
-export type AIProvider = 'groq' | 'anthropic' | 'openai' | 'local';
+// Only initialize OpenAI if API key exists
+if (process.env.OPENAI_API_KEY) {
+  const OpenAI = require('openai');
+  openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+}
+
+// Only initialize Together AI if API key exists
+if (process.env.TOGETHER_API_KEY) {
+  const OpenAI = require('openai');
+  together = new OpenAI({
+    apiKey: process.env.TOGETHER_API_KEY,
+    baseURL: 'https://api.together.xyz/v1',
+  });
+}
+
+export type AIProvider = 'groq' | 'anthropic' | 'openai' | 'together' | 'local';
 
 export interface AIResponse {
   success: boolean;
@@ -50,8 +70,37 @@ async function generateWithGroq(prompt: string): Promise<AIResponse> {
   }
 }
 
-// Generate with Anthropic Claude
+// Generate with Together AI (if available)
+async function generateWithTogether(prompt: string): Promise<AIResponse> {
+  if (!together) {
+    return { success: false, code: '', provider: 'together', error: 'Together AI not configured' };
+  }
+  
+  try {
+    const completion = await together.chat.completions.create({
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: prompt },
+      ],
+      model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+      temperature: 0.7,
+      max_tokens: 4096,
+    });
+    
+    const code = completion.choices[0]?.message?.content || '';
+    return { success: true, code, provider: 'together' };
+  } catch (error: any) {
+    console.error('Together AI error:', error.message);
+    return { success: false, code: '', provider: 'together', error: error.message };
+  }
+}
+
+// Generate with Anthropic Claude (if available)
 async function generateWithAnthropic(prompt: string): Promise<AIResponse> {
+  if (!anthropic) {
+    return { success: false, code: '', provider: 'anthropic', error: 'Anthropic not configured' };
+  }
+  
   try {
     const message = await anthropic.messages.create({
       model: 'claude-3-sonnet-20240229',
@@ -66,27 +115,6 @@ async function generateWithAnthropic(prompt: string): Promise<AIResponse> {
   } catch (error: any) {
     console.error('Anthropic error:', error.message);
     return { success: false, code: '', provider: 'anthropic', error: error.message };
-  }
-}
-
-// Generate with OpenAI GPT-4
-async function generateWithOpenAI(prompt: string): Promise<AIResponse> {
-  try {
-    const completion = await openai.chat.completions.create({
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: prompt },
-      ],
-      model: 'gpt-4-turbo-preview',
-      temperature: 0.7,
-      max_tokens: 4096,
-    });
-    
-    const code = completion.choices[0]?.message?.content || '';
-    return { success: true, code, provider: 'openai' };
-  } catch (error: any) {
-    console.error('OpenAI error:', error.message);
-    return { success: false, code: '', provider: 'openai', error: error.message };
   }
 }
 
@@ -116,9 +144,8 @@ async function generateWithLocal(prompt: string): Promise<AIResponse> {
 
 // Main function - tries providers in order until one works
 export async function generateCode(prompt: string, preferLocal: boolean = false): Promise<AIResponse> {
-  const providers: AIProvider[] = preferLocal 
-    ? ['local', 'groq', 'anthropic', 'openai']
-    : ['groq', 'anthropic', 'openai', 'local'];
+  // Order: Groq → Together → Anthropic → Local
+  const providers: AIProvider[] = ['groq', 'together', 'anthropic', 'local'];
   
   for (const provider of providers) {
     console.log(`🔄 Trying ${provider}...`);
@@ -128,11 +155,11 @@ export async function generateCode(prompt: string, preferLocal: boolean = false)
       case 'groq':
         result = await generateWithGroq(prompt);
         break;
+      case 'together':
+        result = await generateWithTogether(prompt);
+        break;
       case 'anthropic':
         result = await generateWithAnthropic(prompt);
-        break;
-      case 'openai':
-        result = await generateWithOpenAI(prompt);
         break;
       case 'local':
         result = await generateWithLocal(prompt);
@@ -153,56 +180,4 @@ export async function generateCode(prompt: string, preferLocal: boolean = false)
     provider: 'groq',
     error: 'All AI providers failed. Please try again later.',
   };
-}
-
-// Get status of all providers
-export async function getAIProviderStatus(): Promise<Record<AIProvider, boolean>> {
-  const status = {
-    groq: false,
-    anthropic: false,
-    openai: false,
-    local: false,
-  };
-  
-  // Test Groq
-  try {
-    await groq.chat.completions.create({
-      messages: [{ role: 'user', content: 'test' }],
-      model: 'llama-3.3-70b-versatile',
-      max_tokens: 5,
-    });
-    status.groq = true;
-  } catch (e) {}
-  
-  // Test Anthropic (if key exists)
-  if (process.env.ANTHROPIC_API_KEY) {
-    try {
-      await anthropic.messages.create({
-        model: 'claude-3-sonnet-20240229',
-        max_tokens: 5,
-        messages: [{ role: 'user', content: 'test' }],
-      });
-      status.anthropic = true;
-    } catch (e) {}
-  }
-  
-  // Test OpenAI (if key exists)
-  if (process.env.OPENAI_API_KEY) {
-    try {
-      await openai.chat.completions.create({
-        messages: [{ role: 'user', content: 'test' }],
-        model: 'gpt-4-turbo-preview',
-        max_tokens: 5,
-      });
-      status.openai = true;
-    } catch (e) {}
-  }
-  
-  // Test Local Ollama
-  try {
-    const response = await fetch('http://localhost:11434/api/tags');
-    status.local = response.ok;
-  } catch (e) {}
-  
-  return status;
 }
