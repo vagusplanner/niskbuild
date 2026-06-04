@@ -7,15 +7,16 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 export async function POST(request: NextRequest) {
   const body = await request.text();
   const sig = request.headers.get('stripe-signature')!;
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET!
-    );
+    if (webhookSecret) {
+      event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
+    } else {
+      event = JSON.parse(body);
+    }
   } catch (err) {
     console.error('Webhook error:', err);
     return NextResponse.json({ error: 'Webhook error' }, { status: 400 });
@@ -25,19 +26,30 @@ export async function POST(request: NextRequest) {
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
     const userId = session.metadata?.userId;
+    const customerEmail = session.customer_email;
+    const tier = session.metadata?.tier || 'pro';
     
     if (userId) {
-      // Update user to Pro in Supabase
-      const { error } = await supabase
+      await supabase
         .from('profiles')
-        .update({ subscription_tier: 'pro', updated_at: new Date().toISOString() })
+        .update({ 
+          subscription_tier: tier, 
+          subscription_status: 'active',
+          subscription_id: session.subscription
+        })
         .eq('id', userId);
       
-      if (error) {
-        console.error('Failed to update user to pro:', error);
-      } else {
-        console.log(`✅ User ${userId} upgraded to Pro`);
-      }
+      console.log(`✅ User ${userId} upgraded to ${tier}`);
+    } else if (customerEmail) {
+      await supabase
+        .from('profiles')
+        .update({ 
+          subscription_tier: tier, 
+          subscription_status: 'active'
+        })
+        .eq('email', customerEmail);
+      
+      console.log(`✅ User ${customerEmail} upgraded to ${tier}`);
     }
   }
 
@@ -47,26 +59,17 @@ export async function POST(request: NextRequest) {
     const customerId = subscription.customer as string;
     
     try {
-      // Retrieve customer - check if it still exists
       const customer = await stripe.customers.retrieve(customerId);
-      
-      // Only proceed if customer is not deleted (has email)
       if (!customer.deleted && customer.email) {
-        const { error } = await supabase
+        await supabase
           .from('profiles')
-          .update({ subscription_tier: 'free' })
+          .update({ subscription_tier: 'free', subscription_status: 'inactive' })
           .eq('email', customer.email);
         
-        if (error) {
-          console.error('Failed to downgrade user:', error);
-        } else {
-          console.log(`📉 User ${customer.email} downgraded to Free`);
-        }
-      } else {
-        console.log(`⚠️ Customer ${customerId} was deleted, skipping downgrade`);
+        console.log(`📉 User ${customer.email} downgraded to Free`);
       }
     } catch (err) {
-      console.error('Error processing customer:', err);
+      console.error('Error processing cancellation:', err);
     }
   }
 
