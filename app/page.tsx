@@ -63,6 +63,13 @@ export default function Home() {
   const [sessionPrompts, setSessionPrompts] = useState<string[]>([]);
   const [sessionStartTime, setSessionStartTime] = useState<number>(Date.now());
 
+  // Clear auth storage on error
+  const clearAuthStorage = () => {
+    localStorage.removeItem('sb-refresh-token');
+    localStorage.removeItem('sb-access-token');
+    sessionStorage.clear();
+  };
+
   // Check if Supabase is available
   const isSupabaseAvailable = () => {
     return supabase && typeof supabase === 'object' && supabase.auth;
@@ -74,6 +81,34 @@ export default function Home() {
     if (saved !== null) {
       setTelemetryEnabled(saved === 'true');
     }
+  }, []);
+
+  // ========== FIX REFRESH TOKEN ERROR - WITH PROPER TYPES ==========
+  useEffect(() => {
+    // Handle auth state changes and token refresh
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: any) => {
+      if (event === 'SIGNED_OUT') {
+        clearAuthStorage();
+      }
+      if (event === 'TOKEN_REFRESHED') {
+        console.log('✅ Token refreshed successfully');
+      }
+      if (event === 'USER_UPDATED') {
+        console.log('✅ User updated');
+      }
+    });
+
+    // Clear storage on any auth error
+    const handleAuthError = () => {
+      clearAuthStorage();
+    };
+
+    window.addEventListener('auth-error', handleAuthError);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('auth-error', handleAuthError);
+    };
   }, []);
 
   // Helper function to extract integrations from prompt
@@ -100,7 +135,6 @@ export default function Home() {
   // Project Slot Caps Based on Subscription Tier
   const canCreateProject = async (userId: string): Promise<boolean> => {
     try {
-      // Get user's subscription tier and status
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('subscription_tier, subscription_status')
@@ -115,7 +149,6 @@ export default function Home() {
       const tier = profile?.subscription_tier || 'free';
       const isActive = profile?.subscription_status === 'active';
       
-      // Count existing projects
       const { count, error: countError } = await supabase
         .from('projects')
         .select('*', { count: 'exact', head: true })
@@ -128,7 +161,6 @@ export default function Home() {
       
       const projectCount = count || 0;
       
-      // Define project limits per tier
       const limits: Record<string, number> = {
         free: 1,
         pro: 3,
@@ -467,6 +499,7 @@ export default function Home() {
   const handleSignOut = async () => {
     if (!isSupabaseAvailable()) return;
     await supabase.auth.signOut();
+    clearAuthStorage();
     setUser(null);
     setSavedProjects([]);
   };
@@ -594,7 +627,6 @@ export default function Home() {
                 break;
               }
             }
-            
             await fetch('/api/log-structure', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -809,7 +841,6 @@ Your prompt was: "${promptText.substring(0, 200)}"`);
               <span className="text-sm font-medium">Pricing & Upgrade</span>
             </button>
 
-            {/* Admin Panel Link - Only visible to admin email */}
             {user?.email === ADMIN_EMAIL && (
               <>
                 <div className="my-4 mx-6 h-px bg-gray-800"></div>
@@ -936,7 +967,6 @@ Your prompt was: "${promptText.substring(0, 200)}"`);
                 </div>
               </div>
 
-              {/* Saved Projects Section with Delete Button */}
               {savedProjects.length > 0 && (
                 <div className="mt-6">
                   <div className="flex justify-between items-center mb-3">
