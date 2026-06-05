@@ -1,10 +1,12 @@
 "use client";
 
+import { Suspense } from 'react';
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
-export default function DashboardPage() {
+// Inner component that uses useSearchParams
+function DashboardContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [message, setMessage] = useState<string | null>(null);
@@ -75,5 +77,21 @@ export default function DashboardPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// Wrap the content in a Suspense boundary
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0B0F19] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading dashboard...</p>
+        </div>
+      </div>
+    }>
+      <DashboardContent />
+    </Suspense>
   );
 }
