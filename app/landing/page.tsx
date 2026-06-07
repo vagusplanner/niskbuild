@@ -88,8 +88,8 @@ export default function LandingPage() {
               <a href="#templates" className="text-gray-300 hover:text-[var(--primary)] transition-colors">Templates</a>
               <a href="/pricing" className="text-gray-300 hover:text-[var(--primary)] transition-colors">Pricing</a>
               {isLoggedIn ? (
-                <Link href="/builder" className="px-4 py-2 rounded-lg bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-medium transition-all">
-                  Open Builder
+                <Link href="/pricing" className="px-4 py-2 rounded-lg bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-medium transition-all">
+                  View Plans
                 </Link>
               ) : (
                 <>
@@ -125,7 +125,7 @@ export default function LandingPage() {
               <a href="#templates" className="block text-gray-300 hover:text-[var(--primary)]">Templates</a>
               <a href="/pricing" className="block text-gray-300 hover:text-[var(--primary)]">Pricing</a>
               {isLoggedIn ? (
-                <Link href="/builder" className="block text-[var(--primary)] font-medium">Open Builder</Link>
+                <Link href="/pricing" className="block text-[var(--primary)] font-medium">View Plans</Link>
               ) : (
                 <>
                   <Link href="/login" className="block text-gray-300">Sign In</Link>
@@ -159,10 +159,10 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-10">
             {isLoggedIn ? (
               <Link
-                href="/builder"
+                href="/pricing"
                 className="px-8 py-3 rounded-lg bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-semibold transition-all"
               >
-                Open Builder →
+                Choose a Plan →
               </Link>
             ) : (
               <>
@@ -392,12 +392,12 @@ export default function LandingPage() {
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-8">
             {isLoggedIn ? (
-              <Link href="/builder" className="px-8 py-3 rounded-lg bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-semibold">
-                Open Builder →
+              <Link href="/pricing" className="px-8 py-3 rounded-lg bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-semibold">
+                Choose a Plan →
               </Link>
             ) : (
               <Link href="/login" className="px-8 py-3 rounded-lg bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-semibold">
-                Get Started Free →
+                Get Started →
               </Link>
             )}
           </div>

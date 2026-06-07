@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabaseClient';
+import { createClient } from '@/lib/supabase/client';
 import type { Session } from '@supabase/supabase-js';
 
 function isRefreshTokenError(error: unknown): boolean {
@@ -12,25 +12,23 @@ function isRefreshTokenError(error: unknown): boolean {
   return (
     message.includes('Refresh Token') ||
     message.includes('refresh_token') ||
-    message.includes('Invalid Refresh Token')
+    message.includes('Invalid Refresh Token') ||
+    message.includes('PKCE')
   );
 }
 
-/** Clear corrupted auth state from local storage without calling the API. */
 export async function clearStaleAuth(): Promise<void> {
   try {
+    const supabase = createClient();
     await supabase.auth.signOut({ scope: 'local' });
   } catch {
-    // Ignore — local storage may already be empty
+    // Ignore
   }
 }
 
-/**
- * Safely read the current session. Clears stale tokens instead of throwing
- * when the refresh token is missing or invalid.
- */
 export async function getSafeSession(): Promise<Session | null> {
   try {
+    const supabase = createClient();
     const { data, error } = await supabase.auth.getSession();
 
     if (error && isRefreshTokenError(error)) {

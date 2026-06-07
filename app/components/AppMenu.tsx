@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+import { createClient } from '@/lib/supabase/client';
 import { getSafeSession } from '@/lib/supabaseSession';
 import AuthButton from './AuthButton';
 
@@ -41,6 +41,8 @@ export default function AppMenu({ variant = 'app', showAuth = true }: AppMenuPro
   const pathname = usePathname();
 
   useEffect(() => {
+    const supabase = createClient();
+
     getSafeSession().then((session) => {
       setUser(session?.user ?? null);
     });

@@ -7,6 +7,7 @@ import { signInWithGoogle } from '@/lib/auth';
 import { getSafeSession } from '@/lib/supabaseSession';
 import AppMenu from '@/app/components/AppMenu';
 import GoogleSignInButton from '@/app/components/GoogleSignInButton';
+import EmailAuthForm from '@/app/components/EmailAuthForm';
 
 function LoginContent() {
   const [loading, setLoading] = useState(false);
@@ -14,11 +15,11 @@ function LoginContent() {
   const [error, setError] = useState('');
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get('next') || '/builder';
+  const next = searchParams.get('next') || '/pricing';
 
   useEffect(() => {
     if (searchParams.get('error') === 'auth_failed') {
-      setError('Google sign in failed. Please try again.');
+      setError('Sign in failed. Please try again with Google or email.');
     }
   }, [searchParams]);
 
@@ -32,7 +33,7 @@ function LoginContent() {
     });
   }, [router, next]);
 
-  const handleSignIn = async () => {
+  const handleGoogleSignIn = async () => {
     setLoading(true);
     setError('');
     try {
@@ -52,23 +53,29 @@ function LoginContent() {
   }
 
   return (
-    <div className="flex-1 flex items-center justify-center px-4 pt-20">
+    <div className="flex-1 flex items-center justify-center px-4 pt-20 pb-12">
       <div className="w-full max-w-md bg-nisk-card border border-nisk rounded-2xl p-8 shadow-xl">
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <div className="w-12 h-12 bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] rounded-xl flex items-center justify-center mx-auto mb-4">
             <span className="text-white font-bold">NB</span>
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">Sign in to NiskBuild</h1>
           <p className="text-nisk-muted text-sm">
-            Create an account or sign in to access the builder, marketplace, and exports.
+            Sign in or create an account. After that, choose a plan to unlock the builder and marketplace.
           </p>
         </div>
 
-        <GoogleSignInButton onClick={handleSignIn} loading={loading} />
+        <GoogleSignInButton onClick={handleGoogleSignIn} loading={loading} label="Sign in with Google" />
 
-        {error && (
-          <p className="mt-4 text-sm text-center text-[var(--error)]">{error}</p>
-        )}
+        {error && <p className="mt-4 text-sm text-center text-[var(--error)]">{error}</p>}
+
+        <div className="flex items-center gap-3 my-6">
+          <div className="flex-1 h-px bg-[var(--border)]" />
+          <span className="text-xs text-nisk-muted">or continue with email</span>
+          <div className="flex-1 h-px bg-[var(--border)]" />
+        </div>
+
+        <EmailAuthForm nextPath={next} />
 
         <p className="mt-6 text-center text-xs text-nisk-muted">
           By signing in, you agree to our{' '}
@@ -78,9 +85,7 @@ function LoginContent() {
         </p>
 
         <p className="mt-4 text-center text-sm text-nisk-muted">
-          <Link href="/landing" className="text-[var(--primary)] hover:underline">
-            ← Back to Landing
-          </Link>
+          <Link href="/landing" className="text-[var(--primary)] hover:underline">← Back to Landing</Link>
         </p>
       </div>
     </div>

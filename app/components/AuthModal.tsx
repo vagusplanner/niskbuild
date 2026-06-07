@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { signInWithGoogle } from '@/lib/auth';
 import GoogleSignInButton from './GoogleSignInButton';
+import EmailAuthForm from './EmailAuthForm';
 
 interface AuthModalProps {
   open: boolean;
@@ -16,9 +17,9 @@ interface AuthModalProps {
 export default function AuthModal({
   open,
   onClose,
-  nextPath = '/builder',
+  nextPath = '/pricing',
   title = 'Sign in to NiskBuild',
-  subtitle = 'Create an account or sign in to access the builder, marketplace, and exports.',
+  subtitle = 'Sign in or create an account, then choose a plan to access the builder.',
 }: AuthModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -38,17 +39,13 @@ export default function AuthModal({
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-        onClick={onClose}
-        aria-hidden="true"
-      />
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
 
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="auth-modal-title"
-        className="relative w-full max-w-md bg-nisk-card border border-nisk rounded-2xl p-8 shadow-2xl"
+        className="relative w-full max-w-md bg-nisk-card border border-nisk rounded-2xl p-8 shadow-2xl max-h-[90vh] overflow-y-auto"
       >
         <button
           onClick={onClose}
@@ -58,31 +55,31 @@ export default function AuthModal({
           ✕
         </button>
 
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <div className="w-12 h-12 bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] rounded-xl flex items-center justify-center mx-auto mb-4">
             <span className="text-white font-bold">NB</span>
           </div>
-          <h2 id="auth-modal-title" className="text-2xl font-bold text-white mb-2">
-            {title}
-          </h2>
+          <h2 id="auth-modal-title" className="text-2xl font-bold text-white mb-2">{title}</h2>
           <p className="text-nisk-muted text-sm">{subtitle}</p>
         </div>
 
         <GoogleSignInButton onClick={handleGoogleSignIn} loading={loading} />
 
-        {error && (
-          <p className="mt-4 text-sm text-center text-[var(--error)]">{error}</p>
-        )}
+        {error && <p className="mt-3 text-sm text-center text-[var(--error)]">{error}</p>}
+
+        <div className="flex items-center gap-3 my-5">
+          <div className="flex-1 h-px bg-[var(--border)]" />
+          <span className="text-xs text-nisk-muted">or continue with email</span>
+          <div className="flex-1 h-px bg-[var(--border)]" />
+        </div>
+
+        <EmailAuthForm nextPath={nextPath} onSuccess={onClose} />
 
         <p className="mt-6 text-center text-xs text-nisk-muted">
           By signing in, you agree to our{' '}
-          <Link href="/terms" className="text-[var(--primary)] hover:underline" onClick={onClose}>
-            Terms
-          </Link>
+          <Link href="/terms" className="text-[var(--primary)] hover:underline" onClick={onClose}>Terms</Link>
           {' '}and{' '}
-          <Link href="/privacy" className="text-[var(--primary)] hover:underline" onClick={onClose}>
-            Privacy Policy
-          </Link>.
+          <Link href="/privacy" className="text-[var(--primary)] hover:underline" onClick={onClose}>Privacy Policy</Link>.
         </p>
       </div>
     </div>

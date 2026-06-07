@@ -13,10 +13,11 @@ function PricingContent() {
   const [canceled, setCanceled] = useState(false);
   const searchParams = useSearchParams();
 
+  const [needsUpgrade, setNeedsUpgrade] = useState(false);
+
   useEffect(() => {
-    if (searchParams.get('canceled') === 'true') {
-      setCanceled(true);
-    }
+    if (searchParams.get('canceled') === 'true') setCanceled(true);
+    if (searchParams.get('upgrade') === '1') setNeedsUpgrade(true);
   }, [searchParams]);
 
   const handleSubscribe = async (tier: string) => {
@@ -74,6 +75,13 @@ function PricingContent() {
             Start free. Scale when your client work grows. No hidden fees — cancel anytime.
           </p>
         </div>
+
+        {needsUpgrade && (
+          <div className="mb-6 p-4 rounded-xl bg-[var(--primary)]/10 border border-[var(--primary)]/30 text-sm text-center">
+            <p className="text-white font-medium mb-1">Choose a plan to unlock the builder</p>
+            <p className="text-nisk-muted">Sign in is complete — upgrade below to access the builder and marketplace.</p>
+          </div>
+        )}
 
         {canceled && (
           <div className="mb-8 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-sm text-center">

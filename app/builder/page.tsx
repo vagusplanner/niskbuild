@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+import { createClient } from '@/lib/supabase/client';
 import { hasCompletedOnboarding, markOnboardingComplete } from '@/lib/auth';
 import { getSafeSession } from '@/lib/supabaseSession';
 import Layout from '@/app/components/Layout';
@@ -29,10 +29,7 @@ function BuilderContent() {
   useEffect(() => {
     const checkAuth = async () => {
       const session = await getSafeSession();
-      if (!session?.user) {
-        router.replace('/login?next=/builder');
-        return;
-      }
+      if (!session?.user) return;
       setUser(session.user);
       setAuthChecking(false);
 
