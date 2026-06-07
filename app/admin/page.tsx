@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { getSafeSession } from '@/lib/supabaseSession';
+import Layout from '@/app/components/Layout';
 
 // Define types for the data structure
 interface CategoryData {
@@ -39,7 +41,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const session = await getSafeSession();
       const userEmail = session?.user?.email;
       
       if (userEmail === AUTHORIZED_EMAIL) {
@@ -145,53 +147,55 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0B0F19] flex items-center justify-center">
-        <div className="text-white">Loading admin dashboard...</div>
-      </div>
+      <Layout>
+        <div className="flex items-center justify-center min-h-[50vh] text-white">Loading admin dashboard...</div>
+      </Layout>
     );
   }
 
   if (!authorized) {
     return (
-      <div className="min-h-screen bg-[#0B0F19] flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-400 mb-4">Unauthorized</h1>
-          <p className="text-gray-400">You don't have permission to view this page.</p>
-          <p className="text-gray-500 text-sm mt-2">Please sign in with your admin account.</p>
+      <Layout>
+        <div className="flex items-center justify-center min-h-[50vh] text-center">
+          <div>
+            <h1 className="text-2xl font-bold text-[var(--error)] mb-4">Unauthorized</h1>
+            <p className="text-nisk-muted">You don't have permission to view this page.</p>
+            <p className="text-nisk-muted text-sm mt-2">Please sign in with your admin account.</p>
+          </div>
         </div>
-      </div>
+      </Layout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0F19] p-8">
+    <Layout>
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl font-bold text-white mb-2">📊 NiskBuild Intelligence Dashboard</h1>
         <p className="text-gray-400 mb-8">Anonymous build data - Your secret competitive moat</p>
         
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
-            <div className="text-3xl font-bold text-purple-400">{data?.totalBuilds || 0}</div>
+          <div className="bg-nisk-card rounded-xl p-6 border border-nisk">
+            <div className="text-3xl font-bold text-[var(--secondary)]">{data?.totalBuilds || 0}</div>
             <div className="text-sm text-gray-400">Total Builds (All Time)</div>
           </div>
-          <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
-            <div className="text-3xl font-bold text-emerald-400">{data?.buildsToday || 0}</div>
+          <div className="bg-nisk-card rounded-xl p-6 border border-nisk">
+            <div className="text-3xl font-bold text-[var(--success)]">{data?.buildsToday || 0}</div>
             <div className="text-sm text-gray-400">Builds Today</div>
           </div>
-          <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
-            <div className="text-3xl font-bold text-blue-400">{data?.avgPrompts || '0'}</div>
+          <div className="bg-nisk-card rounded-xl p-6 border border-nisk">
+            <div className="text-3xl font-bold text-[var(--primary)]">{data?.avgPrompts || '0'}</div>
             <div className="text-sm text-gray-400">Avg Prompts Per Build</div>
           </div>
-          <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
-            <div className="text-3xl font-bold text-yellow-400">{data?.exportRate || '0'}%</div>
+          <div className="bg-nisk-card rounded-xl p-6 border border-nisk">
+            <div className="text-3xl font-bold text-[var(--code-attr)]">{data?.exportRate || '0'}%</div>
             <div className="text-sm text-gray-400">Export Rate (ZIP)</div>
           </div>
         </div>
         
         {/* Top Categories */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+          <div className="bg-nisk-card rounded-xl p-6 border border-nisk">
             <h2 className="text-lg font-semibold text-white mb-4">🔥 Top 5 App Categories</h2>
             {data?.topCategories && data.topCategories.length > 0 ? (
               <div className="space-y-3">
@@ -219,7 +223,7 @@ export default function AdminDashboard() {
           </div>
           
           {/* Top Features */}
-          <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+          <div className="bg-nisk-card rounded-xl p-6 border border-nisk">
             <h2 className="text-lg font-semibold text-white mb-4">🔧 Top 10 Features Used</h2>
             {data?.topFeatures && data.topFeatures.length > 0 ? (
               <div className="space-y-2 max-h-80 overflow-y-auto">
@@ -242,6 +246,6 @@ export default function AdminDashboard() {
           <p className="mt-1">Differential privacy active: 4% of boolean values are flipped.</p>
         </div>
       </div>
-    </div>
+    </Layout>
   );
-}// Force new build
+}

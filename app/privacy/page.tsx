@@ -1,8 +1,10 @@
 "use client";
 
+import Layout from '@/app/components/Layout';
+
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-[#0B0F19] py-20 px-4">
+    <Layout>
       <div className="max-w-4xl mx-auto">
         <h1 className="text-4xl font-bold text-white mb-8">Privacy Policy</h1>
         <p className="text-gray-400 mb-8">Last updated: {new Date().toLocaleDateString()}</p>
@@ -95,10 +97,10 @@ export default function PrivacyPage() {
           </section>
         </div>
 
-        <div className="mt-12 pt-8 border-t border-gray-800 text-center text-gray-500 text-sm">
+        <div className="mt-12 pt-8 border-t border-nisk text-center text-nisk-muted text-sm">
           <p>NiskBuild — Build locally. Own forever.</p>
         </div>
       </div>
-    </div>
+    </Layout>
   );
 }

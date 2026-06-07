@@ -1,102 +1,52 @@
 "use client";
 
-import { useState } from 'react';
-import { loadStripe } from '@stripe/stripe-js';
-import { supabase } from '@/lib/supabaseClient';
+import { useState, useEffect, Suspense } from 'react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { getSafeSession } from '@/lib/supabaseSession';
+import Layout from '@/app/components/Layout';
+import PricingCards from '@/app/components/PricingCards';
+import { PRICING_FAQ } from '@/lib/pricing-tiers';
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
-
-const TIERS = [
-  {
-    name: 'Free',
-    price: '$0',
-    period: '/month',
-    description: 'Perfect for getting started',
-    features: ['1 project', 'Local AI', 'Live preview', 'Watermarked export'],
-    buttonText: 'Current Plan',
-    buttonClass: 'bg-gray-800 cursor-default',
-    highlighted: false,
-    tier: null,
-  },
-  {
-    name: 'Builder Pro',
-    price: '$69',
-    period: '/month',
-    description: 'For professional freelancers',
-    features: ['3 projects', 'Cloud AI (600 credits)', 'Clean ZIP export', 'Priority support'],
-    buttonText: 'Upgrade to Pro',
-    buttonClass: 'bg-blue-600 hover:bg-blue-500',
-    highlighted: false,
-    tier: 'pro',
-  },
-  {
-    name: 'Agency Studio',
-    price: '$199',
-    period: '/month',
-    description: 'For growing agencies',
-    features: ['15 projects', '2,500 cloud credits', '1-click deploy', 'Client preview links'],
-    buttonText: 'Upgrade to Agency',
-    buttonClass: 'bg-purple-600 hover:bg-purple-500',
-    highlighted: true,
-    tier: 'agency',
-  },
-  {
-    name: 'Agency Scale',
-    price: '$549',
-    period: '/month',
-    description: 'For high-volume teams',
-    features: ['Unlimited projects', '10,000 cloud credits', '10 team seats', 'Priority AI'],
-    buttonText: 'Upgrade to Scale',
-    buttonClass: 'bg-emerald-600 hover:bg-emerald-500',
-    highlighted: false,
-    tier: 'scale',
-  },
-  {
-    name: 'White-Label',
-    price: '$1,199',
-    period: '/month',
-    description: 'For resellers',
-    features: ['Complete rebranding', 'Custom domain', '15,000 pooled credits', 'Unlimited child users'],
-    buttonText: 'Contact Sales',
-    buttonClass: 'bg-amber-600 hover:bg-amber-500',
-    highlighted: false,
-    tier: 'white_label',
-  },
-];
-
-export default function PricingPage() {
+function PricingContent() {
   const [loading, setLoading] = useState<string | null>(null);
+  const [canceled, setCanceled] = useState(false);
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get('canceled') === 'true') {
+      setCanceled(true);
+    }
+  }, [searchParams]);
 
   const handleSubscribe = async (tier: string) => {
     setLoading(tier);
-    
-    const { data: { session } } = await supabase.auth.getSession();
+
+    const session = await getSafeSession();
     const user = session?.user;
-    
+
     if (!user) {
-      alert('Please sign in first');
-      setLoading(null);
+      window.location.href = `/login?next=/pricing`;
       return;
     }
-    
+
     try {
       const response = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          userId: user.id, 
+        body: JSON.stringify({
+          userId: user.id,
           email: user.email,
-          tier: tier,
+          tier,
           successUrl: `${window.location.origin}/dashboard?success=true`,
-          cancelUrl: `${window.location.origin}/pricing?canceled=true`
+          cancelUrl: `${window.location.origin}/pricing?canceled=true`,
         }),
       });
-      
+
       const { url, error } = await response.json();
-      
+
       if (error) throw new Error(error);
       if (url) window.location.href = url;
-      
     } catch (error) {
       console.error('Checkout error:', error);
       alert('Something went wrong. Please try again.');
@@ -106,60 +56,93 @@ export default function PricingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F] py-20 px-4">
+    <Layout>
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-4xl font-bold text-center text-white mb-4">
-          Simple, Transparent Pricing
-        </h1>
-        <p className="text-center text-gray-400 mb-12 max-w-2xl mx-auto">
-          Choose the plan that works for you. No hidden fees. Cancel anytime.
-        </p>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-          {TIERS.map((tier, index) => (
-            <div
-              key={index}
-              className={`relative rounded-2xl p-6 transition-all ${
-                tier.highlighted
-                  ? 'bg-gradient-to-b from-purple-900/30 to-[#111118] border-2 border-purple-500 scale-105 shadow-xl'
-                  : 'bg-[#111118] border border-gray-800 hover:border-purple-500/50'
-              }`}
-            >
-              {tier.highlighted && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-purple-500 text-white text-xs px-3 py-1 rounded-full">
-                  MOST POPULAR
-                </div>
-              )}
-              <h2 className="text-xl font-bold text-white mb-1">{tier.name}</h2>
-              <p className="text-gray-400 text-sm mb-4">{tier.description}</p>
-              <p className="text-3xl font-bold text-white mb-6">
-                {tier.price}<span className="text-sm text-gray-400">{tier.period}</span>
-              </p>
-              <ul className="space-y-2 mb-8 text-sm">
-                {tier.features.map((feature, i) => (
-                  <li key={i} className="text-gray-300">✅ {feature}</li>
-                ))}
-              </ul>
-              <button
-                onClick={() => tier.tier && handleSubscribe(tier.tier)}
-                disabled={loading === tier.tier || !tier.tier}
-                className={`w-full py-2 rounded-lg font-medium transition-all disabled:opacity-50 ${tier.buttonClass}`}
-              >
-                {loading === tier.tier ? 'Processing...' : tier.buttonText}
-              </button>
+        {/* Hero */}
+        <div className="text-center mb-14 relative">
+          <div
+            className="absolute inset-0 -z-10 opacity-30 blur-3xl"
+            style={{
+              background: 'radial-gradient(ellipse at center, var(--primary) 0%, transparent 70%)',
+            }}
+          />
+          <p className="text-[var(--primary)] text-sm font-medium uppercase tracking-wider mb-3">Pricing</p>
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+            Simple, transparent pricing
+          </h1>
+          <p className="text-nisk-muted max-w-2xl mx-auto text-lg">
+            Start free. Scale when your client work grows. No hidden fees — cancel anytime.
+          </p>
+        </div>
+
+        {canceled && (
+          <div className="mb-8 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-sm text-center">
+            Checkout was canceled. Pick a plan below when you&apos;re ready.
+          </div>
+        )}
+
+        <PricingCards variant="page" loadingTier={loading} onSubscribe={handleSubscribe} />
+
+        {/* Trust row */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-12">
+          {[
+            { icon: '📦', title: 'Own your code', desc: 'Export clean ZIP files. Host anywhere.' },
+            { icon: '⚡', title: 'Live preview', desc: 'See every change instantly as you build.' },
+            { icon: '🔒', title: 'No lock-in', desc: 'Cancel anytime. Your projects stay yours.' },
+          ].map((item) => (
+            <div key={item.title} className="bg-nisk-card border border-nisk rounded-xl p-5 text-center">
+              <div className="text-2xl mb-2">{item.icon}</div>
+              <h3 className="font-semibold text-white text-sm mb-1">{item.title}</h3>
+              <p className="text-nisk-muted text-xs">{item.desc}</p>
             </div>
           ))}
         </div>
 
-        <div className="text-center mt-12 pt-8 border-t border-gray-800">
-          <p className="text-gray-400 text-sm">
+        {/* FAQ */}
+        <div className="mt-16 pt-12 border-t border-nisk">
+          <h2 className="text-2xl font-bold text-white text-center mb-8">Frequently asked questions</h2>
+          <div className="max-w-3xl mx-auto space-y-3">
+            {PRICING_FAQ.map((faq) => (
+              <details key={faq.q} className="bg-nisk-card rounded-xl border border-nisk group">
+                <summary className="cursor-pointer p-4 font-medium text-white hover:text-[var(--primary)] transition-colors list-none flex justify-between items-center">
+                  {faq.q}
+                  <span className="text-nisk-muted group-open:rotate-180 transition-transform">▾</span>
+                </summary>
+                <p className="px-4 pb-4 text-nisk-muted text-sm leading-relaxed">{faq.a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+
+        <div className="text-center mt-12 pt-8 border-t border-nisk">
+          <p className="text-nisk-muted text-sm mb-4">
+            Not signed in yet?{' '}
+            <Link href="/login?next=/pricing" className="text-[var(--primary)] hover:underline">
+              Create a free account →
+            </Link>
+          </p>
+          <p className="text-nisk-muted text-sm">
             Need a custom plan?{' '}
-            <a href="mailto:hello@niskbuild.com" className="text-purple-400 hover:text-purple-300">
+            <a href="mailto:hello@niskbuild.com" className="text-[var(--primary)] hover:underline">
               Contact us →
             </a>
           </p>
         </div>
       </div>
-    </div>
+    </Layout>
+  );
+}
+
+export default function PricingPage() {
+  return (
+    <Suspense fallback={
+      <Layout>
+        <div className="flex items-center justify-center min-h-[40vh]">
+          <div className="w-8 h-8 border-4 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
+        </div>
+      </Layout>
+    }>
+      <PricingContent />
+    </Suspense>
   );
 }

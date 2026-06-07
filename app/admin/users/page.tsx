@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { getSafeSession } from '@/lib/supabaseSession';
+import Layout from '@/app/components/Layout';
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<any[]>([]);
@@ -14,7 +16,7 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const session = await getSafeSession();
       const userEmail = session?.user?.email;
       
       if (userEmail === ADMIN_EMAIL) {
@@ -96,26 +98,28 @@ export default function AdminUsersPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0B0F19] flex items-center justify-center">
-        <div className="text-white">Loading admin panel...</div>
-      </div>
+      <Layout>
+        <div className="flex items-center justify-center min-h-[50vh] text-white">Loading admin panel...</div>
+      </Layout>
     );
   }
 
   if (!authorized) {
     return (
-      <div className="min-h-screen bg-[#0B0F19] flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-400 mb-4">Unauthorized</h1>
-          <p className="text-gray-400">You don't have permission to view this page.</p>
-          <p className="text-gray-500 text-sm mt-2">Admin email: {ADMIN_EMAIL}</p>
+      <Layout>
+        <div className="flex items-center justify-center min-h-[50vh] text-center">
+          <div>
+            <h1 className="text-2xl font-bold text-[var(--error)] mb-4">Unauthorized</h1>
+            <p className="text-nisk-muted">You don't have permission to view this page.</p>
+            <p className="text-nisk-muted text-sm mt-2">Admin email: {ADMIN_EMAIL}</p>
+          </div>
         </div>
-      </div>
+      </Layout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0F19] p-8">
+    <Layout>
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <div>
@@ -130,7 +134,7 @@ export default function AdminUsersPage() {
           </button>
         </div>
 
-        <div className="bg-gray-900/50 rounded-xl border border-gray-800 overflow-hidden">
+        <div className="bg-nisk-card rounded-xl border border-nisk overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-800/50 border-b border-gray-800">
@@ -200,6 +204,6 @@ export default function AdminUsersPage() {
           <p>🔒 Admin access restricted to: {ADMIN_EMAIL}</p>
         </div>
       </div>
-    </div>
+    </Layout>
   );
 }

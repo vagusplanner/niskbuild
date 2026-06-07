@@ -1,135 +1,214 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { hasCompletedOnboarding, markOnboardingComplete } from '@/lib/auth';
+import { getSafeSession } from '@/lib/supabaseSession';
 import Layout from '@/app/components/Layout';
+import WelcomeAssistant from '@/app/components/WelcomeAssistant';
 
-export default function BuilderPage() {
+const FILES = [
+  { name: 'index.html', icon: '📄' },
+  { name: 'styles.css', icon: '🎨' },
+  { name: 'script.js', icon: '⚡' },
+];
+
+function BuilderContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [authChecking, setAuthChecking] = useState(true);
+  const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
   const [prompt, setPrompt] = useState('');
   const [generatedCode, setGeneratedCode] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
-  const [showPreview, setShowPreview] = useState(true);
+  const [activeFile, setActiveFile] = useState('index.html');
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const session = await getSafeSession();
+      if (!session?.user) {
+        router.replace('/login?next=/builder');
+        return;
+      }
+      setUser(session.user);
+      setAuthChecking(false);
+
+      const fromLogin = searchParams.get('welcome') === '1';
+      if (fromLogin || !hasCompletedOnboarding(session.user.id)) {
+        setShowWelcome(true);
+      }
+    };
+    checkAuth();
+  }, [router, searchParams]);
+
+  useEffect(() => {
+    const savedPrompt = localStorage.getItem('niskbuild_template_prompt');
+    if (savedPrompt) {
+      setPrompt(savedPrompt);
+      localStorage.removeItem('niskbuild_template_prompt');
+    }
+  }, []);
+
+  const handleWelcomeComplete = () => {
+    if (user) markOnboardingComplete(user.id);
+    setShowWelcome(false);
+    router.replace('/builder');
+  };
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
-    
+
     setIsGenerating(true);
-    setGeneratedCode('Generating...');
-    
+    setGeneratedCode('// Generating...');
+
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const session = await getSafeSession();
       const response = await fetch('/api/cloud-generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          prompt: prompt,
+        body: JSON.stringify({
+          prompt,
           userId: session?.user?.id,
-          useLocal: false 
+          useLocal: false,
         }),
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         setGeneratedCode(data.code);
         setPreviewHtml(data.code);
       } else {
-        setGeneratedCode(`Error: ${data.error}`);
+        setGeneratedCode(`// Error: ${data.error}`);
       }
-    } catch (error) {
-      setGeneratedCode('Failed to generate. Please try again.');
+    } catch {
+      setGeneratedCode('// Failed to generate. Please try again.');
     } finally {
       setIsGenerating(false);
     }
   };
 
-  return (
-    <Layout showSidebar={true}>
-      <div className="h-[calc(100vh-56px)] flex">
-        {/* Left Sidebar - Project Files */}
-        <div className="w-64 bg-[#111827] border-r border-gray-800 overflow-y-auto hidden md:block">
-          <div className="p-4 border-b border-gray-800">
-            <h3 className="text-sm font-medium text-gray-400">EXPLORER</h3>
-          </div>
-          <div className="p-2">
-            <div className="text-gray-300 text-sm p-2 hover:bg-gray-800 rounded cursor-pointer">
-              📄 index.html
-            </div>
-            <div className="text-gray-300 text-sm p-2 hover:bg-gray-800 rounded cursor-pointer">
-              🎨 styles.css
-            </div>
-            <div className="text-gray-300 text-sm p-2 hover:bg-gray-800 rounded cursor-pointer">
-              ⚡ script.js
-            </div>
-          </div>
+  if (authChecking) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-nisk">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-[var(--primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-nisk-muted text-sm">Loading builder...</p>
         </div>
+      </div>
+    );
+  }
 
-        {/* Main Area: Prompt + Code/Preview */}
-        <div className="flex-1 flex flex-col">
-          {/* Prompt Input Area */}
-          <div className="border-b border-gray-800 p-4">
-            <div className="flex gap-2">
-              <textarea
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Describe the application you want to build..."
-                className="flex-1 bg-[#0B0F19] border border-gray-700 rounded-lg p-3 text-white placeholder-gray-500 resize-none focus:outline-none focus:border-[#4F6EF7]"
-                rows={3}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                    handleGenerate();
-                  }
-                }}
-              />
+  const userName = user?.email?.split('@')[0];
+
+  return (
+    <Layout variant="builder">
+      <WelcomeAssistant
+        open={showWelcome}
+        onComplete={handleWelcomeComplete}
+        userName={userName}
+      />
+
+      <button
+        onClick={() => setShowWelcome(true)}
+        className="fixed bottom-4 right-4 z-40 w-10 h-10 rounded-full bg-nisk-card border border-nisk text-white hover:border-[var(--primary)] shadow-lg transition-colors flex items-center justify-center text-sm font-bold"
+        title="How does NiskBuild work?"
+        aria-label="Open help tour"
+      >
+        ?
+      </button>
+
+      <div className="h-full flex">
+        <div className="w-full md:w-[42%] lg:w-[38%] flex flex-col border-r border-nisk bg-nisk-surface">
+          <div className="flex items-center gap-1 px-3 pt-12 pb-0 border-b border-nisk overflow-x-auto shrink-0">
+            <span className="text-[10px] uppercase tracking-wider text-nisk-muted px-2 py-2 shrink-0">Explorer</span>
+            {FILES.map((file) => (
+              <button
+                key={file.name}
+                onClick={() => setActiveFile(file.name)}
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs rounded-t-lg transition-colors shrink-0 ${
+                  activeFile === file.name
+                    ? 'bg-[var(--code-bg)] text-white border-t border-x border-nisk'
+                    : 'text-nisk-muted hover:text-white'
+                }`}
+              >
+                <span>{file.icon}</span>
+                {file.name}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex-1 overflow-auto code-panel min-h-0">
+            <pre className="h-full">
+              <code>{generatedCode || '// Your generated code will appear here...\n// Describe your app below and press Generate'}</code>
+            </pre>
+          </div>
+
+          <div className="shrink-0 border-t border-nisk bg-nisk-card p-4">
+            <label className="block text-xs font-medium text-nisk-muted uppercase tracking-wider mb-2">
+              Prompt to Build
+            </label>
+            <textarea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="Describe the application you want to build..."
+              className="w-full bg-nisk border border-nisk rounded-lg p-3 text-white placeholder-gray-500 resize-none focus:outline-none focus:border-[var(--primary)] text-sm"
+              rows={3}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                  handleGenerate();
+                }
+              }}
+            />
+            <div className="flex items-center justify-between mt-2">
+              <p className="text-[11px] text-nisk-muted">⌘ + Enter to generate</p>
               <button
                 onClick={handleGenerate}
                 disabled={isGenerating || !prompt.trim()}
-                className="px-6 py-2 bg-[#4F6EF7] hover:bg-[#4F6EF7]/90 text-white rounded-lg font-medium transition-colors disabled:opacity-50 h-fit"
+                className="px-5 py-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
               >
                 {isGenerating ? 'Generating...' : 'Generate →'}
               </button>
             </div>
-            <p className="text-xs text-gray-500 mt-2">
-              ⌘ + Enter to generate
-            </p>
           </div>
+        </div>
 
-          {/* Code/Preview Toggle */}
-          <div className="border-b border-gray-800 px-4">
-            <div className="flex gap-4">
-              <button
-                onClick={() => setShowPreview(false)}
-                className={`px-3 py-2 text-sm font-medium transition-colors ${!showPreview ? 'text-[#4F6EF7] border-b-2 border-[#4F6EF7]' : 'text-gray-400 hover:text-gray-300'}`}
-              >
-                📄 Code
-              </button>
-              <button
-                onClick={() => setShowPreview(true)}
-                className={`px-3 py-2 text-sm font-medium transition-colors ${showPreview ? 'text-[#4F6EF7] border-b-2 border-[#4F6EF7]' : 'text-gray-400 hover:text-gray-300'}`}
-              >
-                👁️ Preview
-              </button>
+        <div className="hidden md:flex flex-1 flex-col bg-nisk min-w-0">
+          <div className="flex items-center justify-between px-4 pt-12 pb-2 border-b border-nisk shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[var(--success)] status-dot-active" />
+              <span className="text-sm font-medium text-white">Live Preview</span>
             </div>
+            <span className="text-[11px] text-nisk-muted font-mono">sandbox</span>
           </div>
-
-          {/* Main Content Area */}
-          <div className="flex-1 overflow-auto">
-            {!showPreview ? (
-              <pre className="p-4 text-sm font-mono text-gray-300 whitespace-pre-wrap">
-                <code>{generatedCode || '// Your generated code will appear here...'}</code>
-              </pre>
-            ) : (
-              <iframe
-                srcDoc={previewHtml || '<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#0B0F19;color:#888;">Generate an app to see preview</div>'}
-                title="Preview"
-                className="w-full h-full border-0 bg-white"
-                sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-              />
-            )}
+          <div className="flex-1 min-h-0 relative">
+            <iframe
+              srcDoc={
+                previewHtml ||
+                '<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#0B0F19;color:#94A3B8;font-family:system-ui,sans-serif;font-size:14px;text-align:center;padding:2rem;"><div><div style="font-size:32px;margin-bottom:12px">⚡</div>Your live preview will appear here<br><span style="color:#4F6EF7;margin-top:8px;display:block">Describe your app and hit Generate</span></div></div>'
+              }
+              title="Live Preview"
+              className="absolute inset-0 w-full h-full border-0 bg-white"
+              sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+            />
           </div>
         </div>
       </div>
     </Layout>
+  );
+}
+
+export default function BuilderPage() {
+  return (
+    <Suspense fallback={
+      <div className="h-screen flex items-center justify-center bg-nisk">
+        <div className="w-10 h-10 border-4 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <BuilderContent />
+    </Suspense>
   );
 }

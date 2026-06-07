@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { getSafeSession } from '@/lib/supabaseSession';
+import Layout from '@/app/components/Layout';
 
 interface Template {
   id: string;
@@ -23,7 +24,7 @@ export default function MarketplacePage() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const session = await getSafeSession();
       setUser(session?.user || null);
     };
     checkAuth();
@@ -45,11 +46,11 @@ export default function MarketplacePage() {
   const useTemplate = (prompt: string) => {
     // Store in localStorage to use on builder page
     localStorage.setItem('niskbuild_template_prompt', prompt);
-    window.location.href = '/';
+    window.location.href = '/builder';
   };
 
   return (
-    <div className="min-h-screen bg-[#0B0F19] py-20 px-4">
+    <Layout>
       <div className="max-w-6xl mx-auto">
         <h1 className="text-4xl font-bold text-center text-white mb-4">
           🏪 Template Marketplace
@@ -65,12 +66,12 @@ export default function MarketplacePage() {
             placeholder="Search templates..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 bg-gray-900 border border-gray-700 rounded-lg p-3 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+            className="flex-1 bg-nisk-card border border-nisk rounded-lg p-3 text-white placeholder-gray-500 focus:outline-none focus:border-[var(--primary)]"
           />
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            className="bg-gray-900 border border-gray-700 rounded-lg p-3 text-white focus:outline-none focus:border-purple-500"
+            className="bg-nisk-card border border-nisk rounded-lg p-3 text-white focus:outline-none focus:border-[var(--primary)]"
           >
             <option value="all">All Categories</option>
             <option value="ecommerce">Ecommerce</option>
@@ -92,7 +93,7 @@ export default function MarketplacePage() {
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {templates.map((template) => (
-              <div key={template.id} className="bg-gray-900 rounded-xl border border-gray-800 p-6 hover:border-purple-500 transition-all">
+              <div key={template.id} className="bg-nisk-card rounded-xl border border-nisk p-6 hover:border-[var(--primary)] transition-all card-hover">
                 <div className="flex justify-between items-start mb-3">
                   <h3 className="text-xl font-semibold text-white">{template.name}</h3>
                   {template.price > 0 ? (
@@ -109,7 +110,7 @@ export default function MarketplacePage() {
                 </div>
                 <button
                   onClick={() => useTemplate(template.prompt)}
-                  className="w-full py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-medium transition-colors"
+                  className="w-full py-2 rounded-lg bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-medium transition-colors"
                 >
                   Use Template →
                 </button>
@@ -118,6 +119,6 @@ export default function MarketplacePage() {
           </div>
         )}
       </div>
-    </div>
+    </Layout>
   );
 }

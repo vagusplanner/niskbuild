@@ -2,12 +2,26 @@
 
 :root {
   --background: #0B0F19;
-  --foreground: #e2e8f0;
-  --primary: #8b5cf6;
-  --primary-hover: #7c3aed;
-  --secondary: #3b82f6;
-  --success: #22c55e;
-  --border: #1f2937;
+  --foreground: #E2E8F0;
+  --primary: #4F6EF7;
+  --primary-hover: #3B5BD9;
+  --secondary: #7C3AED;
+  --secondary-hover: #6D28D9;
+  --success: #22C55E;
+  --error: #EF4444;
+  --border: #1F2937;
+  --card-bg: #111827;
+  --surface: #0D1220;
+  --surface-elevated: #151B2B;
+  --muted: #94A3B8;
+  --code-bg: #0A0E17;
+  --code-keyword: #C792EA;
+  --code-string: #C3E88D;
+  --code-comment: #546E7A;
+  --code-function: #82AAFF;
+  --code-number: #F78C6C;
+  --code-tag: #F07178;
+  --code-attr: #FFCB6B;
 }
 
 body {
@@ -40,6 +54,31 @@ body {
 pre, code {
   font-family: var(--font-geist-mono), 'Courier New', monospace;
 }
+
+.code-panel {
+  background: var(--code-bg);
+  color: var(--foreground);
+}
+
+.code-panel pre {
+  margin: 0;
+  padding: 1rem;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  tab-size: 2;
+}
+
+.code-panel code {
+  color: #ABB2BF;
+}
+
+/* Unified surface utilities */
+.bg-nisk { background-color: var(--background); }
+.bg-nisk-card { background-color: var(--card-bg); }
+.bg-nisk-surface { background-color: var(--surface); }
+.border-nisk { border-color: var(--border); }
+.text-nisk-muted { color: var(--muted); }
+.text-nisk-primary { color: var(--primary); }
 
 /* Smooth transitions */
 * {

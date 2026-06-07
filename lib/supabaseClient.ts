@@ -9,6 +9,13 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // Create a dummy client for build time (prevents build errors)
-export const supabase = (!supabaseUrl || !supabaseAnonKey) 
-  ? {} as any 
-  : createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = (!supabaseUrl || !supabaseAnonKey)
+  ? ({} as ReturnType<typeof createClient>)
+  : createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        flowType: 'pkce',
+      },
+    });

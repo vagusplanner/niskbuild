@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Layout from '@/app/components/Layout';
 
 export default function AdminInsights() {
   const [data, setData] = useState<any>(null);
@@ -14,10 +15,17 @@ export default function AdminInsights() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="p-8 text-white">Loading insights...</div>;
+  if (loading) {
+    return (
+      <Layout>
+        <div className="text-white">Loading insights...</div>
+      </Layout>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[#0B0F19] text-white p-8">
+    <Layout>
+    <div className="text-white max-w-6xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">📊 NiskBuild Market Insights</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -57,5 +65,6 @@ export default function AdminInsights() {
         </div>
       </div>
     </div>
+    </Layout>
   );
 }
