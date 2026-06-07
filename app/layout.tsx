@@ -13,8 +13,18 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Nisk Build",
-  description: "Sovereign local-first AI app builder",
+  title: "NiskBuild - Build Apps with AI",
+  description:
+    "The AI app builder that gives you the code. Build locally. Own forever.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "32x32", type: "image/x-icon" },
+      { url: "/logo.svg", type: "image/svg+xml" },
+      { url: "/logo/niskbuild-icon.svg", type: "image/svg+xml" },
+      { url: "/logo-icon.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: "/logo/icon-180.png",
+  },
 };
 
 export default function RootLayout({

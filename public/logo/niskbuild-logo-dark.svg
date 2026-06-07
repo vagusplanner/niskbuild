@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 48" fill="none" aria-labelledby="niskbuild-logo-title">
+  <title id="niskbuild-logo-title">NiskBuild</title>
+  <g transform="translate(0,4)">
+    <polygon points="20,6 34,14 20,22 6,14" fill="#C8D4F5"/>
+    <polygon points="6,14 20,22 20,36 6,28" fill="#7C3AED"/>
+    <polygon points="20,22 34,14 34,28 20,36" fill="#4F6EF7"/>
+  </g>
+  <text x="48" y="22" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="18" font-weight="800" letter-spacing="0.08em" fill="#FFFFFF">NISK</text>
+  <text x="108" y="22" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="18" font-weight="800" letter-spacing="0.08em" fill="#4F6EF7">BUILD</text>
+</svg>
