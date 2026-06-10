@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { hasPaidTier } from '@/lib/access';
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
@@ -13,15 +15,36 @@ export async function GET(request: Request) {
     );
   }
 
+  let userId: string | null = null;
+
   if (code) {
     const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (error) {
       console.error('Auth callback error:', error.message);
       return NextResponse.redirect(
         new URL('/login?error=auth_failed', requestUrl.origin)
       );
+    }
+
+    userId = data.user?.id ?? null;
+  }
+
+  if (userId) {
+    const admin = createAdminClient();
+    const { data: profile } = await admin
+      .from('profiles')
+      .select('subscription_tier, subscription_status, phone_verified')
+      .eq('id', userId)
+      .single();
+
+    const paid =
+      hasPaidTier(profile?.subscription_tier) &&
+      profile?.subscription_status === 'active';
+
+    if (!paid && !profile?.phone_verified) {
+      return NextResponse.redirect(new URL('/verify-phone', requestUrl.origin));
     }
   }
 

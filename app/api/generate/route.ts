@@ -1,7 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { guardApiRequest } from '@/lib/api-auth';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { canUseLocalOllama, LOCAL_OLLAMA_LOCKED_MESSAGE } from '@/lib/tier-config';
 
 export async function POST(request: NextRequest) {
+  const guard = await guardApiRequest(request, { rateLimit: 10 });
+  if (!guard.ok) return guard.response;
+
   try {
+    const supabase = createAdminClient();
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('subscription_tier')
+      .eq('id', guard.user!.id)
+      .single();
+
+    const tier = profile?.subscription_tier || 'free';
+    if (!canUseLocalOllama(tier)) {
+      return NextResponse.json({ error: LOCAL_OLLAMA_LOCKED_MESSAGE }, { status: 403 });
+    }
+
     const { prompt } = await request.json();
 
     if (!prompt || prompt.trim() === '') {

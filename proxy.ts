@@ -4,11 +4,21 @@ import {
   hasPaidTier,
   isAuthOnlyPath,
   isPaidPath,
+  isPhoneVerifyExemptPath,
+  isPreviewPath,
   isPublicPath,
 } from '@/lib/access';
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const host = request.headers.get('host') || '';
+
+  // preview.niskbuild.com/abc123 → /preview/abc123
+  if (host.startsWith('preview.') && pathname.length > 1 && !pathname.startsWith('/preview/')) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/preview${pathname}`;
+    return NextResponse.rewrite(url);
+  }
 
   // Always allow API routes and static assets
   if (pathname.startsWith('/api') || pathname.startsWith('/_next')) {
@@ -17,7 +27,7 @@ export async function middleware(request: NextRequest) {
 
   const { supabase, supabaseResponse, user } = await updateSession(request);
 
-  if (isPublicPath(pathname)) {
+  if (isPublicPath(pathname) || isPreviewPath(pathname)) {
     return supabaseResponse;
   }
 
@@ -29,17 +39,22 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Signed in — check subscription for paid routes
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('subscription_tier, subscription_status, phone_verified')
+    .eq('id', user.id)
+    .single();
+
+  const tier = profile?.subscription_tier ?? 'free';
+  const paid = hasPaidTier(tier) && profile?.subscription_status === 'active';
+
+  if (!paid && !profile?.phone_verified && !isPhoneVerifyExemptPath(pathname)) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/verify-phone';
+    return NextResponse.redirect(url);
+  }
+
   if (isPaidPath(pathname) || isAuthOnlyPath(pathname)) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('subscription_tier, subscription_status')
-      .eq('id', user.id)
-      .single();
-
-    const tier = profile?.subscription_tier ?? 'free';
-    const paid = hasPaidTier(tier) && profile?.subscription_status === 'active';
-
     if (isPaidPath(pathname) && !paid) {
       const url = request.nextUrl.clone();
       url.pathname = '/pricing';

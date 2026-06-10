@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { signInWithGoogle } from '@/lib/auth';
 import GoogleSignInButton from './GoogleSignInButton';
 import EmailAuthForm from './EmailAuthForm';
+import NiskBuildLogo from './NiskBuildLogo';
 
 interface AuthModalProps {
   open: boolean;
@@ -56,10 +57,10 @@ export default function AuthModal({
         </button>
 
         <div className="text-center mb-6">
-          <div className="w-12 h-12 bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] rounded-xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-white font-bold">NB</span>
+          <div className="flex justify-center mb-4">
+            <NiskBuildLogo variant="full" size="md" showTagline />
           </div>
-          <h2 id="auth-modal-title" className="text-2xl font-bold text-white mb-2">{title}</h2>
+          <h2 id="auth-modal-title" className="text-2xl font-bold text-white mb-2 text-center">{title}</h2>
           <p className="text-nisk-muted text-sm">{subtitle}</p>
         </div>
 

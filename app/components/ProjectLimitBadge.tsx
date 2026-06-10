@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { getProjectLimit, isUnlimitedTier } from '@/lib/project-limits';
 
 interface ProjectLimitBadgeProps {
   userId: string;
@@ -22,32 +23,27 @@ export default function ProjectLimitBadge({ userId, currentCount }: ProjectLimit
       
       const userTier = profile?.subscription_tier || 'free';
       setTier(userTier);
-      
-      const limits: Record<string, number> = {
-        free: 1,
-        pro: 3,
-        agency: 15,
-        scale: 999999,
-        white_label: 999999,
-      };
-      setLimit(limits[userTier] || 1);
+      setLimit(getProjectLimit(userTier));
     };
     
     fetchTier();
   }, [userId]);
 
-  if (tier === 'scale' || tier === 'white_label') {
-    return <span className="text-xs text-emerald-500">📈 Unlimited projects</span>;
+  if (isUnlimitedTier(tier)) {
+    return <span className="text-xs text-[var(--success)]">{currentCount} projects · unlimited plan</span>;
   }
 
-  const percentage = (currentCount / limit) * 100;
+  const percentage = limit > 0 ? (currentCount / limit) * 100 : 0;
   const isNearLimit = percentage >= 80;
+  const atLimit = currentCount >= limit;
 
   return (
-    <div className="flex items-center gap-2">
-      <span className={`text-xs ${isNearLimit ? 'text-yellow-500' : 'text-gray-500'}`}>
-        📊 {currentCount}/{limit} projects used ({tier} tier)
-      </span>
-    </div>
+    <span
+      className={`text-xs ${
+        atLimit ? 'text-[var(--error)]' : isNearLimit ? 'text-yellow-500' : 'text-nisk-muted'
+      }`}
+    >
+      {currentCount}/{limit} projects · {tier} tier
+    </span>
   );
 }

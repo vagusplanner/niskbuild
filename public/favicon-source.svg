@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 48" fill="none" aria-hidden="true">
+  <defs>
+    <linearGradient id="niskN" x1="8" y1="4" x2="32" y2="44" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22D3EE"/>
+      <stop offset="0.45" stop-color="#4F6EF7"/>
+      <stop offset="1" stop-color="#7C3AED"/>
+    </linearGradient>
+  </defs>
+  <path d="M6 4h8v40H6V4z" fill="url(#niskN)"/>
+  <path d="M26 4h8v40h-8V4z" fill="url(#niskN)"/>
+  <path d="M14 4l12 20-12 20V4z" fill="url(#niskN)" opacity="0.92"/>
+  <path d="M14 4h4l8 16-4 4-8-20z" fill="#CFFAFE" opacity="0.35"/>
+</svg>

@@ -4,7 +4,19 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getSafeSession } from '@/lib/supabaseSession';
 import PricingCards from '@/app/components/PricingCards';
+import NiskBuildLogo from '@/app/components/NiskBuildLogo';
+import AppTopNav from '@/app/components/AppTopNav';
 import { PRICING_FAQ } from '@/lib/pricing-tiers';
+import { complexityLabel, formatTemplatePrice } from '@/lib/marketplace-templates';
+
+interface FeaturedTemplate {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  complexity: number;
+  category: string;
+}
 
 export default function LandingPage() {
   const [email, setEmail] = useState('');
@@ -12,8 +24,8 @@ export default function LandingPage() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [waitlistCount, setWaitlistCount] = useState(0);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [featuredTemplates, setFeaturedTemplates] = useState<FeaturedTemplate[]>([]);
 
   useEffect(() => {
     getSafeSession().then((session) => {
@@ -32,6 +44,13 @@ export default function LandingPage() {
       }
     };
     fetchCount();
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/marketplace?featured=true&limit=6')
+      .then((r) => r.json())
+      .then((d) => setFeaturedTemplates(d.templates || []))
+      .catch(() => {});
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -70,75 +89,10 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-nisk text-white">
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-nisk/95 backdrop-blur-sm border-b border-nisk">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Logo */}
-            <a href="/landing" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">NB</span>
-              </div>
-              <span className="text-xl font-bold text-white">NiskBuild</span>
-            </a>
-            
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center space-x-6">
-              <a href="#features" className="text-gray-300 hover:text-[var(--primary)] transition-colors">Features</a>
-              <a href="#templates" className="text-gray-300 hover:text-[var(--primary)] transition-colors">Templates</a>
-              <a href="/pricing" className="text-gray-300 hover:text-[var(--primary)] transition-colors">Pricing</a>
-              {isLoggedIn ? (
-                <Link href="/pricing" className="px-4 py-2 rounded-lg bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-medium transition-all">
-                  View Plans
-                </Link>
-              ) : (
-                <>
-                  <Link href="/login" className="text-gray-300 hover:text-white transition-colors">Sign In</Link>
-                  <Link href="/login" className="px-4 py-2 rounded-lg bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-medium transition-all">
-                    Sign Up
-                  </Link>
-                </>
-              )}
-            </div>
-            
-            {/* Mobile menu button */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden text-gray-300 focus:outline-none"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                {mobileMenuOpen ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                ) : (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                )}
-              </svg>
-            </button>
-          </div>
-        </div>
-        
-        {/* Mobile menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden bg-nisk border-b border-nisk">
-            <div className="px-4 py-3 space-y-3">
-              <a href="#features" className="block text-gray-300 hover:text-[var(--primary)]">Features</a>
-              <a href="#templates" className="block text-gray-300 hover:text-[var(--primary)]">Templates</a>
-              <a href="/pricing" className="block text-gray-300 hover:text-[var(--primary)]">Pricing</a>
-              {isLoggedIn ? (
-                <Link href="/pricing" className="block text-[var(--primary)] font-medium">View Plans</Link>
-              ) : (
-                <>
-                  <Link href="/login" className="block text-gray-300">Sign In</Link>
-                  <Link href="/login" className="block text-[var(--primary)] font-medium">Sign Up</Link>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-      </nav>
+      <AppTopNav variant="marketing" />
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4 relative overflow-hidden">
+      <section className="pt-28 pb-20 px-4 relative overflow-hidden">
         {/* Background grid pattern */}
         <div className="absolute inset-0 opacity-5" style={{
           backgroundImage: 'radial-gradient(circle at 1px 1px, var(--primary) 1px, transparent 0)',
@@ -156,27 +110,31 @@ export default function LandingPage() {
             Export locally. Zero lock-in. Complete ownership.
           </p>
 
+          <p className="text-sm text-nisk-muted mb-6">
+            Marketplace: 2 free starter templates · Premium from $9 · Enterprise suites $49
+          </p>
+
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-10">
             {isLoggedIn ? (
               <Link
-                href="/pricing"
-                className="px-8 py-3 rounded-lg bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-semibold transition-all"
+                href="/builder"
+                className="btn-primary px-8 py-3 rounded-xl text-white font-semibold"
               >
-                Choose a Plan →
+                Open Builder →
               </Link>
             ) : (
               <>
                 <Link
                   href="/login"
-                  className="px-8 py-3 rounded-lg bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-semibold transition-all"
+                  className="btn-primary px-8 py-3 rounded-xl text-white font-semibold"
                 >
                   Get Started — Sign Up
                 </Link>
                 <Link
-                  href="/login"
-                  className="px-8 py-3 rounded-lg border border-[var(--border)] text-white hover:border-[var(--primary)] font-medium transition-all"
+                  href="/marketplace"
+                  className="btn-secondary px-8 py-3 rounded-xl text-white font-medium"
                 >
-                  Sign In
+                  Browse Templates
                 </Link>
               </>
             )}
@@ -281,41 +239,53 @@ export default function LandingPage() {
       <section id="templates" className="py-20 px-4 bg-nisk">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">
-            6 ready-made templates to start instantly
+            Start free. Scale to $49 enterprise templates.
           </h2>
-          <p className="text-nisk-muted text-center mb-4">Launch your next client project in minutes, not weeks</p>
+          <p className="text-nisk-muted text-center mb-2 max-w-2xl mx-auto">
+            Two beginner templates are free forever. Pay once for premium kits — complexity
+            matches price, from simple landing pages to full learning platforms.
+          </p>
           <p className="text-center mb-12">
-            <Link href="/marketplace" className="text-[var(--primary)] hover:underline text-sm font-medium">
-              Browse all templates in Marketplace →
+            <Link href="/marketplace" className="text-[var(--accent-cyan)] hover:underline text-sm font-medium">
+              Browse all 15+ templates in Marketplace →
             </Link>
           </p>
-          
+
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              { name: 'Client Portal', desc: 'Secure access to project updates and files', badge: 'Free' },
-              { name: 'Booking System', desc: 'Appointment scheduling with calendar sync', badge: 'Free' },
-              { name: 'E-commerce Store', desc: 'Product listings, cart, and checkout', badge: 'Pro' },
-              { name: 'Restaurant App', desc: 'Menu, reservations, and online ordering', badge: 'Pro' },
-              { name: 'Coaching Platform', desc: 'Course delivery and client management', badge: 'Pro' },
-              { name: 'CRM for Small Business', desc: 'Contact management and deal pipeline', badge: 'Agency' }
-            ].map((template, i) => (
-              <div key={i} className="bg-nisk-card rounded-xl border border-nisk p-5 hover:border-[var(--primary)]/50 transition-all card-hover flex flex-col">
-                <div className="flex justify-between items-start mb-3">
+            {(featuredTemplates.length > 0
+              ? featuredTemplates
+              : [
+                  { id: '1', name: 'Portfolio Builder', description: 'Single-page creative portfolio', price: 0, complexity: 1, category: 'portfolio' },
+                  { id: '2', name: 'Waitlist Landing Page', description: 'Email capture landing page', price: 0, complexity: 2, category: 'marketing' },
+                  { id: '8', name: 'Ecommerce Dashboard', description: 'Products, orders & revenue charts', price: 25, complexity: 6, category: 'ecommerce' },
+                  { id: '15', name: 'Online Learning Platform', description: 'Full LMS with courses & quizzes', price: 49, complexity: 10, category: 'education' },
+                ]
+            ).map((template) => (
+              <div
+                key={template.id}
+                className="bg-nisk-card rounded-xl border border-nisk p-5 hover:border-[var(--accent-cyan)]/50 transition-all card-hover flex flex-col"
+              >
+                <div className="flex justify-between items-start mb-2 gap-2">
                   <h3 className="font-semibold text-white">{template.name}</h3>
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    template.badge === 'Free' ? 'bg-emerald-500/20 text-emerald-400' :
-                    template.badge === 'Pro' ? 'bg-[var(--primary)]/20 text-[var(--primary)]' :
-                    'bg-[var(--secondary)]/20 text-[var(--secondary)]'
-                  }`}>
-                    {template.badge}
+                  <span
+                    className={`shrink-0 text-xs font-bold px-2 py-1 rounded-lg ${
+                      template.price === 0
+                        ? 'bg-emerald-500/20 text-emerald-400'
+                        : 'bg-[var(--primary)]/20 text-[var(--primary)]'
+                    }`}
+                  >
+                    {formatTemplatePrice(template.price)}
                   </span>
                 </div>
-                <p className="text-nisk-muted text-sm flex-1">{template.desc}</p>
+                <span className="text-[10px] uppercase tracking-wider text-nisk-muted mb-2">
+                  {complexityLabel(template.complexity as 1)} · {template.category}
+                </span>
+                <p className="text-nisk-muted text-sm flex-1">{template.description}</p>
                 <Link
                   href={isLoggedIn ? '/marketplace' : '/login?next=/marketplace'}
-                  className="mt-4 text-sm text-[var(--primary)] hover:underline font-medium"
+                  className="mt-4 text-sm text-[var(--accent-cyan)] hover:underline font-medium"
                 >
-                  Use in Builder →
+                  {template.price === 0 ? 'Use free →' : `View $${template.price} template →`}
                 </Link>
               </div>
             ))}
@@ -431,11 +401,8 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="py-12 px-4 border-t border-nisk">
         <div className="max-w-6xl mx-auto text-center">
-          <div className="mb-4">
-            <span className="text-2xl font-bold bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] bg-clip-text text-transparent">
-              NiskBuild
-            </span>
-            <p className="text-nisk-muted text-sm mt-2">Build anything. Own everything.</p>
+          <div className="mb-4 flex flex-col items-center">
+            <NiskBuildLogo variant="image" size="lg" />
           </div>
           <div className="flex justify-center flex-wrap gap-6 text-sm text-nisk-muted mb-4">
             <Link href="/pricing" className="hover:text-[var(--primary)] transition-colors">Pricing</Link>

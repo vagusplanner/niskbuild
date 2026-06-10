@@ -1,101 +1,135 @@
 "use client";
 
-import { Suspense } from 'react';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { getSafeSession } from '@/lib/supabaseSession';
 import Layout from '@/app/components/Layout';
+import NiskBuildLogo from '@/app/components/NiskBuildLogo';
+import ProjectLimitBadge from '@/app/components/ProjectLimitBadge';
+import PreviewLinksStatus from '@/app/components/PreviewLinksStatus';
+import { MAIN_NAV } from '@/lib/nav-config';
 
-// Inner component that uses useSearchParams
 function DashboardContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [message, setMessage] = useState<string | null>(null);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [countdown, setCountdown] = useState(5);
+  const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
+  const [projectCount, setProjectCount] = useState(0);
+  const [checkoutMsg, setCheckoutMsg] = useState<string | null>(null);
+  const [previewRestoreMsg, setPreviewRestoreMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    const success = searchParams.get('success');
-    const canceled = searchParams.get('canceled');
-    
-    if (success === 'true') {
-      setIsSuccess(true);
-      setMessage('Payment successful! Your account has been upgraded to Pro.');
-      
-      getSafeSession();
-      
-      const interval = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev <= 1) {
-            clearInterval(interval);
-            router.push('/builder');
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-      
-      return () => clearInterval(interval);
-    } else if (canceled === 'true') {
-      setMessage('Payment was canceled.');
-      setTimeout(() => router.push('/pricing'), 3000);
-    } else {
-      router.push('/builder');
-    }
-  }, [searchParams, router]);
+    getSafeSession().then((s) => {
+      if (!s?.user) {
+        router.replace('/login?next=/dashboard');
+        return;
+      }
+      setUser(s.user);
+    });
 
-  if (!message) {
+    fetch('/api/projects')
+      .then((r) => r.json())
+      .then((d) => setProjectCount(d.projects?.length ?? 0))
+      .catch(() => {});
+
+    if (searchParams.get('success') === 'true') {
+      setCheckoutMsg('Payment successful! Your plan is now active.');
+    }
+  }, [router, searchParams]);
+
+  if (!user) {
     return (
-      <Layout showFooter={false}>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <div className="w-8 h-8 border-4 border-[var(--secondary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-nisk-muted">Loading...</p>
-          </div>
-        </div>
-      </Layout>
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="w-8 h-8 border-4 border-[var(--accent-cyan)] border-t-transparent rounded-full animate-spin" />
+      </div>
     );
   }
 
+  const quickLinks = MAIN_NAV.filter((n) => n.href !== '/dashboard');
+
   return (
-    <Layout showFooter={false}>
-      <div className="flex items-center justify-center min-h-[60vh] p-4">
-      <div className="max-w-md w-full bg-nisk-card rounded-xl border border-nisk p-8 text-center">
-        {isSuccess ? (
-          <>
-            <div className="text-6xl mb-4">🎉</div>
-            <h1 className="text-2xl font-bold text-emerald-400 mb-4">Upgrade Successful!</h1>
-            <p className="text-gray-300 mb-6">{message}</p>
-            <p className="text-gray-500 text-sm">Redirecting in {countdown} seconds...</p>
-          </>
-        ) : (
-          <>
-            <div className="text-6xl mb-4">😞</div>
-            <h1 className="text-2xl font-bold text-red-400 mb-4">Payment Canceled</h1>
-            <p className="text-gray-300 mb-6">{message}</p>
-            <p className="text-gray-500 text-sm">Redirecting...</p>
-          </>
+    <div className="max-w-4xl mx-auto py-8">
+      <div className="mb-10">
+        <NiskBuildLogo variant="lockup" size="md" />
+        <h1 className="text-3xl font-bold text-white mt-6">Welcome back</h1>
+        <p className="text-nisk-muted mt-1">{user.email}</p>
+        {checkoutMsg && (
+          <p className="mt-3 text-sm text-[var(--success)] bg-[var(--success)]/10 border border-[var(--success)]/30 rounded-lg px-4 py-2">
+            {checkoutMsg}
+          </p>
+        )}
+        {previewRestoreMsg && (
+          <p className="mt-3 text-sm text-[var(--accent-cyan)] bg-[var(--accent-cyan)]/10 border border-[var(--accent-cyan)]/30 rounded-lg px-4 py-2">
+            {previewRestoreMsg}
+          </p>
         )}
       </div>
+
+      <div className="grid sm:grid-cols-2 gap-4 mb-8">
+        <Link
+          href="/builder"
+          className="group p-6 rounded-2xl border border-nisk bg-nisk-card hover:border-[var(--accent-cyan)] transition-all card-hover"
+        >
+          <span className="text-2xl">⚡</span>
+          <h2 className="text-lg font-semibold text-white mt-3 group-hover:text-[var(--accent-cyan)]">
+            Open Builder
+          </h2>
+          <p className="text-sm text-nisk-muted mt-1">Start building with AI — large preview, resizable panels.</p>
+        </Link>
+        <Link
+          href="/marketplace"
+          className="group p-6 rounded-2xl border border-nisk bg-nisk-card hover:border-[var(--primary)] transition-all card-hover"
+        >
+          <span className="text-2xl">🏪</span>
+          <h2 className="text-lg font-semibold text-white mt-3">Marketplace</h2>
+          <p className="text-sm text-nisk-muted mt-1">Load templates into your workspace instantly.</p>
+        </Link>
       </div>
-    </Layout>
+
+      <div className="bg-nisk-card border border-nisk rounded-2xl p-6 mb-8">
+        <h3 className="text-sm font-semibold text-white mb-3">Usage</h3>
+        <ProjectLimitBadge userId={user.id} currentCount={projectCount} />
+        <p className="text-xs text-nisk-muted mt-2">{projectCount} saved project{projectCount !== 1 ? 's' : ''}</p>
+        <div className="mt-4 pt-4 border-t border-nisk">
+          <p className="text-xs text-nisk-muted uppercase tracking-wider mb-2">Preview links</p>
+          <PreviewLinksStatus
+            onRestoreNotice={(count) =>
+              setPreviewRestoreMsg(
+                `Welcome back — your ${count} preview link${count !== 1 ? 's are' : ' is'} live again.`
+              )
+            }
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {quickLinks.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl border border-nisk bg-nisk-surface hover:border-[var(--primary)]/50 transition-all text-sm text-gray-300 hover:text-white"
+          >
+            <span>{item.icon}</span>
+            {item.label}
+          </Link>
+        ))}
+      </div>
+    </div>
   );
 }
 
-// Wrap the content in a Suspense boundary
 export default function DashboardPage() {
   return (
-    <Suspense fallback={
-      <Layout showFooter={false}>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <div className="w-8 h-8 border-4 border-[var(--secondary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-nisk-muted">Loading dashboard...</p>
+    <Layout showFooter={false}>
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center min-h-[50vh]">
+            <div className="w-8 h-8 border-4 border-[var(--accent-cyan)] border-t-transparent rounded-full animate-spin" />
           </div>
-        </div>
-      </Layout>
-    }>
-      <DashboardContent />
-    </Suspense>
+        }
+      >
+        <DashboardContent />
+      </Suspense>
+    </Layout>
   );
 }

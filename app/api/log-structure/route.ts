@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
+import { guardApiRequest } from '@/lib/api-auth';
 
 // In-memory storage for development
 let structuralLogs: any[] = [];
 
 export async function POST(request: NextRequest) {
+  const guard = await guardApiRequest(request);
+  if (!guard.ok) return guard.response;
+
   try {
     const { templateId, success, stepsCount, durationSeconds, integrations } = await request.json();
 
@@ -55,6 +59,9 @@ export async function POST(request: NextRequest) {
 
 // GET endpoint for admin insights
 export async function GET(request: NextRequest) {
+  const guard = await guardApiRequest(request);
+  if (!guard.ok) return guard.response;
+
   const totalBuilds = structuralLogs.length;
   const successfulBuilds = structuralLogs.filter(l => l.success).length;
   const successRate = totalBuilds > 0 ? (successfulBuilds / totalBuilds * 100).toFixed(1) : 0;

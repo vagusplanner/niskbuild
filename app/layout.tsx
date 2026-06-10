@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import CommandPalette from "./components/CommandPalette";
+import SessionHeartbeat from "./components/SessionHeartbeat";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -19,9 +21,8 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "32x32", type: "image/x-icon" },
+      { url: "/logo/niskbuild-n-icon.svg", type: "image/svg+xml" },
       { url: "/logo.svg", type: "image/svg+xml" },
-      { url: "/logo/niskbuild-icon.svg", type: "image/svg+xml" },
-      { url: "/logo-icon.png", sizes: "32x32", type: "image/png" },
     ],
     apple: "/logo/icon-180.png",
   },
@@ -37,7 +38,11 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <CommandPalette />
+        <SessionHeartbeat />
+        {children}
+      </body>
     </html>
   );
 }

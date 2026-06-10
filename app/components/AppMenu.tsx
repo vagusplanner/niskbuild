@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { getSafeSession } from '@/lib/supabaseSession';
 import AuthButton from './AuthButton';
+import NiskBuildLogo from './NiskBuildLogo';
 
 interface User {
   id: string;
@@ -25,6 +26,7 @@ const BASE_NAV = [
   { href: '/builder', label: 'Builder' },
   { href: '/marketplace', label: 'Marketplace' },
   { href: '/pricing', label: 'Pricing' },
+  { href: '/dashboard/settings', label: 'Settings' },
   { href: '/landing', label: 'Landing' },
 ];
 
@@ -91,10 +93,7 @@ export default function AppMenu({ variant = 'app', showAuth = true }: AppMenuPro
         className="flex items-center gap-2 bg-[var(--card-bg)]/90 backdrop-blur-md border border-[var(--border)] rounded-xl px-3 py-2 shadow-lg hover:border-[var(--primary)]/40 transition-colors"
         aria-label="Open menu"
       >
-        <div className="w-7 h-7 bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] rounded-lg flex items-center justify-center shrink-0">
-          <span className="text-white font-bold text-xs">NB</span>
-        </div>
-        <span className="font-semibold text-white text-sm hidden sm:inline">NiskBuild</span>
+        <NiskBuildLogo variant="full" size="micro" />
         <svg
           className={`w-4 h-4 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}
           fill="none"

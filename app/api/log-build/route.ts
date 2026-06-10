@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
-import { supabase } from '@/lib/supabaseClient';
+import { guardApiRequest } from '@/lib/api-auth';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 // Helper: Create anonymous session ID (one-way hash, cannot be reversed)
 function createAnonymousId(userId: string | null, sessionId: string): string {
@@ -47,10 +48,13 @@ function applyDifferentialPrivacy(value: boolean): boolean {
 }
 
 export async function POST(request: NextRequest) {
+  const guard = await guardApiRequest(request, { rateLimit: 30 });
+  if (!guard.ok) return guard.response;
+
   try {
     const body = await request.json();
+    const userId = guard.user!.id;
     const {
-      userId,
       sessionId,
       appCategory,
       prompts,
@@ -80,7 +84,7 @@ export async function POST(request: NextRequest) {
     // Apply differential privacy
     const privateExportedLocally = applyDifferentialPrivacy(exportedLocally);
 
-    // Insert into Supabase
+    const supabase = createAdminClient();
     const { error } = await supabase
       .from('metadata_logs')
       .insert([

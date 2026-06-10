@@ -1,4 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { guardApiRequest } from '@/lib/api-auth';
+import 'server-only';
 import Groq from 'groq-sdk';
 import OpenAI from 'openai';
 
@@ -35,7 +37,10 @@ if (process.env.TOGETHER_API_KEY) {
   });
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const guard = await guardApiRequest(request);
+  if (!guard.ok) return guard.response;
+
   const status = {
     groq: false,
     anthropic: false,

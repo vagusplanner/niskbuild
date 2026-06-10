@@ -5,9 +5,10 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signInWithGoogle } from '@/lib/auth';
 import { getSafeSession } from '@/lib/supabaseSession';
-import AppMenu from '@/app/components/AppMenu';
+import AppTopNav from '@/app/components/AppTopNav';
 import GoogleSignInButton from '@/app/components/GoogleSignInButton';
 import EmailAuthForm from '@/app/components/EmailAuthForm';
+import NiskBuildLogo from '@/app/components/NiskBuildLogo';
 
 function LoginContent() {
   const [loading, setLoading] = useState(false);
@@ -56,10 +57,10 @@ function LoginContent() {
     <div className="flex-1 flex items-center justify-center px-4 pt-20 pb-12">
       <div className="w-full max-w-md bg-nisk-card border border-nisk rounded-2xl p-8 shadow-xl">
         <div className="text-center mb-6">
-          <div className="w-12 h-12 bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] rounded-xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-white font-bold">NB</span>
+          <div className="flex justify-center mb-4">
+            <NiskBuildLogo variant="image" size="lg" />
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2">Sign in to NiskBuild</h1>
+          <h1 className="text-2xl font-bold text-white mb-2 text-center">Sign in to NiskBuild</h1>
           <p className="text-nisk-muted text-sm">
             Sign in or create an account. After that, choose a plan to unlock the builder and marketplace.
           </p>
@@ -95,7 +96,7 @@ function LoginContent() {
 export default function LoginPage() {
   return (
     <div className="min-h-screen bg-nisk flex flex-col">
-      <AppMenu variant="app" showAuth={false} />
+      <AppTopNav variant="marketing" />
       <Suspense fallback={
         <div className="flex-1 flex items-center justify-center">
           <div className="w-8 h-8 border-4 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />

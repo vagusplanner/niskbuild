@@ -3,10 +3,13 @@
 :root {
   --background: #0B0F19;
   --foreground: #E2E8F0;
+  --accent-cyan: #22D3EE;
+  --accent-cyan-hover: #06B6D4;
   --primary: #4F6EF7;
   --primary-hover: #3B5BD9;
   --secondary: #7C3AED;
   --secondary-hover: #6D28D9;
+  --brand-gradient: linear-gradient(135deg, #22D3EE 0%, #4F6EF7 50%, #7C3AED 100%);
   --success: #22C55E;
   --error: #EF4444;
   --border: #1F2937;
@@ -126,6 +129,58 @@ pre, code {
 /* Custom gradient backgrounds */
 .bg-gradient-nisk {
   background: linear-gradient(135deg, #0B0F19 0%, #1a1f2e 100%);
+}
+
+.bg-gradient-brand {
+  background: var(--brand-gradient);
+}
+
+.text-gradient-brand {
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Modern button system */
+.btn-primary {
+  background: var(--brand-gradient);
+  color: white;
+  font-weight: 600;
+  transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+  box-shadow: 0 2px 12px rgba(79, 110, 247, 0.25);
+}
+.btn-primary:hover:not(:disabled) {
+  opacity: 0.92;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(34, 211, 238, 0.2);
+}
+.btn-secondary {
+  background: var(--surface-elevated);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  font-weight: 500;
+  transition: all 0.2s;
+}
+.btn-secondary:hover:not(:disabled) {
+  border-color: var(--accent-cyan);
+  color: white;
+}
+.btn-ghost {
+  color: var(--muted);
+  transition: color 0.2s;
+}
+.btn-ghost:hover {
+  color: white;
+}
+.btn-success {
+  background: var(--success);
+  color: white;
+  font-weight: 600;
+  transition: opacity 0.2s;
+}
+.btn-success:hover:not(:disabled) {
+  opacity: 0.9;
 }
 
 /* Card hover effect */

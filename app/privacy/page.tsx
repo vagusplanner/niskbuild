@@ -70,7 +70,7 @@ export default function PrivacyPage() {
               <li>Access your personal data</li>
               <li>Correct inaccurate data</li>
               <li>Delete your account and associated data</li>
-              <li>Opt out of anonymous telemetry (toggle in Node Config)</li>
+              <li>Opt out of anonymous telemetry (Settings → Privacy &amp; Analytics)</li>
               <li>Export your project data as ZIP</li>
             </ul>
           </section>

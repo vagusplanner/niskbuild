@@ -1,8 +1,13 @@
-import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { NextRequest, NextResponse } from 'next/server';
+import { guardApiRequest } from '@/lib/api-auth';
+import { createAdminClient } from '@/lib/supabase/admin';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const guard = await guardApiRequest(request, { requireAuth: false, rateLimit: 30 });
+  if (!guard.ok) return guard.response;
+
   try {
+    const supabase = createAdminClient();
     const { count, error } = await supabase
       .from('waitlist')
       .select('*', { count: 'exact', head: true });

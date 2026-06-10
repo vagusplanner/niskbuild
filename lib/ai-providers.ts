@@ -1,4 +1,7 @@
+import 'server-only';
+
 import Groq from 'groq-sdk';
+import { canUseLocalOllama } from '@/lib/tier-config';
 import Anthropic from '@anthropic-ai/sdk';
 
 // Initialize Groq (primary for free/pro users)
@@ -41,6 +44,12 @@ export interface AIResponse {
   error?: string;
 }
 
+export interface UserKeyOptions {
+  useOwnKeys?: boolean;
+  openaiKey?: string | null;
+  anthropicKey?: string | null;
+}
+
 // System prompt for code generation
 const SYSTEM_PROMPT = `You are an expert web developer. Generate ONLY complete HTML/CSS/JavaScript code. 
 No explanations. No markdown. Start directly with <!DOCTYPE html>. 
@@ -67,28 +76,30 @@ async function generateWithGroq(prompt: string): Promise<AIResponse> {
   }
 }
 
-// Generate with Anthropic Claude (premium, high quality)
-async function generateWithAnthropic(prompt: string): Promise<AIResponse> {
-  // Check if API key exists
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return { success: false, code: '', provider: 'anthropic', error: 'Anthropic API key not configured' };
-  }
-  
+async function generateWithAnthropicKey(prompt: string, apiKey: string): Promise<AIResponse> {
   try {
-    const message = await anthropic.messages.create({
-      model: 'claude-3-sonnet-20240229', // Best for coding tasks
+    const client = new Anthropic({ apiKey });
+    const message = await client.messages.create({
+      model: 'claude-3-sonnet-20240229',
       max_tokens: 4096,
       temperature: 0.7,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: prompt }],
     });
-    
     const code = message.content[0].type === 'text' ? message.content[0].text : '';
     return { success: true, code, provider: 'anthropic' };
-  } catch (error: any) {
-    console.error('Anthropic Claude error:', error.message);
-    return { success: false, code: '', provider: 'anthropic', error: error.message };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Anthropic error';
+    return { success: false, code: '', provider: 'anthropic', error: msg };
   }
+}
+
+// Generate with Anthropic Claude (premium, high quality)
+async function generateWithAnthropic(prompt: string): Promise<AIResponse> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return { success: false, code: '', provider: 'anthropic', error: 'Anthropic API key not configured' };
+  }
+  return generateWithAnthropicKey(prompt, process.env.ANTHROPIC_API_KEY);
 }
 
 // Generate with Together AI (backup)
@@ -116,14 +127,11 @@ async function generateWithTogether(prompt: string): Promise<AIResponse> {
   }
 }
 
-// Generate with OpenAI GPT-4 (last resort)
-async function generateWithOpenAI(prompt: string): Promise<AIResponse> {
-  if (!openai) {
-    return { success: false, code: '', provider: 'openai', error: 'OpenAI not configured' };
-  }
-  
+async function generateWithOpenAIKey(prompt: string, apiKey: string): Promise<AIResponse> {
   try {
-    const completion = await openai.chat.completions.create({
+    const OpenAI = require('openai');
+    const client = new OpenAI({ apiKey });
+    const completion = await client.chat.completions.create({
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: prompt },
@@ -132,13 +140,23 @@ async function generateWithOpenAI(prompt: string): Promise<AIResponse> {
       temperature: 0.7,
       max_tokens: 4096,
     });
-    
     const code = completion.choices[0]?.message?.content || '';
     return { success: true, code, provider: 'openai' };
-  } catch (error: any) {
-    console.error('OpenAI error:', error.message);
-    return { success: false, code: '', provider: 'openai', error: error.message };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'OpenAI error';
+    return { success: false, code: '', provider: 'openai', error: msg };
   }
+}
+
+// Generate with OpenAI GPT-4 (last resort)
+async function generateWithOpenAI(prompt: string): Promise<AIResponse> {
+  if (!openai) {
+    return { success: false, code: '', provider: 'openai', error: 'OpenAI not configured' };
+  }
+  if (!process.env.OPENAI_API_KEY) {
+    return { success: false, code: '', provider: 'openai', error: 'OpenAI not configured' };
+  }
+  return generateWithOpenAIKey(prompt, process.env.OPENAI_API_KEY);
 }
 
 // Generate with Local Ollama (free, private)
@@ -167,25 +185,52 @@ async function generateWithLocal(prompt: string): Promise<AIResponse> {
 
 // Tier-based provider ordering
 export function getProviderOrder(tier: string): AIProvider[] {
+  const local = canUseLocalOllama(tier) ? (['local'] as AIProvider[]) : [];
+
   switch (tier) {
     case 'agency':
     case 'scale':
     case 'white_label':
-      // Premium tiers: Claude first, then Groq, then Together, then local
-      return ['anthropic', 'groq', 'together', 'local'];
+    case 'sovereign':
+      return ['anthropic', 'groq', 'together', ...local];
     case 'pro':
-      // Pro tier: Groq first, then Together, then local (no Claude)
-      return ['groq', 'together', 'local'];
+      return ['groq', 'together'];
     default:
-      // Free tier: Groq only, then local
-      return ['groq', 'local'];
+      return ['groq', 'together'];
   }
 }
 
+async function generateWithUserKeys(
+  prompt: string,
+  keys: UserKeyOptions
+): Promise<AIResponse | null> {
+  if (!keys.useOwnKeys) return null;
+
+  if (keys.anthropicKey?.trim()) {
+    const result = await generateWithAnthropicKey(prompt, keys.anthropicKey.trim());
+    if (result.success) return result;
+  }
+  if (keys.openaiKey?.trim()) {
+    const result = await generateWithOpenAIKey(prompt, keys.openaiKey.trim());
+    if (result.success) return result;
+  }
+  return null;
+}
+
 // Main function - tries providers based on user tier
-export async function generateCode(prompt: string, userTier: string = 'free'): Promise<AIResponse> {
+export async function generateCode(
+  prompt: string,
+  userTier: string = 'free',
+  userKeys?: UserKeyOptions
+): Promise<AIResponse> {
+  const ownResult = await generateWithUserKeys(prompt, userKeys ?? {});
+  if (ownResult) {
+    console.log('✅ Generated with user-owned API key');
+    return ownResult;
+  }
+
   const providers = getProviderOrder(userTier);
-  
+
   for (const provider of providers) {
     console.log(`🔄 [${userTier} tier] Trying ${provider}...`);
     

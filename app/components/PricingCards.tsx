@@ -26,7 +26,7 @@ function tierButtonClass(tier: PricingTier, variant: 'landing' | 'page') {
 
 export default function PricingCards({ variant = 'page', loadingTier, onSubscribe }: PricingCardsProps) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
       {PRICING_TIERS.map((tier) => (
         <div
           key={tier.name}
@@ -65,6 +65,13 @@ export default function PricingCards({ variant = 'page', loadingTier, onSubscrib
             >
               {tier.tier ? tier.buttonText : 'Get Started Free'}
             </Link>
+          ) : tier.contactSales ? (
+            <a
+              href={`mailto:hello@niskbuild.com?subject=${encodeURIComponent(`${tier.name} plan inquiry`)}`}
+              className={`w-full py-2.5 rounded-lg font-medium text-sm transition-all text-center block ${tierButtonClass(tier, 'page')}`}
+            >
+              {tier.buttonText}
+            </a>
           ) : (
             <button
               onClick={() => tier.tier && onSubscribe?.(tier.tier)}

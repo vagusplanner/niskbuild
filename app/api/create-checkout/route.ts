@@ -1,27 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { guardApiRequest } from '@/lib/api-auth';
+import { getStripePriceId } from '@/lib/stripe-price-ids';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-
-// Map tier to price ID
-const getPriceId = (tier: string): string => {
-  switch (tier) {
-    case 'pro':
-      return process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID!;
-    case 'agency':
-      return process.env.NEXT_PUBLIC_STRIPE_AGENCY_PRICE_ID!;
-    case 'scale':
-      return process.env.NEXT_PUBLIC_STRIPE_SCALE_PRICE_ID!;
-    case 'white_label':
-      return process.env.NEXT_PUBLIC_STRIPE_WHITE_PRICE_ID!;
-    default:
-      return process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID!;
-  }
-};
+const stripeSecret = process.env.STRIPE_SECRET_KEY?.trim();
+const stripe = stripeSecret ? new Stripe(stripeSecret) : null;
 
 export async function POST(request: NextRequest) {
+  const guard = await guardApiRequest(request);
+  if (!guard.ok) return guard.response;
+
+  if (!stripe) {
+    return NextResponse.json(
+      { error: 'Stripe is not configured. Set STRIPE_SECRET_KEY.' },
+      { status: 503 }
+    );
+  }
+
   try {
-    const { userId, email, tier, successUrl, cancelUrl } = await request.json();
+    const { tier, successUrl, cancelUrl } = await request.json();
+    const userId = guard.user!.id;
+    const email = guard.user!.email;
 
     if (!email) {
       return NextResponse.json(
@@ -30,12 +29,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const priceId = getPriceId(tier);
-    
+    if (!tier || typeof tier !== 'string') {
+      return NextResponse.json({ error: 'Subscription tier is required' }, { status: 400 });
+    }
+
+    const priceId = getStripePriceId(tier);
+    if (!priceId) {
+      return NextResponse.json(
+        {
+          error:
+            tier === 'sovereign' || tier === 'white_label'
+              ? 'This plan requires a sales call. Email hello@niskbuild.com to get started.'
+              : `Checkout is not configured for the ${tier} plan. Contact support.`,
+        },
+        { status: 400 }
+      );
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
       customer_email: email,
+      subscription_data: {
+        metadata: { tier, userId },
+      },
       line_items: [
         {
           price: priceId,
@@ -45,7 +62,7 @@ export async function POST(request: NextRequest) {
       success_url: successUrl || `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=true`,
       cancel_url: cancelUrl || `${process.env.NEXT_PUBLIC_APP_URL}/pricing?canceled=true`,
       metadata: {
-        userId: userId || '',
+        userId,
         tier: tier,
       },
     });
@@ -53,9 +70,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ sessionId: session.id, url: session.url });
   } catch (error) {
     console.error('Stripe error:', error);
-    return NextResponse.json(
-      { error: 'Failed to create checkout session' },
-      { status: 500 }
-    );
+    const stripeMessage =
+      error instanceof Stripe.errors.StripeError ? error.message : null;
+    const message =
+      process.env.NODE_ENV === 'development' && stripeMessage
+        ? stripeMessage
+        : 'Failed to create checkout session';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

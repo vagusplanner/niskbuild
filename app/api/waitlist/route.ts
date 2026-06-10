@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { guardApiRequest } from '@/lib/api-auth';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export async function POST(request: NextRequest) {
+  const guard = await guardApiRequest(request, { requireAuth: false, rateLimit: 10 });
+  if (!guard.ok) return guard.response;
+
   try {
+    const supabase = createAdminClient();
     const body = await request.json();
     const { email, source } = body;
 

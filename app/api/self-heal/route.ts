@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 import OpenAI from 'openai';
-import { supabase } from '@/lib/supabaseClient';
+import { guardApiRequest } from '@/lib/api-auth';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { deductCloudCredit } from '@/lib/credits';
+import { recordAnonymousTelemetry } from '@/lib/record-telemetry';
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
@@ -14,32 +17,13 @@ const together = new OpenAI({
 
 // Get user's plan from Supabase
 async function getUserPlan(userId: string): Promise<string> {
+  const supabase = createAdminClient();
   const { data } = await supabase
     .from('profiles')
     .select('subscription_tier')
     .eq('id', userId)
     .single();
   return data?.subscription_tier || 'free';
-}
-
-// Check and deduct cloud credits
-async function deductCredit(userId: string): Promise<boolean> {
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('cloud_credits_remaining, subscription_tier')
-    .eq('id', userId)
-    .single();
-  
-  if (profile?.cloud_credits_remaining <= 0 && profile?.subscription_tier !== 'pro') {
-    return false;
-  }
-  
-  await supabase
-    .from('profiles')
-    .update({ cloud_credits_remaining: (profile?.cloud_credits_remaining || 0) - 1 })
-    .eq('id', userId);
-  
-  return true;
 }
 
 // Get model based on user plan
@@ -98,18 +82,21 @@ async function generateWithTogether(prompt: string): Promise<string | null> {
 
 // Main API handler
 export async function POST(request: NextRequest) {
+  const guard = await guardApiRequest(request);
+  if (!guard.ok) return guard.response;
+
   try {
-    const { prompt, userId } = await request.json();
+    const { prompt } = await request.json();
+    const userId = guard.user!.id;
 
     if (!prompt || prompt.trim() === '') {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
 
-    // Check user has credits
-    const hasCredits = await deductCredit(userId);
-    if (!hasCredits) {
+    const creditResult = await deductCloudCredit(userId);
+    if (!creditResult.ok) {
       return NextResponse.json(
-        { error: 'Insufficient cloud credits. Upgrade your plan or use Local Core mode.' },
+        { error: creditResult.error || 'Insufficient cloud credits.' },
         { status: 402 }
       );
     }
@@ -132,23 +119,39 @@ export async function POST(request: NextRequest) {
 
     // If both fail, return friendly error
     if (!code) {
+      await recordAnonymousTelemetry(
+        {
+          prompt,
+          aiModelUsed: usedProvider,
+          generationSuccess: false,
+        },
+        userId
+      );
+
       return NextResponse.json(
-        { 
+        {
           error: 'Our AI engines are experiencing high demand. Please retry in 30 seconds.',
           retryAfter: 30,
-          prompt: prompt 
         },
         { status: 503 }
       );
     }
 
-    // Log which provider was used (for analytics)
-    console.log(`✅ Generated with ${usedProvider} for user ${userId}`);
+    await recordAnonymousTelemetry(
+      {
+        prompt,
+        generatedCode: code,
+        aiModelUsed: model,
+        generationSuccess: true,
+      },
+      userId
+    );
 
-    return NextResponse.json({ 
-      success: true, 
-      code: code,
+    return NextResponse.json({
+      success: true,
+      code,
       provider: usedProvider,
+      attempts: 1,
     });
     
   } catch (error) {

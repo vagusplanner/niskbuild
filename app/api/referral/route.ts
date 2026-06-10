@@ -1,20 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { guardApiRequest } from '@/lib/api-auth';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 // Get user's referral info
 export async function GET(request: NextRequest) {
+  const guard = await guardApiRequest(request);
+  if (!guard.ok) return guard.response;
+
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-    
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID required' }, { status: 400 });
-    }
-    
+    const supabase = createAdminClient();
     const { data: profile } = await supabase
       .from('profiles')
       .select('referral_code, referral_count, referral_rewards')
-      .eq('id', userId)
+      .eq('id', guard.user!.id)
       .single();
     
     return NextResponse.json(profile);
@@ -25,10 +23,14 @@ export async function GET(request: NextRequest) {
 
 // Create referral record when someone signs up with code
 export async function POST(request: NextRequest) {
+  const guard = await guardApiRequest(request);
+  if (!guard.ok) return guard.response;
+
   try {
-    const { referrerCode, referredEmail, referredUserId } = await request.json();
-    
-    // Find referrer by code
+    const { referrerCode, referredEmail } = await request.json();
+    const referredUserId = guard.user!.id;
+    const supabase = createAdminClient();
+
     const { data: referrer } = await supabase
       .from('profiles')
       .select('id')

@@ -1,17 +1,32 @@
-export const PUBLIC_PATHS = ['/', '/landing', '/login', '/auth/callback', '/privacy', '/terms'];
+export const PUBLIC_PATHS = ['/', '/landing', '/login', '/signup', '/auth/callback', '/privacy', '/terms'];
+
+/** Public shareable preview pages (no auth) */
+export function isPreviewPath(pathname: string) {
+  return pathname.startsWith('/preview/');
+}
+
+/** Paths free users may access before phone verification */
+export const PHONE_VERIFY_EXEMPT_PATHS = [
+  '/verify-phone',
+  '/dashboard/settings',
+  '/pricing',
+  '/login',
+  '/auth/callback',
+  ...PUBLIC_PATHS,
+];
 
 export const AUTH_PATHS = ['/pricing', '/dashboard'];
 
 export const PAID_PATH_PREFIXES = ['/builder', '/marketplace', '/admin'];
 
-export const PAID_TIERS = ['pro', 'agency', 'scale', 'white_label'] as const;
+export const PAID_TIERS = ['pro', 'agency', 'scale', 'white_label', 'sovereign'] as const;
 
 export function isPublicPath(pathname: string) {
   return PUBLIC_PATHS.includes(pathname);
 }
 
 export function isAuthOnlyPath(pathname: string) {
-  return AUTH_PATHS.includes(pathname);
+  return AUTH_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
 export function isPaidPath(pathname: string) {
@@ -20,4 +35,10 @@ export function isPaidPath(pathname: string) {
 
 export function hasPaidTier(tier: string | null | undefined) {
   return !!tier && PAID_TIERS.includes(tier as (typeof PAID_TIERS)[number]);
+}
+
+export function isPhoneVerifyExemptPath(pathname: string) {
+  return PHONE_VERIFY_EXEMPT_PATHS.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`)
+  );
 }

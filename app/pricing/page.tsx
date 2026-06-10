@@ -5,7 +5,9 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { getSafeSession } from '@/lib/supabaseSession';
 import Layout from '@/app/components/Layout';
+import NiskBuildLogo from '@/app/components/NiskBuildLogo';
 import PricingCards from '@/app/components/PricingCards';
+import ReloadPacks from '@/app/components/ReloadPacks';
 import { PRICING_FAQ } from '@/lib/pricing-tiers';
 
 function PricingContent() {
@@ -35,22 +37,25 @@ function PricingContent() {
       const response = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
-          userId: user.id,
-          email: user.email,
           tier,
           successUrl: `${window.location.origin}/dashboard?success=true`,
           cancelUrl: `${window.location.origin}/pricing?canceled=true`,
         }),
       });
 
-      const { url, error } = await response.json();
+      const data = await response.json();
+      const { url, error } = data;
 
-      if (error) throw new Error(error);
+      if (!response.ok || error) {
+        throw new Error(error || 'Checkout failed');
+      }
       if (url) window.location.href = url;
     } catch (error) {
       console.error('Checkout error:', error);
-      alert('Something went wrong. Please try again.');
+      const message = error instanceof Error ? error.message : 'Something went wrong. Please try again.';
+      alert(message);
     } finally {
       setLoading(null);
     }
@@ -59,6 +64,10 @@ function PricingContent() {
   return (
     <Layout>
       <div className="max-w-7xl mx-auto">
+        <div className="flex justify-center mb-8">
+          <NiskBuildLogo href="/landing" variant="full" size="md" showTagline />
+        </div>
+
         {/* Hero */}
         <div className="text-center mb-14 relative">
           <div
@@ -107,6 +116,8 @@ function PricingContent() {
         </div>
 
         {/* FAQ */}
+        <ReloadPacks />
+
         <div className="mt-16 pt-12 border-t border-nisk">
           <h2 className="text-2xl font-bold text-white text-center mb-8">Frequently asked questions</h2>
           <div className="max-w-3xl mx-auto space-y-3">
