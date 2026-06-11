@@ -44,7 +44,7 @@ export default function ReloadPacks() {
               </span>
             </p>
             <p className="text-xs text-nisk-muted mt-2 flex-1">
-              ${(pack.priceUsd / pack.credits).toFixed(3)}/credit — {pack.description}
+              {pack.pricePerCredit}/credit — {pack.description}
             </p>
             <button
               type="button"

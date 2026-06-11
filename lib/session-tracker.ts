@@ -1,13 +1,17 @@
-import { createHash, randomBytes } from 'crypto';
+import { createHash } from 'crypto';
 import 'server-only';
 
 import { createAdminClient } from '@/lib/supabase/admin';
-import { sendNewLoginEmail } from '@/lib/session-email';
+import { getSessionLimit, SESSION_LIMITS } from '@/lib/tier-config';
+
+export { SESSION_LIMITS };
 
 export const ACTIVE_WINDOW_MINUTES = 30;
-export const MAX_CONCURRENT_SESSIONS = 2;
 export const INACTIVE_CLEANUP_HOURS = 24;
 export const PENDING_APPROVAL_HOURS = 1;
+
+/** @deprecated Use getUserSessionLimit — kept for imports that referenced the old cap */
+export const MAX_CONCURRENT_SESSIONS = 2;
 
 export function hashSessionToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
@@ -15,6 +19,14 @@ export function hashSessionToken(token: string): string {
 
 export function hashDeviceFingerprint(raw: string): string {
   return createHash('sha256').update(raw).digest('hex');
+}
+
+/** Server-side fingerprint from request headers */
+export function generateDeviceFingerprint(userAgent: string, ip: string): string {
+  return createHash('sha256')
+    .update(`${userAgent}-${ip}`)
+    .digest('hex')
+    .substring(0, 32);
 }
 
 export type SessionRecord = {
@@ -27,7 +39,7 @@ export type SessionRecord = {
 };
 
 export type RegisterSessionResult =
-  | { ok: true; sessionId?: string }
+  | { ok: true; sessionId?: string; evicted?: boolean }
   | {
       ok: false;
       error: string;
@@ -35,25 +47,59 @@ export type RegisterSessionResult =
       blocked?: boolean;
     };
 
-function appOrigin(): string {
-  return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+export async function getUserSessionLimit(userId: string): Promise<number> {
+  const supabase = createAdminClient();
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('subscription_tier')
+    .eq('id', userId)
+    .maybeSingle();
+
+  return getSessionLimit(profile?.subscription_tier);
+}
+
+async function countActiveSessions(userId: string): Promise<number> {
+  const supabase = createAdminClient();
+  const activeSince = new Date(
+    Date.now() - INACTIVE_CLEANUP_HOURS * 60 * 60 * 1000
+  ).toISOString();
+
+  const { count } = await supabase
+    .from('active_sessions')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .gte('last_active', activeSince);
+
+  return count ?? 0;
+}
+
+async function evictOldestSession(userId: string): Promise<boolean> {
+  const supabase = createAdminClient();
+  const { data: oldest } = await supabase
+    .from('active_sessions')
+    .select('id')
+    .eq('user_id', userId)
+    .order('last_active', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (!oldest?.id) return false;
+
+  await supabase.from('active_sessions').delete().eq('id', oldest.id);
+  return true;
 }
 
 export async function registerSession(
   userId: string,
   sessionToken: string,
   deviceFingerprintRaw: string,
-  userEmail?: string | null,
+  _userEmail?: string | null,
   userAgent?: string | null
 ): Promise<RegisterSessionResult> {
   const supabase = createAdminClient();
   const tokenHash = hashSessionToken(sessionToken);
   const fingerprintHash = hashDeviceFingerprint(deviceFingerprintRaw);
-  const now = new Date();
-  const nowIso = now.toISOString();
-  const activeSince = new Date(
-    now.getTime() - ACTIVE_WINDOW_MINUTES * 60 * 1000
-  ).toISOString();
+  const nowIso = new Date().toISOString();
 
   const { data: existing } = await supabase
     .from('active_sessions')
@@ -74,65 +120,82 @@ export async function registerSession(
     return { ok: true, sessionId: existing.id };
   }
 
-  const { count } = await supabase
-    .from('active_sessions')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .gte('last_active', activeSince);
+  const limit = await getUserSessionLimit(userId);
+  const activeCount = await countActiveSessions(userId);
+  let evicted = false;
 
-  const activeCount = count ?? 0;
-
-  if (activeCount < MAX_CONCURRENT_SESSIONS) {
-    const { data: inserted, error } = await supabase
-      .from('active_sessions')
-      .insert({
-        user_id: userId,
-        session_token: tokenHash,
-        device_fingerprint: fingerprintHash,
-        last_active: nowIso,
-        user_agent: userAgent || null,
-      })
-      .select('id')
-      .single();
-
-    if (error) {
-      console.error('Session insert error:', error.message);
-      return { ok: false, error: 'Failed to register session' };
+  if (activeCount >= limit && limit < 999999) {
+    evicted = await evictOldestSession(userId);
+    if (!evicted && activeCount >= limit) {
+      return {
+        ok: false,
+        error: `Session limit reached (${limit} on your plan). Sign out another device to continue.`,
+        blocked: true,
+      };
     }
-
-    return { ok: true, sessionId: inserted?.id };
   }
 
-  const confirmToken = randomBytes(32).toString('hex');
-  const expiresAt = new Date(
-    now.getTime() + PENDING_APPROVAL_HOURS * 60 * 60 * 1000
+  const { data: inserted, error } = await supabase
+    .from('active_sessions')
+    .insert({
+      user_id: userId,
+      session_token: tokenHash,
+      device_fingerprint: fingerprintHash,
+      last_active: nowIso,
+      user_agent: userAgent || null,
+    })
+    .select('id')
+    .single();
+
+  if (error) {
+    console.error('Session insert error:', error.message);
+    return { ok: false, error: 'Failed to register session' };
+  }
+
+  return { ok: true, sessionId: inserted?.id, evicted };
+}
+
+export async function validateSession(sessionToken: string): Promise<{
+  valid: boolean;
+  userId?: string;
+}> {
+  const supabase = createAdminClient();
+  const tokenHash = hashSessionToken(sessionToken);
+  const staleBefore = new Date(
+    Date.now() - INACTIVE_CLEANUP_HOURS * 60 * 60 * 1000
   ).toISOString();
 
-  await supabase.from('pending_session_approvals').insert({
-    user_id: userId,
-    session_token: tokenHash,
-    device_fingerprint: fingerprintHash,
-    confirm_token: confirmToken,
-    user_agent: userAgent || null,
-    expires_at: expiresAt,
-  });
+  const { data: session } = await supabase
+    .from('active_sessions')
+    .select('user_id, last_active')
+    .eq('session_token', tokenHash)
+    .maybeSingle();
 
-  if (userEmail) {
-    const base = `${appOrigin()}/api/session/confirm`;
-    await sendNewLoginEmail(
-      userEmail,
-      `${base}?token=${confirmToken}&action=approve`,
-      `${base}?token=${confirmToken}&action=secure`
-    );
+  if (!session) {
+    return { valid: false };
   }
 
-  return {
-    ok: false,
-    error:
-      'New login detected. Check your email to approve this device before continuing.',
-    pendingConfirmation: true,
-    blocked: true,
-  };
+  if (session.last_active < staleBefore) {
+    await supabase.from('active_sessions').delete().eq('session_token', tokenHash);
+    return { valid: false };
+  }
+
+  await supabase
+    .from('active_sessions')
+    .update({ last_active: new Date().toISOString() })
+    .eq('session_token', tokenHash);
+
+  return { valid: true, userId: session.user_id };
+}
+
+export async function removeSession(sessionToken: string): Promise<void> {
+  const supabase = createAdminClient();
+  const tokenHash = hashSessionToken(sessionToken);
+  await supabase.from('active_sessions').delete().eq('session_token', tokenHash);
+}
+
+export async function getUserActiveSessions(userId: string): Promise<SessionRecord[]> {
+  return listActiveSessionsForUser(userId);
 }
 
 export async function listActiveSessionsForUser(
@@ -204,10 +267,7 @@ export async function handleSessionConfirmation(
 
   if (action === 'secure') {
     await revokeAllSessions(pending.user_id);
-    await supabase
-      .from('pending_session_approvals')
-      .delete()
-      .eq('id', pending.id);
+    await supabase.from('pending_session_approvals').delete().eq('id', pending.id);
     return {
       ok: true,
       message: 'All sessions have been signed out. Please sign in again to continue.',

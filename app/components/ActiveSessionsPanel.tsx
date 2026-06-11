@@ -17,6 +17,7 @@ export default function ActiveSessionsPanel() {
   const [loading, setLoading] = useState(true);
   const [revoking, setRevoking] = useState<string | null>(null);
   const [message, setMessage] = useState('');
+  const [sessionLimit, setSessionLimit] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -27,7 +28,10 @@ export default function ActiveSessionsPanel() {
         { credentials: 'include' }
       );
       const data = await res.json();
-      if (res.ok) setSessions(data.sessions || []);
+      if (res.ok) {
+        setSessions(data.sessions || []);
+        if (typeof data.sessionLimit === 'number') setSessionLimit(data.sessionLimit);
+      }
     } finally {
       setLoading(false);
     }
@@ -70,7 +74,10 @@ export default function ActiveSessionsPanel() {
     <section className="bg-nisk-card border border-nisk rounded-xl p-6 mb-6">
       <h2 className="text-lg font-semibold text-white mb-2">Active sessions</h2>
       <p className="text-sm text-nisk-muted mb-4">
-        Devices signed in during the last 24 hours. A third new device requires email confirmation.
+        Devices signed in during the last 24 hours.
+        {sessionLimit != null && sessionLimit < 999999 && (
+          <> Your plan allows <span className="text-white">{sessionLimit}</span> concurrent session{sessionLimit !== 1 ? 's' : ''} — oldest devices are signed out when you exceed the limit.</>
+        )}
       </p>
 
       {loading ? (

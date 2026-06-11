@@ -33,14 +33,10 @@ export default function SessionHeartbeat() {
 
       if (res.status === 403) {
         const data = await res.json();
-        if (data.pendingConfirmation) {
-          alert(
-            data.error ||
-              'Check your email to approve this new device before continuing.'
-          );
-        } else {
-          alert(data.error || 'Session limit reached.');
-        }
+        alert(
+          data.error ||
+            'Session limit reached on your plan. Sign out another device in Settings, then try again.'
+        );
         window.location.href = '/login?reason=session_limit';
       }
     };

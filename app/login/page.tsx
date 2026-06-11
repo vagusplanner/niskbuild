@@ -22,6 +22,13 @@ function LoginContent() {
     if (searchParams.get('error') === 'auth_failed') {
       setError('Sign in failed. Please try again with Google or email.');
     }
+    const reason = searchParams.get('reason');
+    if (reason === 'session_limit') {
+      setError('Session limit reached on your plan. Sign out another device in Settings → Security, then sign in again.');
+    }
+    if (reason === 'session_expired') {
+      setError('Your session expired. Please sign in again.');
+    }
   }, [searchParams]);
 
   useEffect(() => {

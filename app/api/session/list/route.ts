@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { guardApiRequest } from '@/lib/api-auth';
 import {
+  getUserSessionLimit,
   hashSessionToken,
   listActiveSessionsForUser,
 } from '@/lib/session-tracker';
@@ -22,9 +23,13 @@ export async function GET(request: NextRequest) {
   const sessionToken = request.nextUrl.searchParams.get('sessionToken') || undefined;
   const currentHash = sessionToken ? hashSessionToken(sessionToken) : undefined;
 
-  const sessions = await listActiveSessionsForUser(guard.user!.id, currentHash);
+  const [sessions, sessionLimit] = await Promise.all([
+    listActiveSessionsForUser(guard.user!.id, currentHash),
+    getUserSessionLimit(guard.user!.id),
+  ]);
 
   return NextResponse.json({
+    sessionLimit,
     sessions: sessions.map((s) => ({
       id: s.id,
       label: describeDevice(s.user_agent, s.device_fingerprint),

@@ -51,8 +51,28 @@ export function markOnboardingComplete(userId: string) {
   localStorage.setItem(getOnboardingKey(userId), 'done');
 }
 
+const SESSION_KEY = 'niskbuild_session_key';
+
 export async function signOut() {
   const supabase = createClient();
+
+  if (typeof window !== 'undefined') {
+    const sessionToken = localStorage.getItem(SESSION_KEY);
+    if (sessionToken) {
+      try {
+        await fetch('/api/session/remove', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ sessionToken }),
+        });
+      } catch {
+        // Best-effort cleanup
+      }
+      localStorage.removeItem(SESSION_KEY);
+    }
+  }
+
   const { error } = await supabase.auth.signOut();
   if (error) {
     await supabase.auth.signOut({ scope: 'local' });

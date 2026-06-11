@@ -3,38 +3,47 @@ export interface ReloadPack {
   name: string;
   credits: number;
   priceUsd: number;
+  /** Display string e.g. "$0.150" */
+  pricePerCredit: string;
   description: string;
 }
 
-/** Per-credit cost must exceed subscription rate to drive upgrades */
+/**
+ * Per-credit cost must exceed subscription rate to drive upgrades.
+ * Pro sub: ~$0.115/cr · Agency: ~$0.080/cr · Scale: ~$0.055/cr
+ */
 export const RELOAD_PACKS: ReloadPack[] = [
   {
-    id: 'starter',
-    name: 'Starter',
-    credits: 200,
-    priceUsd: 12,
-    description: 'Quick top-up — same rate as Pro monthly',
+    id: 'boost_100',
+    name: 'Boost 100',
+    credits: 100,
+    priceUsd: 15,
+    pricePerCredit: '$0.150',
+    description: 'Light top-up — higher per-credit than Pro',
   },
   {
-    id: 'builder',
-    name: 'Builder',
+    id: 'boost_250',
+    name: 'Boost 250',
+    credits: 250,
+    priceUsd: 35,
+    pricePerCredit: '$0.140',
+    description: 'Mid-month refill — upgrading beats repeat buys',
+  },
+  {
+    id: 'boost_500',
+    name: 'Boost 500',
     credits: 500,
-    priceUsd: 29,
-    description: 'Mid-month boost for active freelancers',
+    priceUsd: 65,
+    pricePerCredit: '$0.130',
+    description: 'Sprint pack for busy weeks',
   },
   {
-    id: 'power',
-    name: 'Power',
+    id: 'boost_1000',
+    name: 'Boost 1000',
     credits: 1000,
-    priceUsd: 55,
-    description: 'Heavy sprint — still cheaper than 2× Agency',
-  },
-  {
-    id: 'studio',
-    name: 'Studio',
-    credits: 2500,
-    priceUsd: 129,
-    description: 'Agency-scale burst without plan change',
+    priceUsd: 125,
+    pricePerCredit: '$0.125',
+    description: 'Large burst — Agency plan is better long-term value',
   },
 ];
 

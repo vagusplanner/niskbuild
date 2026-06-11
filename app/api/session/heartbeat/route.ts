@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { registerSession } from '@/lib/session-tracker';
+import { getUserSessionLimit, registerSession } from '@/lib/session-tracker';
 
 export async function POST(request: NextRequest) {
   const guard = await guardApiRequest(request);
@@ -43,5 +43,11 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  return NextResponse.json({ ok: true });
+  const sessionLimit = await getUserSessionLimit(guard.user!.id);
+
+  return NextResponse.json({
+    ok: true,
+    sessionLimit,
+    evicted: result.ok && 'evicted' in result ? result.evicted : false,
+  });
 }

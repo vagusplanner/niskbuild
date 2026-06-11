@@ -45,11 +45,12 @@ export const LOCAL_OLLAMA_PRO_BANNER =
 /** Max concurrent browser sessions per tier */
 export const SESSION_LIMITS: Record<string, number> = {
   free: 1,
+  sandbox: 1,
   pro: 2,
   agency: 3,
-  scale: 10,
+  scale: 5,
   white_label: 999999,
-  team_enterprise: 999999,
+  team_enterprise: 10,
   sovereign: 999999,
 };
 
