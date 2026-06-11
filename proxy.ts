@@ -7,7 +7,13 @@ import {
   isPhoneVerifyExemptPath,
   isPreviewPath,
   isPublicPath,
+  isTenantRuntimePath,
 } from '@/lib/access';
+import {
+  isBasePlatform,
+  resolveTenantByHostname,
+  shouldSkipTenantRouting,
+} from '@/lib/tenant-routing';
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -20,14 +26,37 @@ export async function proxy(request: NextRequest) {
     return NextResponse.rewrite(url);
   }
 
-  // Always allow API routes and static assets
+  // Multi-tenant: white-label subdomain or custom domain → compiled app runtime
+  if (!isBasePlatform(host) && !shouldSkipTenantRouting(pathname)) {
+    const tenant = await resolveTenantByHostname(host);
+
+    if (tenant) {
+      if (tenant.status === 'suspended') {
+        const url = request.nextUrl.clone();
+        url.pathname = '/system/nodes-offline';
+        return NextResponse.rewrite(url);
+      }
+
+      if (tenant.status === 'active') {
+        const appType = tenant.app_type || 'webapp';
+        const url = request.nextUrl.clone();
+        // SPA runtimes handle client-side routes inside the iframe/bundle
+        url.pathname = `/app-runtime-engines/${appType}/${tenant.id}`;
+        const response = NextResponse.rewrite(url);
+        response.headers.set('x-tenant-app-id', tenant.id);
+        return response;
+      }
+    }
+  }
+
+  // Always allow API routes and static assets on base platform
   if (pathname.startsWith('/api') || pathname.startsWith('/_next')) {
     return NextResponse.next();
   }
 
   const { supabase, supabaseResponse, user } = await updateSession(request);
 
-  if (isPublicPath(pathname) || isPreviewPath(pathname)) {
+  if (isPublicPath(pathname) || isPreviewPath(pathname) || isTenantRuntimePath(pathname)) {
     return supabaseResponse;
   }
 
@@ -68,6 +97,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!api/auth|_next/static|_next/image|assets|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

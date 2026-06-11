@@ -14,6 +14,14 @@ export function isPreviewPath(pathname: string) {
   return pathname.startsWith('/preview/');
 }
 
+/** Tenant runtime + offline pages (no auth) */
+export function isTenantRuntimePath(pathname: string) {
+  return (
+    pathname === '/system/nodes-offline' ||
+    pathname.startsWith('/app-runtime-engines/')
+  );
+}
+
 /** Paths free users may access before phone verification */
 export const PHONE_VERIFY_EXEMPT_PATHS = [
   '/verify-phone',
