@@ -1,8 +1,6 @@
 import 'server-only';
 
-import Groq from 'groq-sdk';
-
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+import { getGroqClient } from '@/lib/groq-client';
 
 export const PLAN_SYSTEM_PROMPT = `You are a senior software architect. The user wants a technical implementation roadmap BEFORE any code is written.
 
@@ -33,7 +31,8 @@ export async function generateArchitecturePlan(prompt: string): Promise<{
   plan?: string;
   error?: string;
 }> {
-  if (!process.env.GROQ_API_KEY) {
+  const groq = getGroqClient();
+  if (!groq) {
     return { success: false, error: 'Plan mode requires Groq API key' };
   }
 

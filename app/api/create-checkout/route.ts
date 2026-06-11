@@ -35,12 +35,12 @@ export async function POST(request: NextRequest) {
 
     const priceId = getStripePriceId(tier);
     if (!priceId) {
+      const enterpriseTiers = new Set(['team_enterprise', 'sovereign']);
       return NextResponse.json(
         {
-          error:
-            tier === 'sovereign' || tier === 'white_label'
-              ? 'This plan requires a sales call. Email hello@niskbuild.com to get started.'
-              : `Checkout is not configured for the ${tier} plan. Contact support.`,
+          error: enterpriseTiers.has(tier)
+            ? 'This plan requires a sales conversation. Use Contact Sales on the pricing page.'
+            : `Checkout is not configured for the ${tier} plan. Contact support.`,
         },
         { status: 400 }
       );

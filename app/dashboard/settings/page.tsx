@@ -190,7 +190,13 @@ function DashboardSettingsContent() {
   };
 
   const tier = profile?.subscription_tier || 'free';
-  const tierLabel = tier === 'white_label' ? 'White-Label' : tier.charAt(0).toUpperCase() + tier.slice(1);
+  const tierLabels: Record<string, string> = {
+    white_label: 'White-Label',
+    team_enterprise: 'Team Enterprise',
+    sovereign: 'Sovereign',
+  };
+  const tierLabel =
+    tierLabels[tier] || (tier === 'free' ? 'Sandbox' : tier.charAt(0).toUpperCase() + tier.slice(1));
   const isPaid =
     hasPaidTier(profile?.subscription_tier) &&
     profile?.subscription_status === 'active';
@@ -459,7 +465,7 @@ function DashboardSettingsContent() {
           {!byocAllowed ? (
             <div className="text-sm text-nisk-muted">
               <p className="mb-3">
-                Bring-your-own API keys are available on <strong className="text-white">Agency Studio ($199/mo)</strong> and above.
+                Bring-your-own API keys are available on <strong className="text-white">Agency ($199/mo)</strong> and above.
                 This prevents Pro users from bypassing cloud credits after canceling.
               </p>
               <Link href="/pricing" className="text-[var(--accent-cyan)] hover:underline font-medium">

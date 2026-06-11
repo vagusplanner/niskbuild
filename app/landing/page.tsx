@@ -319,7 +319,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Simple, transparent pricing</h2>
           <p className="text-nisk-muted text-center mb-12 max-w-xl mx-auto">
-            Start free at $0. Scale to Agency Studio at $199/mo when your client roster grows.
+            Start free at $0. Scale to Agency at $199/mo when your client roster grows.
           </p>
 
           <PricingCards variant="landing" />

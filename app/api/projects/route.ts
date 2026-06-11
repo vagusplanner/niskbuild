@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { guardApiRequest } from '@/lib/api-auth';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
 import { getProjectLimit } from '@/lib/project-limits';
-import { isPaidAndActive } from '@/lib/tier-config';
 
 export async function GET(request: NextRequest) {
   const guard = await guardApiRequest(request);
@@ -35,13 +34,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  if (!isPaidAndActive(profile?.subscription_tier, profile?.subscription_status)) {
-    return NextResponse.json(
-      { error: 'Active paid subscription required to save projects' },
-      { status: 403 }
-    );
-  }
-
   const { title, prompt, generated_code } = await request.json();
   if (!title?.trim() || !generated_code) {
     return NextResponse.json({ error: 'Title and code are required' }, { status: 400 });
@@ -60,11 +52,16 @@ export async function POST(request: NextRequest) {
   }
 
   if ((count ?? 0) >= limit) {
+    const sandboxMsg =
+      tier === 'free'
+        ? 'Free tier limited to 1 project. Upgrade to Pro.'
+        : `Project limit reached (${limit} on ${tier} plan). Upgrade to save more.`;
     return NextResponse.json(
       {
-        error: `Project limit reached (${limit} on ${tier} plan). Upgrade to save more.`,
+        error: sandboxMsg,
         limit,
         count,
+        upgrade: tier === 'free',
       },
       { status: 403 }
     );

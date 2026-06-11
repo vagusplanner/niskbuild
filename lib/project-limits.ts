@@ -4,6 +4,7 @@ export const PROJECT_LIMITS: Record<string, number> = {
   agency: 15,
   scale: 999999,
   white_label: 999999,
+  team_enterprise: 999999,
   sovereign: 999999,
 };
 
@@ -12,5 +13,10 @@ export function getProjectLimit(tier: string | null | undefined): number {
 }
 
 export function isUnlimitedTier(tier: string | null | undefined): boolean {
-  return tier === 'scale' || tier === 'white_label' || tier === 'sovereign';
+  return (
+    tier === 'scale' ||
+    tier === 'white_label' ||
+    tier === 'team_enterprise' ||
+    tier === 'sovereign'
+  );
 }

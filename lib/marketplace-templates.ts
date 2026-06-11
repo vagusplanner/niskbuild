@@ -262,7 +262,13 @@ export function getTemplateById(id: string): MarketplaceTemplate | undefined {
 }
 
 /** Agency+ subscribers unlock the full marketplace */
-export const MARKETPLACE_UNLOCK_TIERS = ['agency', 'scale', 'white_label', 'sovereign'] as const;
+export const MARKETPLACE_UNLOCK_TIERS = [
+  'agency',
+  'scale',
+  'white_label',
+  'team_enterprise',
+  'sovereign',
+] as const;
 
 export function canAccessTemplate(
   template: MarketplaceTemplate,

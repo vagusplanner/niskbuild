@@ -91,9 +91,12 @@ async function handleBootGuard() {
   const limit = getProjectLimit(tier);
   const atCap = projectCount >= limit;
 
+  const isSandbox = tier === 'free';
+
   return NextResponse.json({
-    canBoot: paidActive && !atCap,
+    canBoot: !atCap && (isSandbox || paidActive),
     paidActive,
+    isSandbox,
     atCap,
     projectCount,
     projectLimit: limit,

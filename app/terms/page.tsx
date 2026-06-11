@@ -33,10 +33,13 @@ export default function TermsPage() {
           <section>
             <h2 className="text-2xl font-semibold text-white mb-4">4. Subscription and Payments</h2>
             <ul className="list-disc pl-6 space-y-2">
-              <li>Free tier: Limited to 1 project, watermarked exports</li>
-              <li>Pro tier ($69/month): 3 projects, clean exports, priority AI</li>
-              <li>Agency tier ($199/month): 15 projects, white-label previews</li>
-              <li>Scale tier ($549/month): Unlimited projects, team seats</li>
+              <li>Sandbox ($0/month): 1 project, preview-only exports</li>
+              <li>Pro ($69/month): Freelancers — clean exports, cloud credits</li>
+              <li>Agency ($199/month): Studios — BYOC, preview links, 15 projects</li>
+              <li>Scale ($549/month): Teams — unlimited projects, priority AI</li>
+              <li>White-Label ($999/month): Resellers — full rebrand</li>
+              <li>Team Enterprise ($1,799/month): Mid companies — contact team@niskbuild.com</li>
+              <li>Sovereign ($3,499/month): Enterprise — contact team@niskbuild.com</li>
               <li>Payments processed securely via Stripe</li>
               <li>Cancel anytime — no long-term contracts</li>
               <li>Refunds handled on a case-by-case basis</li>

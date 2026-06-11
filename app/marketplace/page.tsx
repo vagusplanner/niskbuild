@@ -260,7 +260,7 @@ function MarketplaceContent() {
         )}
 
         <p className="text-center text-sm text-nisk-muted mt-10">
-          Agency, Scale &amp; White-Label plans include all marketplace templates.{' '}
+          Agency, Scale, White-Label, Team Enterprise &amp; Sovereign plans include all marketplace templates.{' '}
           <Link href="/pricing" className="text-[var(--accent-cyan)] hover:underline">
             Compare plans →
           </Link>

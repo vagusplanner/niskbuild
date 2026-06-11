@@ -27,8 +27,10 @@ import BuilderOllamaSettings, {
 } from '@/app/components/BuilderOllamaSettings';
 import {
   canUseLocalOllama,
+  isSandboxTier,
   LOCAL_OLLAMA_PRO_BANNER,
 } from '@/lib/tier-config';
+import { getProjectLimit } from '@/lib/project-limits';
 import {
   estimateTokens,
   isLocalProvider,
@@ -91,6 +93,7 @@ function BuilderContent() {
   const [subscriptionTier, setSubscriptionTier] = useState('free');
   const [useLocalOllama, setUseLocalOllama] = useState(false);
   const [showProOllamaBanner, setShowProOllamaBanner] = useState(false);
+  const [projectLimit, setProjectLimit] = useState(1);
   const previewDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastCodeLenRef = useRef(0);
 
@@ -109,9 +112,13 @@ function BuilderContent() {
         .then((data) => {
           if (data?.tier) {
             setSubscriptionTier(data.tier);
+            setProjectLimit(data.projectLimit ?? getProjectLimit(data.tier));
             const savedLocal = localStorage.getItem('niskbuild_use_local_ollama') === 'true';
-            setUseLocalOllama(savedLocal && canUseLocalOllama(data.tier));
-            if (savedLocal && !canUseLocalOllama(data.tier)) {
+            const sandbox = isSandboxTier(data.tier);
+            setUseLocalOllama(
+              sandbox || (savedLocal && canUseLocalOllama(data.tier))
+            );
+            if (savedLocal && !canUseLocalOllama(data.tier) && !sandbox) {
               localStorage.removeItem('niskbuild_use_local_ollama');
             }
           }
@@ -323,8 +330,11 @@ function BuilderContent() {
     setPreviewHtml('<div style="padding:2rem;text-align:center;color:#94A3B8;background:#0B0F19;height:100%">🔄 Generating your app...</div>');
 
     const session = await getSafeSession();
+    const sandbox = isSandboxTier(subscriptionTier);
+    const useLocalPath =
+      sandbox || (useLocalOllama && canUseLocalOllama(subscriptionTier));
 
-    if (useLocalOllama && canUseLocalOllama(subscriptionTier)) {
+    if (useLocalPath) {
       setStatusMessage('🖥️ Generating via local Ollama...');
       try {
         const localRes = await fetch('/api/generate', {
@@ -351,15 +361,35 @@ function BuilderContent() {
         setPreviewHtml(
           `<div style="padding:2rem;color:#EF4444;background:#1a0a0a;height:100%;text-align:center"><h3>❌ Local AI Failed</h3><p>${localData.error || 'Unknown error'}</p></div>`
         );
+        if (sandbox) {
+          setPreviewHtml(
+            `<div style="padding:2rem;color:#94A3B8;background:#0B0F19;height:100%;text-align:center"><h3>Sandbox — Local AI</h3><p>Run Ollama locally, or <a href="/pricing" style="color:#7C3AED">upgrade to Pro</a> for cloud AI.</p></div>`
+          );
+        }
         setStatusMessage(`❌ ${localData.error || 'Local generation failed'}`);
       } catch {
         setGeneratedCode('// Failed to reach local Ollama.');
-        setPreviewHtml('<div style="padding:2rem;color:#EF4444;text-align:center">❌ Network error — is Ollama running?</div>');
+        setPreviewHtml(
+          sandbox
+            ? '<div style="padding:2rem;color:#94A3B8;text-align:center;background:#0B0F19;height:100%"><h3>Sandbox mode</h3><p>Start Ollama on your machine, or upgrade for cloud AI.</p></div>'
+            : '<div style="padding:2rem;color:#EF4444;text-align:center">❌ Network error — is Ollama running?</div>'
+        );
         setStatusMessage('❌ Network error');
       } finally {
         setIsGenerating(false);
         setTimeout(() => setStatusMessage(''), 8000);
       }
+      return;
+    }
+
+    if (sandbox) {
+      setGeneratedCode('// Cloud AI requires a paid plan.');
+      setPreviewHtml(
+        '<div style="padding:2rem;color:#94A3B8;background:#0B0F19;height:100%;text-align:center"><h3>Upgrade for cloud AI</h3><p>Sandbox includes local preview + 1 saved project. Pro unlocks cloud credits.</p></div>'
+      );
+      setStatusMessage('☁️ Cloud AI requires Pro or higher');
+      setIsGenerating(false);
+      setTimeout(() => setStatusMessage(''), 8000);
       return;
     }
 
@@ -577,6 +607,16 @@ function BuilderContent() {
       return;
     }
 
+    const sandbox = isSandboxTier(subscriptionTier);
+    const limit = projectLimit || getProjectLimit(subscriptionTier);
+    if (sandbox && savedProjects.length >= limit) {
+      const upgrade = confirm(
+        `Free tier limited to ${limit} project. Upgrade to Pro for more.\n\nOpen Pricing?`
+      );
+      if (upgrade) window.location.href = '/pricing';
+      return;
+    }
+
     const title = window.prompt('Project name:', prompt.substring(0, 50) || 'Untitled Project');
     if (!title) return;
 
@@ -655,7 +695,17 @@ function BuilderContent() {
           projectsOpen={showProjects}
         />
 
-        <div className="flex-1 min-w-0 flex flex-col">
+        <div className="flex-1 min-w-0 flex flex-col relative">
+        {isSandboxTier(subscriptionTier) && savedProjects.length >= projectLimit && (
+          <div className="shrink-0 bg-yellow-500/10 border-b border-yellow-500/30 p-3 text-center">
+            <p className="text-yellow-400 text-sm">
+              Free tier limit: {savedProjects.length}/{projectLimit} project.{' '}
+              <a href="/pricing" className="text-[var(--primary)] hover:underline ml-1">
+                Upgrade to Pro →
+              </a>
+            </p>
+          </div>
+        )}
         {showProOllamaBanner && subscriptionTier === 'pro' && (
           <div className="shrink-0 flex items-start justify-between gap-3 px-4 py-2.5 border-b border-[var(--accent-cyan)]/30 bg-[var(--accent-cyan)]/10">
             <p className="text-xs text-gray-200 leading-relaxed">{LOCAL_OLLAMA_PRO_BANNER}</p>

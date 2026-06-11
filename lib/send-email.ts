@@ -4,9 +4,15 @@ interface SendEmailOptions {
   to: string;
   subject: string;
   html: string;
+  replyTo?: string;
 }
 
-export async function sendEmail({ to, subject, html }: SendEmailOptions): Promise<boolean> {
+export async function sendEmail({
+  to,
+  subject,
+  html,
+  replyTo,
+}: SendEmailOptions): Promise<boolean> {
   const resendKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM || 'NiskBuild <billing@niskbuild.com>';
 
@@ -22,7 +28,13 @@ export async function sendEmail({ to, subject, html }: SendEmailOptions): Promis
         Authorization: `Bearer ${resendKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ from, to, subject, html }),
+      body: JSON.stringify({
+        from,
+        to,
+        subject,
+        html,
+        ...(replyTo ? { reply_to: replyTo } : {}),
+      }),
     });
 
     if (!res.ok) {

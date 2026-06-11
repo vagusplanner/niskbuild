@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { guardApiRequest } from '@/lib/api-auth';
 import 'server-only';
-import Groq from 'groq-sdk';
 import OpenAI from 'openai';
-
-// Initialize Groq (required)
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+import { getGroqClient } from '@/lib/groq-client';
 
 // Initialize providers only if API keys exist (safe mode)
 let anthropic: any = null;
@@ -49,16 +44,18 @@ export async function GET(request: NextRequest) {
     local: false,
   };
   
-  // Test Groq
-  try {
-    await groq.chat.completions.create({
-      messages: [{ role: 'user', content: 'test' }],
-      model: 'llama-3.3-70b-versatile',
-      max_tokens: 5,
-    });
-    status.groq = true;
-  } catch (e) {
-    console.log('Groq not available');
+  const groq = getGroqClient();
+  if (groq) {
+    try {
+      await groq.chat.completions.create({
+        messages: [{ role: 'user', content: 'test' }],
+        model: 'llama-3.3-70b-versatile',
+        max_tokens: 5,
+      });
+      status.groq = true;
+    } catch (e) {
+      console.log('Groq not available');
+    }
   }
   
   // Test Anthropic (if initialized)

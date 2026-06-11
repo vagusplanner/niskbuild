@@ -7,13 +7,28 @@ export const CLOUD_CREDITS_BY_TIER: Record<string, number> = {
   agency: 2500,
   scale: 10000,
   white_label: 15000,
+  team_enterprise: 25000,
   sovereign: 50000,
 };
 
-const TIER_ORDER = ['free', 'pro', 'agency', 'scale', 'white_label', 'sovereign'] as const;
+const TIER_ORDER = [
+  'free',
+  'pro',
+  'agency',
+  'scale',
+  'white_label',
+  'team_enterprise',
+  'sovereign',
+] as const;
 
 /** BYOC (bring your own API keys) — Agency+ only to prevent Pro revenue leak */
-export const BYOC_TIERS = ['agency', 'scale', 'white_label', 'sovereign'] as const;
+export const BYOC_TIERS = [
+  'agency',
+  'scale',
+  'white_label',
+  'team_enterprise',
+  'sovereign',
+] as const;
 
 /** Local Ollama engine — Agency+ only (same tier gate as BYOC) */
 export const LOCAL_OLLAMA_TIERS = BYOC_TIERS;
@@ -34,6 +49,7 @@ export const SESSION_LIMITS: Record<string, number> = {
   agency: 3,
   scale: 10,
   white_label: 999999,
+  team_enterprise: 999999,
   sovereign: 999999,
 };
 
@@ -65,6 +81,15 @@ export function canUseLocalOllama(tier: string | null | undefined): boolean {
   return LOCAL_OLLAMA_TIERS.includes(tier as (typeof LOCAL_OLLAMA_TIERS)[number]);
 }
 
+export function isSandboxTier(tier: string | null | undefined): boolean {
+  return !tier || tier === 'free';
+}
+
+/** Sandbox may call local /api/generate (user-run Ollama); no cloud credits */
+export function canUseSandboxLocalGenerate(tier: string | null | undefined): boolean {
+  return isSandboxTier(tier);
+}
+
 export function isPaidAndActive(
   tier: string | null | undefined,
   status: string | null | undefined
@@ -82,10 +107,11 @@ export function canExportCleanZip(
 export function tierDisplayName(tier: string): string {
   const names: Record<string, string> = {
     free: 'Sandbox',
-    pro: 'Builder Pro',
-    agency: 'Agency Studio',
-    scale: 'Agency Scale',
+    pro: 'Pro',
+    agency: 'Agency',
+    scale: 'Scale',
     white_label: 'White-Label',
+    team_enterprise: 'Team Enterprise',
     sovereign: 'Sovereign',
   };
   return names[tier] || tier;

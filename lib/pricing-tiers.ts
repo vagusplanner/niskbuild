@@ -7,46 +7,57 @@ export interface PricingTier {
   buttonText: string;
   highlighted: boolean;
   tier: string | null;
-  /** Opens mailto instead of Stripe checkout */
+  /** Opens in-app sales form instead of Stripe checkout */
   contactSales?: boolean;
+  /** Inbox that receives form submissions for contactSales tiers */
+  contactEmail?: string;
 }
+
+export const SALES_EMAIL = 'hello@niskbuild.com';
+export const ENTERPRISE_SALES_EMAIL = 'team@niskbuild.com';
 
 export const PRICING_TIERS: PricingTier[] = [
   {
     name: 'Sandbox',
     price: '$0',
     period: '/month',
-    description: 'Preview playground — phone verified',
-    features: ['1 project', '1 session', 'Local AI preview', 'ZIP export locked'],
-    buttonText: 'Get Started Free',
+    description: 'Try before you buy',
+    features: [
+      '1 project',
+      'Live preview',
+      'Local AI (with Ollama)',
+      'ZIP export locked',
+      'No cloud credits',
+    ],
+    buttonText: 'Start Free',
     highlighted: false,
     tier: null,
   },
   {
-    name: 'Builder Pro',
+    name: 'Pro',
     price: '$69',
     period: '/month',
-    description: 'For professional freelancers',
+    description: 'Freelancers',
     features: ['5 projects', '2 sessions', '600 cloud credits', 'Clean ZIP export', 'No BYOC'],
     buttonText: 'Upgrade to Pro',
     highlighted: false,
     tier: 'pro',
   },
   {
-    name: 'Agency Studio',
+    name: 'Agency',
     price: '$199',
     period: '/month',
-    description: 'For growing agencies',
+    description: 'Studios — your profit centre',
     features: ['15 projects', '3 sessions', '2,500 credits', 'BYOC included', 'Deploy + preview links'],
     buttonText: 'Upgrade to Agency',
     highlighted: true,
     tier: 'agency',
   },
   {
-    name: 'Agency Scale',
+    name: 'Scale',
     price: '$549',
     period: '/month',
-    description: 'For high-volume teams',
+    description: 'Teams',
     features: ['Unlimited projects', '10 sessions', '10,000 credits', 'BYOC', 'Priority AI queue'],
     buttonText: 'Upgrade to Scale',
     highlighted: false,
@@ -54,25 +65,37 @@ export const PRICING_TIERS: PricingTier[] = [
   },
   {
     name: 'White-Label',
-    price: '$1,199',
+    price: '$999',
     period: '/month',
-    description: 'For resellers',
+    description: 'Resellers',
     features: ['Unlimited projects', 'Unlimited sessions', '15,000 credits', 'Full rebrand', 'BYOC'],
-    buttonText: 'Contact Sales',
+    buttonText: 'Upgrade to White-Label',
     highlighted: false,
     tier: 'white_label',
+  },
+  {
+    name: 'Team Enterprise',
+    price: '$1,799',
+    period: '/month',
+    description: 'Mid companies',
+    features: ['Unlimited projects', 'Unlimited sessions', '25,000 credits', 'Team seats', 'BYOC + SLA'],
+    buttonText: 'Contact Sales',
+    highlighted: false,
+    tier: 'team_enterprise',
     contactSales: true,
+    contactEmail: ENTERPRISE_SALES_EMAIL,
   },
   {
     name: 'Sovereign',
-    price: '$2,499',
+    price: '$3,499',
     period: '/month',
-    description: 'Enterprise & compliance',
+    description: 'Enterprise',
     features: ['Unlimited everything', '50,000 credits', 'Custom SLA', 'Dedicated support', 'BYOC'],
     buttonText: 'Contact Sales',
     highlighted: false,
     tier: 'sovereign',
     contactSales: true,
+    contactEmail: ENTERPRISE_SALES_EMAIL,
   },
 ];
 

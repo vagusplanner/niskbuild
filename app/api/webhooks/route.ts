@@ -68,23 +68,48 @@ async function handleSubscriptionEnded(
   }
 }
 
+export async function GET() {
+  return NextResponse.json({
+    ok: true,
+    message: 'Stripe webhook endpoint. Stripe sends signed POST requests only.',
+  });
+}
+
 export async function POST(request: NextRequest) {
   const supabase = createAdminClient();
   const body = await request.text();
-  const sig = request.headers.get('stripe-signature')!;
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const sig = request.headers.get('stripe-signature');
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
 
   let event: Stripe.Event;
 
   try {
     if (webhookSecret) {
+      if (!sig) {
+        return NextResponse.json(
+          {
+            error:
+              'Missing Stripe-Signature header. Use Stripe Dashboard "Send test webhook" or `stripe listen --forward-to localhost:3000/api/webhooks`.',
+          },
+          { status: 400 }
+        );
+      }
       event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
+    } else if (process.env.NODE_ENV === 'development') {
+      event = JSON.parse(body) as Stripe.Event;
     } else {
-      event = JSON.parse(body);
+      return NextResponse.json(
+        { error: 'STRIPE_WEBHOOK_SECRET is not configured' },
+        { status: 503 }
+      );
     }
   } catch (err) {
-    console.error('Webhook error:', err);
-    return NextResponse.json({ error: 'Webhook error' }, { status: 400 });
+    const message =
+      err instanceof Stripe.errors.StripeSignatureVerificationError
+        ? 'Invalid Stripe webhook signature. Confirm STRIPE_WEBHOOK_SECRET matches the signing secret for this endpoint in Stripe Dashboard.'
+        : 'Webhook payload could not be verified';
+    console.error('Webhook verification failed:', message);
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 
   if (event.type === 'checkout.session.completed') {

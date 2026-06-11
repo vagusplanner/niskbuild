@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { canUseLocalOllama, LOCAL_OLLAMA_LOCKED_MESSAGE } from '@/lib/tier-config';
+import {
+  canUseLocalOllama,
+  canUseSandboxLocalGenerate,
+  LOCAL_OLLAMA_LOCKED_MESSAGE,
+} from '@/lib/tier-config';
 
 export async function POST(request: NextRequest) {
   const guard = await guardApiRequest(request, { rateLimit: 10 });
@@ -16,7 +20,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     const tier = profile?.subscription_tier || 'free';
-    if (!canUseLocalOllama(tier)) {
+    if (!canUseLocalOllama(tier) && !canUseSandboxLocalGenerate(tier)) {
       return NextResponse.json({ error: LOCAL_OLLAMA_LOCKED_MESSAGE }, { status: 403 });
     }
 

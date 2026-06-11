@@ -1,18 +1,19 @@
 import 'server-only';
 
-import Groq from 'groq-sdk';
 import { canUseLocalOllama } from '@/lib/tier-config';
 import Anthropic from '@anthropic-ai/sdk';
+import { getGroqClient } from '@/lib/groq-client';
 
-// Initialize Groq (primary for free/pro users)
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+let anthropic: Anthropic | null = null;
 
-// Initialize Anthropic Claude (premium for Agency+ users)
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+function getAnthropicClient(): Anthropic | null {
+  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+  if (!apiKey) return null;
+  if (!anthropic) {
+    anthropic = new Anthropic({ apiKey });
+  }
+  return anthropic;
+}
 
 // Optional providers - only initialize if API keys exist
 let openai: any = null;
@@ -57,6 +58,11 @@ Make it responsive, modern, and visually appealing. Use Tailwind CSS when approp
 
 // Generate with Groq (fast, cheap)
 async function generateWithGroq(prompt: string): Promise<AIResponse> {
+  const groq = getGroqClient();
+  if (!groq) {
+    return { success: false, code: '', provider: 'groq', error: 'Groq API key not configured' };
+  }
+
   try {
     const completion = await groq.chat.completions.create({
       messages: [
@@ -191,6 +197,7 @@ export function getProviderOrder(tier: string): AIProvider[] {
     case 'agency':
     case 'scale':
     case 'white_label':
+    case 'team_enterprise':
     case 'sovereign':
       return ['anthropic', 'groq', 'together', ...local];
     case 'pro':
@@ -279,20 +286,22 @@ export async function getAIProviderStatus(): Promise<Record<AIProvider, boolean>
     local: false,
   };
   
-  // Test Groq
-  try {
-    await groq.chat.completions.create({
-      messages: [{ role: 'user', content: 'test' }],
-      model: 'llama-3.3-70b-versatile',
-      max_tokens: 5,
-    });
-    status.groq = true;
-  } catch (e) {}
-  
-  // Test Anthropic (if key exists)
-  if (process.env.ANTHROPIC_API_KEY) {
+  const groq = getGroqClient();
+  if (groq) {
     try {
-      await anthropic.messages.create({
+      await groq.chat.completions.create({
+        messages: [{ role: 'user', content: 'test' }],
+        model: 'llama-3.3-70b-versatile',
+        max_tokens: 5,
+      });
+      status.groq = true;
+    } catch (e) {}
+  }
+
+  const anthropicClient = getAnthropicClient();
+  if (anthropicClient) {
+    try {
+      await anthropicClient.messages.create({
         model: 'claude-3-sonnet-20240229',
         max_tokens: 5,
         messages: [{ role: 'user', content: 'test' }],

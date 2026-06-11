@@ -92,6 +92,8 @@ export default function AdminUsersPage() {
       case 'agency': return 'bg-purple-500/20 text-purple-400';
       case 'scale': return 'bg-emerald-500/20 text-emerald-400';
       case 'white_label': return 'bg-yellow-500/20 text-yellow-400';
+      case 'team_enterprise': return 'bg-orange-500/20 text-orange-400';
+      case 'sovereign': return 'bg-rose-500/20 text-rose-400';
       default: return 'bg-gray-500/20 text-gray-400';
     }
   };
@@ -190,6 +192,27 @@ export default function AdminUsersPage() {
                           className="px-3 py-1 text-xs rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-colors disabled:opacity-50"
                         >
                           Scale ($549)
+                        </button>
+                        <button
+                          onClick={() => updateUserTier(user.id, 'white_label')}
+                          disabled={updating === user.id}
+                          className="px-3 py-1 text-xs rounded-lg bg-yellow-600 hover:bg-yellow-500 text-white transition-colors disabled:opacity-50"
+                        >
+                          White ($999)
+                        </button>
+                        <button
+                          onClick={() => updateUserTier(user.id, 'team_enterprise')}
+                          disabled={updating === user.id}
+                          className="px-3 py-1 text-xs rounded-lg bg-orange-600 hover:bg-orange-500 text-white transition-colors disabled:opacity-50"
+                        >
+                          Team ($1,799)
+                        </button>
+                        <button
+                          onClick={() => updateUserTier(user.id, 'sovereign')}
+                          disabled={updating === user.id}
+                          className="px-3 py-1 text-xs rounded-lg bg-rose-600 hover:bg-rose-500 text-white transition-colors disabled:opacity-50"
+                        >
+                          Sovereign ($3,499)
                         </button>
                       </div>
                     </td>

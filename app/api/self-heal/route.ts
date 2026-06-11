@@ -1,19 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Groq from 'groq-sdk';
 import OpenAI from 'openai';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { deductCloudCredit } from '@/lib/credits';
 import { recordAnonymousTelemetry } from '@/lib/record-telemetry';
+import { getGroqClient } from '@/lib/groq-client';
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+let together: OpenAI | null = null;
 
-const together = new OpenAI({
-  apiKey: process.env.TOGETHER_API_KEY,
-  baseURL: 'https://api.together.xyz/v1',
-});
+function getTogetherClient(): OpenAI | null {
+  const apiKey = process.env.TOGETHER_API_KEY?.trim();
+  if (!apiKey) return null;
+  if (!together) {
+    together = new OpenAI({
+      apiKey,
+      baseURL: 'https://api.together.xyz/v1',
+    });
+  }
+  return together;
+}
 
 // Get user's plan from Supabase
 async function getUserPlan(userId: string): Promise<string> {
@@ -44,6 +49,9 @@ function getModelForPlan(plan: string): string {
 
 // Generate with Groq
 async function generateWithGroq(prompt: string, model: string): Promise<string | null> {
+  const groq = getGroqClient();
+  if (!groq) return null;
+
   try {
     const completion = await groq.chat.completions.create({
       messages: [
@@ -63,8 +71,11 @@ async function generateWithGroq(prompt: string, model: string): Promise<string |
 
 // Generate with Together AI (fallback)
 async function generateWithTogether(prompt: string): Promise<string | null> {
+  const client = getTogetherClient();
+  if (!client) return null;
+
   try {
-    const completion = await together.chat.completions.create({
+    const completion = await client.chat.completions.create({
       messages: [
         { role: 'system', content: 'You are an expert web developer. Generate ONLY complete HTML/CSS/JavaScript code. No explanations. Start with <!DOCTYPE html>.' },
         { role: 'user', content: prompt },

@@ -11,6 +11,7 @@ export const PUBLIC_API_PATHS = new Set([
   '/api/webhooks',
   '/api/waitlist',
   '/api/waitlist/count',
+  '/api/contact-sales',
 ]);
 
 export const RATE_LIMITS: Record<string, number> = {

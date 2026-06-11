@@ -1,4 +1,13 @@
-export const PUBLIC_PATHS = ['/', '/landing', '/login', '/signup', '/auth/callback', '/privacy', '/terms'];
+export const PUBLIC_PATHS = [
+  '/',
+  '/landing',
+  '/login',
+  '/signup',
+  '/auth/callback',
+  '/pricing',
+  '/privacy',
+  '/terms',
+];
 
 /** Public shareable preview pages (no auth) */
 export function isPreviewPath(pathname: string) {
@@ -15,11 +24,19 @@ export const PHONE_VERIFY_EXEMPT_PATHS = [
   ...PUBLIC_PATHS,
 ];
 
-export const AUTH_PATHS = ['/pricing', '/dashboard'];
+export const AUTH_PATHS = ['/dashboard'];
 
-export const PAID_PATH_PREFIXES = ['/builder', '/marketplace', '/admin'];
+/** Paid subscription required */
+export const PAID_PATH_PREFIXES = ['/marketplace', '/admin'];
 
-export const PAID_TIERS = ['pro', 'agency', 'scale', 'white_label', 'sovereign'] as const;
+export const PAID_TIERS = [
+  'pro',
+  'agency',
+  'scale',
+  'white_label',
+  'team_enterprise',
+  'sovereign',
+] as const;
 
 export function isPublicPath(pathname: string) {
   return PUBLIC_PATHS.includes(pathname);
