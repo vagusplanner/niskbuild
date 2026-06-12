@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { captureApiException } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { getStripePriceId } from '@/lib/stripe-price-ids';
 
@@ -69,6 +70,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ sessionId: session.id, url: session.url });
   } catch (error) {
+    captureApiException(error);
     console.error('Stripe error:', error);
     const stripeMessage =
       error instanceof Stripe.errors.StripeError ? error.message : null;

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createClient } from '@/lib/supabase/server';
 
@@ -53,7 +54,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, templateId });
   } catch (error) {
-    console.error('Template confirm error:', error);
-    return NextResponse.json({ error: 'Failed to confirm purchase' }, { status: 500 });
+    return apiErrorResponse(error, 'Failed to confirm purchase');
   }
 }

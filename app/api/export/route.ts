@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import JSZip from 'jszip';
+import { captureApiException } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createNiskBuildConfig } from '@/lib/niskbuild-config';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
@@ -74,6 +75,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
+    captureApiException(error);
     console.error('Export error:', error);
     return NextResponse.json(
       { error: 'Failed to create ZIP file: ' + (error instanceof Error ? error.message : 'Unknown error') },

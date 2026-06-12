@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
+import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -118,7 +119,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
     
   } catch (error) {
-    console.error('Metadata logging error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return apiErrorResponse(error, 'Internal server error');
   }
 }

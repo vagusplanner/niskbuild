@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createClient } from '@/lib/supabase/server';
 import {
@@ -94,7 +95,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ template });
-  } catch {
-    return NextResponse.json({ error: 'Failed to fetch template' }, { status: 500 });
+  } catch (error) {
+    return apiErrorResponse(error, 'Failed to fetch template');
   }
 }

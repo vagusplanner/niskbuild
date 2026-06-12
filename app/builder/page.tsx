@@ -30,6 +30,7 @@ import {
   isSandboxTier,
   LOCAL_OLLAMA_PRO_BANNER,
 } from '@/lib/tier-config';
+import type { ComponentBlueprint } from '@/lib/blueprint-schema';
 import { getProjectLimit } from '@/lib/project-limits';
 import {
   estimateTokens,
@@ -78,7 +79,8 @@ function BuilderContent() {
   const [promptHistory, setPromptHistory] = useState<NiskBuildPromptEntry[]>([]);
   const [showWelcome, setShowWelcome] = useState(false);
   const [showDemographic, setShowDemographic] = useState(false);
-  const [showPreview, setShowPreview] = useState(true);
+  const [activeEditorTab, setActiveEditorTab] = useState<'code' | 'preview' | 'blueprint'>('preview');
+  const [blueprintData, setBlueprintData] = useState<ComponentBlueprint | null>(null);
   const [statusMessage, setStatusMessage] = useState('');
   const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
   const [isExporting, setIsExporting] = useState(false);
@@ -177,6 +179,23 @@ function BuilderContent() {
     return files;
   };
 
+  const fetchBlueprint = async (effectivePrompt: string) => {
+    try {
+      const res = await fetch('/api/builder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ prompt: effectivePrompt }),
+      });
+      const data = await res.json();
+      if (data?.blueprint) {
+        setBlueprintData(data.blueprint);
+      }
+    } catch {
+      // Blueprint is optional enrichment — don't block the editor
+    }
+  };
+
   const applyGeneratedCode = (rawCode: string, status: string, entry?: NiskBuildPromptEntry) => {
     const cleaned = cleanGeneratedCode(rawCode);
     syncFilesFromCode(rawCode);
@@ -184,9 +203,10 @@ function BuilderContent() {
     setGeneratedCode(rawCode);
     setPreviewHtml(inspectMode ? injectInspectScript(cleaned) : cleaned);
     setStatusMessage(status);
-    setShowPreview(true);
+    setActiveEditorTab('preview');
     if (entry) {
       setPromptHistory((prev) => [...prev, entry]);
+      fetchBlueprint(entry.prompt);
     }
   };
 
@@ -722,22 +742,38 @@ function BuilderContent() {
         {/* Builder action toolbar */}
         <div className="shrink-0 flex items-center justify-between gap-2 px-3 py-2 border-b border-nisk bg-nisk-surface overflow-x-auto">
           <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={() => setShowPreview(false)}
-              className={`btn-secondary px-3 py-1.5 text-xs rounded-lg md:hidden ${
-                !showPreview ? 'border-[var(--accent-cyan)] text-[var(--accent-cyan)]' : ''
-              }`}
-            >
-              Code
-            </button>
-            <button
-              onClick={() => setShowPreview(true)}
-              className={`btn-secondary px-3 py-1.5 text-xs rounded-lg md:hidden ${
-                showPreview ? 'border-[var(--success)] text-[var(--success)]' : ''
-              }`}
-            >
-              Preview
-            </button>
+            <div className="flex gap-2 md:hidden">
+              <button
+                onClick={() => setActiveEditorTab('code')}
+                className={`px-3 py-1.5 text-sm rounded-lg ${
+                  activeEditorTab === 'code'
+                    ? 'bg-purple-500/20 text-purple-400'
+                    : 'text-gray-400'
+                }`}
+              >
+                📄 Code
+              </button>
+              <button
+                onClick={() => setActiveEditorTab('preview')}
+                className={`px-3 py-1.5 text-sm rounded-lg ${
+                  activeEditorTab === 'preview'
+                    ? 'bg-emerald-500/20 text-emerald-400'
+                    : 'text-gray-400'
+                }`}
+              >
+                👁️ Preview
+              </button>
+              <button
+                onClick={() => setActiveEditorTab('blueprint')}
+                className={`px-3 py-1.5 text-sm rounded-lg ${
+                  activeEditorTab === 'blueprint'
+                    ? 'bg-blue-500/20 text-blue-400'
+                    : 'text-gray-400'
+                }`}
+              >
+                📋 Blueprint
+              </button>
+            </div>
             {user && (
               <span className="hidden sm:inline">
                 <ProjectLimitBadge userId={user.id} currentCount={savedProjects.length} />
@@ -840,7 +876,7 @@ function BuilderContent() {
           )}
 
           {/* Mobile: code panel */}
-          <div className={`flex-1 min-h-0 flex flex-col md:hidden bg-nisk-surface ${!showPreview ? 'flex' : 'hidden'}`}>
+          <div className={`flex-1 min-h-0 flex flex-col md:hidden bg-nisk-surface ${activeEditorTab === 'code' ? 'flex' : 'hidden'}`}>
             <div className="flex min-h-0 flex-1">
               <div className="w-28 shrink-0 border-r border-nisk flex flex-col bg-nisk-card min-h-0">
                 <div className="flex-1 overflow-y-auto min-h-0">
@@ -888,7 +924,7 @@ function BuilderContent() {
           </div>
 
           {/* Mobile: preview panel */}
-          <div className={`flex-1 min-h-0 flex flex-col md:hidden ${showPreview ? 'flex' : 'hidden'}`}>
+          <div className={`flex-1 min-h-0 flex flex-col md:hidden ${activeEditorTab === 'preview' ? 'flex' : 'hidden'}`}>
             <div className="flex items-center justify-between px-4 py-2 border-b border-nisk shrink-0">
               <span className="text-sm font-medium text-white">Live Preview</span>
               <InspectPicker
@@ -911,6 +947,24 @@ function BuilderContent() {
                 className="absolute inset-0 w-full h-full border-0 bg-white"
                 sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"
               />
+            </div>
+          </div>
+
+          {/* Mobile: blueprint panel */}
+          <div className={`flex-1 min-h-0 flex flex-col md:hidden bg-nisk-surface ${activeEditorTab === 'blueprint' ? 'flex' : 'hidden'}`}>
+            <div className="flex items-center px-4 py-2 border-b border-nisk shrink-0">
+              <span className="text-sm font-medium text-white">Component Blueprint</span>
+            </div>
+            <div className="flex-1 min-h-0 p-4 overflow-auto">
+              {blueprintData ? (
+                <pre className="text-xs font-mono text-gray-300 whitespace-pre-wrap">
+                  {JSON.stringify(blueprintData, null, 2)}
+                </pre>
+              ) : (
+                <p className="text-sm text-nisk-muted text-center mt-8">
+                  Generate an app to see its blueprint structure here.
+                </p>
+              )}
             </div>
           </div>
 
@@ -972,43 +1026,87 @@ function BuilderContent() {
                 <div className="h-full flex flex-col bg-nisk min-w-0">
                   <div className="flex items-center justify-between px-4 py-2 border-b border-nisk shrink-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="w-2 h-2 rounded-full bg-[var(--success)] status-dot-active" />
-                      <span className="text-sm font-medium text-white">Live Preview</span>
-                      <InspectPicker
-                        active={inspectMode}
-                        onToggle={() => {
-                          setInspectMode((v) => !v);
-                          setInspectTarget(null);
-                        }}
-                        target={inspectTarget}
-                        onClearTarget={() => setInspectTarget(null)}
-                        onSubmit={handleTargetedEdit}
-                        isGenerating={isGenerating}
-                      />
-                      <label className="hidden sm:inline-flex items-center gap-1 text-[10px] text-nisk-muted cursor-pointer btn-secondary rounded-lg px-2 py-1">
-                        Import ZIP
-                        <input
-                          type="file"
-                          accept=".zip"
-                          className="hidden"
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0];
-                            if (file) await restoreFromZip(file);
-                            e.target.value = '';
-                          }}
-                        />
-                      </label>
+                      <div className="flex gap-2 mr-2">
+                        <button
+                          onClick={() => setActiveEditorTab('preview')}
+                          className={`px-3 py-1.5 text-sm rounded-lg ${
+                            activeEditorTab === 'preview'
+                              ? 'bg-emerald-500/20 text-emerald-400'
+                              : 'text-gray-400'
+                          }`}
+                        >
+                          👁️ Preview
+                        </button>
+                        <button
+                          onClick={() => setActiveEditorTab('blueprint')}
+                          className={`px-3 py-1.5 text-sm rounded-lg ${
+                            activeEditorTab === 'blueprint'
+                              ? 'bg-blue-500/20 text-blue-400'
+                              : 'text-gray-400'
+                          }`}
+                        >
+                          📋 Blueprint
+                        </button>
+                      </div>
+                      {activeEditorTab !== 'blueprint' && (
+                        <>
+                          <span className="w-2 h-2 rounded-full bg-[var(--success)] status-dot-active" />
+                          <span className="text-sm font-medium text-white">Live Preview</span>
+                          <InspectPicker
+                            active={inspectMode}
+                            onToggle={() => {
+                              setInspectMode((v) => !v);
+                              setInspectTarget(null);
+                            }}
+                            target={inspectTarget}
+                            onClearTarget={() => setInspectTarget(null)}
+                            onSubmit={handleTargetedEdit}
+                            isGenerating={isGenerating}
+                          />
+                          <label className="hidden sm:inline-flex items-center gap-1 text-[10px] text-nisk-muted cursor-pointer btn-secondary rounded-lg px-2 py-1">
+                            Import ZIP
+                            <input
+                              type="file"
+                              accept=".zip"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) await restoreFromZip(file);
+                                e.target.value = '';
+                              }}
+                            />
+                          </label>
+                        </>
+                      )}
+                      {activeEditorTab === 'blueprint' && (
+                        <span className="text-sm font-medium text-white">Component Blueprint</span>
+                      )}
                     </div>
                     <span className="text-[11px] text-nisk-muted font-mono">sandbox</span>
                   </div>
                   <div className="flex-1 min-h-0 relative">
-                    <iframe
-                      key={previewHtml.slice(0, 80)}
-                      srcDoc={previewHtml || PLACEHOLDER_PREVIEW}
-                      title="Live Preview"
-                      className="absolute inset-0 w-full h-full border-0 bg-white"
-                      sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"
-                    />
+                    {activeEditorTab !== 'blueprint' && (
+                      <iframe
+                        key={previewHtml.slice(0, 80)}
+                        srcDoc={previewHtml || PLACEHOLDER_PREVIEW}
+                        title="Live Preview"
+                        className="absolute inset-0 w-full h-full border-0 bg-white"
+                        sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"
+                      />
+                    )}
+                    {activeEditorTab === 'blueprint' && (
+                      <div className="absolute inset-0 p-4 overflow-auto">
+                        {blueprintData ? (
+                          <pre className="text-xs font-mono text-gray-300 whitespace-pre-wrap">
+                            {JSON.stringify(blueprintData, null, 2)}
+                          </pre>
+                        ) : (
+                          <p className="text-sm text-nisk-muted text-center mt-8">
+                            Generate an app to see its blueprint structure here.
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               }

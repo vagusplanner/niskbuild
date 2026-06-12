@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createClient } from '@/lib/supabase/server';
 import { getTemplateById, canAccessTemplate } from '@/lib/marketplace-templates';
@@ -78,7 +79,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ url: session.url, sessionId: session.id });
   } catch (error) {
-    console.error('Template purchase error:', error);
-    return NextResponse.json({ error: 'Failed to start checkout' }, { status: 500 });
+    return apiErrorResponse(error, 'Failed to start checkout');
   }
 }

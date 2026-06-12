@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { captureApiException } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -22,6 +23,7 @@ export async function GET(request: NextRequest) {
       error: error?.message,
     });
   } catch (error) {
+    captureApiException(error);
     return NextResponse.json({
       connected: false,
       error: String(error),

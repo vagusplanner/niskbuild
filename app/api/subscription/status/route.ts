@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { captureApiException } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getCloudCreditsForTier, isPaidAndActive } from '@/lib/tier-config';
@@ -60,6 +61,7 @@ export async function GET(request: NextRequest) {
       creditsAllowance: getCloudCreditsForTier(tier),
     });
   } catch (error) {
+    captureApiException(error);
     console.error('Subscription status error:', error);
     return NextResponse.json(
       { active: false, tier: 'free', status: 'inactive', paid: false },

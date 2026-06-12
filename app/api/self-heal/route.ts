@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { deductCloudCredit } from '@/lib/credits';
@@ -166,10 +167,6 @@ export async function POST(request: NextRequest) {
     });
     
   } catch (error) {
-    console.error('Generation error:', error);
-    return NextResponse.json(
-      { error: 'Failed to generate code. Please try again.' },
-      { status: 500 }
-    );
+    return apiErrorResponse(error, 'Failed to generate code. Please try again.');
   }
 }

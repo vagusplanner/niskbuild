@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { captureApiException } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -19,6 +20,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ count: count || 0 });
   } catch (error) {
+    captureApiException(error);
     console.error('Waitlist count error:', error);
     return NextResponse.json({ count: 0 });
   }

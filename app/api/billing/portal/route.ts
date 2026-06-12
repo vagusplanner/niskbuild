@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createClient } from '@/lib/supabase/server';
 
@@ -44,7 +45,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ url: portal.url });
   } catch (error) {
-    console.error('Billing portal error:', error);
-    return NextResponse.json({ error: 'Failed to open billing portal' }, { status: 500 });
+    return apiErrorResponse(error, 'Failed to open billing portal');
   }
 }

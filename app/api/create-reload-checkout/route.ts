@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createClient } from '@/lib/supabase/server';
 import { getReloadPack } from '@/lib/reload-packs';
@@ -70,7 +71,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ url: session.url });
   } catch (error) {
-    console.error('Reload checkout error:', error);
-    return NextResponse.json({ error: 'Failed to create checkout' }, { status: 500 });
+    return apiErrorResponse(error, 'Failed to create checkout');
   }
 }

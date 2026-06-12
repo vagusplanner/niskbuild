@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { captureApiException } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -61,6 +62,7 @@ export async function POST(request: NextRequest) {
     });
     
   } catch (error) {
+    captureApiException(error);
     console.error('💥 Waitlist error:', error);
     return NextResponse.json(
       { error: 'Internal server error: ' + String(error) },

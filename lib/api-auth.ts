@@ -30,7 +30,9 @@ export function unauthorizedResponse(): NextResponse {
   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 }
 
-export async function requireApiUser(): Promise<
+export async function requireApiUser(
+  request?: NextRequest
+): Promise<
   { ok: true; user: User } | { ok: false; response: NextResponse }
 > {
   const supabase = await createClient();
@@ -39,11 +41,26 @@ export async function requireApiUser(): Promise<
     error,
   } = await supabase.auth.getUser();
 
-  if (error || !user) {
-    return { ok: false, response: unauthorizedResponse() };
+  if (!error && user) {
+    return { ok: true, user };
   }
 
-  return { ok: true, user };
+  if (request) {
+    const authHeader = request.headers.get('Authorization');
+    const token = authHeader?.replace(/^Bearer\s+/i, '').trim();
+    if (token) {
+      const {
+        data: { user: bearerUser },
+        error: bearerError,
+      } = await supabase.auth.getUser(token);
+
+      if (!bearerError && bearerUser) {
+        return { ok: true, user: bearerUser };
+      }
+    }
+  }
+
+  return { ok: false, response: unauthorizedResponse() };
 }
 
 function clientIp(request: NextRequest): string {
@@ -80,7 +97,7 @@ export async function guardApiRequest(
     options?.rateLimit ?? RATE_LIMITS[pathname] ?? DEFAULT_RATE_LIMIT;
 
   if (requireAuth) {
-    const auth = await requireApiUser();
+    const auth = await requireApiUser(request);
     if (!auth.ok) return auth;
 
     const key = options?.rateLimitKey ?? `${pathname}:${auth.user.id}`;

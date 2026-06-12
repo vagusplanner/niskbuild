@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { generateCode } from '@/lib/ai-providers';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -98,7 +99,6 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   } catch (error) {
-    console.error('Generation error:', error);
-    return NextResponse.json({ error: 'Failed to generate code' }, { status: 500 });
+    return apiErrorResponse(error, 'Failed to generate code');
   }
 }

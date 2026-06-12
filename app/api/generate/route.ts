@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { captureApiException } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 import {
@@ -89,6 +90,7 @@ Now generate ONLY the HTML code for this request. Start with <!DOCTYPE html> and
     });
     
   } catch (error) {
+    captureApiException(error);
     console.error('Generation error:', error);
     return NextResponse.json(
       { 

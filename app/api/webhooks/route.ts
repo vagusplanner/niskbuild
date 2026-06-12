@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { captureApiException } from '@/lib/api-error';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { addCloudCredits } from '@/lib/credits';
 import { canUseOwnApiKeys, getCloudCreditsForTier } from '@/lib/tier-config';
@@ -181,6 +182,7 @@ export async function POST(request: NextRequest) {
         await handleSubscriptionActivated(supabase, customer.email);
       }
     } catch (err) {
+      captureApiException(err);
       console.error('Subscription created error:', err);
     }
   }
@@ -219,6 +221,7 @@ export async function POST(request: NextRequest) {
         }
       }
     } catch (err) {
+      captureApiException(err);
       console.error('Subscription update error:', err);
     }
   }
@@ -244,6 +247,7 @@ export async function POST(request: NextRequest) {
         console.log(`📉 User ${customer.email} downgraded — preview links expired`);
       }
     } catch (err) {
+      captureApiException(err);
       console.error('Error processing cancellation:', err);
     }
   }
@@ -280,6 +284,7 @@ export async function POST(request: NextRequest) {
 
       console.log(`🔄 Credits refreshed for ${customer.email} on invoice.paid`);
     } catch (err) {
+      captureApiException(err);
       console.error('Invoice paid handler error:', err);
     }
   }

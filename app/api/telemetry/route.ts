@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createClient } from '@/lib/supabase/server';
 import { normalizeDemographicTier } from '@/lib/demographic-tiers';
@@ -76,7 +77,6 @@ export async function POST(request: NextRequest) {
       telemetry_id: result.telemetry_id,
     });
   } catch (error) {
-    console.error('Telemetry route error:', error);
-    return NextResponse.json({ error: 'Telemetry failed' }, { status: 500 });
+    return apiErrorResponse(error, 'Telemetry failed');
   }
 }

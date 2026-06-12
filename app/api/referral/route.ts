@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json(profile);
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to fetch referral data' }, { status: 500 });
+    return apiErrorResponse(error, 'Failed to fetch referral data');
   }
 }
 
@@ -60,6 +61,6 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({ success: true, referral: data });
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to create referral' }, { status: 500 });
+    return apiErrorResponse(error, 'Failed to create referral');
   }
 }

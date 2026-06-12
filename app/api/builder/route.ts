@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type { User } from '@supabase/supabase-js';
+import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
+import { compileBlueprint } from '@/lib/blueprint-compiler';
+import { generateBlueprint } from '@/lib/blueprint-generator';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
 import { getProjectLimit } from '@/lib/project-limits';
 import { getCloudCreditsForTier, isPaidAndActive } from '@/lib/tier-config';
@@ -8,9 +12,10 @@ import { generateArchitecturePlan } from '@/lib/plan-mode';
 /**
  * POST /api/builder
  *
- * Two modes:
- * 1. planOnly=true — returns Markdown roadmap via Groq; no cloud credit deduction
- * 2. default — workspace boot guard (paid + project cap check)
+ * Modes:
+ * 1. planOnly=true — Markdown roadmap via Groq
+ * 2. prompt (+ optional projectId) — blueprint generate + compile
+ * 3. default / empty body — workspace boot guard
  */
 export async function POST(request: NextRequest) {
   const guard = await guardApiRequest(request, { rateLimit: 10 });
@@ -20,11 +25,16 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json();
   } catch {
-    // Empty body = boot guard only (e.g. on builder mount)
+    return handleBootGuard();
   }
 
   if (body.planOnly === true) {
     return handlePlanMode(body);
+  }
+
+  const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : '';
+  if (prompt) {
+    return handleBlueprintBuild(body, guard.user!);
   }
 
   return handleBootGuard();
@@ -65,6 +75,50 @@ async function handlePlanMode(body: Record<string, unknown>) {
     planOnly: true,
     creditsDeducted: 0,
   });
+}
+
+async function handleBlueprintBuild(body: Record<string, unknown>, user: User) {
+  try {
+    const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : '';
+    const projectId = typeof body.projectId === 'string' ? body.projectId : undefined;
+
+    if (!prompt) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    const blueprint = await generateBlueprint(prompt, user.id);
+    if (!blueprint) {
+      return NextResponse.json({ error: 'Failed to generate blueprint' }, { status: 500 });
+    }
+
+    const { code: compiledCode, compiler: compilerUsed } = compileBlueprint(blueprint);
+
+    if (projectId) {
+      const { supabase } = await getAuthenticatedProfile();
+      const { error } = await supabase
+        .from('projects')
+        .update({
+          blueprint_json: blueprint,
+          generated_code: compiledCode,
+          prompt,
+        })
+        .eq('id', projectId)
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Blueprint project save error:', error.message);
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      blueprint,
+      code: compiledCode,
+      compiler: compilerUsed,
+    });
+  } catch (error) {
+    return apiErrorResponse(error, 'Failed to build application');
+  }
 }
 
 async function handleBootGuard() {

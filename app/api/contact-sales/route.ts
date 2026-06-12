@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { ENTERPRISE_SALES_EMAIL, PRICING_TIERS } from '@/lib/pricing-tiers';
 import { sendEmail } from '@/lib/send-email';
@@ -85,7 +86,6 @@ export async function POST(request: NextRequest) {
       message: 'Thanks — our team will reach out within one business day.',
     });
   } catch (error) {
-    console.error('Contact sales error:', error);
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 });
+    return apiErrorResponse(error, 'Something went wrong. Please try again.');
   }
 }

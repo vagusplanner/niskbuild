@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
+import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 
 // In-memory storage for development
@@ -49,11 +50,7 @@ export async function POST(request: NextRequest) {
     });
     
   } catch (error) {
-    console.error('Logging error:', error);
-    return NextResponse.json(
-      { error: 'Failed to log structural data' },
-      { status: 500 }
-    );
+    return apiErrorResponse(error, 'Failed to log structural data');
   }
 }
 
