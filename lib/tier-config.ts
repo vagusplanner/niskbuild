@@ -124,6 +124,26 @@ export function canExportNative(
   return idx >= agencyIdx;
 }
 
+/** Visual CSS editor — Free (sandbox) and all paid active tiers */
+export function canUseVisualEditor(
+  tier: string | null | undefined,
+  status?: string | null | undefined
+): boolean {
+  if (isSandboxTier(tier)) return true;
+  return isPaidAndActive(tier, status);
+}
+
+/** Mobile overrides, undo, and reset — Agency plan and above */
+export function canUseVisualEditorFull(
+  tier: string | null | undefined,
+  status: string | null | undefined
+): boolean {
+  if (!isPaidAndActive(tier, status)) return false;
+  const idx = TIER_ORDER.indexOf((tier || 'free') as (typeof TIER_ORDER)[number]);
+  const agencyIdx = TIER_ORDER.indexOf('agency');
+  return idx >= agencyIdx;
+}
+
 export function tierDisplayName(tier: string): string {
   const names: Record<string, string> = {
     free: 'Sandbox',

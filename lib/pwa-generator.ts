@@ -23,6 +23,10 @@ export type PwaManifest = {
   background_color: string;
   theme_color: string;
   icons: Array<{ src: string; sizes: string; type: string; purpose?: string }>;
+  screenshots: [];
+  categories: string[];
+  lang: string;
+  dir: 'ltr';
 };
 
 const BACKGROUND_COLOR = '#0D0F1E';
@@ -47,6 +51,10 @@ export function generateManifest(project: PwaProjectInput): PwaManifest {
       { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
       { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
     ],
+    screenshots: [],
+    categories: ['productivity', 'business'],
+    lang: 'en',
+    dir: 'ltr',
   };
 }
 
@@ -108,17 +116,39 @@ export function generateOfflinePage(): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Offline</title>
+  <title>Offline - NiskBuild App</title>
   <style>
-    body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
-      background: #0D0F1E; color: #94A3B8; font-family: system-ui, sans-serif; text-align: center; padding: 2rem; }
-    h1 { color: #fff; font-size: 1.25rem; margin-bottom: 0.5rem; }
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0D0F1E;
+      color: #E2E8F0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      text-align: center;
+    }
+    .container { max-width: 400px; }
+    h1 { font-size: 2rem; margin-bottom: 1rem; }
+    p { color: #94A3B8; margin-bottom: 2rem; }
+    button {
+      background: #00F2FE;
+      color: #0D0F1E;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
-  <div>
-    <h1>You are offline</h1>
-    <p>Your app will load when you reconnect.</p>
+  <div class="container">
+    <h1>📡 You're Offline</h1>
+    <p>You are offline. Your app will load when you reconnect.</p>
+    <button onclick="window.location.reload()">Try Again</button>
   </div>
 </body>
 </html>`;

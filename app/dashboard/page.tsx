@@ -10,6 +10,13 @@ import ProjectLimitBadge from '@/app/components/ProjectLimitBadge';
 import PreviewLinksStatus from '@/app/components/PreviewLinksStatus';
 import MobileExportModal from '@/app/components/MobileExportModal';
 import { MAIN_NAV } from '@/lib/nav-config';
+import {
+  downloadBlob,
+  handleExportError,
+  requestNativeExport,
+  requestPwaExport,
+  type MobileExportPayload,
+} from '@/lib/mobile-export-client';
 import { canExportCleanZip, canExportNative, canExportPwa } from '@/lib/tier-config';
 
 interface SavedProject {
@@ -114,43 +121,23 @@ function DashboardContent() {
     }
   };
 
-  const downloadBlob = (blob: Blob, filename: string) => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const exportPayload = (project: SavedProject): MobileExportPayload => ({
+    projectId: project.id,
+  });
 
   const handleExportPwa = async () => {
     if (!mobileExportProject || !canPwa) return;
     setMobileExporting('pwa');
     try {
-      const res = await fetch('/api/export/pwa', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ projectId: mobileExportProject.id }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        if (res.status === 403 && err.upgrade) {
-          const upgrade = confirm(`${err.error}\n\nOpen Pricing?`);
-          if (upgrade) window.location.href = '/pricing';
-          return;
-        }
-        throw new Error(err.error || 'PWA export failed');
+      const result = await requestPwaExport(exportPayload(mobileExportProject));
+      if (!result.ok) {
+        handleExportError(result.error || 'PWA export failed', result.upgrade);
+        return;
       }
-
-      const blob = await res.blob();
-      const disposition = res.headers.get('Content-Disposition');
-      const match = disposition?.match(/filename="([^"]+)"/);
-      downloadBlob(blob, match?.[1] || `${mobileExportProject.title}-pwa.zip`);
+      downloadBlob(result.blob!, result.filename!);
       setMobileExportProject(null);
     } catch (err) {
-      alert(`PWA export failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      handleExportError(err instanceof Error ? err.message : 'PWA export failed');
     } finally {
       setMobileExporting(null);
     }
@@ -160,30 +147,15 @@ function DashboardContent() {
     if (!mobileExportProject || !canNative) return;
     setMobileExporting('native');
     try {
-      const res = await fetch('/api/export/native', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ projectId: mobileExportProject.id }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        if (res.status === 403 && err.upgrade) {
-          const upgrade = confirm(`${err.error}\n\nOpen Pricing?`);
-          if (upgrade) window.location.href = '/pricing';
-          return;
-        }
-        throw new Error(err.error || 'Native export failed');
+      const result = await requestNativeExport(exportPayload(mobileExportProject));
+      if (!result.ok) {
+        handleExportError(result.error || 'Native export failed', result.upgrade);
+        return;
       }
-
-      const blob = await res.blob();
-      const disposition = res.headers.get('Content-Disposition');
-      const match = disposition?.match(/filename="([^"]+)"/);
-      downloadBlob(blob, match?.[1] || `${mobileExportProject.title}-native.zip`);
+      downloadBlob(result.blob!, result.filename!);
       setMobileExportProject(null);
     } catch (err) {
-      alert(`Native export failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      handleExportError(err instanceof Error ? err.message : 'Native export failed');
     } finally {
       setMobileExporting(null);
     }

@@ -22,15 +22,29 @@ import BuilderSidebar from '@/app/components/BuilderSidebar';
 import ResizableSplit from '@/app/components/ResizableSplit';
 import PromptBar from '@/app/components/PromptBar';
 import PlanPanel from '@/app/components/PlanPanel';
+import MobileExportModal from '@/app/components/MobileExportModal';
+import StylePanel from '@/app/components/StylePanel';
+import VisualEditorToolbar from '@/app/components/VisualEditorToolbar';
 import BuilderOllamaSettings, {
   BuilderOllamaLockedHint,
 } from '@/app/components/BuilderOllamaSettings';
 import {
+  canExportNative,
+  canExportPwa,
   canUseLocalOllama,
+  canUseVisualEditor,
+  canUseVisualEditorFull,
   isSandboxTier,
   LOCAL_OLLAMA_PRO_BANNER,
 } from '@/lib/tier-config';
 import type { ComponentBlueprint } from '@/lib/blueprint-schema';
+import {
+  downloadBlob,
+  handleExportError,
+  requestNativeExport,
+  requestPwaExport,
+  type MobileExportPayload,
+} from '@/lib/mobile-export-client';
 import { getProjectLimit } from '@/lib/project-limits';
 import {
   estimateTokens,
@@ -39,6 +53,11 @@ import {
   recordLocalGeneration,
   recordLocalWork,
 } from '@/lib/roi-tracker';
+import {
+  broadcastToPreviewIframes,
+  injectVisualEditorScript,
+} from '@/lib/visual-editor-inject';
+import type { SelectedVisualElement, StyleChanges } from '@/lib/visual-editor-types';
 import JSZip from 'jszip';
 
 type ProjectSort = 'newest' | 'oldest' | 'name';
@@ -93,10 +112,23 @@ function BuilderContent() {
   const [planMode, setPlanMode] = useState(false);
   const [architecturePlan, setArchitecturePlan] = useState<string | null>(null);
   const [subscriptionTier, setSubscriptionTier] = useState('free');
+  const [subscriptionStatus, setSubscriptionStatus] = useState('inactive');
   const [useLocalOllama, setUseLocalOllama] = useState(false);
   const [showProOllamaBanner, setShowProOllamaBanner] = useState(false);
   const [projectLimit, setProjectLimit] = useState(1);
+  const [showMobileExport, setShowMobileExport] = useState(false);
+  const [mobileExporting, setMobileExporting] = useState<'pwa' | 'native' | null>(null);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [visualEditMode, setVisualEditMode] = useState(false);
+  const [visualMobilePreview, setVisualMobilePreview] = useState(false);
+  const [selectedVisualElement, setSelectedVisualElement] = useState<SelectedVisualElement | null>(null);
+  const [stylePanel, setStylePanel] = useState<StyleChanges>({});
+  const [visualEditApplying, setVisualEditApplying] = useState(false);
+  const [visualEditHistory, setVisualEditHistory] = useState<string[]>([]);
+  const [cloudCreditsRemaining, setCloudCreditsRemaining] = useState(0);
   const previewDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const visualEditDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const aiOriginalCodeRef = useRef<string | null>(null);
   const lastCodeLenRef = useRef(0);
 
   useEffect(() => {
@@ -115,6 +147,7 @@ function BuilderContent() {
           if (data?.tier) {
             setSubscriptionTier(data.tier);
             setProjectLimit(data.projectLimit ?? getProjectLimit(data.tier));
+            setCloudCreditsRemaining(data.cloudCreditsRemaining ?? 0);
             const savedLocal = localStorage.getItem('niskbuild_use_local_ollama') === 'true';
             const sandbox = isSandboxTier(data.tier);
             setUseLocalOllama(
@@ -127,6 +160,19 @@ function BuilderContent() {
         })
         .catch(() => {});
 
+      fetch('/api/subscription/status', { credentials: 'include' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+        if (data?.tier) {
+          setSubscriptionTier(data.tier);
+          setSubscriptionStatus(data.status ?? 'inactive');
+          setProjectLimit(data.projectLimit ?? getProjectLimit(data.tier));
+          if (typeof data.credits === 'number') {
+            setCloudCreditsRemaining(data.credits);
+          }
+        }
+        })
+        .catch(() => {});
 
       const privacyRes = await fetch('/api/settings/privacy').catch(() => null);
       const privacy = privacyRes?.ok ? await privacyRes.json() : null;
@@ -163,6 +209,7 @@ function BuilderContent() {
       const match = projects.find((p) => p.id === pendingId);
       localStorage.removeItem('niskbuild_load_project_id');
       if (match) {
+        setActiveProjectId(match.id);
         setPrompt(match.prompt);
         applyGeneratedCode(match.generated_code, `📂 Loaded: ${match.title}`, {
           prompt: match.prompt,
@@ -196,12 +243,21 @@ function BuilderContent() {
     }
   };
 
+  const wrapPreviewHtml = (cleaned: string) => {
+    if (visualEditMode) return injectVisualEditorScript(cleaned);
+    if (inspectMode) return injectInspectScript(cleaned);
+    return cleaned;
+  };
+
   const applyGeneratedCode = (rawCode: string, status: string, entry?: NiskBuildPromptEntry) => {
     const cleaned = cleanGeneratedCode(rawCode);
     syncFilesFromCode(rawCode);
     lastCodeLenRef.current = rawCode.length;
     setGeneratedCode(rawCode);
-    setPreviewHtml(inspectMode ? injectInspectScript(cleaned) : cleaned);
+    setPreviewHtml(wrapPreviewHtml(cleaned));
+    if (!aiOriginalCodeRef.current && isExportableCode(rawCode)) {
+      aiOriginalCodeRef.current = rawCode;
+    }
     setStatusMessage(status);
     setActiveEditorTab('preview');
     if (entry) {
@@ -220,23 +276,46 @@ function BuilderContent() {
           text: e.data.text || '',
         });
       }
+      if (e.data?.type === 'niskbuild-visual-select' && visualEditMode) {
+        setSelectedVisualElement({
+          selector: e.data.selector || '',
+          tagName: e.data.tagName || '',
+          breadcrumb: Array.isArray(e.data.breadcrumb) ? e.data.breadcrumb : [],
+          styles: e.data.styles || {},
+        });
+        setStylePanel(e.data.styles || {});
+      }
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, []);
+  }, [visualEditMode]);
 
   useEffect(() => {
     if (!previewHtml || previewHtml === PLACEHOLDER_PREVIEW) return;
     const base = cleanGeneratedCode(generatedCode);
-    setPreviewHtml(inspectMode ? injectInspectScript(base) : base);
-  }, [inspectMode]); // eslint-disable-line react-hooks/exhaustive-deps
+    setPreviewHtml(wrapPreviewHtml(base));
+    if (visualEditMode) {
+      const timer = setTimeout(() => {
+        broadcastToPreviewIframes({ type: 'nisk-visual-toggle', enabled: true });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [inspectMode, visualEditMode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    broadcastToPreviewIframes({ type: 'nisk-visual-toggle', enabled: visualEditMode });
+    if (!visualEditMode) {
+      setSelectedVisualElement(null);
+      broadcastToPreviewIframes({ type: 'nisk-visual-clear-selection' });
+    }
+  }, [visualEditMode]);
 
   const activeFileContent = projectFiles.find((f) => f.path === activeFile)?.content ?? generatedCode;
 
   const syncPreviewFromHtml = (content: string) => {
     setGeneratedCode(content);
     const cleaned = cleanGeneratedCode(content);
-    setPreviewHtml(inspectMode ? injectInspectScript(cleaned) : cleaned);
+    setPreviewHtml(wrapPreviewHtml(cleaned));
 
     if (user?.id) {
       const delta = Math.abs(content.length - lastCodeLenRef.current);
@@ -261,8 +340,116 @@ function BuilderContent() {
   useEffect(() => {
     return () => {
       if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current);
+      if (visualEditDebounceRef.current) clearTimeout(visualEditDebounceRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (visualEditDebounceRef.current) clearTimeout(visualEditDebounceRef.current);
+  }, [selectedVisualElement?.selector]);
+
+  const persistVisualEdit = async (styles: StyleChanges, element: SelectedVisualElement) => {
+    if (!isExportableCode(generatedCode)) return;
+
+    setVisualEditApplying(true);
+    setVisualEditHistory((prev) => [...prev, generatedCode]);
+
+    try {
+      const res = await fetch('/api/visual-edit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          currentCode: generatedCode,
+          selector: element.selector,
+          breadcrumb: element.breadcrumb,
+          styles,
+          isMobile: visualMobilePreview && canUseVisualEditorFull(subscriptionTier, subscriptionStatus),
+          sessionId: user?.id || 'builder',
+        }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setVisualEditHistory((prev) => prev.slice(0, -1));
+        if (res.status === 403 || res.status === 402) {
+          handleExportError(data.error || 'Visual edit requires Pro plan and credits', data.upgrade);
+        } else {
+          alert(data.error || 'Visual edit failed');
+        }
+        return;
+      }
+
+      if (data.code) {
+        applyGeneratedCode(data.code, `🎨 Visual edit — ${data.creditsUsed ?? 0.3} credits used`);
+        if (typeof data.creditsRemaining === 'number') {
+          setCloudCreditsRemaining(data.creditsRemaining);
+        }
+      }
+    } catch {
+      setVisualEditHistory((prev) => prev.slice(0, -1));
+      alert('Visual edit failed — network error');
+    } finally {
+      setVisualEditApplying(false);
+    }
+  };
+
+  const handleVisualStyleChange = (key: keyof StyleChanges, value: string | number) => {
+    if (!selectedVisualElement) return;
+
+    const newStyles = { ...stylePanel, [key]: value };
+    setStylePanel(newStyles);
+
+    broadcastToPreviewIframes({
+      type: 'nisk-visual-apply',
+      selector: selectedVisualElement.selector,
+      styles: { [key]: value },
+    });
+
+    if (visualEditDebounceRef.current) clearTimeout(visualEditDebounceRef.current);
+    visualEditDebounceRef.current = setTimeout(() => {
+      persistVisualEdit(newStyles, selectedVisualElement);
+    }, 600);
+  };
+
+  const handleVisualUndo = () => {
+    if (visualEditHistory.length === 0) return;
+    const previous = visualEditHistory[visualEditHistory.length - 1];
+    setVisualEditHistory((prev) => prev.slice(0, -1));
+    applyGeneratedCode(previous, '↩️ Reverted last visual edit');
+    setSelectedVisualElement(null);
+    broadcastToPreviewIframes({ type: 'nisk-visual-clear-selection' });
+  };
+
+  const handleVisualReset = () => {
+    if (!aiOriginalCodeRef.current) return;
+    setVisualEditHistory([]);
+    applyGeneratedCode(aiOriginalCodeRef.current, '🔄 Reset to AI original');
+    setSelectedVisualElement(null);
+    broadcastToPreviewIframes({ type: 'nisk-visual-clear-selection' });
+  };
+
+  const toggleVisualEditMode = () => {
+    if (!canUseVisualEditor(subscriptionTier, subscriptionStatus)) {
+      handleExportError('Visual editing requires Free or an active paid plan.', true);
+      return;
+    }
+    if (!isExportableCode(generatedCode)) {
+      alert('Generate an app first before using visual edit mode.');
+      return;
+    }
+    setVisualEditMode((prev) => {
+      const next = !prev;
+      if (next) {
+        setInspectMode(false);
+        setInspectTarget(null);
+        if (!aiOriginalCodeRef.current) {
+          aiOriginalCodeRef.current = generatedCode;
+        }
+      }
+      return next;
+    });
+  };
 
   const restoreFromZip = async (file: File) => {
     const zip = await JSZip.loadAsync(file);
@@ -346,6 +533,10 @@ function BuilderContent() {
     }
 
     setIsGenerating(true);
+    setActiveProjectId(null);
+    setVisualEditHistory([]);
+    setSelectedVisualElement(null);
+    aiOriginalCodeRef.current = null;
     setGeneratedCode('// Generating...');
     setPreviewHtml('<div style="padding:2rem;text-align:center;color:#94A3B8;background:#0B0F19;height:100%">🔄 Generating your app...</div>');
 
@@ -549,6 +740,70 @@ function BuilderContent() {
     }
   };
 
+  const buildMobileExportPayload = (): MobileExportPayload => {
+    if (activeProjectId) {
+      return { projectId: activeProjectId };
+    }
+    return {
+      inline: {
+        title: prompt.substring(0, 50) || 'NiskBuild Project',
+        prompt,
+        generated_code: generatedCode,
+        blueprint_json: blueprintData ?? undefined,
+      },
+    };
+  };
+
+  const handleOpenMobileExport = () => {
+    if (!isExportableCode(generatedCode)) {
+      alert('Generate an app first before exporting.');
+      return;
+    }
+    if (!canExportPwa(subscriptionTier, subscriptionStatus)) {
+      handleExportError('PWA export requires an active Pro plan or above.', true);
+      return;
+    }
+    setShowMobileExport(true);
+  };
+
+  const handleExportPwa = async () => {
+    setMobileExporting('pwa');
+    try {
+      const result = await requestPwaExport(buildMobileExportPayload());
+      if (!result.ok) {
+        handleExportError(result.error || 'PWA export failed', result.upgrade);
+        return;
+      }
+      downloadBlob(result.blob!, result.filename!);
+      setShowMobileExport(false);
+      setStatusMessage('✅ PWA bundle exported');
+      setTimeout(() => setStatusMessage(''), 5000);
+    } catch (err) {
+      handleExportError(err instanceof Error ? err.message : 'PWA export failed');
+    } finally {
+      setMobileExporting(null);
+    }
+  };
+
+  const handleExportNative = async () => {
+    setMobileExporting('native');
+    try {
+      const result = await requestNativeExport(buildMobileExportPayload());
+      if (!result.ok) {
+        handleExportError(result.error || 'Native export failed', result.upgrade);
+        return;
+      }
+      downloadBlob(result.blob!, result.filename!);
+      setShowMobileExport(false);
+      setStatusMessage('✅ Native bundle exported');
+      setTimeout(() => setStatusMessage(''), 5000);
+    } catch (err) {
+      handleExportError(err instanceof Error ? err.message : 'Native export failed');
+    } finally {
+      setMobileExporting(null);
+    }
+  };
+
   const handleDeployLive = async () => {
     if (!isExportableCode(generatedCode)) {
       alert('Generate an app first before deploying.');
@@ -656,12 +911,14 @@ function BuilderContent() {
       }
     } else {
       setStatusMessage('✅ Project saved');
+      if (data.project?.id) setActiveProjectId(data.project.id);
       loadProjects();
       setTimeout(() => setStatusMessage(''), 3000);
     }
   };
 
   const loadProject = (project: SavedProject) => {
+    setActiveProjectId(project.id);
     setPrompt(project.prompt);
     applyGeneratedCode(project.generated_code, `📂 Loaded: ${project.title}`, {
       prompt: project.prompt,
@@ -692,12 +949,30 @@ function BuilderContent() {
 
   const userName = user?.email?.split('@')[0];
   const canAct = isExportableCode(generatedCode);
+  const canPwa = canExportPwa(subscriptionTier, subscriptionStatus);
+  const canNative = canExportNative(subscriptionTier, subscriptionStatus);
+  const canVisualEdit = canUseVisualEditor(subscriptionTier, subscriptionStatus);
+  const canVisualEditFull = canUseVisualEditorFull(subscriptionTier, subscriptionStatus);
+
+  const previewFrameClass = visualMobilePreview
+    ? 'absolute top-0 left-1/2 -translate-x-1/2 w-[375px] max-w-full h-full border-x border-nisk shadow-xl'
+    : 'absolute inset-0 w-full h-full';
 
   return (
     <SubscriptionGuard>
     <Layout variant="builder">
       <DemographicOnboarding open={showDemographic} onComplete={handleDemographicComplete} />
       <WelcomeAssistant open={showWelcome} onComplete={handleWelcomeComplete} userName={userName} />
+      <MobileExportModal
+        open={showMobileExport}
+        projectTitle={prompt.substring(0, 50) || 'Untitled Project'}
+        canPwa={canPwa}
+        canNative={canNative}
+        exporting={mobileExporting}
+        onClose={() => setShowMobileExport(false)}
+        onExportPwa={handleExportPwa}
+        onExportNative={handleExportNative}
+      />
 
       <button
         onClick={() => setShowWelcome(true)}
@@ -795,6 +1070,14 @@ function BuilderContent() {
               className="btn-secondary px-3 py-1.5 text-xs rounded-lg disabled:opacity-40"
             >
               {isExporting ? 'Exporting...' : 'Export ZIP'}
+            </button>
+            <button
+              onClick={handleOpenMobileExport}
+              disabled={!canAct || mobileExporting !== null}
+              className="btn-success px-3 py-1.5 text-xs rounded-lg disabled:opacity-40"
+              title={canPwa ? 'Export as installable PWA or native app' : 'Pro plan required'}
+            >
+              Export as Mobile App
             </button>
             <button
               onClick={handleDeployLive}
@@ -927,26 +1210,57 @@ function BuilderContent() {
           <div className={`flex-1 min-h-0 flex flex-col md:hidden ${activeEditorTab === 'preview' ? 'flex' : 'hidden'}`}>
             <div className="flex items-center justify-between px-4 py-2 border-b border-nisk shrink-0">
               <span className="text-sm font-medium text-white">Live Preview</span>
-              <InspectPicker
-                active={inspectMode}
-                onToggle={() => {
-                  setInspectMode((v) => !v);
-                  setInspectTarget(null);
-                }}
-                target={inspectTarget}
-                onClearTarget={() => setInspectTarget(null)}
-                onSubmit={handleTargetedEdit}
-                isGenerating={isGenerating}
-              />
+              {!visualEditMode && (
+                <InspectPicker
+                  active={inspectMode}
+                  onToggle={() => {
+                    setInspectMode((v) => !v);
+                    setInspectTarget(null);
+                  }}
+                  target={inspectTarget}
+                  onClearTarget={() => setInspectTarget(null)}
+                  onSubmit={handleTargetedEdit}
+                  isGenerating={isGenerating}
+                />
+              )}
             </div>
-            <div className="flex-1 min-h-0 relative">
-              <iframe
-                key={`mobile-${previewHtml.slice(0, 80)}`}
-                srcDoc={previewHtml || PLACEHOLDER_PREVIEW}
-                title="Live Preview"
-                className="absolute inset-0 w-full h-full border-0 bg-white"
-                sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"
+            {activeEditorTab === 'preview' && (
+              <VisualEditorToolbar
+                editMode={visualEditMode}
+                onToggleEditMode={toggleVisualEditMode}
+                canUseEditor={canVisualEdit}
+                mobilePreview={visualMobilePreview}
+                onToggleMobilePreview={() => setVisualMobilePreview((v) => !v)}
+                showMobileToggle={canVisualEditFull}
+                showUndoReset={canVisualEditFull}
+                onUndo={handleVisualUndo}
+                onReset={handleVisualReset}
+                canUndo={visualEditHistory.length > 0}
+                canReset={!!aiOriginalCodeRef.current}
+                selectedLabel={selectedVisualElement?.breadcrumb.join(' > ')}
               />
+            )}
+            <div className={`flex-1 min-h-0 flex ${visualEditMode && selectedVisualElement ? 'flex-row' : 'flex-col'}`}>
+              <div className={`flex-1 min-h-0 relative ${visualMobilePreview ? 'bg-nisk' : ''}`}>
+                <iframe
+                  key={`mobile-${previewHtml.slice(0, 80)}`}
+                  srcDoc={previewHtml || PLACEHOLDER_PREVIEW}
+                  title="Live Preview"
+                  className={`${previewFrameClass} border-0 bg-white`}
+                  sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"
+                />
+              </div>
+              {visualEditMode && selectedVisualElement && (
+                <StylePanel
+                  breadcrumb={selectedVisualElement.breadcrumb}
+                  styles={stylePanel}
+                  onStyleChange={handleVisualStyleChange}
+                  isMobile={visualMobilePreview}
+                  showMobileControls={canVisualEditFull}
+                  showUndoReset={false}
+                  isApplying={visualEditApplying}
+                />
+              )}
             </div>
           </div>
 
@@ -1052,17 +1366,19 @@ function BuilderContent() {
                         <>
                           <span className="w-2 h-2 rounded-full bg-[var(--success)] status-dot-active" />
                           <span className="text-sm font-medium text-white">Live Preview</span>
-                          <InspectPicker
-                            active={inspectMode}
-                            onToggle={() => {
-                              setInspectMode((v) => !v);
-                              setInspectTarget(null);
-                            }}
-                            target={inspectTarget}
-                            onClearTarget={() => setInspectTarget(null)}
-                            onSubmit={handleTargetedEdit}
-                            isGenerating={isGenerating}
-                          />
+                          {!visualEditMode && (
+                            <InspectPicker
+                              active={inspectMode}
+                              onToggle={() => {
+                                setInspectMode((v) => !v);
+                                setInspectTarget(null);
+                              }}
+                              target={inspectTarget}
+                              onClearTarget={() => setInspectTarget(null)}
+                              onSubmit={handleTargetedEdit}
+                              isGenerating={isGenerating}
+                            />
+                          )}
                           <label className="hidden sm:inline-flex items-center gap-1 text-[10px] text-nisk-muted cursor-pointer btn-secondary rounded-lg px-2 py-1">
                             Import ZIP
                             <input
@@ -1082,30 +1398,61 @@ function BuilderContent() {
                         <span className="text-sm font-medium text-white">Component Blueprint</span>
                       )}
                     </div>
-                    <span className="text-[11px] text-nisk-muted font-mono">sandbox</span>
+                    <span className="text-[11px] text-nisk-muted font-mono">
+                      {cloudCreditsRemaining > 0 ? `${cloudCreditsRemaining} credits` : 'sandbox'}
+                    </span>
                   </div>
-                  <div className="flex-1 min-h-0 relative">
-                    {activeEditorTab !== 'blueprint' && (
-                      <iframe
-                        key={previewHtml.slice(0, 80)}
-                        srcDoc={previewHtml || PLACEHOLDER_PREVIEW}
-                        title="Live Preview"
-                        className="absolute inset-0 w-full h-full border-0 bg-white"
-                        sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"
+                  {activeEditorTab === 'preview' && (
+                    <VisualEditorToolbar
+                      editMode={visualEditMode}
+                      onToggleEditMode={toggleVisualEditMode}
+                      canUseEditor={canVisualEdit}
+                      mobilePreview={visualMobilePreview}
+                      onToggleMobilePreview={() => setVisualMobilePreview((v) => !v)}
+                      showMobileToggle={canVisualEditFull}
+                      showUndoReset={canVisualEditFull}
+                      onUndo={handleVisualUndo}
+                      onReset={handleVisualReset}
+                      canUndo={visualEditHistory.length > 0}
+                      canReset={!!aiOriginalCodeRef.current}
+                      selectedLabel={selectedVisualElement?.breadcrumb.join(' > ')}
+                    />
+                  )}
+                  <div className={`flex-1 min-h-0 flex ${visualEditMode && selectedVisualElement && activeEditorTab === 'preview' ? 'flex-row' : 'flex-col'}`}>
+                    <div className={`flex-1 min-h-0 relative ${visualMobilePreview && activeEditorTab === 'preview' ? 'bg-nisk' : ''}`}>
+                      {activeEditorTab !== 'blueprint' && (
+                        <iframe
+                          key={previewHtml.slice(0, 80)}
+                          srcDoc={previewHtml || PLACEHOLDER_PREVIEW}
+                          title="Live Preview"
+                          className={`${activeEditorTab === 'preview' ? previewFrameClass : 'absolute inset-0 w-full h-full'} border-0 bg-white`}
+                          sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"
+                        />
+                      )}
+                      {activeEditorTab === 'blueprint' && (
+                        <div className="absolute inset-0 p-4 overflow-auto">
+                          {blueprintData ? (
+                            <pre className="text-xs font-mono text-gray-300 whitespace-pre-wrap">
+                              {JSON.stringify(blueprintData, null, 2)}
+                            </pre>
+                          ) : (
+                            <p className="text-sm text-nisk-muted text-center mt-8">
+                              Generate an app to see its blueprint structure here.
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {visualEditMode && selectedVisualElement && activeEditorTab === 'preview' && (
+                      <StylePanel
+                        breadcrumb={selectedVisualElement.breadcrumb}
+                        styles={stylePanel}
+                        onStyleChange={handleVisualStyleChange}
+                        isMobile={visualMobilePreview}
+                        showMobileControls={canVisualEditFull}
+                        showUndoReset={false}
+                        isApplying={visualEditApplying}
                       />
-                    )}
-                    {activeEditorTab === 'blueprint' && (
-                      <div className="absolute inset-0 p-4 overflow-auto">
-                        {blueprintData ? (
-                          <pre className="text-xs font-mono text-gray-300 whitespace-pre-wrap">
-                            {JSON.stringify(blueprintData, null, 2)}
-                          </pre>
-                        ) : (
-                          <p className="text-sm text-nisk-muted text-center mt-8">
-                            Generate an app to see its blueprint structure here.
-                          </p>
-                        )}
-                      </div>
                     )}
                   </div>
                 </div>
