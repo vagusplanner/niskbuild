@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import CommandPalette from "./components/CommandPalette";
 import SessionHeartbeat from "./components/SessionHeartbeat";
+import SentryErrorBoundary from "./components/SentryErrorBoundary";
 import UmamiAnalytics from "./components/UmamiAnalytics";
 import "./globals.css";
 
@@ -43,7 +44,7 @@ export default function RootLayout({
         <CommandPalette />
         <SessionHeartbeat />
         <UmamiAnalytics />
-        {children}
+        <SentryErrorBoundary>{children}</SentryErrorBoundary>
       </body>
     </html>
   );
