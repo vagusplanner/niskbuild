@@ -7,6 +7,7 @@ export const PUBLIC_PATHS = [
   '/pricing',
   '/privacy',
   '/terms',
+  '/docs/pwa',
 ];
 
 /** Public shareable preview pages (no auth) */

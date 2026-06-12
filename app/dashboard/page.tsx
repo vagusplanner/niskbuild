@@ -8,15 +8,37 @@ import Layout from '@/app/components/Layout';
 import NiskBuildLogo from '@/app/components/NiskBuildLogo';
 import ProjectLimitBadge from '@/app/components/ProjectLimitBadge';
 import PreviewLinksStatus from '@/app/components/PreviewLinksStatus';
+import MobileExportModal from '@/app/components/MobileExportModal';
 import { MAIN_NAV } from '@/lib/nav-config';
+import { canExportCleanZip, canExportNative, canExportPwa } from '@/lib/tier-config';
+
+interface SavedProject {
+  id: string;
+  title: string;
+  prompt: string;
+  generated_code: string;
+  created_at: string;
+}
 
 function DashboardContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
-  const [projectCount, setProjectCount] = useState(0);
+  const [projects, setProjects] = useState<SavedProject[]>([]);
+  const [subscriptionTier, setSubscriptionTier] = useState('free');
+  const [subscriptionStatus, setSubscriptionStatus] = useState('inactive');
   const [checkoutMsg, setCheckoutMsg] = useState<string | null>(null);
   const [previewRestoreMsg, setPreviewRestoreMsg] = useState<string | null>(null);
+  const [exportingZipId, setExportingZipId] = useState<string | null>(null);
+  const [mobileExportProject, setMobileExportProject] = useState<SavedProject | null>(null);
+  const [mobileExporting, setMobileExporting] = useState<'pwa' | 'native' | null>(null);
+
+  const loadProjects = () => {
+    fetch('/api/projects')
+      .then((r) => r.json())
+      .then((d) => setProjects(d.projects || []))
+      .catch(() => {});
+  };
 
   useEffect(() => {
     getSafeSession().then((s) => {
@@ -27,15 +49,145 @@ function DashboardContent() {
       setUser(s.user);
     });
 
-    fetch('/api/projects')
-      .then((r) => r.json())
-      .then((d) => setProjectCount(d.projects?.length ?? 0))
+    loadProjects();
+
+    fetch('/api/subscription/status', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.tier) {
+          setSubscriptionTier(d.tier);
+          setSubscriptionStatus(d.status ?? 'inactive');
+        }
+      })
       .catch(() => {});
 
     if (searchParams.get('success') === 'true') {
       setCheckoutMsg('Payment successful! Your plan is now active.');
     }
   }, [router, searchParams]);
+
+  const canZip = canExportCleanZip(subscriptionTier, subscriptionStatus);
+  const canPwa = canExportPwa(subscriptionTier, subscriptionStatus);
+  const canNative = canExportNative(subscriptionTier, subscriptionStatus);
+
+  const handleExportZip = async (project: SavedProject) => {
+    if (!canZip) {
+      const upgrade = confirm('Clean ZIP export requires an active paid plan.\n\nOpen Pricing?');
+      if (upgrade) window.location.href = '/pricing';
+      return;
+    }
+
+    setExportingZipId(project.id);
+    try {
+      const res = await fetch('/api/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          code: project.generated_code,
+          prompt: project.prompt,
+          projectName: project.title,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        if (res.status === 403 && err.upgrade) {
+          const upgrade = confirm(`${err.error}\n\nOpen Pricing?`);
+          if (upgrade) window.location.href = '/pricing';
+          return;
+        }
+        throw new Error(err.error || 'Export failed');
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `niskbuild-export-${Date.now()}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setExportingZipId(null);
+    }
+  };
+
+  const downloadBlob = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportPwa = async () => {
+    if (!mobileExportProject || !canPwa) return;
+    setMobileExporting('pwa');
+    try {
+      const res = await fetch('/api/export/pwa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ projectId: mobileExportProject.id }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        if (res.status === 403 && err.upgrade) {
+          const upgrade = confirm(`${err.error}\n\nOpen Pricing?`);
+          if (upgrade) window.location.href = '/pricing';
+          return;
+        }
+        throw new Error(err.error || 'PWA export failed');
+      }
+
+      const blob = await res.blob();
+      const disposition = res.headers.get('Content-Disposition');
+      const match = disposition?.match(/filename="([^"]+)"/);
+      downloadBlob(blob, match?.[1] || `${mobileExportProject.title}-pwa.zip`);
+      setMobileExportProject(null);
+    } catch (err) {
+      alert(`PWA export failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setMobileExporting(null);
+    }
+  };
+
+  const handleExportNative = async () => {
+    if (!mobileExportProject || !canNative) return;
+    setMobileExporting('native');
+    try {
+      const res = await fetch('/api/export/native', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ projectId: mobileExportProject.id }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        if (res.status === 403 && err.upgrade) {
+          const upgrade = confirm(`${err.error}\n\nOpen Pricing?`);
+          if (upgrade) window.location.href = '/pricing';
+          return;
+        }
+        throw new Error(err.error || 'Native export failed');
+      }
+
+      const blob = await res.blob();
+      const disposition = res.headers.get('Content-Disposition');
+      const match = disposition?.match(/filename="([^"]+)"/);
+      downloadBlob(blob, match?.[1] || `${mobileExportProject.title}-native.zip`);
+      setMobileExportProject(null);
+    } catch (err) {
+      alert(`Native export failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setMobileExporting(null);
+    }
+  };
 
   if (!user) {
     return (
@@ -49,6 +201,17 @@ function DashboardContent() {
 
   return (
     <div className="max-w-4xl mx-auto py-8">
+      <MobileExportModal
+        open={!!mobileExportProject}
+        projectTitle={mobileExportProject?.title || ''}
+        canPwa={canPwa}
+        canNative={canNative}
+        exporting={mobileExporting}
+        onClose={() => setMobileExportProject(null)}
+        onExportPwa={handleExportPwa}
+        onExportNative={handleExportNative}
+      />
+
       <div className="mb-10">
         <NiskBuildLogo variant="lockup" size="md" />
         <h1 className="text-3xl font-bold text-white mt-6">Welcome back</h1>
@@ -59,7 +222,7 @@ function DashboardContent() {
           </p>
         )}
         {previewRestoreMsg && (
-          <p className="mt-3 text-sm text-[var(--accent-cyan)] bg-[var(--accent-cyan)]/10 border border-[var(--accent-cyan)]/30 rounded-lg px-4 py-2">
+          <p className="mt-3 text-sm text-[var(--accent-cyan)] bg-[var(--accent-cyan)]/10 border border-[var(--accent-cyan)]/10 rounded-lg px-4 py-2">
             {previewRestoreMsg}
           </p>
         )}
@@ -88,8 +251,10 @@ function DashboardContent() {
 
       <div className="bg-nisk-card border border-nisk rounded-2xl p-6 mb-8">
         <h3 className="text-sm font-semibold text-white mb-3">Usage</h3>
-        <ProjectLimitBadge userId={user.id} currentCount={projectCount} />
-        <p className="text-xs text-nisk-muted mt-2">{projectCount} saved project{projectCount !== 1 ? 's' : ''}</p>
+        <ProjectLimitBadge userId={user.id} currentCount={projects.length} />
+        <p className="text-xs text-nisk-muted mt-2">
+          {projects.length} saved project{projects.length !== 1 ? 's' : ''}
+        </p>
         <div className="mt-4 pt-4 border-t border-nisk">
           <p className="text-xs text-nisk-muted uppercase tracking-wider mb-2">Preview links</p>
           <PreviewLinksStatus
@@ -100,6 +265,64 @@ function DashboardContent() {
             }
           />
         </div>
+      </div>
+
+      <div className="bg-nisk-card border border-nisk rounded-2xl p-6 mb-8">
+        <h3 className="text-sm font-semibold text-white mb-4">Saved Projects</h3>
+        {projects.length === 0 ? (
+          <p className="text-sm text-nisk-muted">
+            No saved projects yet.{' '}
+            <Link href="/builder" className="text-[var(--accent-cyan)] hover:underline">
+              Open Builder
+            </Link>{' '}
+            to generate and save.
+          </p>
+        ) : (
+          <ul className="space-y-3">
+            {projects.map((project) => (
+              <li
+                key={project.id}
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-nisk bg-nisk-surface"
+              >
+                <div className="min-w-0">
+                  <p className="font-medium text-white truncate">{project.title}</p>
+                  <p className="text-xs text-nisk-muted mt-0.5">
+                    {new Date(project.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      localStorage.setItem('niskbuild_load_project_id', project.id);
+                      router.push('/builder');
+                    }}
+                    className="btn-secondary px-3 py-1.5 text-xs rounded-lg"
+                  >
+                    Open
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleExportZip(project)}
+                    disabled={exportingZipId === project.id}
+                    className="btn-secondary px-3 py-1.5 text-xs rounded-lg disabled:opacity-40"
+                  >
+                    {exportingZipId === project.id ? 'Exporting…' : 'Export as ZIP'}
+                  </button>
+                  {canPwa && (
+                    <button
+                      type="button"
+                      onClick={() => setMobileExportProject(project)}
+                      className="btn-success px-3 py-1.5 text-xs rounded-lg"
+                    >
+                      Export as Mobile App
+                    </button>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">

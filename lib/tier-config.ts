@@ -105,6 +105,25 @@ export function canExportCleanZip(
   return isPaidAndActive(tier, status);
 }
 
+/** PWA export — Pro plan and above */
+export function canExportPwa(
+  tier: string | null | undefined,
+  status: string | null | undefined
+): boolean {
+  return isPaidAndActive(tier, status);
+}
+
+/** Native Capacitor export — Agency plan and above */
+export function canExportNative(
+  tier: string | null | undefined,
+  status: string | null | undefined
+): boolean {
+  if (!isPaidAndActive(tier, status)) return false;
+  const idx = TIER_ORDER.indexOf((tier || 'free') as (typeof TIER_ORDER)[number]);
+  const agencyIdx = TIER_ORDER.indexOf('agency');
+  return idx >= agencyIdx;
+}
+
 export function tierDisplayName(tier: string): string {
   const names: Record<string, string> = {
     free: 'Sandbox',
