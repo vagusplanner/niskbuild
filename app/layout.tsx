@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import CommandPalette from "./components/CommandPalette";
 import SessionHeartbeat from "./components/SessionHeartbeat";
+import UmamiAnalyticsLoader from "./components/UmamiAnalyticsLoader";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -41,6 +42,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <CommandPalette />
         <SessionHeartbeat />
+        <UmamiAnalyticsLoader />
         {children}
       </body>
     </html>
