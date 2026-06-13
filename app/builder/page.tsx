@@ -13,27 +13,21 @@ import Layout from '@/app/components/Layout';
 import WelcomeAssistant from '@/app/components/WelcomeAssistant';
 import DemographicOnboarding from '@/app/components/DemographicOnboarding';
 import type { DemographicTier } from '@/lib/demographic-tiers';
-import FileTree from '@/app/components/FileTree';
 import InspectPicker, { injectInspectScript, type InspectTarget } from '@/app/components/InspectPicker';
-import ProjectLimitBadge from '@/app/components/ProjectLimitBadge';
 import SubscriptionGuard from '@/app/components/SubscriptionGuard';
-import RoiTracker from '@/app/components/RoiTracker';
 import BuilderSidebar from '@/app/components/BuilderSidebar';
-import ResizableSplit from '@/app/components/ResizableSplit';
-import PromptBar from '@/app/components/PromptBar';
+import BuilderProjectsDrawer from '@/app/components/BuilderProjectsDrawer';
+import BuilderWorkspaceLayout from '@/app/components/BuilderWorkspaceLayout';
+import { type InspectorTab } from '@/app/components/BuilderInspectorPanel';
 import PlanPanel from '@/app/components/PlanPanel';
 import MobileExportModal from '@/app/components/MobileExportModal';
-import StylePanel from '@/app/components/StylePanel';
-import VisualEditorToolbar from '@/app/components/VisualEditorToolbar';
-import BuilderOllamaSettings, {
-  BuilderOllamaLockedHint,
-} from '@/app/components/BuilderOllamaSettings';
 import {
   canExportNative,
   canExportPwa,
   canUseLocalOllama,
   canUseVisualEditor,
   canUseVisualEditorFull,
+  getCloudCreditsForTier,
   isSandboxTier,
   LOCAL_OLLAMA_PRO_BANNER,
 } from '@/lib/tier-config';
@@ -98,7 +92,9 @@ function BuilderContent() {
   const [promptHistory, setPromptHistory] = useState<NiskBuildPromptEntry[]>([]);
   const [showWelcome, setShowWelcome] = useState(false);
   const [showDemographic, setShowDemographic] = useState(false);
-  const [activeEditorTab, setActiveEditorTab] = useState<'code' | 'preview' | 'blueprint'>('preview');
+  const [activeEditorTab, setActiveEditorTab] = useState<'chat' | 'preview' | 'inspector'>('preview');
+  const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [inspectorTab, setInspectorTab] = useState<InspectorTab>('code');
   const [blueprintData, setBlueprintData] = useState<ComponentBlueprint | null>(null);
   const [statusMessage, setStatusMessage] = useState('');
   const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
@@ -343,6 +339,13 @@ function BuilderContent() {
       if (visualEditDebounceRef.current) clearTimeout(visualEditDebounceRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (selectedVisualElement) {
+      setInspectorOpen(true);
+      setInspectorTab('styles');
+    }
+  }, [selectedVisualElement?.selector]);
 
   useEffect(() => {
     if (visualEditDebounceRef.current) clearTimeout(visualEditDebounceRef.current);
@@ -925,6 +928,35 @@ function BuilderContent() {
       timestamp: project.created_at,
     });
     setShowProjects(false);
+    setActiveEditorTab('preview');
+  };
+
+  const handleNewProject = () => {
+    if (
+      isExportableCode(generatedCode) &&
+      !confirm('Start a new project? Current unsaved work will be cleared.')
+    ) {
+      return;
+    }
+    setPrompt('');
+    setGeneratedCode('');
+    setPreviewHtml(PLACEHOLDER_PREVIEW);
+    setProjectFiles(buildProjectFiles(''));
+    setActiveFile('index.html');
+    setPromptHistory([]);
+    setBlueprintData(null);
+    setActiveProjectId(null);
+    setVisualEditHistory([]);
+    setSelectedVisualElement(null);
+    setVisualEditMode(false);
+    setInspectMode(false);
+    setInspectTarget(null);
+    setArchitecturePlan(null);
+    setStatusMessage('');
+    aiOriginalCodeRef.current = null;
+    setActiveEditorTab('preview');
+    setInspectorOpen(false);
+    setInspectorTab('code');
   };
 
   const handleTargetedEdit = async (changePrompt: string) => {
@@ -953,6 +985,8 @@ function BuilderContent() {
   const canNative = canExportNative(subscriptionTier, subscriptionStatus);
   const canVisualEdit = canUseVisualEditor(subscriptionTier, subscriptionStatus);
   const canVisualEditFull = canUseVisualEditorFull(subscriptionTier, subscriptionStatus);
+  const cloudCreditsAllowance = getCloudCreditsForTier(subscriptionTier);
+  const recentProjects = savedProjects.slice(0, 5);
 
   const previewFrameClass = visualMobilePreview
     ? 'absolute top-0 left-1/2 -translate-x-1/2 w-[375px] max-w-full h-full border-x border-nisk shadow-xl'
@@ -990,7 +1024,7 @@ function BuilderContent() {
           projectsOpen={showProjects}
         />
 
-        <div className="flex-1 min-w-0 flex flex-col relative">
+        <div className="flex-1 min-w-0 flex flex-col min-h-0 relative">
         {isSandboxTier(subscriptionTier) && savedProjects.length >= projectLimit && (
           <div className="shrink-0 bg-yellow-500/10 border-b border-yellow-500/30 p-3 text-center">
             <p className="text-yellow-400 text-sm">
@@ -1014,135 +1048,76 @@ function BuilderContent() {
             </button>
           </div>
         )}
-        {/* Builder action toolbar */}
-        <div className="shrink-0 flex items-center justify-between gap-2 px-3 py-2 border-b border-nisk bg-nisk-surface overflow-x-auto">
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="flex gap-2 md:hidden">
-              <button
-                onClick={() => setActiveEditorTab('code')}
-                className={`px-3 py-1.5 text-sm rounded-lg ${
-                  activeEditorTab === 'code'
-                    ? 'bg-purple-500/20 text-purple-400'
-                    : 'text-gray-400'
-                }`}
-              >
-                📄 Code
-              </button>
-              <button
-                onClick={() => setActiveEditorTab('preview')}
-                className={`px-3 py-1.5 text-sm rounded-lg ${
-                  activeEditorTab === 'preview'
-                    ? 'bg-emerald-500/20 text-emerald-400'
-                    : 'text-gray-400'
-                }`}
-              >
-                👁️ Preview
-              </button>
-              <button
-                onClick={() => setActiveEditorTab('blueprint')}
-                className={`px-3 py-1.5 text-sm rounded-lg ${
-                  activeEditorTab === 'blueprint'
-                    ? 'bg-blue-500/20 text-blue-400'
-                    : 'text-gray-400'
-                }`}
-              >
-                📋 Blueprint
-              </button>
-            </div>
-            {user && (
-              <span className="hidden sm:inline">
-                <ProjectLimitBadge userId={user.id} currentCount={savedProjects.length} />
-              </span>
-            )}
-          </div>
+        <BuilderProjectsDrawer
+          open={showProjects}
+          onClose={() => setShowProjects(false)}
+          projects={savedProjects}
+          filteredProjects={filteredProjects}
+          projectSearch={projectSearch}
+          projectSort={projectSort}
+          onSearchChange={setProjectSearch}
+          onSortChange={setProjectSort}
+          onLoad={loadProject}
+          onDelete={handleDeleteProject}
+        />
 
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={handleSaveProject}
-              disabled={!canAct}
-              className="btn-secondary px-3 py-1.5 text-xs rounded-lg disabled:opacity-40"
-            >
-              Save
-            </button>
-            <button
-              onClick={handleExportZip}
-              disabled={!canAct || isExporting}
-              className="btn-secondary px-3 py-1.5 text-xs rounded-lg disabled:opacity-40"
-            >
-              {isExporting ? 'Exporting...' : 'Export ZIP'}
-            </button>
-            <button
-              onClick={handleOpenMobileExport}
-              disabled={!canAct || mobileExporting !== null}
-              className="btn-success px-3 py-1.5 text-xs rounded-lg disabled:opacity-40"
-              title={canPwa ? 'Export as installable PWA or native app' : 'Pro plan required'}
-            >
-              Export as Mobile App
-            </button>
-            <button
-              onClick={handleDeployLive}
-              disabled={!canAct}
-              className="btn-success px-3 py-1.5 text-xs rounded-lg disabled:opacity-40"
-            >
-              Deploy Live
-            </button>
-          </div>
-        </div>
-
-        {/* Saved projects panel */}
-        {showProjects && (
-          <div className="shrink-0 border-b border-nisk bg-nisk-card px-4 py-3">
-            <div className="flex flex-wrap items-center gap-2 mb-3">
-              <p className="text-[10px] uppercase tracking-wider text-nisk-muted mr-2">My Projects</p>
-              <input
-                type="text"
-                placeholder="Search projects..."
-                value={projectSearch}
-                onChange={(e) => setProjectSearch(e.target.value)}
-                className="flex-1 min-w-[140px] max-w-xs bg-nisk border border-nisk rounded-lg px-3 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[var(--accent-cyan)]"
-              />
-              <select
-                value={projectSort}
-                onChange={(e) => setProjectSort(e.target.value as ProjectSort)}
-                className="bg-nisk border border-nisk rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[var(--accent-cyan)]"
-              >
-                <option value="newest">Newest</option>
-                <option value="oldest">Oldest</option>
-                <option value="name">Name A–Z</option>
-              </select>
-            </div>
-            {savedProjects.length === 0 ? (
-              <p className="text-xs text-nisk-muted">No saved projects yet. Generate and click Save.</p>
-            ) : filteredProjects.length === 0 ? (
-              <p className="text-xs text-nisk-muted">No projects match your search.</p>
-            ) : (
-              <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto">
-                {filteredProjects.map((p) => (
-                  <div key={p.id} className="flex items-center gap-0.5">
-                    <button
-                      onClick={() => loadProject(p)}
-                      className="px-3 py-1.5 text-xs rounded-l-lg bg-nisk-surface border border-nisk hover:border-[var(--primary)] text-white transition-colors"
-                      title={new Date(p.created_at).toLocaleDateString()}
-                    >
-                      {p.title}
-                    </button>
-                    <button
-                      onClick={(e) => handleDeleteProject(p, e)}
-                      className="px-2 py-1.5 text-xs rounded-r-lg bg-nisk-surface border border-l-0 border-nisk hover:border-[var(--error)] hover:text-[var(--error)] text-nisk-muted transition-colors"
-                      title="Delete project"
-                      aria-label={`Delete ${p.title}`}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        <div
-          className={`flex-1 flex flex-col min-h-0 relative ${isDraggingZip ? 'ring-2 ring-[var(--accent-cyan)] ring-inset' : ''}`}
+        <BuilderWorkspaceLayout
+          userId={user?.id}
+          subscriptionTier={subscriptionTier}
+          cloudCreditsRemaining={cloudCreditsRemaining}
+          cloudCreditsAllowance={cloudCreditsAllowance}
+          recentProjects={recentProjects}
+          onNewProject={handleNewProject}
+          onLoadRecentProject={(p) => {
+            const full = savedProjects.find((s) => s.id === p.id);
+            if (full) loadProject(full);
+          }}
+          onOpenAllProjects={() => setShowProjects(true)}
+          projectLimit={projectLimit}
+          savedProjectsCount={savedProjects.length}
+          canAct={canAct}
+          canPwa={canPwa}
+          canVisualEdit={canVisualEdit}
+          canVisualEditFull={canVisualEditFull}
+          canUseLocalOllama={canUseLocalOllama(subscriptionTier)}
+          prompt={prompt}
+          onPromptChange={setPrompt}
+          onGenerate={() => handleGenerate()}
+          isGenerating={isGenerating}
+          statusMessage={statusMessage}
+          planMode={planMode}
+          onPlanModeChange={setPlanMode}
+          previewHtml={previewHtml}
+          placeholderPreview={PLACEHOLDER_PREVIEW}
+          previewFrameClass={previewFrameClass}
+          visualEditMode={visualEditMode}
+          visualMobilePreview={visualMobilePreview}
+          selectedVisualElement={selectedVisualElement}
+          stylePanel={stylePanel}
+          visualEditApplying={visualEditApplying}
+          visualEditHistoryLength={visualEditHistory.length}
+          hasAiOriginal={!!aiOriginalCodeRef.current}
+          inspectMode={inspectMode}
+          inspectTarget={inspectTarget}
+          onToggleVisualEdit={toggleVisualEditMode}
+          onToggleMobilePreview={() => setVisualMobilePreview((v) => !v)}
+          onVisualUndo={handleVisualUndo}
+          onVisualReset={handleVisualReset}
+          onStyleChange={handleVisualStyleChange}
+          onToggleInspect={() => {
+            setInspectMode((v) => !v);
+            setInspectTarget(null);
+          }}
+          onClearInspectTarget={() => setInspectTarget(null)}
+          onTargetedEdit={handleTargetedEdit}
+          onSave={handleSaveProject}
+          onExportZip={handleExportZip}
+          onMobileExport={handleOpenMobileExport}
+          onDeployLive={handleDeployLive}
+          isExporting={isExporting}
+          mobileExporting={mobileExporting !== null}
+          onRestoreZip={restoreFromZip}
+          isDraggingZip={isDraggingZip}
           onDragOver={(e) => { e.preventDefault(); setIsDraggingZip(true); }}
           onDragLeave={() => setIsDraggingZip(false)}
           onDrop={async (e) => {
@@ -1151,314 +1126,35 @@ function BuilderContent() {
             const file = e.dataTransfer.files[0];
             if (file?.name.endsWith('.zip')) await restoreFromZip(file);
           }}
-        >
-          {isDraggingZip && (
-            <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50 backdrop-blur-sm pointer-events-none">
-              <p className="text-[var(--accent-cyan)] font-medium">Drop NiskBuild ZIP to restore project</p>
-            </div>
-          )}
-
-          {/* Mobile: code panel */}
-          <div className={`flex-1 min-h-0 flex flex-col md:hidden bg-nisk-surface ${activeEditorTab === 'code' ? 'flex' : 'hidden'}`}>
-            <div className="flex min-h-0 flex-1">
-              <div className="w-28 shrink-0 border-r border-nisk flex flex-col bg-nisk-card min-h-0">
-                <div className="flex-1 overflow-y-auto min-h-0">
-                  <FileTree
-                    files={projectFiles}
-                    activePath={activeFile}
-                    onSelect={setActiveFile}
-                  />
-                </div>
-                {canUseLocalOllama(subscriptionTier) ? (
-                  <BuilderOllamaSettings
-                    tier={subscriptionTier}
-                    useLocalOllama={useLocalOllama}
-                    onUseLocalOllamaChange={(enabled) => {
-                      setUseLocalOllama(enabled);
-                      localStorage.setItem('niskbuild_use_local_ollama', String(enabled));
-                    }}
-                  />
-                ) : (
-                  <BuilderOllamaLockedHint
-                    onUpgradeClick={() => {
-                      if (subscriptionTier === 'pro') {
-                        setShowProOllamaBanner(true);
-                      } else {
-                        router.push('/pricing');
-                      }
-                    }}
-                  />
-                )}
-              </div>
-              <div className="flex-1 flex flex-col min-w-0">
-                <div className="flex items-center gap-2 px-3 py-2 border-b border-nisk shrink-0">
-                  <span className="text-[10px] uppercase tracking-wider text-nisk-muted">Editor</span>
-                  <span className="text-[11px] font-mono text-[var(--accent-cyan)] truncate">{activeFile}</span>
-                </div>
-                <div className="flex-1 min-h-0 code-panel">
-                  <CodeEditor
-                    path={activeFile}
-                    value={activeFileContent || EDITOR_PLACEHOLDER}
-                    onChange={updateActiveFileContent}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Mobile: preview panel */}
-          <div className={`flex-1 min-h-0 flex flex-col md:hidden ${activeEditorTab === 'preview' ? 'flex' : 'hidden'}`}>
-            <div className="flex items-center justify-between px-4 py-2 border-b border-nisk shrink-0">
-              <span className="text-sm font-medium text-white">Live Preview</span>
-              {!visualEditMode && (
-                <InspectPicker
-                  active={inspectMode}
-                  onToggle={() => {
-                    setInspectMode((v) => !v);
-                    setInspectTarget(null);
-                  }}
-                  target={inspectTarget}
-                  onClearTarget={() => setInspectTarget(null)}
-                  onSubmit={handleTargetedEdit}
-                  isGenerating={isGenerating}
-                />
-              )}
-            </div>
-            {activeEditorTab === 'preview' && (
-              <VisualEditorToolbar
-                editMode={visualEditMode}
-                onToggleEditMode={toggleVisualEditMode}
-                canUseEditor={canVisualEdit}
-                mobilePreview={visualMobilePreview}
-                onToggleMobilePreview={() => setVisualMobilePreview((v) => !v)}
-                showMobileToggle={canVisualEditFull}
-                showUndoReset={canVisualEditFull}
-                onUndo={handleVisualUndo}
-                onReset={handleVisualReset}
-                canUndo={visualEditHistory.length > 0}
-                canReset={!!aiOriginalCodeRef.current}
-                selectedLabel={selectedVisualElement?.breadcrumb.join(' > ')}
-              />
-            )}
-            <div className={`flex-1 min-h-0 flex ${visualEditMode && selectedVisualElement ? 'flex-row' : 'flex-col'}`}>
-              <div className={`flex-1 min-h-0 relative ${visualMobilePreview ? 'bg-nisk' : ''}`}>
-                <iframe
-                  key={`mobile-${previewHtml.slice(0, 80)}`}
-                  srcDoc={previewHtml || PLACEHOLDER_PREVIEW}
-                  title="Live Preview"
-                  className={`${previewFrameClass} border-0 bg-white`}
-                  sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"
-                />
-              </div>
-              {visualEditMode && selectedVisualElement && (
-                <StylePanel
-                  breadcrumb={selectedVisualElement.breadcrumb}
-                  styles={stylePanel}
-                  onStyleChange={handleVisualStyleChange}
-                  isMobile={visualMobilePreview}
-                  showMobileControls={canVisualEditFull}
-                  showUndoReset={false}
-                  isApplying={visualEditApplying}
-                />
-              )}
-            </div>
-          </div>
-
-          {/* Mobile: blueprint panel */}
-          <div className={`flex-1 min-h-0 flex flex-col md:hidden bg-nisk-surface ${activeEditorTab === 'blueprint' ? 'flex' : 'hidden'}`}>
-            <div className="flex items-center px-4 py-2 border-b border-nisk shrink-0">
-              <span className="text-sm font-medium text-white">Component Blueprint</span>
-            </div>
-            <div className="flex-1 min-h-0 p-4 overflow-auto">
-              {blueprintData ? (
-                <pre className="text-xs font-mono text-gray-300 whitespace-pre-wrap">
-                  {JSON.stringify(blueprintData, null, 2)}
-                </pre>
-              ) : (
-                <p className="text-sm text-nisk-muted text-center mt-8">
-                  Generate an app to see its blueprint structure here.
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="flex-1 min-h-0 hidden md:flex flex-col">
-            <ResizableSplit
-              defaultLeftPercent={34}
-              minLeftPercent={20}
-              maxLeftPercent={55}
-              left={
-                <div className="h-full flex flex-col bg-nisk-surface border-r border-nisk">
-                  <div className="flex min-h-0 flex-1">
-                    <div className="w-32 lg:w-40 shrink-0 border-r border-nisk flex flex-col bg-nisk-card min-h-0">
-                      <div className="flex-1 overflow-y-auto min-h-0">
-                        <FileTree
-                          files={projectFiles}
-                          activePath={activeFile}
-                          onSelect={setActiveFile}
-                        />
-                      </div>
-                      <RoiTracker userId={user?.id} />
-                      {canUseLocalOllama(subscriptionTier) ? (
-                        <BuilderOllamaSettings
-                          tier={subscriptionTier}
-                          useLocalOllama={useLocalOllama}
-                          onUseLocalOllamaChange={(enabled) => {
-                            setUseLocalOllama(enabled);
-                            localStorage.setItem('niskbuild_use_local_ollama', String(enabled));
-                          }}
-                        />
-                      ) : (
-                        <BuilderOllamaLockedHint
-                          onUpgradeClick={() => {
-                            if (subscriptionTier === 'pro') {
-                              setShowProOllamaBanner(true);
-                            } else {
-                              router.push('/pricing');
-                            }
-                          }}
-                        />
-                      )}
-                    </div>
-                    <div className="flex-1 flex flex-col min-w-0">
-                      <div className="flex items-center gap-2 px-3 py-2 border-b border-nisk shrink-0">
-                        <span className="text-[10px] uppercase tracking-wider text-nisk-muted">Editor</span>
-                        <span className="text-[11px] font-mono text-[var(--accent-cyan)] truncate">{activeFile}</span>
-                      </div>
-                      <div className="flex-1 min-h-0 code-panel">
-                        <CodeEditor
-                          path={activeFile}
-                          value={activeFileContent || EDITOR_PLACEHOLDER}
-                          onChange={updateActiveFileContent}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              }
-              right={
-                <div className="h-full flex flex-col bg-nisk min-w-0">
-                  <div className="flex items-center justify-between px-4 py-2 border-b border-nisk shrink-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <div className="flex gap-2 mr-2">
-                        <button
-                          onClick={() => setActiveEditorTab('preview')}
-                          className={`px-3 py-1.5 text-sm rounded-lg ${
-                            activeEditorTab === 'preview'
-                              ? 'bg-emerald-500/20 text-emerald-400'
-                              : 'text-gray-400'
-                          }`}
-                        >
-                          👁️ Preview
-                        </button>
-                        <button
-                          onClick={() => setActiveEditorTab('blueprint')}
-                          className={`px-3 py-1.5 text-sm rounded-lg ${
-                            activeEditorTab === 'blueprint'
-                              ? 'bg-blue-500/20 text-blue-400'
-                              : 'text-gray-400'
-                          }`}
-                        >
-                          📋 Blueprint
-                        </button>
-                      </div>
-                      {activeEditorTab !== 'blueprint' && (
-                        <>
-                          <span className="w-2 h-2 rounded-full bg-[var(--success)] status-dot-active" />
-                          <span className="text-sm font-medium text-white">Live Preview</span>
-                          {!visualEditMode && (
-                            <InspectPicker
-                              active={inspectMode}
-                              onToggle={() => {
-                                setInspectMode((v) => !v);
-                                setInspectTarget(null);
-                              }}
-                              target={inspectTarget}
-                              onClearTarget={() => setInspectTarget(null)}
-                              onSubmit={handleTargetedEdit}
-                              isGenerating={isGenerating}
-                            />
-                          )}
-                          <label className="hidden sm:inline-flex items-center gap-1 text-[10px] text-nisk-muted cursor-pointer btn-secondary rounded-lg px-2 py-1">
-                            Import ZIP
-                            <input
-                              type="file"
-                              accept=".zip"
-                              className="hidden"
-                              onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (file) await restoreFromZip(file);
-                                e.target.value = '';
-                              }}
-                            />
-                          </label>
-                        </>
-                      )}
-                      {activeEditorTab === 'blueprint' && (
-                        <span className="text-sm font-medium text-white">Component Blueprint</span>
-                      )}
-                    </div>
-                    <span className="text-[11px] text-nisk-muted font-mono">
-                      {cloudCreditsRemaining > 0 ? `${cloudCreditsRemaining} credits` : 'sandbox'}
-                    </span>
-                  </div>
-                  {activeEditorTab === 'preview' && (
-                    <VisualEditorToolbar
-                      editMode={visualEditMode}
-                      onToggleEditMode={toggleVisualEditMode}
-                      canUseEditor={canVisualEdit}
-                      mobilePreview={visualMobilePreview}
-                      onToggleMobilePreview={() => setVisualMobilePreview((v) => !v)}
-                      showMobileToggle={canVisualEditFull}
-                      showUndoReset={canVisualEditFull}
-                      onUndo={handleVisualUndo}
-                      onReset={handleVisualReset}
-                      canUndo={visualEditHistory.length > 0}
-                      canReset={!!aiOriginalCodeRef.current}
-                      selectedLabel={selectedVisualElement?.breadcrumb.join(' > ')}
-                    />
-                  )}
-                  <div className={`flex-1 min-h-0 flex ${visualEditMode && selectedVisualElement && activeEditorTab === 'preview' ? 'flex-row' : 'flex-col'}`}>
-                    <div className={`flex-1 min-h-0 relative ${visualMobilePreview && activeEditorTab === 'preview' ? 'bg-nisk' : ''}`}>
-                      {activeEditorTab !== 'blueprint' && (
-                        <iframe
-                          key={previewHtml.slice(0, 80)}
-                          srcDoc={previewHtml || PLACEHOLDER_PREVIEW}
-                          title="Live Preview"
-                          className={`${activeEditorTab === 'preview' ? previewFrameClass : 'absolute inset-0 w-full h-full'} border-0 bg-white`}
-                          sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"
-                        />
-                      )}
-                      {activeEditorTab === 'blueprint' && (
-                        <div className="absolute inset-0 p-4 overflow-auto">
-                          {blueprintData ? (
-                            <pre className="text-xs font-mono text-gray-300 whitespace-pre-wrap">
-                              {JSON.stringify(blueprintData, null, 2)}
-                            </pre>
-                          ) : (
-                            <p className="text-sm text-nisk-muted text-center mt-8">
-                              Generate an app to see its blueprint structure here.
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    {visualEditMode && selectedVisualElement && activeEditorTab === 'preview' && (
-                      <StylePanel
-                        breadcrumb={selectedVisualElement.breadcrumb}
-                        styles={stylePanel}
-                        onStyleChange={handleVisualStyleChange}
-                        isMobile={visualMobilePreview}
-                        showMobileControls={canVisualEditFull}
-                        showUndoReset={false}
-                        isApplying={visualEditApplying}
-                      />
-                    )}
-                  </div>
-                </div>
-              }
+          mobileTab={activeEditorTab}
+          onMobileTabChange={setActiveEditorTab}
+          inspectorOpen={inspectorOpen}
+          onInspectorOpenChange={setInspectorOpen}
+          inspectorTab={inspectorTab}
+          onInspectorTabChange={setInspectorTab}
+          projectFiles={projectFiles}
+          activeFile={activeFile}
+          onSelectFile={setActiveFile}
+          codeEditor={
+            <CodeEditor
+              path={activeFile}
+              value={activeFileContent || EDITOR_PLACEHOLDER}
+              onChange={updateActiveFileContent}
             />
-          </div>
+          }
+          blueprintData={blueprintData}
+          useLocalOllama={useLocalOllama}
+          onUseLocalOllamaChange={(enabled) => {
+            setUseLocalOllama(enabled);
+            localStorage.setItem('niskbuild_use_local_ollama', String(enabled));
+          }}
+          onOllamaUpgrade={() => {
+            if (subscriptionTier === 'pro') setShowProOllamaBanner(true);
+            else router.push('/pricing');
+          }}
+          isSandboxAtLimit={isSandboxTier(subscriptionTier) && savedProjects.length >= projectLimit}
+        />
+
 
           {architecturePlan && (
             <PlanPanel
@@ -1475,16 +1171,6 @@ function BuilderContent() {
             />
           )}
 
-          <PromptBar
-            prompt={prompt}
-            onChange={setPrompt}
-            onGenerate={() => handleGenerate()}
-            isGenerating={isGenerating}
-            statusMessage={statusMessage}
-            planMode={planMode}
-            onPlanModeChange={setPlanMode}
-          />
-        </div>
         </div>
       </div>
     </Layout>

@@ -14,6 +14,7 @@ type StylePanelProps = {
   canUndo?: boolean;
   canReset?: boolean;
   isApplying?: boolean;
+  embedded?: boolean;
 };
 
 export default function StylePanel({
@@ -28,9 +29,10 @@ export default function StylePanel({
   canUndo = false,
   canReset = false,
   isApplying = false,
+  embedded = false,
 }: StylePanelProps) {
   return (
-    <div className="w-72 lg:w-80 shrink-0 bg-nisk-card border-l border-nisk flex flex-col h-full">
+    <div className={`${embedded ? 'w-full border-l-0' : 'w-72 lg:w-80 shrink-0 border-l'} bg-nisk-card border-nisk flex flex-col h-full`}>
       <div className="px-4 py-3 border-b border-nisk shrink-0">
         <h3 className="text-sm font-semibold text-white">Style Editor</h3>
         <p className="text-[10px] text-nisk-muted mt-1 truncate" title={breadcrumb.join(' > ')}>
