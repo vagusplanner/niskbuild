@@ -241,6 +241,35 @@ export async function revokeSession(
   return { ok: true };
 }
 
+export async function revokeOtherSessions(
+  userId: string,
+  currentTokenHash: string
+): Promise<{ ok: boolean; revoked?: number; error?: string }> {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from('active_sessions')
+    .select('id, session_token')
+    .eq('user_id', userId);
+
+  const toRevoke = (data || []).filter((s) => s.session_token !== currentTokenHash);
+  if (toRevoke.length === 0) {
+    return { ok: true, revoked: 0 };
+  }
+
+  const { error } = await supabase
+    .from('active_sessions')
+    .delete()
+    .in(
+      'id',
+      toRevoke.map((s) => s.id)
+    );
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  return { ok: true, revoked: toRevoke.length };
+}
+
 export async function revokeAllSessions(userId: string): Promise<void> {
   const supabase = createAdminClient();
   await supabase.from('active_sessions').delete().eq('user_id', userId);

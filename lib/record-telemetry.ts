@@ -7,20 +7,22 @@ import { buildTelemetryRecord, type CompilationEvent } from '@/lib/telemetry';
 interface ProfileTelemetryPrefs {
   demographic_tier?: string | null;
   telemetry_opt_out?: boolean | null;
+  analytics_region?: string | null;
 }
 
 export async function getTelemetryPrefs(userId?: string | null): Promise<{
   demographicTier: DemographicTier;
   optOut: boolean;
+  analyticsRegion: string | null;
 }> {
   if (!userId) {
-    return { demographicTier: 'unspecified', optOut: false };
+    return { demographicTier: 'unspecified', optOut: false, analyticsRegion: null };
   }
 
   const supabase = createAdminClient();
   const { data } = await supabase
     .from('profiles')
-    .select('demographic_tier, telemetry_opt_out')
+    .select('demographic_tier, telemetry_opt_out, analytics_region')
     .eq('id', userId)
     .single();
 
@@ -29,6 +31,7 @@ export async function getTelemetryPrefs(userId?: string | null): Promise<{
   return {
     demographicTier: normalizeDemographicTier(profile?.demographic_tier),
     optOut: profile?.telemetry_opt_out === true,
+    analyticsRegion: profile?.analytics_region || null,
   };
 }
 

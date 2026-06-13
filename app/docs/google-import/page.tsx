@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Layout from '@/app/components/Layout';
+import PageBackHeader from '@/app/components/PageBackHeader';
 
 export const metadata = {
   title: 'Google Places Import · NiskBuild',
@@ -10,7 +11,8 @@ export const metadata = {
 export default function GoogleImportDocsPage() {
   return (
     <Layout variant="marketing">
-      <article className="max-w-3xl mx-auto py-12 px-4">
+      <PageBackHeader href="/builder" label="Back to Builder" />
+      <article className="max-w-3xl mx-auto py-8 px-4">
         <p className="text-[var(--accent-cyan)] text-sm font-medium mb-2">Pro feature</p>
         <h1 className="text-4xl font-bold text-white mb-4">Import Business from Google Places</h1>
         <p className="text-nisk-muted text-lg leading-relaxed mb-10">

@@ -8,9 +8,10 @@ export interface NavItem {
 export const MAIN_NAV: NavItem[] = [
   { href: '/builder', label: 'Builder', icon: '⚡', description: 'AI workspace' },
   { href: '/dashboard', label: 'Dashboard', icon: '📊', description: 'Projects & usage' },
+  { href: '/dashboard/settings', label: 'Settings', icon: '⚙️', description: 'Billing & keys' },
+  { href: '/templates/games', label: 'Games', icon: '🎮', description: 'Phaser.js templates' },
   { href: '/marketplace', label: 'Marketplace', icon: '🏪', description: 'Templates' },
   { href: '/pricing', label: 'Pricing', icon: '💳', description: 'Plans' },
-  { href: '/dashboard/settings', label: 'Settings', icon: '⚙️', description: 'Billing & keys' },
 ];
 
 export const PUBLIC_NAV: NavItem[] = [

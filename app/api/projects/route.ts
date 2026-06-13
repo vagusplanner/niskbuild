@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await supabase
     .from('projects')
-    .select('id, title, prompt, generated_code, project_context, created_at')
+    .select('id, title, prompt, generated_code, project_context, created_at, project_seo(seo_score)')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 
@@ -22,7 +22,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ projects: data ?? [] });
+  const projects = (data ?? []).map((row) => {
+    const seoRow = Array.isArray(row.project_seo)
+      ? row.project_seo[0]
+      : row.project_seo;
+    const { project_seo: _seo, ...project } = row;
+    return {
+      ...project,
+      seo_score: seoRow?.seo_score ?? null,
+    };
+  });
+
+  return NextResponse.json({ projects });
 }
 
 export async function POST(request: NextRequest) {

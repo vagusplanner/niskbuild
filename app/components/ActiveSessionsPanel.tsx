@@ -70,9 +70,45 @@ export default function ActiveSessionsPanel() {
     }
   };
 
+  const [revokingOthers, setRevokingOthers] = useState(false);
+
+  const revokeOthers = async () => {
+    setRevokingOthers(true);
+    setMessage('');
+    try {
+      const token = localStorage.getItem(SESSION_TOKEN_KEY) || '';
+      const res = await fetch(
+        `/api/session/revoke-others?sessionToken=${encodeURIComponent(token)}`,
+        { method: 'DELETE', credentials: 'include' }
+      );
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to sign out other devices');
+      }
+      setMessage('Signed out all other devices');
+      await load();
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Failed to sign out others');
+    } finally {
+      setRevokingOthers(false);
+    }
+  };
+
   return (
     <section className="bg-nisk-card border border-nisk rounded-xl p-6 mb-6">
-      <h2 className="text-lg font-semibold text-white mb-2">Active sessions</h2>
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <h2 className="text-lg font-semibold text-white">Active sessions</h2>
+        {sessions.length > 1 && (
+          <button
+            type="button"
+            onClick={revokeOthers}
+            disabled={revokingOthers}
+            className="text-xs text-red-400 hover:text-red-300 disabled:opacity-50"
+          >
+            {revokingOthers ? 'Signing out…' : 'Sign out all others'}
+          </button>
+        )}
+      </div>
       <p className="text-sm text-nisk-muted mb-4">
         Devices signed in during the last 24 hours.
         {sessionLimit != null && sessionLimit < 999999 && (

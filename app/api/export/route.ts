@@ -5,6 +5,13 @@ import { guardApiRequest } from '@/lib/api-auth';
 import { createNiskBuildConfig } from '@/lib/niskbuild-config';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
 import { canExportCleanZip } from '@/lib/tier-config';
+import { cleanGeneratedCode } from '@/lib/cleanGeneratedCode';
+import {
+  buildRobotsTxt,
+  buildSitemapXml,
+  injectSeoIntoHtml,
+} from '@/lib/seo-inject';
+import { DEFAULT_SEO_SETTINGS, type ProjectSeoSettings } from '@/lib/seo-types';
 
 export async function POST(request: NextRequest) {
   const guard = await guardApiRequest(request);
@@ -30,22 +37,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { code, prompt, projectName, promptHistory, files, activeFile } = await request.json();
+    const { code, prompt, projectName, promptHistory, files, activeFile, seo } = await request.json();
 
     if (!code) {
       return NextResponse.json({ error: 'No code to export' }, { status: 400 });
     }
 
+    const seoSettings: ProjectSeoSettings = seo
+      ? { ...DEFAULT_SEO_SETTINGS, ...seo }
+      : DEFAULT_SEO_SETTINGS;
+
+    const cleanedCode = cleanGeneratedCode(code);
+    const htmlWithSeo = injectSeoIntoHtml(cleanedCode, seoSettings);
+
     const config = createNiskBuildConfig({
       projectName: projectName || prompt?.substring(0, 50) || 'NiskBuild Project',
       prompt: prompt || '',
-      code,
+      code: htmlWithSeo,
       promptHistory,
       activeFile: activeFile || 'index.html',
     });
 
     if (files && typeof files === 'object') {
       config.files = { ...config.files, ...files };
+      config.files['index.html'] = htmlWithSeo;
+    } else {
+      config.files['index.html'] = htmlWithSeo;
     }
 
     const zip = new JSZip();
@@ -61,6 +78,18 @@ export async function POST(request: NextRequest) {
     for (const [path, content] of Object.entries(config.files)) {
       root?.file(path, content);
     }
+
+    const siteBase = seoSettings.canonicalUrl?.trim() || 'https://example.com';
+    if (seoSettings.sitemapEnabled && !seoSettings.noindex) {
+      root?.file('sitemap.xml', buildSitemapXml(siteBase));
+    }
+    root?.file(
+      'robots.txt',
+      buildRobotsTxt(
+        seoSettings.robotsEnabled && !seoSettings.noindex,
+        seoSettings.sitemapEnabled ? `${siteBase.replace(/\/$/, '')}/sitemap.xml` : undefined
+      )
+    );
 
     root?.file('src/code.txt', code);
 

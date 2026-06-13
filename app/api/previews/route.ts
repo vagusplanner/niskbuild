@@ -45,7 +45,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'HTML content required' }, { status: 400 });
   }
 
-  const result = await upsertPreview(guard.user!.id, html, title);
+  const requestOrigin = request.nextUrl.origin;
+  const result = await upsertPreview(guard.user!.id, html, title, requestOrigin);
   if (!result) {
     return NextResponse.json({ error: 'Failed to create preview link' }, { status: 500 });
   }

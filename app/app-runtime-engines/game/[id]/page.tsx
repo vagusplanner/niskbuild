@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
-import { TenantRuntimeShell } from '@/app/components/TenantRuntimeShell';
-import { getCompiledApplicationById } from '@/lib/compiled-applications';
+import { GameRuntimeShell } from '@/app/components/GameRuntimeShell';
+import { getCompiledApplicationById, runtimeHtmlFromConfig } from '@/lib/compiled-applications';
 
 interface GameRuntimePageProps {
   params: Promise<{ id: string }>;
@@ -14,7 +14,14 @@ export default async function GameRuntimePage({ params }: GameRuntimePageProps) 
     notFound();
   }
 
-  return <TenantRuntimeShell app={app} variant="game" />;
+  const title = app.configuration_state?.title || 'Game';
+  const html = runtimeHtmlFromConfig(app);
+  const bundleUrl =
+    typeof app.configuration_state?.bundle_url === 'string'
+      ? app.configuration_state.bundle_url
+      : null;
+
+  return <GameRuntimeShell title={title} html={html} bundleUrl={bundleUrl} />;
 }
 
 export async function generateMetadata({ params }: GameRuntimePageProps) {

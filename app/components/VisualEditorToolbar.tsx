@@ -13,6 +13,7 @@ type VisualEditorToolbarProps = {
   canUndo: boolean;
   canReset: boolean;
   selectedLabel?: string;
+  hideEditToggle?: boolean;
 };
 
 export default function VisualEditorToolbar({
@@ -28,28 +29,33 @@ export default function VisualEditorToolbar({
   canUndo,
   canReset,
   selectedLabel,
+  hideEditToggle = false,
 }: VisualEditorToolbarProps) {
+  if (!editMode && hideEditToggle) return null;
+
   return (
     <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-nisk bg-nisk-surface/80 shrink-0 flex-wrap">
       <div className="flex items-center gap-2 flex-wrap">
-        <button
-          type="button"
-          onClick={onToggleEditMode}
-          disabled={!canUseEditor}
-          title={
-            canUseEditor
-              ? 'Click elements in preview to edit styles'
-              : 'Visual editing requires Free or Pro plan'
-          }
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 disabled:opacity-40 ${
-            editMode
-              ? 'bg-emerald-600/90 text-white'
-              : 'bg-nisk border border-nisk text-gray-300 hover:text-white hover:border-[var(--accent-cyan)]/50'
-          }`}
-        >
-          <span>🎨</span>
-          {editMode ? 'Exit Edit Mode' : 'Edit Mode'}
-        </button>
+        {!hideEditToggle && (
+          <button
+            type="button"
+            onClick={onToggleEditMode}
+            disabled={!canUseEditor}
+            title={
+              canUseEditor
+                ? 'Click elements in preview to edit styles'
+                : 'Visual editing requires Free or Pro plan'
+            }
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 disabled:opacity-40 ${
+              editMode
+                ? 'bg-emerald-600/90 text-white'
+                : 'bg-nisk border border-nisk text-gray-300 hover:text-white hover:border-[var(--accent-cyan)]/50'
+            }`}
+          >
+            <span>🎨</span>
+            {editMode ? 'Exit Edit Mode' : 'Edit Mode'}
+          </button>
+        )}
 
         {editMode && showMobileToggle && (
           <button

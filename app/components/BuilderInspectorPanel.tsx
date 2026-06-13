@@ -6,10 +6,13 @@ import type { ProjectFile } from '@/lib/project-files';
 import type { SelectedVisualElement, StyleChanges } from '@/lib/visual-editor-types';
 import FileTree from '@/app/components/FileTree';
 import StylePanel from '@/app/components/StylePanel';
+import SeoPanel from '@/app/components/SeoPanel';
+import IntegrationsPanel from '@/app/components/IntegrationsPanel';
 import BuilderOllamaSettings, { BuilderOllamaLockedHint } from '@/app/components/BuilderOllamaSettings';
 import RoiTracker from '@/app/components/RoiTracker';
+import type { ProjectSeoSettings } from '@/lib/seo-types';
 
-export type InspectorTab = 'code' | 'blueprint' | 'styles';
+export type InspectorTab = 'code' | 'blueprint' | 'styles' | 'seo' | 'integrations';
 
 type BuilderInspectorPanelProps = {
   open: boolean;
@@ -34,11 +37,25 @@ type BuilderInspectorPanelProps = {
   visualMobilePreview: boolean;
   showMobileStyleControls: boolean;
   visualEditApplying: boolean;
+  seoSettings: ProjectSeoSettings;
+  onSeoChange: (settings: ProjectSeoSettings) => void;
+  subscriptionStatus: string;
+  activeProjectId: string | null;
+  onSaveSeo: () => Promise<void>;
+  onGenerateSeo: () => Promise<void>;
+  seoSaving: boolean;
+  seoGenerating: boolean;
+  seoMessage?: string;
+  generatedCode: string;
+  onIntegrationAdded: (code: string, message: string, creditsRemaining?: number) => void;
+  onIntegrationStatus?: (message: string) => void;
 };
 
 const TABS: { id: InspectorTab; label: string; icon: string }[] = [
   { id: 'code', label: 'Code', icon: '📄' },
   { id: 'blueprint', label: 'Blueprint', icon: '📋' },
+  { id: 'seo', label: 'SEO', icon: '🔍' },
+  { id: 'integrations', label: 'Integrations', icon: '🔌' },
   { id: 'styles', label: 'Styles', icon: '🎨' },
 ];
 
@@ -65,12 +82,24 @@ export default function BuilderInspectorPanel({
   visualMobilePreview,
   showMobileStyleControls,
   visualEditApplying,
+  seoSettings,
+  onSeoChange,
+  subscriptionStatus,
+  activeProjectId,
+  onSaveSeo,
+  onGenerateSeo,
+  seoSaving,
+  seoGenerating,
+  seoMessage,
+  generatedCode,
+  onIntegrationAdded,
+  onIntegrationStatus,
 }: BuilderInspectorPanelProps) {
   const visibleTabs = TABS.filter((t) => t.id !== 'styles' || showStylesTab);
 
   return (
     <aside
-      className={`builder-inspector-panel ${open ? '' : 'is-collapsed'}`}
+      className="builder-inspector-panel"
       aria-hidden={!open}
     >
       <div className="flex items-center justify-between px-3 py-2 border-b border-nisk shrink-0">
@@ -158,6 +187,32 @@ export default function BuilderInspectorPanel({
             embedded
           />
         </div>
+      )}
+
+      {tab === 'seo' && (
+        <SeoPanel
+          settings={seoSettings}
+          onChange={onSeoChange}
+          subscriptionTier={subscriptionTier}
+          subscriptionStatus={subscriptionStatus}
+          activeProjectId={activeProjectId}
+          onSave={onSaveSeo}
+          onGenerateAi={onGenerateSeo}
+          saving={seoSaving}
+          generating={seoGenerating}
+          message={seoMessage}
+        />
+      )}
+
+      {tab === 'integrations' && (
+        <IntegrationsPanel
+          projectId={activeProjectId}
+          subscriptionTier={subscriptionTier}
+          subscriptionStatus={subscriptionStatus}
+          currentCode={generatedCode}
+          onIntegrationAdded={onIntegrationAdded}
+          onStatusMessage={onIntegrationStatus}
+        />
       )}
     </aside>
   );

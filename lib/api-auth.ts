@@ -17,6 +17,7 @@ export const PUBLIC_API_PATHS = new Set([
 export const RATE_LIMITS: Record<string, number> = {
   '/api/builder': 10,
   '/api/generate': 10,
+  '/api/generate/game': 15,
   '/api/log-build': 30,
 };
 

@@ -6,11 +6,14 @@ export function generatePreviewToken(): string {
   return randomBytes(16).toString('base64url');
 }
 
-export function previewPublicUrl(token: string): string {
+export function previewPublicUrl(token: string, requestOrigin?: string): string {
   const previewHost = process.env.NEXT_PUBLIC_PREVIEW_HOST || 'preview.niskbuild.com';
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://niskbuild.com';
   if (process.env.NODE_ENV === 'development') {
-    return `${appUrl}/preview/${token}`;
+    const origin =
+      requestOrigin ||
+      process.env.NEXT_PUBLIC_APP_URL ||
+      'http://localhost:3000';
+    return `${origin.replace(/\/$/, '')}/preview/${token}`;
   }
   return `https://${previewHost}/${token}`;
 }
@@ -103,16 +106,49 @@ export async function getPreviewStatusForUser(userId: string): Promise<{
 export async function upsertPreview(
   userId: string,
   html: string,
-  title?: string
+  title?: string,
+  requestOrigin?: string
 ): Promise<{ token: string; url: string } | null> {
   const supabase = createAdminClient();
-  const token = generatePreviewToken();
   const now = new Date().toISOString();
+  const safeTitle = title || 'NiskBuild Preview';
+
+  const { data: existing } = await supabase
+    .from('previews')
+    .select('id, token')
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existing) {
+    const { error } = await supabase
+      .from('previews')
+      .update({
+        html_content: html,
+        title: safeTitle,
+        updated_at: now,
+      })
+      .eq('id', existing.id);
+
+    if (error) {
+      console.error('Preview update error:', error.message);
+      return null;
+    }
+
+    return {
+      token: existing.token,
+      url: previewPublicUrl(existing.token, requestOrigin),
+    };
+  }
+
+  const token = generatePreviewToken();
 
   const { error } = await supabase.from('previews').insert({
     user_id: userId,
     token,
-    title: title || 'NiskBuild Preview',
+    title: safeTitle,
     html_content: html,
     is_active: true,
     created_at: now,
@@ -124,5 +160,5 @@ export async function upsertPreview(
     return null;
   }
 
-  return { token, url: previewPublicUrl(token) };
+  return { token, url: previewPublicUrl(token, requestOrigin) };
 }

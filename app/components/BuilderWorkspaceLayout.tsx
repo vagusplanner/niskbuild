@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from 'react';
+import { useRef, useState, useEffect, type ReactNode } from 'react';
 import Link from 'next/link';
 import InspectPicker, { type InspectTarget } from '@/app/components/InspectPicker';
 import ProjectLimitBadge from '@/app/components/ProjectLimitBadge';
@@ -8,7 +8,9 @@ import BuilderActionsMenu from '@/app/components/BuilderActionsMenu';
 import BuilderInspectorPanel, { type InspectorTab } from '@/app/components/BuilderInspectorPanel';
 import VisualEditorToolbar from '@/app/components/VisualEditorToolbar';
 import GooglePlacesImport from '@/app/components/GooglePlacesImport';
+import CollapsibleSection from '@/app/components/CollapsibleSection';
 import PromptBar from '@/app/components/PromptBar';
+import { PROMPT_SUGGESTIONS, PROMPT_SUGGESTION_COUNT } from '@/lib/prompt-suggestions';
 import type {
   GooglePlacesBusiness,
   GooglePlacesProjectContext,
@@ -28,6 +30,7 @@ type RecentProject = {
 export type BuilderWorkspaceLayoutProps = {
   userId?: string;
   subscriptionTier: string;
+  subscriptionStatus: string;
   cloudCreditsRemaining: number;
   cloudCreditsAllowance: number;
   recentProjects: RecentProject[];
@@ -100,6 +103,17 @@ export type BuilderWorkspaceLayoutProps = {
     business: GooglePlacesBusiness,
     context: GooglePlacesProjectContext
   ) => void;
+  seoSettings: import('@/lib/seo-types').ProjectSeoSettings;
+  onSeoChange: (settings: import('@/lib/seo-types').ProjectSeoSettings) => void;
+  activeProjectId: string | null;
+  onSaveSeo: () => Promise<void>;
+  onGenerateSeo: () => Promise<void>;
+  seoSaving: boolean;
+  seoGenerating: boolean;
+  seoMessage?: string;
+  generatedCode: string;
+  onIntegrationAdded: (code: string, message: string, creditsRemaining?: number) => void;
+  onIntegrationStatus?: (message: string) => void;
 };
 
 function CanvasHeader({
@@ -107,35 +121,47 @@ function CanvasHeader({
   isExporting,
   mobileExporting,
   canPwa,
+  canVisualEdit,
+  visualEditMode,
+  inspectMode,
   cloudCreditsRemaining,
   onSave,
   onExportZip,
   onMobileExport,
   onDeployLive,
+  onToggleVisualEdit,
+  onToggleInspect,
+  onRestoreZip,
   onOpenInspector,
   inspectorOpen,
   inspectorTab,
   onFocusPreview,
   onOpenCodeView,
+  onToggleFullscreen,
   showViewToggle = false,
-  children,
 }: {
   canAct: boolean;
   isExporting: boolean;
   mobileExporting: boolean;
   canPwa: boolean;
+  canVisualEdit: boolean;
+  visualEditMode: boolean;
+  inspectMode: boolean;
   cloudCreditsRemaining: number;
   onSave: () => void;
   onExportZip: () => void;
   onMobileExport: () => void;
   onDeployLive: () => void;
+  onToggleVisualEdit: () => void;
+  onToggleInspect: () => void;
+  onRestoreZip: (file: File) => Promise<void>;
   onOpenInspector: () => void;
   inspectorOpen: boolean;
   inspectorTab?: InspectorTab;
   onFocusPreview?: () => void;
   onOpenCodeView?: () => void;
+  onToggleFullscreen?: () => void;
   showViewToggle?: boolean;
-  children?: ReactNode;
 }) {
   const codeViewActive = inspectorOpen && inspectorTab === 'code';
 
@@ -170,21 +196,41 @@ function CanvasHeader({
         )}
         <span className="w-2 h-2 rounded-full bg-[var(--success)] status-dot-active shrink-0" />
         <span className="text-sm font-medium text-white truncate hidden sm:inline">Live Preview</span>
-        {children}
+        {(visualEditMode || inspectMode) && (
+          <span className="text-[10px] px-2 py-0.5 rounded-full border border-[var(--accent-cyan)]/30 text-[var(--accent-cyan)]">
+            {visualEditMode ? 'Visual edit' : 'Target mode'}
+          </span>
+        )}
       </div>
       <div className="flex items-center gap-2 shrink-0">
         <span className="hidden sm:inline text-[10px] text-nisk-muted font-mono">
           {cloudCreditsRemaining > 0 ? `${cloudCreditsRemaining} cr` : 'sandbox'}
         </span>
+        {onToggleFullscreen && (
+          <button
+            type="button"
+            onClick={onToggleFullscreen}
+            className="btn-secondary px-2.5 py-1.5 text-xs rounded-lg"
+            title="Fullscreen preview (F)"
+          >
+            ⛶
+          </button>
+        )}
         <BuilderActionsMenu
           canAct={canAct}
           isExporting={isExporting}
           mobileExporting={mobileExporting}
           canPwa={canPwa}
+          canVisualEdit={canVisualEdit}
+          visualEditMode={visualEditMode}
+          inspectMode={inspectMode}
           onSave={onSave}
           onExportZip={onExportZip}
           onMobileExport={onMobileExport}
           onDeployLive={onDeployLive}
+          onToggleVisualEdit={onToggleVisualEdit}
+          onToggleInspect={onToggleInspect}
+          onRestoreZip={onRestoreZip}
         />
         <button
           type="button"
@@ -261,25 +307,29 @@ function RecentProjectsList({
   projects,
   onLoad,
   onOpenAll,
+  compact = false,
 }: {
   projects: RecentProject[];
   onLoad: (project: RecentProject) => void;
   onOpenAll: () => void;
+  compact?: boolean;
 }) {
   if (projects.length === 0) return null;
 
   return (
-    <div className="shrink-0 px-4 py-3 border-t border-nisk max-h-40 overflow-y-auto">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-[10px] uppercase tracking-wider text-nisk-muted">Recent projects</p>
-        <button
-          type="button"
-          onClick={onOpenAll}
-          className="text-[10px] text-[var(--accent-cyan)] hover:underline"
-        >
-          View all
-        </button>
-      </div>
+    <div className={compact ? '' : 'shrink-0 px-4 py-3 border-t border-nisk max-h-40 overflow-y-auto'}>
+      {!compact && (
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-[10px] uppercase tracking-wider text-nisk-muted">Recent projects</p>
+          <button
+            type="button"
+            onClick={onOpenAll}
+            className="text-[10px] text-[var(--accent-cyan)] hover:underline"
+          >
+            View all
+          </button>
+        </div>
+      )}
       <ul className="space-y-1">
         {projects.map((p) => (
           <li key={p.id}>
@@ -294,12 +344,22 @@ function RecentProjectsList({
           </li>
         ))}
       </ul>
-      <Link
-        href="/dashboard"
-        className="block text-center text-[10px] text-nisk-muted hover:text-[var(--accent-cyan)] mt-2"
-      >
-        Open dashboard →
-      </Link>
+      {compact ? (
+        <button
+          type="button"
+          onClick={onOpenAll}
+          className="w-full text-center text-[10px] text-[var(--accent-cyan)] hover:underline mt-2"
+        >
+          View all projects
+        </button>
+      ) : (
+        <Link
+          href="/dashboard"
+          className="block text-center text-[10px] text-nisk-muted hover:text-[var(--accent-cyan)] mt-2"
+        >
+          Open dashboard →
+        </Link>
+      )}
     </div>
   );
 }
@@ -316,6 +376,7 @@ function ChatPanelContent({
   cloudCreditsRemaining,
   cloudCreditsAllowance,
   subscriptionTier,
+  subscriptionStatus,
   prompt,
   onPromptChange,
   onGenerate,
@@ -326,6 +387,9 @@ function ChatPanelContent({
   canImportGooglePlaces,
   importedBusinessName,
   onGooglePlacesImport,
+  useLocalOllama,
+  onUseLocalOllamaChange,
+  onOllamaUpgrade,
 }: {
   userId?: string;
   savedProjectsCount: number;
@@ -338,6 +402,7 @@ function ChatPanelContent({
   cloudCreditsRemaining: number;
   cloudCreditsAllowance: number;
   subscriptionTier: string;
+  subscriptionStatus: string;
   prompt: string;
   onPromptChange: (v: string) => void;
   onGenerate: () => void;
@@ -351,68 +416,118 @@ function ChatPanelContent({
     business: GooglePlacesBusiness,
     context: GooglePlacesProjectContext
   ) => void;
+  useLocalOllama: boolean;
+  onUseLocalOllamaChange: (enabled: boolean) => void;
+  onOllamaUpgrade: () => void;
 }) {
+  const pct =
+    cloudCreditsAllowance > 0
+      ? Math.min(100, Math.round((cloudCreditsRemaining / cloudCreditsAllowance) * 100))
+      : 0;
+
   return (
     <>
-      <div className="shrink-0 px-4 py-3 border-b border-nisk">
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <div>
-            <p className="text-xs font-semibold text-white">Build with AI</p>
-            <p className="text-[10px] text-nisk-muted mt-0.5">Describe your app — preview updates live</p>
-          </div>
-          <button
-            type="button"
-            onClick={onNewProject}
-            className="shrink-0 px-2.5 py-1.5 text-[10px] font-medium rounded-lg bg-[var(--secondary)]/20 text-[var(--secondary)] border border-[var(--secondary)]/30 hover:bg-[var(--secondary)]/30 transition-colors"
-            title="Start fresh project"
-          >
-            + New
-          </button>
+      <div className="shrink-0 px-3 py-2 border-b border-nisk flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-white truncate">Build with AI</p>
+          {userId && (
+            <ProjectLimitBadge userId={userId} currentCount={savedProjectsCount} />
+          )}
         </div>
-        {userId && (
-          <ProjectLimitBadge userId={userId} currentCount={savedProjectsCount} />
+        <button
+          type="button"
+          onClick={onNewProject}
+          className="shrink-0 px-2 py-1 text-[10px] font-medium rounded-lg border border-[var(--secondary)]/30 text-[var(--secondary)] hover:bg-[var(--secondary)]/15"
+          title="Start fresh project"
+        >
+          + New
+        </button>
+      </div>
+
+      {isSandboxAtLimit && (
+        <p className="shrink-0 px-3 py-1.5 text-[10px] text-yellow-400 border-b border-nisk/50">
+          Limit {savedProjectsCount}/{projectLimit}.{' '}
+          <Link href="/pricing" className="underline">Upgrade</Link>
+        </p>
+      )}
+
+      <div className="builder-chat-scroll">
+        {importedBusinessName && (
+          <div className="mx-3 mt-2 px-3 py-2 rounded-lg border border-[var(--accent-cyan)]/30 bg-[var(--accent-cyan)]/10">
+            <p className="text-[10px] text-[var(--accent-cyan)] font-medium">
+              📍 {importedBusinessName}
+            </p>
+          </div>
         )}
-        {isSandboxAtLimit && (
-          <p className="text-[10px] text-yellow-400 mt-2">
-            Limit {savedProjectsCount}/{projectLimit}.{' '}
-            <Link href="/pricing" className="underline">Upgrade</Link>
-          </p>
+
+        <CollapsibleSection title="Ideas" defaultOpen>
+          <div className="flex flex-wrap gap-1.5">
+            {PROMPT_SUGGESTIONS.slice(0, PROMPT_SUGGESTION_COUNT).map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => onPromptChange(s)}
+                className="text-left px-2 py-1.5 rounded-lg text-[10px] border border-nisk text-gray-400 hover:border-[var(--accent-cyan)]/50 hover:text-[var(--accent-cyan)] transition-all line-clamp-2 max-w-full"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </CollapsibleSection>
+
+        <CollapsibleSection title="Tools" defaultOpen={!!importedBusinessName}>
+          <GooglePlacesImport canImport={canImportGooglePlaces} onImport={onGooglePlacesImport} />
+        </CollapsibleSection>
+
+        {recentProjects.length > 0 && (
+          <CollapsibleSection title="Recent" badge={String(recentProjects.length)}>
+            <RecentProjectsList
+              projects={recentProjects}
+              onLoad={onLoadRecentProject}
+              onOpenAll={onOpenAllProjects}
+              compact
+            />
+          </CollapsibleSection>
         )}
       </div>
-      {importedBusinessName && (
-        <div className="shrink-0 mx-4 mt-2 px-3 py-2 rounded-lg border border-[var(--accent-cyan)]/30 bg-[var(--accent-cyan)]/10">
-          <p className="text-[10px] text-[var(--accent-cyan)] font-medium">
-            📍 Client info imported — {importedBusinessName}
-          </p>
-          <p className="text-[10px] text-nisk-muted mt-0.5">
-            Your app will be pre-filled with real business data on Generate.
-          </p>
+
+      <div className="builder-prompt-dock">
+        <PromptBar
+          variant="dock"
+          prompt={prompt}
+          onChange={onPromptChange}
+          onGenerate={onGenerate}
+          isGenerating={isGenerating}
+          statusMessage={statusMessage}
+          planMode={planMode}
+          onPlanModeChange={onPlanModeChange}
+          subscriptionTier={subscriptionTier}
+          subscriptionStatus={subscriptionStatus}
+          useLocalOllama={useLocalOllama}
+          onUseLocalOllamaChange={onUseLocalOllamaChange}
+          onProviderUpgrade={onOllamaUpgrade}
+        />
+        <div className="px-3 pb-2 flex items-center justify-between text-[10px] text-nisk-muted">
+          <span className="capitalize">{subscriptionTier.replace('_', ' ')}</span>
+          {cloudCreditsAllowance > 0 ? (
+            <span className="text-[var(--accent-cyan)]">
+              {cloudCreditsRemaining}/{cloudCreditsAllowance} cr
+            </span>
+          ) : (
+            <span>Sandbox</span>
+          )}
         </div>
-      )}
-      <GooglePlacesImport
-        canImport={canImportGooglePlaces}
-        onImport={onGooglePlacesImport}
-      />
-      <PromptBar
-        variant="sidebar"
-        prompt={prompt}
-        onChange={onPromptChange}
-        onGenerate={onGenerate}
-        isGenerating={isGenerating}
-        statusMessage={statusMessage}
-        planMode={planMode}
-        onPlanModeChange={onPlanModeChange}
-      />
-      <RecentProjectsList
-        projects={recentProjects}
-        onLoad={onLoadRecentProject}
-        onOpenAll={onOpenAllProjects}
-      />
-      <CreditsBar
-        remaining={cloudCreditsRemaining}
-        allowance={cloudCreditsAllowance}
-        tier={subscriptionTier}
-      />
+        {cloudCreditsAllowance > 0 && (
+          <div className="px-3 pb-2">
+            <div className="w-full bg-nisk rounded-full h-1 overflow-hidden">
+              <div
+                className="bg-gradient-brand h-1 rounded-full transition-all"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
     </>
   );
 }
@@ -421,6 +536,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
   const {
     userId,
     subscriptionTier,
+    subscriptionStatus,
     cloudCreditsRemaining,
     cloudCreditsAllowance,
     recentProjects,
@@ -489,7 +605,36 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
     canImportGooglePlaces,
     importedBusinessName,
     onGooglePlacesImport,
+    seoSettings,
+    onSeoChange,
+    activeProjectId,
+    onSaveSeo,
+    onGenerateSeo,
+    seoSaving,
+    seoGenerating,
+    seoMessage,
+    generatedCode,
+    onIntegrationAdded,
+    onIntegrationStatus,
   } = props;
+
+  const seoInspectorProps = {
+    seoSettings,
+    onSeoChange,
+    subscriptionStatus,
+    activeProjectId,
+    onSaveSeo,
+    onGenerateSeo,
+    seoSaving,
+    seoGenerating,
+    seoMessage,
+  };
+
+  const integrationInspectorProps = {
+    generatedCode,
+    onIntegrationAdded,
+    onIntegrationStatus,
+  };
 
   const showStylesTab = visualEditMode && !!selectedVisualElement;
 
@@ -515,6 +660,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
       cloudCreditsRemaining={cloudCreditsRemaining}
       cloudCreditsAllowance={cloudCreditsAllowance}
       subscriptionTier={subscriptionTier}
+      subscriptionStatus={subscriptionStatus}
       prompt={prompt}
       onPromptChange={onPromptChange}
       onGenerate={onGenerate}
@@ -525,6 +671,9 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
       canImportGooglePlaces={canImportGooglePlaces}
       importedBusinessName={importedBusinessName}
       onGooglePlacesImport={onGooglePlacesImport}
+      useLocalOllama={useLocalOllama}
+      onUseLocalOllamaChange={onUseLocalOllamaChange}
+      onOllamaUpgrade={onOllamaUpgrade}
     />
   );
 
@@ -542,8 +691,49 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
       canUndo={visualEditHistoryLength > 0}
       canReset={hasAiOriginal}
       selectedLabel={selectedVisualElement?.breadcrumb.join(' > ')}
+      hideEditToggle
     />
   );
+
+  const previewFullscreenRef = useRef<HTMLDivElement>(null);
+  const mobilePreviewFullscreenRef = useRef<HTMLDivElement>(null);
+
+  const togglePreviewFullscreen = () => {
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    const el = isMobile ? mobilePreviewFullscreenRef.current : previewFullscreenRef.current;
+    if (!el) return;
+    if (!document.fullscreenElement) {
+      el.requestFullscreen?.().catch(() => {});
+    } else {
+      document.exitFullscreen?.().catch(() => {});
+    }
+  };
+
+  useEffect(() => {
+    const isTyping = (el: EventTarget | null) => {
+      if (!el || !(el instanceof HTMLElement)) return false;
+      const tag = el.tagName;
+      return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+    };
+
+    const onKey = (e: KeyboardEvent) => {
+      if (isTyping(e.target)) return;
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        if (canAct) onSave();
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        onInspectorOpenChange(!inspectorOpen);
+      }
+      if (e.key.toLowerCase() === 'f' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        togglePreviewFullscreen();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [canAct, inspectorOpen, onInspectorOpenChange, onSave]);
 
   const inspector = (
     <BuilderInspectorPanel
@@ -569,6 +759,8 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
       visualMobilePreview={visualMobilePreview}
       showMobileStyleControls={canVisualEditFull}
       visualEditApplying={visualEditApplying}
+      {...seoInspectorProps}
+      {...integrationInspectorProps}
     />
   );
 
@@ -579,6 +771,15 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
       onDragLeave={onDragLeave}
       onDrop={onDrop}
     >
+      <InspectPicker
+        active={inspectMode}
+        onToggle={onToggleInspect}
+        target={inspectTarget}
+        onClearTarget={onClearInspectTarget}
+        onSubmit={onTargetedEdit}
+        isGenerating={isGenerating}
+        hideToggle
+      />
       {isDraggingZip && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50 backdrop-blur-sm pointer-events-none">
           <p className="text-[var(--accent-cyan)] font-medium">Drop NiskBuild ZIP to restore project</p>
@@ -617,11 +818,17 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
               isExporting={isExporting}
               mobileExporting={mobileExporting}
               canPwa={canPwa}
+              canVisualEdit={canVisualEdit}
+              visualEditMode={visualEditMode}
+              inspectMode={inspectMode}
               cloudCreditsRemaining={cloudCreditsRemaining}
               onSave={onSave}
               onExportZip={onExportZip}
               onMobileExport={onMobileExport}
               onDeployLive={onDeployLive}
+              onToggleVisualEdit={onToggleVisualEdit}
+              onToggleInspect={onToggleInspect}
+              onRestoreZip={props.onRestoreZip}
               onOpenInspector={() => {
                 onInspectorTabChange('code');
                 onMobileTabChange('inspector');
@@ -633,20 +840,13 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
                 onInspectorTabChange('code');
                 onMobileTabChange('inspector');
               }}
-            >
-              {!visualEditMode && (
-                <InspectPicker
-                  active={inspectMode}
-                  onToggle={onToggleInspect}
-                  target={inspectTarget}
-                  onClearTarget={onClearInspectTarget}
-                  onSubmit={onTargetedEdit}
-                  isGenerating={isGenerating}
-                />
-              )}
-            </CanvasHeader>
+              onToggleFullscreen={togglePreviewFullscreen}
+            />
             {visualToolbar}
-            <div className={`flex-1 min-h-0 relative ${visualMobilePreview ? 'bg-nisk' : ''}`}>
+            <div
+              ref={mobilePreviewFullscreenRef}
+              className={`flex-1 min-h-0 relative bg-[#0B0F19] ${visualMobilePreview ? 'bg-nisk' : ''}`}
+            >
               <PreviewIframe
                 previewHtml={previewHtml}
                 placeholderPreview={placeholderPreview}
@@ -681,6 +881,8 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
               visualMobilePreview={visualMobilePreview}
               showMobileStyleControls={canVisualEditFull}
               visualEditApplying={visualEditApplying}
+              {...seoInspectorProps}
+              {...integrationInspectorProps}
             />
           </div>
         )}
@@ -698,49 +900,42 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
             isExporting={isExporting}
             mobileExporting={mobileExporting}
             canPwa={canPwa}
+            canVisualEdit={canVisualEdit}
+            visualEditMode={visualEditMode}
+            inspectMode={inspectMode}
             cloudCreditsRemaining={cloudCreditsRemaining}
             onSave={onSave}
             onExportZip={onExportZip}
             onMobileExport={onMobileExport}
             onDeployLive={onDeployLive}
+            onToggleVisualEdit={onToggleVisualEdit}
+            onToggleInspect={onToggleInspect}
+            onRestoreZip={props.onRestoreZip}
             onOpenInspector={() => onInspectorOpenChange(!inspectorOpen)}
             inspectorOpen={inspectorOpen}
             inspectorTab={inspectorTab}
             showViewToggle
             onFocusPreview={handleFocusPreview}
             onOpenCodeView={handleOpenCodeView}
-          >
-            {!visualEditMode && (
-              <InspectPicker
-                active={inspectMode}
-                onToggle={onToggleInspect}
-                target={inspectTarget}
-                onClearTarget={onClearInspectTarget}
-                onSubmit={onTargetedEdit}
-                isGenerating={isGenerating}
-              />
-            )}
-            <label className="inline-flex items-center gap-1 text-[10px] text-nisk-muted cursor-pointer btn-secondary rounded-lg px-2 py-1">
-              Import ZIP
-              <input
-                type="file"
-                accept=".zip"
-                className="hidden"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (file) await props.onRestoreZip(file);
-                  e.target.value = '';
-                }}
-              />
-            </label>
-          </CanvasHeader>
+            onToggleFullscreen={togglePreviewFullscreen}
+          />
           {visualToolbar}
-          <div className={`flex-1 min-h-0 relative ${visualMobilePreview ? 'bg-nisk' : ''}`}>
-            <PreviewIframe
-              previewHtml={previewHtml}
-              placeholderPreview={placeholderPreview}
-              previewFrameClass={previewFrameClass}
+          <div
+            ref={previewFullscreenRef}
+            className={`flex-1 min-h-0 relative bg-[#0B0F19] ${visualMobilePreview ? 'bg-nisk' : ''}`}
+          >
+            <div
+              className={`builder-inspector-backdrop hidden md:block ${inspectorOpen ? 'is-open' : ''}`}
+              onClick={() => onInspectorOpenChange(false)}
+              aria-hidden
             />
+            <div className="absolute inset-0 z-[1]">
+              <PreviewIframe
+                previewHtml={previewHtml}
+                placeholderPreview={placeholderPreview}
+                previewFrameClass={previewFrameClass}
+              />
+            </div>
             <button
               type="button"
               className={`builder-inspector-toggle hidden md:block ${inspectorOpen ? 'is-open' : ''}`}
@@ -749,10 +944,38 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
             >
               {inspectorOpen ? 'Hide' : 'Code'}
             </button>
+            {inspectorOpen && (
+              <div className="builder-inspector-overlay hidden md:flex">
+                <BuilderInspectorPanel
+                  open
+                  tab={inspectorTab}
+                  onTabChange={onInspectorTabChange}
+                  onClose={() => onInspectorOpenChange(false)}
+                  projectFiles={projectFiles}
+                  activeFile={activeFile}
+                  onSelectFile={onSelectFile}
+                  codeEditor={codeEditor}
+                  blueprintData={blueprintData}
+                  subscriptionTier={subscriptionTier}
+                  useLocalOllama={useLocalOllama}
+                  onUseLocalOllamaChange={onUseLocalOllamaChange}
+                  onOllamaUpgrade={onOllamaUpgrade}
+                  userId={userId}
+                  canUseLocalOllama={canUseLocal}
+                  showStylesTab={showStylesTab}
+                  selectedVisualElement={selectedVisualElement}
+                  stylePanel={stylePanel}
+                  onStyleChange={onStyleChange}
+                  visualMobilePreview={visualMobilePreview}
+                  showMobileStyleControls={canVisualEditFull}
+                  visualEditApplying={visualEditApplying}
+                  {...seoInspectorProps}
+                  {...integrationInspectorProps}
+                />
+              </div>
+            )}
           </div>
         </main>
-
-        {inspector}
       </div>
     </div>
   );

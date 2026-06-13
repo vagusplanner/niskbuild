@@ -3,6 +3,7 @@ import { createHash } from 'crypto';
 import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { normalizeAnalyticsRegion } from '@/lib/user-region';
 
 // Helper: Create anonymous session ID (one-way hash, cannot be reversed)
 function createAnonymousId(userId: string | null, sessionId: string): string {
@@ -79,8 +80,17 @@ export async function POST(request: NextRequest) {
     const allPrompts = prompts?.join(' ') || '';
     const featuresList = extractFeatures(allPrompts);
     
-    // Get region (country only)
-    const region = getRegion(locale);
+    // Get region (country only) — profile setting overrides browser locale
+    const { data: profile } = await createAdminClient()
+      .from('profiles')
+      .select('analytics_region')
+      .eq('id', userId)
+      .single();
+
+    const region =
+      profile?.analytics_region && profile.analytics_region !== 'Other'
+        ? normalizeAnalyticsRegion(profile.analytics_region)
+        : getRegion(locale);
     
     // Apply differential privacy
     const privateExportedLocally = applyDifferentialPrivacy(exportedLocally);

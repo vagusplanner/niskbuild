@@ -16,6 +16,7 @@ interface InspectPickerProps {
   onClearTarget: () => void;
   onSubmit: (changePrompt: string) => void;
   isGenerating: boolean;
+  hideToggle?: boolean;
 }
 
 export default function InspectPicker({
@@ -25,6 +26,7 @@ export default function InspectPicker({
   onClearTarget,
   onSubmit,
   isGenerating,
+  hideToggle = false,
 }: InspectPickerProps) {
   const [changePrompt, setChangePrompt] = useState('');
 
@@ -37,17 +39,19 @@ export default function InspectPicker({
 
   return (
     <>
-      <button
-        onClick={onToggle}
-        className={`px-2 py-1 text-[10px] rounded border transition-colors ${
-          active
-            ? 'border-[var(--accent-cyan)] bg-[var(--accent-cyan)]/15 text-[var(--accent-cyan)]'
-            : 'border-nisk text-nisk-muted hover:text-white'
-        }`}
-        title="Click elements in preview to target edits"
-      >
-        🎯 Target
-      </button>
+      {!hideToggle && (
+        <button
+          onClick={onToggle}
+          className={`px-2 py-1 text-[10px] rounded border transition-colors ${
+            active
+              ? 'border-[var(--accent-cyan)] bg-[var(--accent-cyan)]/15 text-[var(--accent-cyan)]'
+              : 'border-nisk text-nisk-muted hover:text-white'
+          }`}
+          title="Click elements in preview to target edits"
+        >
+          🎯 Target
+        </button>
+      )}
 
       {target && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">

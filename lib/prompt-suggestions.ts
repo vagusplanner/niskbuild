@@ -1,3 +1,5 @@
+export const PROMPT_SUGGESTION_COUNT = 3;
+
 export const PROMPT_SUGGESTIONS = [
   'Build a modern SaaS landing page with pricing table and dark theme',
   'Create a todo app with drag-and-drop, categories, and local storage',

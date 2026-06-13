@@ -6,6 +6,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { hasCompletedOnboarding, markOnboardingComplete } from '@/lib/auth';
 import { getSafeSession } from '@/lib/supabaseSession';
 import { cleanGeneratedCode, isExportableCode } from '@/lib/cleanGeneratedCode';
+import { getDeployablePreviewHtml } from '@/lib/deploy-preview';
+import { injectSeoIntoHtml } from '@/lib/seo-inject';
 import { buildProjectFiles, filesToMap, type ProjectFile } from '@/lib/project-files';
 import type { NiskBuildPromptEntry } from '@/lib/niskbuild-config';
 import { parseNiskBuildConfig } from '@/lib/niskbuild-config';
@@ -21,11 +23,13 @@ import BuilderWorkspaceLayout from '@/app/components/BuilderWorkspaceLayout';
 import { type InspectorTab } from '@/app/components/BuilderInspectorPanel';
 import PlanPanel from '@/app/components/PlanPanel';
 import MobileExportModal from '@/app/components/MobileExportModal';
+import { DEFAULT_SEO_SETTINGS, type ProjectSeoSettings } from '@/lib/seo-types';
 import {
   canExportNative,
   canExportPwa,
   canImportGooglePlaces,
   canUseLocalOllama,
+  canUseSeoSchema,
   canUseVisualEditor,
   canUseVisualEditorFull,
   getCloudCreditsForTier,
@@ -126,6 +130,10 @@ function BuilderContent() {
   const [showMobileExport, setShowMobileExport] = useState(false);
   const [mobileExporting, setMobileExporting] = useState<'pwa' | 'native' | null>(null);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [seoSettings, setSeoSettings] = useState<ProjectSeoSettings>(DEFAULT_SEO_SETTINGS);
+  const [seoSaving, setSeoSaving] = useState(false);
+  const [seoGenerating, setSeoGenerating] = useState(false);
+  const [seoMessage, setSeoMessage] = useState('');
   const [visualEditMode, setVisualEditMode] = useState(false);
   const [visualMobilePreview, setVisualMobilePreview] = useState(false);
   const [selectedVisualElement, setSelectedVisualElement] = useState<SelectedVisualElement | null>(null);
@@ -203,17 +211,62 @@ function BuilderContent() {
       setPrompt(savedPrompt);
       localStorage.removeItem('niskbuild_template_prompt');
     }
+  }, []);
 
+  useEffect(() => {
     const gameId = searchParams.get('game');
-    if (gameId) {
-      const template = getGameTemplate(gameId);
-      if (template) {
-        setPrompt(template.prompt);
-        setStatusMessage(`🎮 ${template.name} template loaded — hit Generate`);
-        setTimeout(() => setStatusMessage(''), 6000);
+    if (!gameId || !user) return;
+
+    const meta = getGameTemplate(gameId);
+    if (!meta) return;
+
+    let cancelled = false;
+
+    (async () => {
+      setStatusMessage(`🎮 Loading ${meta.name} template...`);
+      try {
+        const res = await fetch('/api/generate/game', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ template: gameId }),
+        });
+        const data = await res.json();
+        if (cancelled) return;
+
+        if (!res.ok) {
+          setPrompt(meta.prompt);
+          if (res.status === 403 && data.upgrade) {
+            setStatusMessage('Agency plan required for game templates');
+          } else {
+            setStatusMessage(data.error || 'Could not load game template');
+          }
+          setTimeout(() => setStatusMessage(''), 8000);
+          return;
+        }
+
+        if (data.code) {
+          setPrompt(meta.prompt);
+          setGeneratedCode(data.code);
+          setPreviewHtml(cleanGeneratedCode(data.code));
+          setProjectFiles(buildProjectFiles(data.code));
+          setStatusMessage(`🎮 ${meta.name} ready — customize or export`);
+          setTimeout(() => setStatusMessage(''), 6000);
+          setActiveEditorTab('preview');
+        }
+      } catch {
+        if (!cancelled) {
+          setPrompt(meta.prompt);
+          setStatusMessage('Network error loading template — hit Generate');
+          setTimeout(() => setStatusMessage(''), 6000);
+        }
       }
-    }
-  }, [searchParams]);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, user]);
 
   const loadProjects = async () => {
     const res = await fetch('/api/projects');
@@ -740,6 +793,7 @@ function BuilderContent() {
           files: filesToMap(projectFiles),
           activeFile,
           projectName: prompt.substring(0, 50) || 'NiskBuild Project',
+          seo: seoSettings,
         }),
       });
 
@@ -840,7 +894,10 @@ function BuilderContent() {
       return;
     }
 
-    const html = cleanGeneratedCode(generatedCode);
+    let html = getDeployablePreviewHtml(generatedCode, projectFiles);
+    if (seoSettings.title || seoSettings.metaDescription) {
+      html = injectSeoIntoHtml(html, seoSettings);
+    }
     setStatusMessage('🌐 Publishing live preview link...');
 
     try {
@@ -856,18 +913,141 @@ function BuilderContent() {
       const data = await res.json();
 
       if (!res.ok) {
-        alert(data.error || 'Failed to publish preview link');
+        if (res.status === 403) {
+          const upgrade = confirm(
+            `${data.error || 'Live preview requires an active paid plan.'}\n\nOpen Pricing?`
+          );
+          if (upgrade) window.location.href = '/pricing';
+        } else {
+          alert(data.error || 'Failed to publish preview link');
+        }
         setStatusMessage(`❌ ${data.error || 'Preview publish failed'}`);
         return;
       }
 
-      window.open(data.url, '_blank', 'noopener,noreferrer');
-      setStatusMessage(`✅ Live preview published — ${data.url}`);
+      const opened = window.open(data.url, '_blank', 'noopener,noreferrer');
+      if (!opened) {
+        try {
+          await navigator.clipboard.writeText(data.url);
+          setStatusMessage(`✅ Link copied — ${data.url}`);
+        } catch {
+          setStatusMessage(`✅ Live preview: ${data.url}`);
+        }
+      } else {
+        setStatusMessage(`✅ Live preview published — ${data.url}`);
+      }
     } catch {
       setStatusMessage('❌ Failed to publish preview link');
     }
 
     setTimeout(() => setStatusMessage(''), 8000);
+  };
+
+  const loadProjectSeo = async (projectId: string) => {
+    try {
+      const res = await fetch(`/api/seo?projectId=${projectId}`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.seo) setSeoSettings(data.seo);
+      } else {
+        setSeoSettings({ ...DEFAULT_SEO_SETTINGS });
+      }
+    } catch {
+      setSeoSettings({ ...DEFAULT_SEO_SETTINGS });
+    }
+  };
+
+  const handleSaveSeo = async () => {
+    if (!activeProjectId) {
+      setSeoMessage('Save your project first to persist SEO settings.');
+      return;
+    }
+    setSeoSaving(true);
+    setSeoMessage('');
+    try {
+      const res = await fetch('/api/seo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ projectId: activeProjectId, seo: seoSettings }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.upgrade) {
+          const upgrade = confirm(`${data.error}\n\nOpen Pricing?`);
+          if (upgrade) window.location.href = '/pricing';
+        } else {
+          setSeoMessage(data.error || 'Failed to save SEO');
+        }
+        return;
+      }
+      if (data.seo) setSeoSettings(data.seo);
+      setSeoMessage('✅ SEO settings saved');
+    } catch {
+      setSeoMessage('Failed to save SEO');
+    } finally {
+      setSeoSaving(false);
+      setTimeout(() => setSeoMessage(''), 5000);
+    }
+  };
+
+  const handleGenerateSeo = async () => {
+    setSeoGenerating(true);
+    setSeoMessage('');
+    try {
+      const res = await fetch('/api/seo/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          prompt,
+          pageContent: getDeployablePreviewHtml(generatedCode, projectFiles),
+          blueprint: blueprintData,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.upgrade) {
+          const upgrade = confirm(`${data.error}\n\nOpen Pricing?`);
+          if (upgrade) window.location.href = '/pricing';
+        } else {
+          setSeoMessage(data.error || 'AI SEO generation failed');
+        }
+        return;
+      }
+      const s = data.suggestion;
+      setSeoSettings((prev) => ({
+        ...prev,
+        title: s.title || prev.title,
+        metaDescription: s.metaDescription || prev.metaDescription,
+        focusKeyword: s.focusKeyword || prev.focusKeyword,
+        ogTitle: s.ogTitle || s.title || prev.ogTitle,
+        ogDescription: s.ogDescription || s.metaDescription || prev.ogDescription,
+        schemaJson: canUseSeoSchema(subscriptionTier, subscriptionStatus)
+          ? s.suggestedSchema || prev.schemaJson
+          : prev.schemaJson,
+        seoScore: data.seoScore ?? prev.seoScore,
+      }));
+      setSeoMessage('✨ SEO fields updated from AI');
+      setInspectorTab('seo');
+      setInspectorOpen(true);
+    } catch {
+      setSeoMessage('AI SEO generation failed');
+    } finally {
+      setSeoGenerating(false);
+      setTimeout(() => setSeoMessage(''), 6000);
+    }
+  };
+
+  const handleIntegrationAdded = (code: string, message: string, creditsRemaining?: number) => {
+    applyGeneratedCode(code, `✅ ${message}`);
+    if (typeof creditsRemaining === 'number') {
+      setCloudCreditsRemaining(creditsRemaining);
+    }
+    setStatusMessage(message);
+    setTimeout(() => setStatusMessage(''), 8000);
+    setInspectorTab('integrations');
+    setInspectorOpen(true);
   };
 
   const filteredProjects = useMemo(() => {
@@ -962,6 +1142,7 @@ function BuilderContent() {
       prompt: project.prompt,
       timestamp: project.created_at,
     });
+    void loadProjectSeo(project.id);
     setShowProjects(false);
     setActiveEditorTab('preview');
   };
@@ -992,6 +1173,8 @@ function BuilderContent() {
     setPromptHistory([]);
     setBlueprintData(null);
     setActiveProjectId(null);
+    setSeoSettings({ ...DEFAULT_SEO_SETTINGS });
+    setSeoMessage('');
     setVisualEditHistory([]);
     setSelectedVisualElement(null);
     setVisualEditMode(false);
@@ -1057,10 +1240,10 @@ function BuilderContent() {
         onExportNative={handleExportNative}
       />
 
-      <button
+        <button
         onClick={() => setShowWelcome(true)}
         className="fixed bottom-4 right-4 z-40 w-10 h-10 rounded-full bg-nisk-card border border-nisk text-white hover:border-[var(--accent-cyan)] shadow-lg transition-colors flex items-center justify-center text-sm font-bold"
-        title="How does NiskBuild work?"
+        title="Help tour (? for shortcuts)"
         aria-label="Open help tour"
       >
         ?
@@ -1113,6 +1296,7 @@ function BuilderContent() {
         <BuilderWorkspaceLayout
           userId={user?.id}
           subscriptionTier={subscriptionTier}
+          subscriptionStatus={subscriptionStatus}
           cloudCreditsRemaining={cloudCreditsRemaining}
           cloudCreditsAllowance={cloudCreditsAllowance}
           recentProjects={recentProjects}
@@ -1205,6 +1389,17 @@ function BuilderContent() {
           canImportGooglePlaces={canGooglePlaces}
           importedBusinessName={importedBusinessName}
           onGooglePlacesImport={handleGooglePlacesImport}
+          seoSettings={seoSettings}
+          onSeoChange={setSeoSettings}
+          activeProjectId={activeProjectId}
+          onSaveSeo={handleSaveSeo}
+          onGenerateSeo={handleGenerateSeo}
+          seoSaving={seoSaving}
+          seoGenerating={seoGenerating}
+          seoMessage={seoMessage}
+          generatedCode={generatedCode}
+          onIntegrationAdded={handleIntegrationAdded}
+          onIntegrationStatus={setStatusMessage}
         />
 
 

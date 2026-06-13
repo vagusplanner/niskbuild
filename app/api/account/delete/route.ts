@@ -11,6 +11,14 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
     const user = guard.user!;
+    const { email } = await request.json().catch(() => ({}));
+
+    if (!email || email !== user.email) {
+      return NextResponse.json(
+        { error: 'Email confirmation required — type your account email to delete' },
+        { status: 400 }
+      );
+    }
 
     await supabase.from('projects').delete().eq('user_id', user.id);
     await supabase.from('profiles').delete().eq('id', user.id);

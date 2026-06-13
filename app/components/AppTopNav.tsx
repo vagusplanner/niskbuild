@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { getSafeSession } from '@/lib/supabaseSession';
 import NiskBuildLogo from './NiskBuildLogo';
 import AuthButton from './AuthButton';
+import ThemeToggle from './ThemeToggle';
 import { MAIN_NAV } from '@/lib/nav-config';
 
 interface AppTopNavProps {
@@ -53,6 +54,7 @@ export default function AppTopNav({ variant = 'app' }: AppTopNavProps) {
         </nav>
 
         <div className="flex items-center gap-2">
+          <ThemeToggle compact />
           {variant === 'marketing' && !user && (
             <Link href="/login" className="btn-ghost hidden sm:inline-flex text-sm">
               Sign In

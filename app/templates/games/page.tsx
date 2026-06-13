@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Layout from '@/app/components/Layout';
+import PageBackHeader from '@/app/components/PageBackHeader';
 import { GAME_TEMPLATES } from '@/lib/game-templates';
 import { canUseGameTemplates } from '@/lib/tier-config';
 
@@ -38,15 +39,25 @@ export default function GameTemplatesPage() {
   if (!canUse) {
     return (
       <Layout variant="app" showFooter={false}>
-        <div className="max-w-lg mx-auto py-20 px-4 text-center">
+        <PageBackHeader href="/games" label="Back to Games" />
+        <div className="max-w-lg mx-auto py-12 px-4 text-center">
           <div className="text-6xl mb-4">🎮</div>
           <h1 className="text-3xl font-bold text-white mb-3">Game Templates</h1>
-          <p className="text-nisk-muted mb-8">
-            Pre-built Phaser.js game templates are available on Agency plan and above.
+          <p className="text-nisk-muted mb-4">
+            Pre-built Phaser.js templates load instantly in the Builder on Agency plan and above.
           </p>
-          <Link href="/pricing" className="btn-primary inline-flex px-6 py-3 rounded-xl text-sm font-medium">
-            Upgrade to Agency →
-          </Link>
+          <p className="text-xs text-nisk-muted mb-8 max-w-sm mx-auto">
+            On Pro, you can still describe game ideas in the Builder prompt — templates and one-click
+            game load require Agency.
+          </p>
+          <div className="flex flex-wrap justify-center gap-3">
+            <Link href="/pricing" className="btn-primary inline-flex px-6 py-3 rounded-xl text-sm font-medium">
+              Upgrade to Agency →
+            </Link>
+            <Link href="/builder" className="btn-secondary inline-flex px-6 py-3 rounded-xl text-sm">
+              Open Builder
+            </Link>
+          </div>
         </div>
       </Layout>
     );
@@ -54,10 +65,11 @@ export default function GameTemplatesPage() {
 
   return (
     <Layout variant="app" showFooter={false}>
-      <div className="max-w-6xl mx-auto py-10 px-4">
+      <PageBackHeader href="/games" label="Back to Games" />
+      <div className="max-w-6xl mx-auto py-6 px-4">
         <h1 className="text-3xl font-bold text-white mb-2">🎮 Game Templates</h1>
         <p className="text-nisk-muted mb-8 max-w-2xl">
-          Start from a working Phaser.js template or describe your own game in the Builder.
+          Pre-built Phaser.js templates load instantly in the Builder. Customize or describe your own game idea.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
@@ -74,7 +86,7 @@ export default function GameTemplatesPage() {
                 href={`/builder?game=${game.id}`}
                 className="inline-block mt-4 px-4 py-2 rounded-lg btn-primary text-sm font-medium"
               >
-                Use template →
+                Load in Builder →
               </Link>
             </div>
           ))}

@@ -11,6 +11,7 @@ export default function Footer() {
         <p className="text-xs text-nisk-muted mb-3">🔒 Fully Local · No Telemetry</p>
         <div className="flex justify-center flex-wrap gap-4 text-xs text-nisk-muted">
           <Link href="/pricing" className="hover:text-[var(--accent-cyan)] transition-colors">Pricing</Link>
+          <Link href="/games" className="hover:text-[var(--accent-cyan)] transition-colors">Games</Link>
           <Link href="/marketplace" className="hover:text-[var(--accent-cyan)] transition-colors">Marketplace</Link>
           <Link href="/dashboard/settings" className="hover:text-[var(--accent-cyan)] transition-colors">Settings</Link>
           <Link href="/privacy" className="hover:text-[var(--accent-cyan)] transition-colors">Privacy Policy</Link>

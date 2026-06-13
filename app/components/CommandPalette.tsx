@@ -15,6 +15,8 @@ interface CommandItem {
 
 const BASE_ITEMS: CommandItem[] = [
   { id: 'builder', label: 'Open Builder', description: 'AI app workspace', href: '/builder', group: 'Workspace' },
+  { id: 'games', label: 'Game Builder', description: 'AI Phaser.js games overview', href: '/games', group: 'Workspace' },
+  { id: 'game-templates', label: 'Game Templates', description: 'Platformer, puzzle, runner', href: '/templates/games', group: 'Workspace' },
   { id: 'marketplace', label: 'Marketplace', description: 'Templates from $0–$49', href: '/marketplace', group: 'Workspace' },
   { id: 'pricing', label: 'Pricing', description: 'Plans & upgrades', href: '/pricing', group: 'Account' },
   { id: 'settings', label: 'Settings & Billing', description: 'API keys, Stripe portal', href: '/dashboard/settings', group: 'Account' },

@@ -1,3 +1,15 @@
+import { platformerTemplate } from './platformer';
+import { puzzleTemplate } from './puzzle';
+import { runnerTemplate } from './runner';
+
+export { platformerTemplate, puzzleTemplate, runnerTemplate };
+
+export const GAME_TEMPLATE_CODE: Record<GameTemplateId, string> = {
+  platformer: platformerTemplate,
+  puzzle: puzzleTemplate,
+  runner: runnerTemplate,
+};
+
 export const GAME_TEMPLATES = [
   {
     id: 'platformer',
@@ -32,4 +44,11 @@ export type GameTemplateId = (typeof GAME_TEMPLATES)[number]['id'];
 
 export function getGameTemplate(id: string) {
   return GAME_TEMPLATES.find((t) => t.id === id);
+}
+
+export function getGameTemplateCode(id: string): string | null {
+  if (id in GAME_TEMPLATE_CODE) {
+    return GAME_TEMPLATE_CODE[id as GameTemplateId];
+  }
+  return null;
 }

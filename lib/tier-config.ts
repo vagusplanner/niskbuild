@@ -163,6 +163,63 @@ export function canUseVisualEditorFull(
   return idx >= agencyIdx;
 }
 
+/** Save SEO settings — Pro plan and above */
+export function canSaveSeoSettings(
+  tier: string | null | undefined,
+  status: string | null | undefined
+): boolean {
+  return isPaidAndActive(tier, status);
+}
+
+/** AI Generate SEO — Pro plan and above */
+export function canGenerateSeoAi(
+  tier: string | null | undefined,
+  status: string | null | undefined
+): boolean {
+  return isPaidAndActive(tier, status);
+}
+
+/** JSON-LD schema editor — Agency plan and above */
+export function canUseSeoSchema(
+  tier: string | null | undefined,
+  status: string | null | undefined
+): boolean {
+  if (!isPaidAndActive(tier, status)) return false;
+  const idx = TIER_ORDER.indexOf((tier || 'free') as (typeof TIER_ORDER)[number]);
+  const agencyIdx = TIER_ORDER.indexOf('agency');
+  return idx >= agencyIdx;
+}
+
+/** Stripe one-click inject — Pro plan and above */
+export function canUseStripeInject(
+  tier: string | null | undefined,
+  status: string | null | undefined
+): boolean {
+  return isPaidAndActive(tier, status);
+}
+
+/** Coming-soon integration notify — Agency plan and above */
+export function canNotifyComingSoonIntegrations(
+  tier: string | null | undefined,
+  status: string | null | undefined
+): boolean {
+  if (!isPaidAndActive(tier, status)) return false;
+  const idx = TIER_ORDER.indexOf((tier || 'free') as (typeof TIER_ORDER)[number]);
+  const agencyIdx = TIER_ORDER.indexOf('agency');
+  return idx >= agencyIdx;
+}
+
+/** Stripe revenue dashboard — Agency plan and above */
+export function canViewStripeRevenue(
+  tier: string | null | undefined,
+  status: string | null | undefined
+): boolean {
+  if (!isPaidAndActive(tier, status)) return false;
+  const idx = TIER_ORDER.indexOf((tier || 'free') as (typeof TIER_ORDER)[number]);
+  const agencyIdx = TIER_ORDER.indexOf('agency');
+  return idx >= agencyIdx;
+}
+
 export function tierDisplayName(tier: string): string {
   const names: Record<string, string> = {
     free: 'Sandbox',

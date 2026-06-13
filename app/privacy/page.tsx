@@ -27,6 +27,7 @@ export default function PrivacyPage() {
             <ul className="list-disc pl-6 space-y-2">
               <li>Project metadata (names, categories, timestamps)</li>
               <li>Anonymous build patterns (app categories, features used)</li>
+              <li>Country or region for macro analytics (configurable in Settings — never GPS or city)</li>
               <li>Subscription tier and usage statistics</li>
             </ul>
             <h3 className="text-xl font-medium text-white mb-2 mt-4">What We DO NOT Collect</h3>

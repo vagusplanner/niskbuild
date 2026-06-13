@@ -8,6 +8,7 @@ import Layout from '@/app/components/Layout';
 import NiskBuildLogo from '@/app/components/NiskBuildLogo';
 import ProjectLimitBadge from '@/app/components/ProjectLimitBadge';
 import PreviewLinksStatus from '@/app/components/PreviewLinksStatus';
+import SeoScoreBadge from '@/app/components/SeoScoreBadge';
 import MobileExportModal from '@/app/components/MobileExportModal';
 import { MAIN_NAV } from '@/lib/nav-config';
 import {
@@ -25,6 +26,7 @@ interface SavedProject {
   prompt: string;
   generated_code: string;
   created_at: string;
+  seo_score?: number | null;
 }
 
 function DashboardContent() {
@@ -256,11 +258,14 @@ function DashboardContent() {
                 key={project.id}
                 className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-nisk bg-nisk-surface"
               >
-                <div className="min-w-0">
-                  <p className="font-medium text-white truncate">{project.title}</p>
-                  <p className="text-xs text-nisk-muted mt-0.5">
-                    {new Date(project.created_at).toLocaleDateString()}
-                  </p>
+                <div className="min-w-0 flex items-start gap-2">
+                  <SeoScoreBadge score={project.seo_score} />
+                  <div className="min-w-0">
+                    <p className="font-medium text-white truncate">{project.title}</p>
+                    <p className="text-xs text-nisk-muted mt-0.5">
+                      {new Date(project.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-2 shrink-0">
                   <button

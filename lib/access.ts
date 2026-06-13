@@ -9,6 +9,7 @@ export const PUBLIC_PATHS = [
   '/terms',
   '/docs/pwa',
   '/docs/google-import',
+  '/games',
 ];
 
 /** Public shareable preview pages (no auth) */
@@ -28,6 +29,7 @@ export function isTenantRuntimePath(pathname: string) {
 export const PHONE_VERIFY_EXEMPT_PATHS = [
   '/verify-phone',
   '/dashboard/settings',
+  '/settings',
   '/pricing',
   '/login',
   '/auth/callback',

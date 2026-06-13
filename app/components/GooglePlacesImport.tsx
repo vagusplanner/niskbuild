@@ -124,7 +124,7 @@ export default function GooglePlacesImport({ canImport, onImport }: GooglePlaces
 
   return (
     <>
-      <div className="shrink-0 px-4 pb-2">
+      <div className="shrink-0 px-0 pb-0">
         <p className="text-[10px] text-nisk-muted mb-2">
           Building for a local business? Import their info automatically.
         </p>
