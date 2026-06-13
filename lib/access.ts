@@ -8,6 +8,7 @@ export const PUBLIC_PATHS = [
   '/privacy',
   '/terms',
   '/docs/pwa',
+  '/docs/google-import',
 ];
 
 /** Public shareable preview pages (no auth) */

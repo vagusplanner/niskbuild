@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await supabase
     .from('projects')
-    .select('id, title, prompt, generated_code, created_at')
+    .select('id, title, prompt, generated_code, project_context, created_at')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { title, prompt, generated_code } = await request.json();
+  const { title, prompt, generated_code, project_context } = await request.json();
   if (!title?.trim() || !generated_code) {
     return NextResponse.json({ error: 'Title and code are required' }, { status: 400 });
   }
@@ -67,15 +67,20 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const insertRow: Record<string, unknown> = {
+    user_id: user.id,
+    title: title.trim(),
+    prompt: prompt || '',
+    generated_code,
+  };
+  if (project_context != null) {
+    insertRow.project_context = project_context;
+  }
+
   const { data, error } = await supabase
     .from('projects')
-    .insert({
-      user_id: user.id,
-      title: title.trim(),
-      prompt: prompt || '',
-      generated_code,
-    })
-    .select('id, title, prompt, generated_code, created_at')
+    .insert(insertRow)
+    .select('id, title, prompt, generated_code, project_context, created_at')
     .single();
 
   if (error) {

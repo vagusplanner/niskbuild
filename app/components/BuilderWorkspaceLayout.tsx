@@ -7,7 +7,12 @@ import ProjectLimitBadge from '@/app/components/ProjectLimitBadge';
 import BuilderActionsMenu from '@/app/components/BuilderActionsMenu';
 import BuilderInspectorPanel, { type InspectorTab } from '@/app/components/BuilderInspectorPanel';
 import VisualEditorToolbar from '@/app/components/VisualEditorToolbar';
+import GooglePlacesImport from '@/app/components/GooglePlacesImport';
 import PromptBar from '@/app/components/PromptBar';
+import type {
+  GooglePlacesBusiness,
+  GooglePlacesProjectContext,
+} from '@/lib/google-places-types';
 import type { ComponentBlueprint } from '@/lib/blueprint-schema';
 import type { ProjectFile } from '@/lib/project-files';
 import type { SelectedVisualElement, StyleChanges } from '@/lib/visual-editor-types';
@@ -89,6 +94,12 @@ export type BuilderWorkspaceLayoutProps = {
   onUseLocalOllamaChange: (enabled: boolean) => void;
   onOllamaUpgrade: () => void;
   isSandboxAtLimit: boolean;
+  canImportGooglePlaces: boolean;
+  importedBusinessName: string | null;
+  onGooglePlacesImport: (
+    business: GooglePlacesBusiness,
+    context: GooglePlacesProjectContext
+  ) => void;
 };
 
 function CanvasHeader({
@@ -312,6 +323,9 @@ function ChatPanelContent({
   statusMessage,
   planMode,
   onPlanModeChange,
+  canImportGooglePlaces,
+  importedBusinessName,
+  onGooglePlacesImport,
 }: {
   userId?: string;
   savedProjectsCount: number;
@@ -331,6 +345,12 @@ function ChatPanelContent({
   statusMessage: string;
   planMode: boolean;
   onPlanModeChange: (v: boolean) => void;
+  canImportGooglePlaces: boolean;
+  importedBusinessName: string | null;
+  onGooglePlacesImport: (
+    business: GooglePlacesBusiness,
+    context: GooglePlacesProjectContext
+  ) => void;
 }) {
   return (
     <>
@@ -359,6 +379,20 @@ function ChatPanelContent({
           </p>
         )}
       </div>
+      {importedBusinessName && (
+        <div className="shrink-0 mx-4 mt-2 px-3 py-2 rounded-lg border border-[var(--accent-cyan)]/30 bg-[var(--accent-cyan)]/10">
+          <p className="text-[10px] text-[var(--accent-cyan)] font-medium">
+            📍 Client info imported — {importedBusinessName}
+          </p>
+          <p className="text-[10px] text-nisk-muted mt-0.5">
+            Your app will be pre-filled with real business data on Generate.
+          </p>
+        </div>
+      )}
+      <GooglePlacesImport
+        canImport={canImportGooglePlaces}
+        onImport={onGooglePlacesImport}
+      />
       <PromptBar
         variant="sidebar"
         prompt={prompt}
@@ -452,6 +486,9 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
     onUseLocalOllamaChange,
     onOllamaUpgrade,
     isSandboxAtLimit,
+    canImportGooglePlaces,
+    importedBusinessName,
+    onGooglePlacesImport,
   } = props;
 
   const showStylesTab = visualEditMode && !!selectedVisualElement;
@@ -485,6 +522,9 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
       statusMessage={statusMessage}
       planMode={planMode}
       onPlanModeChange={onPlanModeChange}
+      canImportGooglePlaces={canImportGooglePlaces}
+      importedBusinessName={importedBusinessName}
+      onGooglePlacesImport={onGooglePlacesImport}
     />
   );
 

@@ -24,6 +24,7 @@ import MobileExportModal from '@/app/components/MobileExportModal';
 import {
   canExportNative,
   canExportPwa,
+  canImportGooglePlaces,
   canUseLocalOllama,
   canUseVisualEditor,
   canUseVisualEditorFull,
@@ -52,6 +53,15 @@ import {
   injectVisualEditorScript,
 } from '@/lib/visual-editor-inject';
 import type { SelectedVisualElement, StyleChanges } from '@/lib/visual-editor-types';
+import {
+  buildGooglePlacesPrompt,
+  buildGooglePlacesUserPrompt,
+} from '@/lib/google-places-prompt';
+import type {
+  GooglePlacesBusiness,
+  GooglePlacesProjectContext,
+} from '@/lib/google-places-types';
+import { getGameTemplate } from '@/lib/game-templates';
 import JSZip from 'jszip';
 
 type ProjectSort = 'newest' | 'oldest' | 'name';
@@ -76,6 +86,7 @@ interface SavedProject {
   prompt: string;
   generated_code: string;
   created_at: string;
+  project_context?: GooglePlacesProjectContext | null;
 }
 
 function BuilderContent() {
@@ -122,6 +133,7 @@ function BuilderContent() {
   const [visualEditApplying, setVisualEditApplying] = useState(false);
   const [visualEditHistory, setVisualEditHistory] = useState<string[]>([]);
   const [cloudCreditsRemaining, setCloudCreditsRemaining] = useState(0);
+  const [projectContext, setProjectContext] = useState<GooglePlacesProjectContext | null>(null);
   const previewDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const visualEditDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const aiOriginalCodeRef = useRef<string | null>(null);
@@ -191,7 +203,17 @@ function BuilderContent() {
       setPrompt(savedPrompt);
       localStorage.removeItem('niskbuild_template_prompt');
     }
-  }, []);
+
+    const gameId = searchParams.get('game');
+    if (gameId) {
+      const template = getGameTemplate(gameId);
+      if (template) {
+        setPrompt(template.prompt);
+        setStatusMessage(`🎮 ${template.name} template loaded — hit Generate`);
+        setTimeout(() => setStatusMessage(''), 6000);
+      }
+    }
+  }, [searchParams]);
 
   const loadProjects = async () => {
     const res = await fetch('/api/projects');
@@ -527,11 +549,16 @@ function BuilderContent() {
   };
 
   const handleGenerate = async (promptOverride?: string) => {
-    const effectivePrompt = (promptOverride ?? prompt).trim();
-    if (!effectivePrompt) return;
+    const basePrompt = (promptOverride ?? prompt).trim();
+    if (!basePrompt) return;
+
+    const placesContext = buildGooglePlacesPrompt(projectContext?.business);
+    const effectivePrompt = placesContext
+      ? `${basePrompt}\n\n${placesContext}`
+      : basePrompt;
 
     if (planMode && !promptOverride?.includes('TARGETED EDIT')) {
-      await handlePlan(promptOverride);
+      await handlePlan(effectivePrompt);
       return;
     }
 
@@ -901,7 +928,12 @@ function BuilderContent() {
     const res = await fetch('/api/projects', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, prompt, generated_code: generatedCode }),
+      body: JSON.stringify({
+        title,
+        prompt,
+        generated_code: generatedCode,
+        project_context: projectContext,
+      }),
     });
     const data = await res.json();
 
@@ -923,12 +955,26 @@ function BuilderContent() {
   const loadProject = (project: SavedProject) => {
     setActiveProjectId(project.id);
     setPrompt(project.prompt);
+    const ctx =
+      project.project_context?.type === 'google_places' ? project.project_context : null;
+    setProjectContext(ctx);
     applyGeneratedCode(project.generated_code, `📂 Loaded: ${project.title}`, {
       prompt: project.prompt,
       timestamp: project.created_at,
     });
     setShowProjects(false);
     setActiveEditorTab('preview');
+  };
+
+  const handleGooglePlacesImport = (
+    _business: GooglePlacesBusiness,
+    context: GooglePlacesProjectContext
+  ) => {
+    setProjectContext(context);
+    setPrompt(buildGooglePlacesUserPrompt(context.business));
+    setStatusMessage(`📍 Imported ${context.business.name} — hit Generate to pre-fill`);
+    setTimeout(() => setStatusMessage(''), 8000);
+    setActiveEditorTab('chat');
   };
 
   const handleNewProject = () => {
@@ -952,6 +998,7 @@ function BuilderContent() {
     setInspectMode(false);
     setInspectTarget(null);
     setArchitecturePlan(null);
+    setProjectContext(null);
     setStatusMessage('');
     aiOriginalCodeRef.current = null;
     setActiveEditorTab('preview');
@@ -985,7 +1032,9 @@ function BuilderContent() {
   const canNative = canExportNative(subscriptionTier, subscriptionStatus);
   const canVisualEdit = canUseVisualEditor(subscriptionTier, subscriptionStatus);
   const canVisualEditFull = canUseVisualEditorFull(subscriptionTier, subscriptionStatus);
+  const canGooglePlaces = canImportGooglePlaces(subscriptionTier, subscriptionStatus);
   const cloudCreditsAllowance = getCloudCreditsForTier(subscriptionTier);
+  const importedBusinessName = projectContext?.business?.name ?? null;
   const recentProjects = savedProjects.slice(0, 5);
 
   const previewFrameClass = visualMobilePreview
@@ -1153,6 +1202,9 @@ function BuilderContent() {
             else router.push('/pricing');
           }}
           isSandboxAtLimit={isSandboxTier(subscriptionTier) && savedProjects.length >= projectLimit}
+          canImportGooglePlaces={canGooglePlaces}
+          importedBusinessName={importedBusinessName}
+          onGooglePlacesImport={handleGooglePlacesImport}
         />
 
 

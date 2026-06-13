@@ -113,6 +113,25 @@ export function canExportPwa(
   return isPaidAndActive(tier, status);
 }
 
+/** Google Places business import — Pro plan and above */
+export function canImportGooglePlaces(
+  tier: string | null | undefined,
+  status: string | null | undefined
+): boolean {
+  return isPaidAndActive(tier, status);
+}
+
+/** Game template gallery — Agency plan and above */
+export function canUseGameTemplates(
+  tier: string | null | undefined,
+  status: string | null | undefined
+): boolean {
+  if (!isPaidAndActive(tier, status)) return false;
+  const idx = TIER_ORDER.indexOf((tier || 'free') as (typeof TIER_ORDER)[number]);
+  const agencyIdx = TIER_ORDER.indexOf('agency');
+  return idx >= agencyIdx;
+}
+
 /** Native Capacitor export — Agency plan and above */
 export function canExportNative(
   tier: string | null | undefined,
