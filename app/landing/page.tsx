@@ -6,6 +6,7 @@ import { getSafeSession } from '@/lib/supabaseSession';
 import PricingCards from '@/app/components/PricingCards';
 import NiskBuildLogo from '@/app/components/NiskBuildLogo';
 import AppTopNav from '@/app/components/AppTopNav';
+import TryItNowDemo from '@/app/components/TryItNowDemo';
 import { PRICING_FAQ } from '@/lib/pricing-tiers';
 import { complexityLabel, formatTemplatePrice } from '@/lib/marketplace-templates';
 
@@ -182,6 +183,8 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      <TryItNowDemo />
 
       {/* Problem Section */}
       <section id="features" className="py-20 px-4 bg-nisk">

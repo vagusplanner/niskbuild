@@ -21,6 +21,8 @@ export default function GooglePlacesImport({ canImport, onImport }: GooglePlaces
   const [selectedBusiness, setSelectedBusiness] = useState<GooglePlacesBusiness | null>(null);
   const [pendingContext, setPendingContext] = useState<GooglePlacesProjectContext | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [showEnrichment, setShowEnrichment] = useState(true);
+  const [wasEnriched, setWasEnriched] = useState(false);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const searchBusinesses = useCallback(async (query: string) => {
@@ -68,37 +70,41 @@ export default function GooglePlacesImport({ canImport, onImport }: GooglePlaces
     }, 400);
   };
 
-  const fetchBusinessDetails = async (placeId: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch('/api/import/google-places', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ action: 'details', placeId }),
-      });
-      const data = await response.json();
+  const fetchBusinessDetails = useCallback(
+    async (placeId: string) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await fetch('/api/import/google-places', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ action: 'details', placeId, enrich: showEnrichment }),
+        });
+        const data = await response.json();
 
-      if (!response.ok) {
-        if (response.status === 403 && data.upgrade) {
-          setError('Pro plan required for Google Places import.');
+        if (!response.ok) {
+          if (response.status === 403 && data.upgrade) {
+            setError('Pro plan required for Google Places import.');
+            return;
+          }
+          setError(data.error || 'Could not load business details');
           return;
         }
-        setError(data.error || 'Could not load business details');
-        return;
-      }
 
-      if (data.business) {
-        setSelectedBusiness(data.business);
-        setPendingContext(data.projectContext || null);
+        if (data.business) {
+          setSelectedBusiness(data.business);
+          setPendingContext(data.projectContext || null);
+          setWasEnriched(!!data.enriched);
+        }
+      } catch {
+        setError('Network error — try again');
+      } finally {
+        setLoading(false);
       }
-    } catch {
-      setError('Network error — try again');
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [showEnrichment]
+  );
 
   const handleImport = () => {
     if (!selectedBusiness || !pendingContext) return;
@@ -108,6 +114,7 @@ export default function GooglePlacesImport({ canImport, onImport }: GooglePlaces
     setSearchResults([]);
     setSelectedBusiness(null);
     setPendingContext(null);
+    setWasEnriched(false);
     setError(null);
   };
 
@@ -166,6 +173,24 @@ export default function GooglePlacesImport({ canImport, onImport }: GooglePlaces
                 Search for your client&apos;s business name and city.
               </p>
 
+              <div className="flex items-center justify-between mb-4 p-3 rounded-xl border border-nisk bg-nisk-surface">
+                <div>
+                  <p className="text-sm text-white font-medium">AI Enrichment</p>
+                  <p className="text-[10px] text-nisk-muted">Predict website, SEO keywords & review insights</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowEnrichment((v) => !v)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    showEnrichment
+                      ? 'bg-[var(--primary)] text-white'
+                      : 'bg-nisk border border-nisk text-nisk-muted'
+                  }`}
+                >
+                  {showEnrichment ? '✓ Enrichment ON' : 'Enrichment OFF'}
+                </button>
+              </div>
+
               <input
                 type="text"
                 placeholder="e.g. Pizza Roma London"
@@ -209,21 +234,115 @@ export default function GooglePlacesImport({ canImport, onImport }: GooglePlaces
               )}
 
               {selectedBusiness && (
-                <div className="mt-4 p-4 rounded-xl border border-[var(--accent-cyan)]/30 bg-[var(--accent-cyan)]/5">
-                  <h3 className="font-semibold text-white">{selectedBusiness.name}</h3>
-                  <p className="text-xs text-nisk-muted mt-1">{selectedBusiness.address}</p>
-                  {selectedBusiness.phone && (
-                    <p className="text-xs text-gray-300 mt-1">{selectedBusiness.phone}</p>
-                  )}
-                  {selectedBusiness.website && (
-                    <p className="text-xs text-[var(--accent-cyan)] truncate mt-1">
-                      {selectedBusiness.website}
-                    </p>
-                  )}
-                  {selectedBusiness.rating != null && (
-                    <p className="text-xs text-yellow-400 mt-1">
-                      ★ {selectedBusiness.rating} ({selectedBusiness.reviewCount ?? 0} reviews)
-                    </p>
+                <div className="mt-4 space-y-3">
+                  <div className="p-4 rounded-xl border border-[var(--accent-cyan)]/30 bg-[var(--accent-cyan)]/5">
+                    <h3 className="font-semibold text-white text-sm mb-2">📋 Business Info</h3>
+                    <p className="text-sm text-white">{selectedBusiness.name}</p>
+                    <p className="text-xs text-nisk-muted mt-1">{selectedBusiness.address}</p>
+                    {selectedBusiness.phone && (
+                      <p className="text-xs text-gray-300 mt-1">{selectedBusiness.phone}</p>
+                    )}
+                    {(selectedBusiness.website || selectedBusiness.predictedWebsite) && (
+                      <p className="text-xs text-[var(--accent-cyan)] truncate mt-1">
+                        {selectedBusiness.website || selectedBusiness.predictedWebsite}
+                      </p>
+                    )}
+                    {selectedBusiness.rating != null && (
+                      <p className="text-xs text-yellow-400 mt-1">
+                        ★ {selectedBusiness.rating} ({selectedBusiness.reviewCount ?? 0} reviews)
+                      </p>
+                    )}
+                  </div>
+
+                  {wasEnriched && selectedBusiness.enriched && (
+                    <>
+                      <div className="p-4 rounded-xl border border-[var(--primary)]/30 bg-[var(--primary)]/10">
+                        <h3 className="font-semibold text-[var(--primary)] text-sm mb-2">
+                          🔮 AI Enriched Data
+                        </h3>
+                        {selectedBusiness.predictedWebsite && (
+                          <p className="text-xs text-gray-300">
+                            <span className="text-nisk-muted">Predicted Website:</span>{' '}
+                            {selectedBusiness.predictedWebsite}
+                          </p>
+                        )}
+                        {selectedBusiness.predictedEmail && (
+                          <p className="text-xs text-gray-300 mt-1">
+                            <span className="text-nisk-muted">Predicted Email:</span>{' '}
+                            {selectedBusiness.predictedEmail}
+                          </p>
+                        )}
+                        {selectedBusiness.suggestedInstagram && (
+                          <p className="text-xs text-gray-300 mt-1">
+                            <span className="text-nisk-muted">Instagram:</span>{' '}
+                            {selectedBusiness.suggestedInstagram}
+                          </p>
+                        )}
+                        {selectedBusiness.generatedDescription && (
+                          <p className="text-xs text-nisk-muted mt-2 italic">
+                            &ldquo;{selectedBusiness.generatedDescription}&rdquo;
+                          </p>
+                        )}
+                      </div>
+
+                      {selectedBusiness.seoKeywords && selectedBusiness.seoKeywords.length > 0 && (
+                        <div className="p-4 rounded-xl border border-nisk bg-nisk-surface">
+                          <h3 className="font-semibold text-white text-sm mb-2">📊 SEO Keywords</h3>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedBusiness.seoKeywords.map((kw) => (
+                              <span
+                                key={kw}
+                                className="px-2 py-1 rounded-lg text-xs border border-nisk bg-nisk text-[var(--accent-cyan)]"
+                              >
+                                {kw}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedBusiness.sentimentScore != null && (
+                        <div className="p-4 rounded-xl border border-[var(--success)]/30 bg-[var(--success)]/10">
+                          <h3 className="font-semibold text-[var(--success)] text-sm mb-2">
+                            ⭐ Review Intelligence
+                          </h3>
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="text-2xl font-bold text-white">
+                              {selectedBusiness.sentimentScore}%
+                            </div>
+                            <div className="text-[10px] text-nisk-muted">Sentiment Score</div>
+                          </div>
+                          {selectedBusiness.topPraises && selectedBusiness.topPraises.length > 0 && (
+                            <div className="mb-2">
+                              <p className="text-[10px] text-emerald-400 font-medium">👍 What customers praise</p>
+                              <ul className="text-xs text-gray-300 ml-4 mt-1 list-disc">
+                                {selectedBusiness.topPraises.map((p) => (
+                                  <li key={p}>{p}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {selectedBusiness.topComplaints &&
+                            selectedBusiness.topComplaints.length > 0 && (
+                              <div className="mb-2">
+                                <p className="text-[10px] text-yellow-400 font-medium">
+                                  ⚠️ What customers mention
+                                </p>
+                                <ul className="text-xs text-gray-300 ml-4 mt-1 list-disc">
+                                  {selectedBusiness.topComplaints.map((c) => (
+                                    <li key={c}>{c}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          {selectedBusiness.testimonialQuote && (
+                            <p className="text-xs text-nisk-muted mt-2 italic">
+                              &ldquo;{selectedBusiness.testimonialQuote}&rdquo;
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               )}

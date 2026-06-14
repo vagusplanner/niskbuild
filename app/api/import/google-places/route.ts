@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
+import { enrichBusinessData } from '@/lib/ai-business-enrichment';
 import type {
   GooglePlacesBusiness,
+  GooglePlacesReview,
   GooglePlacesSearchResult,
 } from '@/lib/google-places-types';
 import { logGooglePlacesImport } from '@/lib/log-google-places-import';
@@ -37,6 +39,7 @@ export async function POST(request: NextRequest) {
     const action = typeof body.action === 'string' ? body.action : '';
     const query = typeof body.query === 'string' ? body.query.trim() : '';
     const placeId = typeof body.placeId === 'string' ? body.placeId.trim() : '';
+    const enrich = body.enrich !== false;
 
     const profile = await getProfile(userId);
     const tier = profile?.subscription_tier ?? 'free';
@@ -135,7 +138,18 @@ export async function POST(request: NextRequest) {
       const photos = Array.isArray(place.photos) ? place.photos : [];
       const openingHours = place.opening_hours as { weekday_text?: string[] } | undefined;
 
-      const business: GooglePlacesBusiness = {
+      const parsedReviews: GooglePlacesReview[] = reviews.slice(0, 10).map(
+        (r: { text?: string; rating?: number; time?: number }) => ({
+          text: String(r.text || ''),
+          rating: typeof r.rating === 'number' ? r.rating : 0,
+          time:
+            typeof r.time === 'number'
+              ? new Date(r.time * 1000).toISOString()
+              : new Date().toISOString(),
+        })
+      );
+
+      const businessData: GooglePlacesBusiness = {
         name: String(place.name || ''),
         address: String(place.formatted_address || ''),
         phone:
@@ -158,7 +172,14 @@ export async function POST(request: NextRequest) {
           .filter(Boolean)
           .join(' '),
         googleMapsUrl: typeof place.url === 'string' ? place.url : undefined,
+        reviews: parsedReviews,
       };
+
+      let business: GooglePlacesBusiness = businessData;
+      if (enrich) {
+        const enriched = await enrichBusinessData(businessData);
+        business = enriched;
+      }
 
       const sessionId =
         typeof body.sessionId === 'string' ? body.sessionId : userId;
@@ -174,6 +195,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         business,
+        enriched: enrich && !!business.enriched,
         projectContext: {
           type: 'google_places',
           source: 'google_places_api',

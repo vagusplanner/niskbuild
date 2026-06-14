@@ -8,6 +8,12 @@ export type GooglePlacesSearchResult = {
   vicinity?: string;
 };
 
+export type GooglePlacesReview = {
+  text: string;
+  rating: number;
+  time: string;
+};
+
 export type GooglePlacesBusiness = {
   name: string;
   address: string;
@@ -20,6 +26,19 @@ export type GooglePlacesBusiness = {
   photos?: string[];
   description?: string;
   googleMapsUrl?: string;
+  reviews?: GooglePlacesReview[];
+  /** AI enrichment fields (present when enrich=true on import) */
+  predictedWebsite?: string;
+  predictedEmail?: string;
+  generatedDescription?: string;
+  seoKeywords?: string[];
+  suggestedInstagram?: string;
+  sentimentScore?: number;
+  topPraises?: string[];
+  topComplaints?: string[];
+  improvementSuggestions?: string[];
+  testimonialQuote?: string;
+  enriched?: boolean;
 };
 
 export type GooglePlacesProjectContext = {

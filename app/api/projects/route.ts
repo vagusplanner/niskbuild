@@ -33,7 +33,28 @@ export async function GET(request: NextRequest) {
     };
   });
 
-  return NextResponse.json({ projects });
+  const projectIds = projects.map((p) => p.id);
+  let versionMap: Record<string, number> = {};
+  if (projectIds.length > 0) {
+    const { data: versionRows, error: versionError } = await supabase
+      .from('project_versions')
+      .select('project_id, version_number')
+      .in('project_id', projectIds);
+
+    if (!versionError) {
+      for (const row of versionRows ?? []) {
+        const current = versionMap[row.project_id] ?? 0;
+        if (row.version_number > current) versionMap[row.project_id] = row.version_number;
+      }
+    }
+  }
+
+  const withVersions = projects.map((p) => ({
+    ...p,
+    latest_version: versionMap[p.id] ?? 0,
+  }));
+
+  return NextResponse.json({ projects: withVersions });
 }
 
 export async function POST(request: NextRequest) {

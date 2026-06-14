@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
+import { sendGoodbyeEmail } from '@/lib/goodbye-email';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -20,6 +21,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const userEmail = user.email;
+
     await supabase.from('projects').delete().eq('user_id', user.id);
     await supabase.from('profiles').delete().eq('id', user.id);
 
@@ -37,6 +40,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         partial: true,
         message: 'Projects and profile deleted. Contact support to complete account removal.',
+      });
+    }
+
+    if (userEmail) {
+      void sendGoodbyeEmail(userEmail).catch((err) => {
+        console.error('Goodbye email failed:', err);
       });
     }
 

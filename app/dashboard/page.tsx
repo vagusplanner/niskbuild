@@ -19,6 +19,7 @@ import {
   type MobileExportPayload,
 } from '@/lib/mobile-export-client';
 import { canExportCleanZip, canExportNative, canExportPwa } from '@/lib/tier-config';
+import { slugifyProjectName } from '@/lib/version-limits';
 
 interface SavedProject {
   id: string;
@@ -27,6 +28,7 @@ interface SavedProject {
   generated_code: string;
   created_at: string;
   seo_score?: number | null;
+  latest_version?: number;
 }
 
 function DashboardContent() {
@@ -113,7 +115,10 @@ function DashboardContent() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `niskbuild-export-${Date.now()}.zip`;
+      const baseName = slugifyProjectName(project.title || project.prompt.substring(0, 50) || 'project');
+      const versionSuffix =
+        project.latest_version && project.latest_version > 0 ? `-v${project.latest_version}` : '';
+      a.download = `${baseName}${versionSuffix}.zip`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
@@ -261,7 +266,14 @@ function DashboardContent() {
                 <div className="min-w-0 flex items-start gap-2">
                   <SeoScoreBadge score={project.seo_score} />
                   <div className="min-w-0">
-                    <p className="font-medium text-white truncate">{project.title}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-white truncate">{project.title}</p>
+                      {project.latest_version != null && project.latest_version > 0 && (
+                        <span className="text-[10px] text-nisk-muted font-mono shrink-0">
+                          v{project.latest_version}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-nisk-muted mt-0.5">
                       {new Date(project.created_at).toLocaleDateString()}
                     </p>

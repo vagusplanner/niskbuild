@@ -88,6 +88,7 @@ export async function guardApiRequest(
     requireAuth?: boolean;
     rateLimit?: number;
     rateLimitKey?: string;
+    rateLimitWindowMs?: number;
   }
 ): Promise<ApiGuardResult> {
   const pathname = request.nextUrl.pathname;
@@ -96,13 +97,14 @@ export async function guardApiRequest(
 
   const maxRequests =
     options?.rateLimit ?? RATE_LIMITS[pathname] ?? DEFAULT_RATE_LIMIT;
+  const windowMs = options?.rateLimitWindowMs ?? 60_000;
 
   if (requireAuth) {
     const auth = await requireApiUser(request);
     if (!auth.ok) return auth;
 
     const key = options?.rateLimitKey ?? `${pathname}:${auth.user.id}`;
-    if (!checkRateLimit(key, maxRequests)) {
+    if (!checkRateLimit(key, maxRequests, windowMs)) {
       return { ok: false, response: rateLimitExceededResponse() };
     }
 
@@ -110,7 +112,7 @@ export async function guardApiRequest(
   }
 
   const key = options?.rateLimitKey ?? `${pathname}:${clientIp(request)}`;
-  if (!checkRateLimit(key, maxRequests)) {
+  if (!checkRateLimit(key, maxRequests, windowMs)) {
     return { ok: false, response: rateLimitExceededResponse() };
   }
 

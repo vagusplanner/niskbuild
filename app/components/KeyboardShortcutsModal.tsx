@@ -1,15 +1,21 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { SHORTCUTS_MODAL_OPEN_EVENT } from '@/lib/command-palette-events';
 import { modKey, shortcut } from '@/lib/keyboard';
 
 const SHORTCUTS = [
   { keys: [shortcut(modKey(), 'K')], label: 'Command palette' },
-  { keys: [shortcut(modKey(), '↵')], label: 'Generate from prompt' },
+  { keys: [shortcut(modKey(), 'N')], label: 'New project' },
+  { keys: [shortcut(modKey(), 'E')], label: 'Export current project (builder)' },
   { keys: [shortcut(modKey(), 'S')], label: 'Save project (builder)' },
-  { keys: [shortcut(modKey(), 'B')], label: 'Toggle code inspector (builder)' },
+  { keys: [shortcut(modKey(), 'B')], label: 'View billing / toggle inspector (builder)' },
+  { keys: [shortcut(modKey(), ',')], label: 'Open settings' },
+  { keys: [shortcut(modKey(), '⇧L')], label: 'Toggle dark / light mode' },
+  { keys: [shortcut(modKey(), '↵')], label: 'Generate from prompt (builder)' },
   { keys: ['F'], label: 'Fullscreen preview (builder)' },
   { keys: ['?'], label: 'Show keyboard shortcuts' },
+  { keys: ['↑', '↓'], label: 'Navigate palette results' },
   { keys: ['Esc'], label: 'Close modal / palette' },
 ];
 
@@ -22,6 +28,12 @@ function isTypingTarget(el: EventTarget | null): boolean {
 export default function KeyboardShortcutsModal() {
   const [open, setOpen] = useState(false);
   const mod = modKey();
+
+  useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener(SHORTCUTS_MODAL_OPEN_EVENT, onOpen);
+    return () => window.removeEventListener(SHORTCUTS_MODAL_OPEN_EVENT, onOpen);
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -45,7 +57,7 @@ export default function KeyboardShortcutsModal() {
       onClick={() => setOpen(false)}
     >
       <div
-        className="w-full max-w-md rounded-2xl border border-nisk bg-nisk-card shadow-2xl overflow-hidden"
+        className="w-full max-w-lg rounded-2xl border border-nisk bg-nisk-card shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-labelledby="shortcuts-title"
@@ -63,11 +75,11 @@ export default function KeyboardShortcutsModal() {
             ×
           </button>
         </div>
-        <ul className="px-5 py-4 space-y-3">
+        <div className="px-5 py-4 grid sm:grid-cols-2 gap-x-6 gap-y-3">
           {SHORTCUTS.map((item) => (
-            <li key={item.label} className="flex items-center justify-between gap-4">
-              <span className="text-sm text-gray-300">{item.label}</span>
-              <span className="flex gap-1 shrink-0">
+            <div key={item.label} className="flex items-center justify-between gap-3 min-w-0">
+              <span className="text-sm text-gray-300 truncate">{item.label}</span>
+              <span className="flex gap-1 shrink-0 flex-wrap justify-end">
                 {item.keys.map((k) => (
                   <kbd
                     key={k}
@@ -77,9 +89,9 @@ export default function KeyboardShortcutsModal() {
                   </kbd>
                 ))}
               </span>
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
         <p className="px-5 pb-4 text-[10px] text-nisk-muted">
           {mod === '⌘' ? 'macOS / iOS' : 'Windows / Linux'} — builder shortcuts work on the Builder page.
         </p>

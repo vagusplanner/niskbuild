@@ -14,7 +14,7 @@ export async function sendEmail({
   replyTo,
 }: SendEmailOptions): Promise<boolean> {
   const resendKey = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM || 'NiskBuild <billing@niskbuild.com>';
+  const from = process.env.EMAIL_FROM || 'NiskBuild <support@niskbuild.com>';
 
   if (!resendKey) {
     console.log('📧 [dev email]', { to, subject });

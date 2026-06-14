@@ -20,6 +20,7 @@ import SubscriptionGuard from '@/app/components/SubscriptionGuard';
 import BuilderSidebar from '@/app/components/BuilderSidebar';
 import BuilderProjectsDrawer from '@/app/components/BuilderProjectsDrawer';
 import BuilderWorkspaceLayout from '@/app/components/BuilderWorkspaceLayout';
+import VersionHistoryPanel from '@/app/components/VersionHistoryPanel';
 import { type InspectorTab } from '@/app/components/BuilderInspectorPanel';
 import PlanPanel from '@/app/components/PlanPanel';
 import MobileExportModal from '@/app/components/MobileExportModal';
@@ -45,6 +46,11 @@ import {
   type MobileExportPayload,
 } from '@/lib/mobile-export-client';
 import { getProjectLimit } from '@/lib/project-limits';
+import {
+  BUILDER_EXPORT_EVENT,
+  BUILDER_NEW_PROJECT_EVENT,
+} from '@/lib/command-palette-events';
+import { slugifyProjectName } from '@/lib/version-limits';
 import {
   estimateTokens,
   isLocalProvider,
@@ -130,6 +136,8 @@ function BuilderContent() {
   const [showMobileExport, setShowMobileExport] = useState(false);
   const [mobileExporting, setMobileExporting] = useState<'pwa' | 'native' | null>(null);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [currentVersionNumber, setCurrentVersionNumber] = useState(0);
+  const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const [seoSettings, setSeoSettings] = useState<ProjectSeoSettings>(DEFAULT_SEO_SETTINGS);
   const [seoSaving, setSeoSaving] = useState(false);
   const [seoGenerating, setSeoGenerating] = useState(false);
@@ -212,6 +220,17 @@ function BuilderContent() {
       localStorage.removeItem('niskbuild_template_prompt');
     }
   }, []);
+
+  useEffect(() => {
+    const onExport = () => void handleExportZip();
+    const onNewProject = () => handleNewProject();
+    window.addEventListener(BUILDER_EXPORT_EVENT, onExport);
+    window.addEventListener(BUILDER_NEW_PROJECT_EVENT, onNewProject);
+    return () => {
+      window.removeEventListener(BUILDER_EXPORT_EVENT, onExport);
+      window.removeEventListener(BUILDER_NEW_PROJECT_EVENT, onNewProject);
+    };
+  }); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const gameId = searchParams.get('game');
@@ -334,6 +353,43 @@ function BuilderContent() {
     if (entry) {
       setPromptHistory((prev) => [...prev, entry]);
       fetchBlueprint(entry.prompt);
+    }
+  };
+
+  const saveProjectVersionSilent = async (
+    code: string,
+    promptUsed: string,
+    creditsUsed: number
+  ) => {
+    if (!activeProjectId) return;
+    try {
+      const res = await fetch(`/api/projects/${activeProjectId}/versions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          generated_code: code,
+          blueprint_json: blueprintData,
+          prompt_used: promptUsed,
+          credits_used: creditsUsed,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.version?.version_number) {
+        setCurrentVersionNumber(data.version.version_number);
+      }
+    } catch {
+      // background save — never interrupt the user
+    }
+  };
+
+  const fetchProjectVersionNumber = async (projectId: string) => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/versions`, { credentials: 'include' });
+      const data = await res.json();
+      if (res.ok) setCurrentVersionNumber(data.latest_version ?? 0);
+    } catch {
+      setCurrentVersionNumber(0);
     }
   };
 
@@ -463,6 +519,11 @@ function BuilderContent() {
         if (typeof data.creditsRemaining === 'number') {
           setCloudCreditsRemaining(data.creditsRemaining);
         }
+        void saveProjectVersionSilent(
+          data.code,
+          `Visual edit: ${selectedVisualElement?.selector || 'element'}`,
+          Number(data.creditsUsed) || 0.3
+        );
       }
     } catch {
       setVisualEditHistory((prev) => prev.slice(0, -1));
@@ -648,6 +709,7 @@ function BuilderContent() {
             '✅ Generated via Local Ollama',
             { prompt: effectivePrompt, timestamp: new Date().toISOString() }
           );
+          void saveProjectVersionSilent(localData.code, effectivePrompt, 0);
           return;
         }
 
@@ -716,6 +778,11 @@ function BuilderContent() {
           `✅ Generated in ${selfHealData.attempts ?? 1} attempt(s) with self-correction`,
           historyEntry
         );
+        void saveProjectVersionSilent(
+          selfHealData.code,
+          effectivePrompt,
+          Number(selfHealData.creditsUsed) || 1
+        );
         return;
       }
 
@@ -727,6 +794,11 @@ function BuilderContent() {
           selfHealData.code,
           `⚠️ Best attempt (${selfHealData.errors?.length ?? 0} issues remain)`,
           historyEntry
+        );
+        void saveProjectVersionSilent(
+          selfHealData.code,
+          effectivePrompt,
+          Number(selfHealData.creditsUsed) || 1
         );
         return;
       }
@@ -759,6 +831,11 @@ function BuilderContent() {
           data.code,
           `✅ Generated via ${data.source === 'local' ? 'Local AI' : 'Cloud AI'}`,
           { prompt: effectivePrompt, timestamp: new Date().toISOString() }
+        );
+        void saveProjectVersionSilent(
+          data.code,
+          effectivePrompt,
+          Number(data.creditsUsed) || 1
         );
       } else {
         setGeneratedCode(`// Error: ${data.error || 'Generation failed'}`);
@@ -813,7 +890,12 @@ function BuilderContent() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `niskbuild-export-${Date.now()}.zip`;
+      const savedTitle = activeProjectId
+        ? savedProjects.find((p) => p.id === activeProjectId)?.title
+        : null;
+      const baseName = slugifyProjectName(savedTitle || prompt.substring(0, 50) || 'project');
+      const versionSuffix = currentVersionNumber > 0 ? `-v${currentVersionNumber}` : '';
+      a.download = `${baseName}${versionSuffix}.zip`;
       a.click();
       URL.revokeObjectURL(url);
       setStatusMessage('✅ ZIP exported — your code, your ownership');
@@ -1134,6 +1216,7 @@ function BuilderContent() {
 
   const loadProject = (project: SavedProject) => {
     setActiveProjectId(project.id);
+    void fetchProjectVersionNumber(project.id);
     setPrompt(project.prompt);
     const ctx =
       project.project_context?.type === 'google_places' ? project.project_context : null;
@@ -1173,6 +1256,8 @@ function BuilderContent() {
     setPromptHistory([]);
     setBlueprintData(null);
     setActiveProjectId(null);
+    setCurrentVersionNumber(0);
+    setVersionHistoryOpen(false);
     setSeoSettings({ ...DEFAULT_SEO_SETTINGS });
     setSeoMessage('');
     setVisualEditHistory([]);
@@ -1400,6 +1485,27 @@ function BuilderContent() {
           generatedCode={generatedCode}
           onIntegrationAdded={handleIntegrationAdded}
           onIntegrationStatus={setStatusMessage}
+          onOpenHistory={() => setVersionHistoryOpen((v) => !v)}
+          versionHistoryOpen={versionHistoryOpen}
+        />
+
+        <VersionHistoryPanel
+          open={versionHistoryOpen}
+          onClose={() => setVersionHistoryOpen(false)}
+          projectId={activeProjectId}
+          subscriptionTier={subscriptionTier}
+          onRestore={(payload) => {
+            setPrompt(payload.prompt);
+            if (payload.blueprint_json) {
+              setBlueprintData(payload.blueprint_json as ComponentBlueprint);
+            }
+            applyGeneratedCode(
+              payload.generated_code,
+              `↩️ Restored from v${payload.restored_version}`,
+              { prompt: payload.prompt, timestamp: new Date().toISOString() }
+            );
+            setCurrentVersionNumber(payload.restored_version);
+          }}
         />
 
 

@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { getSafeSession } from '@/lib/supabaseSession';
+import { openCommandPalette } from '@/lib/command-palette-events';
+import { modKey } from '@/lib/keyboard';
 import NiskBuildLogo from './NiskBuildLogo';
 import AuthButton from './AuthButton';
 import ThemeToggle from './ThemeToggle';
@@ -17,8 +19,10 @@ export default function AppTopNav({ variant = 'app' }: AppTopNavProps) {
   const pathname = usePathname();
   const [user, setUser] = useState<{ email?: string } | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     getSafeSession().then((s) => setUser(s?.user ?? null));
   }, []);
 
@@ -30,14 +34,19 @@ export default function AppTopNav({ variant = 'app' }: AppTopNavProps) {
       ]
     : MAIN_NAV.filter((n) => n.href !== '/landing');
 
-  const linkClass = (href: string) => {
+  const isNavActive = (href: string) => {
     const path = href.split('#')[0];
-    const active = pathname === path || (path !== '/' && pathname.startsWith(path));
-    return `px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-      active
-        ? 'text-[var(--accent-cyan)] bg-[var(--accent-cyan)]/10'
-        : 'text-nisk-muted hover:text-white hover:bg-[var(--surface-elevated)]'
-    }`;
+    if (path === '/dashboard') return pathname === '/dashboard';
+    return pathname === path || pathname.startsWith(`${path}/`);
+  };
+
+  const linkClass = (href: string) => {
+    const base =
+      'px-3 py-2 rounded-lg text-sm font-medium transition-all text-nisk-muted hover:text-white hover:bg-[var(--surface-elevated)]';
+    if (!mounted) return base;
+    return isNavActive(href)
+      ? 'px-3 py-2 rounded-lg text-sm font-medium transition-all text-[var(--accent-cyan)] bg-[var(--accent-cyan)]/10'
+      : base;
   };
 
   return (
@@ -54,6 +63,43 @@ export default function AppTopNav({ variant = 'app' }: AppTopNavProps) {
         </nav>
 
         <div className="flex items-center gap-2">
+          {variant === 'app' && (
+            <>
+              <button
+                type="button"
+                onClick={openCommandPalette}
+                className="hidden sm:flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-nisk text-nisk-muted hover:text-white hover:border-[var(--accent-cyan)]/30 transition-colors"
+                aria-label="Open command palette"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+                <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--surface-elevated)] border border-nisk">
+                  {modKey()}K
+                </kbd>
+              </button>
+              <button
+                type="button"
+                onClick={openCommandPalette}
+                className="sm:hidden p-2 text-nisk-muted hover:text-white"
+                aria-label="Search"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+              </button>
+            </>
+          )}
           <ThemeToggle compact />
           {variant === 'marketing' && !user && (
             <Link href="/login" className="btn-ghost hidden sm:inline-flex text-sm">

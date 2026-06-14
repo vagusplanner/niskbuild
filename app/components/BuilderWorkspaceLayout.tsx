@@ -114,6 +114,8 @@ export type BuilderWorkspaceLayoutProps = {
   generatedCode: string;
   onIntegrationAdded: (code: string, message: string, creditsRemaining?: number) => void;
   onIntegrationStatus?: (message: string) => void;
+  onOpenHistory?: () => void;
+  versionHistoryOpen?: boolean;
 };
 
 function CanvasHeader({
@@ -139,6 +141,8 @@ function CanvasHeader({
   onOpenCodeView,
   onToggleFullscreen,
   showViewToggle = false,
+  onOpenHistory,
+  versionHistoryOpen,
 }: {
   canAct: boolean;
   isExporting: boolean;
@@ -162,6 +166,8 @@ function CanvasHeader({
   onOpenCodeView?: () => void;
   onToggleFullscreen?: () => void;
   showViewToggle?: boolean;
+  onOpenHistory?: () => void;
+  versionHistoryOpen?: boolean;
 }) {
   const codeViewActive = inspectorOpen && inspectorTab === 'code';
 
@@ -214,6 +220,18 @@ function CanvasHeader({
             title="Fullscreen preview (F)"
           >
             ⛶
+          </button>
+        )}
+        {onOpenHistory && (
+          <button
+            type="button"
+            onClick={onOpenHistory}
+            className={`btn-secondary px-2.5 py-1.5 text-xs rounded-lg ${
+              versionHistoryOpen ? 'border-[var(--accent-cyan)]/50 text-[var(--accent-cyan)]' : ''
+            }`}
+            title="Version history"
+          >
+            🕐
           </button>
         )}
         <BuilderActionsMenu
@@ -616,6 +634,8 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
     generatedCode,
     onIntegrationAdded,
     onIntegrationStatus,
+    onOpenHistory,
+    versionHistoryOpen,
   } = props;
 
   const seoInspectorProps = {
@@ -841,6 +861,8 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
                 onMobileTabChange('inspector');
               }}
               onToggleFullscreen={togglePreviewFullscreen}
+              onOpenHistory={onOpenHistory}
+              versionHistoryOpen={versionHistoryOpen}
             />
             {visualToolbar}
             <div
@@ -918,6 +940,8 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
             onFocusPreview={handleFocusPreview}
             onOpenCodeView={handleOpenCodeView}
             onToggleFullscreen={togglePreviewFullscreen}
+            onOpenHistory={onOpenHistory}
+            versionHistoryOpen={versionHistoryOpen}
           />
           {visualToolbar}
           <div
