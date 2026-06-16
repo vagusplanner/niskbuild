@@ -66,23 +66,22 @@ export default function TryItNowDemo() {
   };
 
   return (
-    <section id="try-it-now" className="py-20 px-4 bg-nisk-surface relative">
+    <section id="try-it-now" className="py-16 px-4 relative scroll-mt-28">
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-8">
           <p className="text-[var(--accent-cyan)] text-sm font-medium mb-2 uppercase tracking-wider">
             Try it now
           </p>
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
+          <h2 className="text-3xl md:text-4xl font-bold mb-3">
             See what NiskBuild would create
           </h2>
           <p className="text-nisk-muted max-w-xl mx-auto">
-            No signup required. Get an instant AI blueprint preview — app structure, features, and
-            templates — in under a minute.
+            No signup required. Instant AI blueprint — app structure, features, and templates.
           </p>
         </div>
 
-        <div className="rounded-2xl border border-nisk bg-nisk-card p-6 md:p-8 shadow-2xl">
-          <label htmlFor="demo-prompt" className="block text-sm font-medium text-white mb-2">
+        <div className="glass-panel rounded-2xl p-6 md:p-8 shadow-xl">
+          <label htmlFor="demo-prompt" className="block text-sm font-medium mb-2">
             Describe your app
           </label>
           <textarea
@@ -90,7 +89,7 @@ export default function TryItNowDemo() {
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             rows={3}
-            className="w-full px-4 py-3 rounded-xl bg-[#0B0F19] border border-nisk text-white placeholder-gray-500 focus:outline-none focus:border-[var(--accent-cyan)]/50 transition-colors resize-none text-sm"
+            className="w-full px-4 py-3 rounded-xl glass-input text-[var(--foreground)] placeholder-[var(--placeholder)] focus:outline-none focus:border-[var(--accent-cyan)]/50 transition-colors resize-none text-sm"
             placeholder="Describe the app you want to build..."
             disabled={loading}
           />
@@ -106,7 +105,7 @@ export default function TryItNowDemo() {
                   setResult(null);
                 }}
                 disabled={loading}
-                className="px-3 py-1.5 rounded-full text-xs border border-nisk bg-nisk-surface text-nisk-muted hover:text-white hover:border-[var(--accent-cyan)]/40 transition-colors disabled:opacity-40"
+                className="px-3 py-1.5 rounded-full text-xs glass-panel text-nisk-muted hover:text-[var(--foreground)] hover:border-[var(--accent-cyan)]/40 transition-colors disabled:opacity-40"
               >
                 {example}
               </button>
@@ -137,13 +136,13 @@ export default function TryItNowDemo() {
         </div>
 
         {result && (
-          <div className="mt-6 rounded-2xl border border-[var(--accent-cyan)]/30 bg-nisk-card p-6 md:p-8 shadow-xl">
+          <div className="mt-6 glass-panel rounded-2xl p-6 md:p-8 border-[var(--accent-cyan)]/25">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
               <div>
                 <p className="text-[10px] uppercase tracking-wider text-[var(--accent-cyan)] mb-1">
                   Blueprint preview
                 </p>
-                <h3 className="text-2xl font-bold text-white">{result.appName}</h3>
+                <h3 className="text-2xl font-bold">{result.appName}</h3>
               </div>
               <div className="shrink-0 text-right">
                 <p className="text-[10px] text-nisk-muted uppercase tracking-wider">Est. build time</p>
@@ -155,7 +154,7 @@ export default function TryItNowDemo() {
 
             <ul className="space-y-2.5 mb-6">
               {result.features.map((feature) => (
-                <li key={feature} className="flex items-start gap-3 text-sm text-gray-300">
+                <li key={feature} className="flex items-start gap-3 text-sm text-nisk-muted">
                   <span className="text-[var(--success)] shrink-0 mt-0.5">✓</span>
                   <span>{feature}</span>
                 </li>
@@ -180,22 +179,13 @@ export default function TryItNowDemo() {
               </div>
             )}
 
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Link
-                href="/signup"
-                onClick={() => storePromptForSignup(prompt)}
-                className="btn-primary px-6 py-3 rounded-xl text-white font-semibold text-center"
-              >
-                Build This App Free
-              </Link>
-              <Link
-                href="/signup"
-                onClick={() => storePromptForSignup(prompt)}
-                className="btn-secondary px-6 py-3 rounded-xl text-white font-medium text-center"
-              >
-                See Full Code
-              </Link>
-            </div>
+            <Link
+              href="/login"
+              onClick={() => storePromptForSignup(prompt)}
+              className="btn-primary px-6 py-3 rounded-xl font-semibold text-center w-full sm:w-auto"
+            >
+              Get Started Free — Build This App
+            </Link>
           </div>
         )}
       </div>

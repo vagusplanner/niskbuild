@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "generate:logo-pdf": "node scripts/generate-logo-pdf.mjs",
+    "export:brand-logos": "node scripts/export-brand-logos.mjs",
     "start": "next start",
     "lint": "eslint"
   },
@@ -31,6 +33,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "pdf-lib": "^1.17.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

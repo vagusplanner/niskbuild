@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { getSafeSession } from '@/lib/supabaseSession';
+import { isAdminUser } from '@/lib/admin-auth';
 import Layout from '@/app/components/Layout';
 
 interface AnalyticsData {
@@ -26,12 +28,10 @@ export default function AdminDashboard() {
   const [authorized, setAuthorized] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'builds' | 'errors'>('overview');
 
-  const ADMIN_EMAIL = 'sofiane.kemih@gmail.com';
-
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user?.email === ADMIN_EMAIL) {
+      if (isAdminUser(session?.user ?? null)) {
         setAuthorized(true);
         fetchAnalytics();
       } else {
@@ -224,6 +224,12 @@ export default function AdminDashboard() {
             🏗️ Builds
           </button>
           <button
+            onClick={() => { window.location.href = '/admin/support'; }}
+            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"
+          >
+            💬 Support
+          </button>
+          <button
             onClick={() => { window.location.href = '/admin/users'; }}
             className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white transition-colors"
           >
@@ -321,7 +327,7 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <div className="flex justify-between mb-1">
-                  <span className="text-gray-300">Pro ($69)</span>
+                  <span className="text-gray-300">Pro Worker ($129)</span>
                   <span className="text-blue-400">{data.proUsers} users</span>
                 </div>
                 <div className="w-full bg-gray-800 rounded-full h-2">
@@ -335,7 +341,7 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <div className="flex justify-between mb-1">
-                  <span className="text-gray-300">Agency ($199)</span>
+                  <span className="text-gray-300">Agency Studio ($299)</span>
                   <span className="text-purple-400">{data.agencyUsers} users</span>
                 </div>
                 <div className="w-full bg-gray-800 rounded-full h-2">

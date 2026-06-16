@@ -18,6 +18,8 @@ export const RATE_LIMITS: Record<string, number> = {
   '/api/builder': 10,
   '/api/generate': 10,
   '/api/generate/game': 15,
+  '/api/ai-agent': 24,
+  '/api/agent-escalate': 6,
   '/api/log-build': 30,
 };
 

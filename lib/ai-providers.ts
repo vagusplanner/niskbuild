@@ -200,6 +200,7 @@ export function getProviderOrder(tier: string): AIProvider[] {
     case 'team_enterprise':
     case 'sovereign':
       return ['anthropic', 'groq', 'together', ...local];
+    case 'basic':
     case 'pro':
       return ['groq', 'together'];
     default:

@@ -98,6 +98,8 @@ export type BuilderWorkspaceLayoutProps = {
   onOllamaUpgrade: () => void;
   isSandboxAtLimit: boolean;
   canImportGooglePlaces: boolean;
+  canUseCompetitorIntel: boolean;
+  canUseSocialProof: boolean;
   importedBusinessName: string | null;
   onGooglePlacesImport: (
     business: GooglePlacesBusiness,
@@ -172,36 +174,36 @@ function CanvasHeader({
   const codeViewActive = inspectorOpen && inspectorTab === 'code';
 
   return (
-    <div className="shrink-0 flex items-center justify-between gap-2 px-3 py-2 border-b border-nisk bg-nisk-surface">
+    <div className="shrink-0 flex items-center justify-between gap-2 px-4 py-2.5 border-b border-nisk builder-canvas-header">
       <div className="flex items-center gap-2 min-w-0 flex-wrap">
         {showViewToggle && onFocusPreview && onOpenCodeView && (
-          <div className="flex gap-1 mr-1">
+          <div className="flex gap-1 mr-1 p-0.5 rounded-lg bg-[var(--surface-elevated)] border border-nisk">
             <button
               type="button"
               onClick={onFocusPreview}
-              className={`px-2.5 py-1 text-xs rounded-lg transition-colors ${
+              className={`px-2.5 py-1 text-xs rounded-md transition-colors font-medium ${
                 !codeViewActive
-                  ? 'bg-emerald-500/20 text-emerald-400'
-                  : 'text-nisk-muted hover:text-white'
+                  ? 'bg-[var(--card-bg)] text-[var(--primary)] shadow-sm ring-1 ring-[var(--primary)]/20'
+                  : 'text-nisk-muted hover:text-[var(--foreground)]'
               }`}
             >
-              👁️ Preview
+              Preview
             </button>
             <button
               type="button"
               onClick={onOpenCodeView}
-              className={`px-2.5 py-1 text-xs rounded-lg transition-colors ${
+              className={`px-2.5 py-1 text-xs rounded-md transition-colors font-medium ${
                 codeViewActive
-                  ? 'bg-purple-500/20 text-purple-400'
-                  : 'text-nisk-muted hover:text-white'
+                  ? 'bg-[var(--card-bg)] text-[var(--secondary)] shadow-sm ring-1 ring-[var(--secondary)]/20'
+                  : 'text-nisk-muted hover:text-[var(--foreground)]'
               }`}
             >
-              📄 Code
+              Code
             </button>
           </div>
         )}
         <span className="w-2 h-2 rounded-full bg-[var(--success)] status-dot-active shrink-0" />
-        <span className="text-sm font-medium text-white truncate hidden sm:inline">Live Preview</span>
+        <span className="text-sm font-semibold text-[var(--foreground)] truncate hidden sm:inline">Live Preview</span>
         {(visualEditMode || inspectMode) && (
           <span className="text-[10px] px-2 py-0.5 rounded-full border border-[var(--accent-cyan)]/30 text-[var(--accent-cyan)]">
             {visualEditMode ? 'Visual edit' : 'Target mode'}
@@ -403,6 +405,8 @@ function ChatPanelContent({
   planMode,
   onPlanModeChange,
   canImportGooglePlaces,
+  canUseCompetitorIntel,
+  canUseSocialProof,
   importedBusinessName,
   onGooglePlacesImport,
   useLocalOllama,
@@ -429,6 +433,8 @@ function ChatPanelContent({
   planMode: boolean;
   onPlanModeChange: (v: boolean) => void;
   canImportGooglePlaces: boolean;
+  canUseCompetitorIntel: boolean;
+  canUseSocialProof: boolean;
   importedBusinessName: string | null;
   onGooglePlacesImport: (
     business: GooglePlacesBusiness,
@@ -445,20 +451,23 @@ function ChatPanelContent({
 
   return (
     <>
-      <div className="shrink-0 px-3 py-2 border-b border-nisk flex items-center justify-between gap-2">
+      <div className="shrink-0 px-4 py-3 border-b border-nisk bg-gradient-to-r from-[var(--primary)]/8 to-[var(--secondary)]/5">
         <div className="min-w-0">
-          <p className="text-xs font-semibold text-white truncate">Build with AI</p>
+          <p className="text-sm font-semibold text-[var(--foreground)] truncate">Build with AI</p>
+          <p className="text-[10px] text-nisk-muted mt-0.5">Describe your site — we generate the code</p>
           {userId && (
-            <ProjectLimitBadge userId={userId} currentCount={savedProjectsCount} />
+            <div className="mt-1.5">
+              <ProjectLimitBadge userId={userId} currentCount={savedProjectsCount} />
+            </div>
           )}
         </div>
         <button
           type="button"
           onClick={onNewProject}
-          className="shrink-0 px-2 py-1 text-[10px] font-medium rounded-lg border border-[var(--secondary)]/30 text-[var(--secondary)] hover:bg-[var(--secondary)]/15"
+          className="shrink-0 mt-2 w-full px-3 py-2 text-xs font-semibold rounded-lg bg-[var(--primary)] text-white hover:opacity-90 shadow-sm transition-opacity"
           title="Start fresh project"
         >
-          + New
+          + New project
         </button>
       </div>
 
@@ -485,7 +494,7 @@ function ChatPanelContent({
                 key={s}
                 type="button"
                 onClick={() => onPromptChange(s)}
-                className="text-left px-2 py-1.5 rounded-lg text-[10px] border border-nisk text-gray-400 hover:border-[var(--accent-cyan)]/50 hover:text-[var(--accent-cyan)] transition-all line-clamp-2 max-w-full"
+                className="text-left px-2.5 py-2 rounded-lg text-[10px] border builder-section-chip transition-all line-clamp-2 max-w-full"
               >
                 {s}
               </button>
@@ -494,7 +503,12 @@ function ChatPanelContent({
         </CollapsibleSection>
 
         <CollapsibleSection title="Tools" defaultOpen={!!importedBusinessName}>
-          <GooglePlacesImport canImport={canImportGooglePlaces} onImport={onGooglePlacesImport} />
+          <GooglePlacesImport
+            canImport={canImportGooglePlaces}
+            canUseCompetitorIntel={canUseCompetitorIntel}
+            canUseSocialProof={canUseSocialProof}
+            onImport={onGooglePlacesImport}
+          />
         </CollapsibleSection>
 
         {recentProjects.length > 0 && (
@@ -621,6 +635,8 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
     onOllamaUpgrade,
     isSandboxAtLimit,
     canImportGooglePlaces,
+    canUseCompetitorIntel,
+    canUseSocialProof,
     importedBusinessName,
     onGooglePlacesImport,
     seoSettings,
@@ -689,6 +705,8 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
       planMode={planMode}
       onPlanModeChange={onPlanModeChange}
       canImportGooglePlaces={canImportGooglePlaces}
+      canUseCompetitorIntel={canUseCompetitorIntel}
+      canUseSocialProof={canUseSocialProof}
       importedBusinessName={importedBusinessName}
       onGooglePlacesImport={onGooglePlacesImport}
       useLocalOllama={useLocalOllama}
@@ -816,7 +834,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
               onClick={() => onMobileTabChange(tab)}
               className={`flex-1 py-2.5 text-xs font-medium capitalize transition-colors ${
                 mobileTab === tab
-                  ? 'text-[var(--accent-cyan)] border-b-2 border-[var(--accent-cyan)] bg-[var(--accent-cyan)]/5'
+                  ? 'text-[var(--primary)] border-b-2 border-[var(--primary)] bg-[var(--primary)]/5'
                   : 'text-nisk-muted'
               }`}
             >
@@ -867,7 +885,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
             {visualToolbar}
             <div
               ref={mobilePreviewFullscreenRef}
-              className={`flex-1 min-h-0 relative bg-[#0B0F19] ${visualMobilePreview ? 'bg-nisk' : ''}`}
+              className={`flex-1 min-h-0 relative builder-preview-canvas ${visualMobilePreview ? 'bg-slate-200' : ''}`}
             >
               <PreviewIframe
                 previewHtml={previewHtml}
@@ -946,7 +964,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
           {visualToolbar}
           <div
             ref={previewFullscreenRef}
-            className={`flex-1 min-h-0 relative bg-[#0B0F19] ${visualMobilePreview ? 'bg-nisk' : ''}`}
+            className={`flex-1 min-h-0 relative builder-preview-canvas ${visualMobilePreview ? 'bg-slate-200' : ''}`}
           >
             <div
               className={`builder-inspector-backdrop hidden md:block ${inspectorOpen ? 'is-open' : ''}`}

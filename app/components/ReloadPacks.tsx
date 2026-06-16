@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { RELOAD_PACKS } from '@/lib/reload-packs';
+import { RELOAD_PACKS, PACK_ID_TO_BOOST } from '@/lib/reload-packs';
 
 export default function ReloadPacks() {
   const [loading, setLoading] = useState<string | null>(null);
@@ -9,10 +9,12 @@ export default function ReloadPacks() {
   const buyPack = async (packId: string) => {
     setLoading(packId);
     try {
-      const res = await fetch('/api/create-reload-checkout', {
+      const boostType = PACK_ID_TO_BOOST[packId];
+      const res = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ packId }),
+        credentials: 'include',
+        body: JSON.stringify({ isReload: true, boostType, packId }),
       });
       const data = await res.json();
       if (data.url) window.location.href = data.url;
@@ -28,7 +30,7 @@ export default function ReloadPacks() {
     <div className="mt-16">
       <h2 className="text-2xl font-bold text-white text-center mb-2">Credit reload packs</h2>
       <p className="text-nisk-muted text-center text-sm mb-8 max-w-xl mx-auto">
-        Top up anytime. Priced higher per-credit than your plan — upgrading to Agency is still the best value.
+        Top up anytime. Priced higher per-credit than your plan — upgrading to Agency Studio is still the best value.
       </p>
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
         {RELOAD_PACKS.map((pack) => (

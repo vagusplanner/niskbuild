@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
   if (!canUseOwnApiKeys(profile?.subscription_tier)) {
     return NextResponse.json(
       {
-        error: 'Bring-your-own API keys require Agency ($199/mo) or higher.',
+        error: 'Bring-your-own API keys require Pro Worker ($129/mo) or higher.',
         upgradeRequired: true,
       },
       { status: 403 }

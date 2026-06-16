@@ -1,5 +1,6 @@
 "use client";
 
+import Link from 'next/link';
 import Layout from '@/app/components/Layout';
 
 export default function PrivacyPage() {
@@ -93,8 +94,12 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-2xl font-semibold text-white mb-4">10. Contact Us</h2>
-            <p>If you have questions about this Privacy Policy, please contact us at:</p>
-            <p className="mt-2"><strong>Email:</strong> <a href="mailto:hello@niskbuild.com" className="text-purple-400 hover:text-purple-300">hello@niskbuild.com</a></p>
+            <p>If you have questions about this Privacy Policy, please use our contact form:</p>
+            <p className="mt-2">
+              <Link href="/landing#contact" className="text-purple-400 hover:text-purple-300">
+                Send us a message →
+              </Link>
+            </p>
           </section>
         </div>
 

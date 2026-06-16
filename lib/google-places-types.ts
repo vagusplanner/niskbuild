@@ -1,3 +1,61 @@
+export type CompetitorPricingTier = 'budget' | 'mid' | 'premium';
+
+export type CompetitorCandidate = {
+  placeId: string;
+  name: string;
+  address: string;
+  rating?: number;
+  reviewCount?: number;
+  businessType?: string;
+};
+
+export type CompetitorSummary = {
+  name: string;
+  address: string;
+  rating?: number;
+  reviewCount?: number;
+  differentiator: string;
+  pricingTier: CompetitorPricingTier;
+};
+
+export type CompetitorComparisonRow = {
+  feature: string;
+  client: string;
+  competitors: string[];
+};
+
+export type CompetitorIntel = {
+  competitors: CompetitorSummary[];
+  comparisonTable: CompetitorComparisonRow[];
+  whyChooseUs: string;
+  uniqueSellingPoint: string;
+  analyzed: true;
+};
+
+export type SocialWallPost = {
+  platform: 'instagram' | 'facebook' | 'tiktok' | 'google';
+  caption: string;
+  imageUrl?: string;
+  engagement?: string;
+};
+
+export type SocialProofCounter = {
+  label: string;
+  value: string;
+};
+
+export type SocialProofIntel = {
+  instagramHandle: string;
+  instagramProfileUrl: string;
+  facebookPresence: string;
+  tiktokMentionEstimate: string;
+  asSeenOnBadges: string[];
+  counters: SocialProofCounter[];
+  wallPosts: SocialWallPost[];
+  photoGallery: Array<{ url: string; caption: string }>;
+  aggregated: true;
+};
+
 export type GooglePlacesSearchResult = {
   placeId: string;
   name: string;
@@ -15,6 +73,7 @@ export type GooglePlacesReview = {
 };
 
 export type GooglePlacesBusiness = {
+  placeId?: string;
   name: string;
   address: string;
   phone?: string;
@@ -23,6 +82,7 @@ export type GooglePlacesBusiness = {
   rating?: number;
   reviewCount?: number;
   businessType?: string;
+  /** Resolved photo URLs (proxied, safe for client + generated sites) */
   photos?: string[];
   description?: string;
   googleMapsUrl?: string;
@@ -39,6 +99,10 @@ export type GooglePlacesBusiness = {
   improvementSuggestions?: string[];
   testimonialQuote?: string;
   enriched?: boolean;
+  /** Agency+ competitor intelligence */
+  competitorIntel?: CompetitorIntel;
+  /** Agency+ social proof aggregator */
+  socialProof?: SocialProofIntel;
 };
 
 export type GooglePlacesProjectContext = {

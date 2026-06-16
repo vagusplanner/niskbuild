@@ -8,21 +8,24 @@ import Layout from '@/app/components/Layout';
 import NiskBuildLogo from '@/app/components/NiskBuildLogo';
 import PricingCards from '@/app/components/PricingCards';
 import ReloadPacks from '@/app/components/ReloadPacks';
-import { PRICING_FAQ } from '@/lib/pricing-tiers';
+import { PRICING_FAQ, type BillingInterval } from '@/lib/pricing-tiers';
 
 function PricingContent() {
   const [loading, setLoading] = useState<string | null>(null);
   const [canceled, setCanceled] = useState(false);
+  const [billingInterval, setBillingInterval] = useState<BillingInterval>('month');
   const searchParams = useSearchParams();
 
   const [needsUpgrade, setNeedsUpgrade] = useState(false);
 
   useEffect(() => {
-    if (searchParams.get('canceled') === 'true') setCanceled(true);
+    if (searchParams.get('canceled') === 'true' || searchParams.get('checkout') === 'cancel') {
+      setCanceled(true);
+    }
     if (searchParams.get('upgrade') === '1') setNeedsUpgrade(true);
   }, [searchParams]);
 
-  const handleSubscribe = async (tier: string) => {
+  const handleSubscribe = async (tier: string, interval: BillingInterval) => {
     setLoading(tier);
 
     const session = await getSafeSession();
@@ -40,6 +43,7 @@ function PricingContent() {
         credentials: 'include',
         body: JSON.stringify({
           tier,
+          interval,
           successUrl: `${window.location.origin}/dashboard?success=true`,
           cancelUrl: `${window.location.origin}/pricing?canceled=true`,
         }),
@@ -77,7 +81,7 @@ function PricingContent() {
             }}
           />
           <p className="text-[var(--primary)] text-sm font-medium uppercase tracking-wider mb-3">Pricing</p>
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+          <h1 className="text-4xl md:text-5xl font-bold text-[var(--foreground)] mb-4">
             Simple, transparent pricing
           </h1>
           <p className="text-nisk-muted max-w-2xl mx-auto text-lg">
@@ -87,7 +91,7 @@ function PricingContent() {
 
         {needsUpgrade && (
           <div className="mb-6 p-4 rounded-xl bg-[var(--primary)]/10 border border-[var(--primary)]/30 text-sm text-center">
-            <p className="text-white font-medium mb-1">Choose a plan to unlock the builder</p>
+            <p className="text-[var(--foreground)] font-medium mb-1">Choose a plan to unlock the builder</p>
             <p className="text-nisk-muted">Sign in is complete — upgrade below to access the builder and marketplace.</p>
           </div>
         )}
@@ -98,8 +102,37 @@ function PricingContent() {
           </div>
         )}
 
+        <div className="flex justify-center mb-8">
+          <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-nisk-card border border-nisk">
+            <button
+              type="button"
+              onClick={() => setBillingInterval('month')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                billingInterval === 'month'
+                  ? 'bg-[var(--primary)] text-white'
+                  : 'text-nisk-muted hover:text-[var(--foreground)]'
+              }`}
+            >
+              Monthly
+            </button>
+            <button
+              type="button"
+              onClick={() => setBillingInterval('year')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                billingInterval === 'year'
+                  ? 'bg-[var(--primary)] text-white'
+                  : 'text-nisk-muted hover:text-[var(--foreground)]'
+              }`}
+            >
+              Annual
+              <span className="ml-1.5 text-xs opacity-80">Save 2 months</span>
+            </button>
+          </div>
+        </div>
+
         <PricingCards
           variant="page"
+          billingInterval={billingInterval}
           loadingTier={loading}
           onSubscribe={handleSubscribe}
           initialContactTier={searchParams.get('contact')}
@@ -114,7 +147,7 @@ function PricingContent() {
           ].map((item) => (
             <div key={item.title} className="bg-nisk-card border border-nisk rounded-xl p-5 text-center">
               <div className="text-2xl mb-2">{item.icon}</div>
-              <h3 className="font-semibold text-white text-sm mb-1">{item.title}</h3>
+              <h3 className="font-semibold text-[var(--foreground)] text-sm mb-1">{item.title}</h3>
               <p className="text-nisk-muted text-xs">{item.desc}</p>
             </div>
           ))}
@@ -124,11 +157,11 @@ function PricingContent() {
         <ReloadPacks />
 
         <div className="mt-16 pt-12 border-t border-nisk">
-          <h2 className="text-2xl font-bold text-white text-center mb-8">Frequently asked questions</h2>
+          <h2 className="text-2xl font-bold text-[var(--foreground)] text-center mb-8">Frequently asked questions</h2>
           <div className="max-w-3xl mx-auto space-y-3">
             {PRICING_FAQ.map((faq) => (
               <details key={faq.q} className="bg-nisk-card rounded-xl border border-nisk group">
-                <summary className="cursor-pointer p-4 font-medium text-white hover:text-[var(--primary)] transition-colors list-none flex justify-between items-center">
+                <summary className="cursor-pointer p-4 font-medium text-[var(--foreground)] hover:text-[var(--primary)] transition-colors list-none flex justify-between items-center">
                   {faq.q}
                   <span className="text-nisk-muted group-open:rotate-180 transition-transform">▾</span>
                 </summary>
@@ -147,9 +180,9 @@ function PricingContent() {
           </p>
           <p className="text-nisk-muted text-sm">
             Need a custom plan?{' '}
-            <a href="mailto:hello@niskbuild.com" className="text-[var(--primary)] hover:underline">
+            <Link href="/landing#contact" className="text-[var(--primary)] hover:underline">
               Contact us →
-            </a>
+            </Link>
           </p>
         </div>
       </div>

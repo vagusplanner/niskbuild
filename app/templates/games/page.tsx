@@ -44,15 +44,14 @@ export default function GameTemplatesPage() {
           <div className="text-6xl mb-4">🎮</div>
           <h1 className="text-3xl font-bold text-white mb-3">Game Templates</h1>
           <p className="text-nisk-muted mb-4">
-            Pre-built Phaser.js templates load instantly in the Builder on Agency plan and above.
+            Pre-built Phaser.js templates load instantly in the Builder on Pro Worker plan and above.
           </p>
           <p className="text-xs text-nisk-muted mb-8 max-w-sm mx-auto">
-            On Pro, you can still describe game ideas in the Builder prompt — templates and one-click
-            game load require Agency.
+            On Basic, you can still build websites in the Builder. Game templates and Google Places AI require Pro Worker.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <Link href="/pricing" className="btn-primary inline-flex px-6 py-3 rounded-xl text-sm font-medium">
-              Upgrade to Agency →
+              Upgrade to Pro Worker →
             </Link>
             <Link href="/builder" className="btn-secondary inline-flex px-6 py-3 rounded-xl text-sm">
               Open Builder

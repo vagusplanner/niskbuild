@@ -2,14 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { enrichBusinessData } from '@/lib/ai-business-enrichment';
+import { analyzeCompetitors } from '@/lib/competitor-analysis';
+import { findNearbyCompetitors } from '@/lib/google-places-competitors';
+import { buildSocialProofIntel } from '@/lib/social-proof';
 import type {
   GooglePlacesBusiness,
   GooglePlacesReview,
   GooglePlacesSearchResult,
 } from '@/lib/google-places-types';
 import { logGooglePlacesImport } from '@/lib/log-google-places-import';
+import { resolvePlacesPhotoUrls } from '@/lib/google-places-photos';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { canImportGooglePlaces, isPaidAndActive } from '@/lib/tier-config';
+import { canImportGooglePlaces, canUseCompetitorIntel, canUseSocialProofAggregator, isPaidAndActive } from '@/lib/tier-config';
 
 function formatBusinessType(types?: string[]): string | undefined {
   if (!types?.length) return undefined;
@@ -40,6 +44,8 @@ export async function POST(request: NextRequest) {
     const query = typeof body.query === 'string' ? body.query.trim() : '';
     const placeId = typeof body.placeId === 'string' ? body.placeId.trim() : '';
     const enrich = body.enrich !== false;
+    const competitors = body.competitors === true;
+    const socialProof = body.socialProof === true;
 
     const profile = await getProfile(userId);
     const tier = profile?.subscription_tier ?? 'free';
@@ -47,7 +53,7 @@ export async function POST(request: NextRequest) {
 
     if (!canImportGooglePlaces(tier, status)) {
       return NextResponse.json(
-        { error: 'Google Places import requires an active Pro plan or above.', upgrade: true },
+        { error: 'Google Places import requires an active Pro Worker plan or above.', upgrade: true },
         { status: 403 }
       );
     }
@@ -150,6 +156,7 @@ export async function POST(request: NextRequest) {
       );
 
       const businessData: GooglePlacesBusiness = {
+        placeId,
         name: String(place.name || ''),
         address: String(place.formatted_address || ''),
         phone:
@@ -162,10 +169,12 @@ export async function POST(request: NextRequest) {
         reviewCount:
           typeof place.user_ratings_total === 'number' ? place.user_ratings_total : undefined,
         businessType: formatBusinessType(place.types as string[] | undefined),
-        photos: photos
-          .slice(0, 3)
-          .map((p: { photo_reference?: string }) => p.photo_reference)
-          .filter(Boolean) as string[],
+        photos: resolvePlacesPhotoUrls(
+          photos
+            .slice(0, 6)
+            .map((p: { photo_reference?: string }) => p.photo_reference)
+            .filter(Boolean) as string[]
+        ),
         description: reviews
           .slice(0, 3)
           .map((r: { text?: string }) => r.text)
@@ -179,6 +188,50 @@ export async function POST(request: NextRequest) {
       if (enrich) {
         const enriched = await enrichBusinessData(businessData);
         business = enriched;
+      }
+
+      let competitorIntel = null;
+      if (competitors) {
+        if (!canUseCompetitorIntel(tier, status)) {
+          return NextResponse.json(
+            {
+              error: 'Competitor comparison requires an active Agency Studio plan or above.',
+              upgrade: true,
+              upgradeTier: 'agency',
+            },
+            { status: 403 }
+          );
+        }
+
+        const candidates = await findNearbyCompetitors({
+          apiKey,
+          excludePlaceId: placeId,
+          businessType: business.businessType || 'business',
+          address: business.address,
+          businessName: business.name,
+        });
+
+        competitorIntel = await analyzeCompetitors(business, candidates);
+        if (competitorIntel) {
+          business = { ...business, competitorIntel };
+        }
+      }
+
+      let socialProofIntel = null;
+      if (socialProof) {
+        if (!canUseSocialProofAggregator(tier, status)) {
+          return NextResponse.json(
+            {
+              error: 'Social proof aggregator requires an active Agency Studio plan or above.',
+              upgrade: true,
+              upgradeTier: 'agency',
+            },
+            { status: 403 }
+          );
+        }
+
+        socialProofIntel = await buildSocialProofIntel(business);
+        business = { ...business, socialProof: socialProofIntel };
       }
 
       const sessionId =
@@ -196,6 +249,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         business,
         enriched: enrich && !!business.enriched,
+        competitorIntel: competitorIntel ?? business.competitorIntel ?? null,
+        socialProof: socialProofIntel ?? business.socialProof ?? null,
         projectContext: {
           type: 'google_places',
           source: 'google_places_api',

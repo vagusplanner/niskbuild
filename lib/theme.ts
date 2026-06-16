@@ -10,8 +10,8 @@ export function resolveTheme(pref: ThemePreference): 'dark' | 'light' {
 }
 
 export function getStoredTheme(): ThemePreference {
-  if (typeof window === 'undefined') return 'dark';
+  if (typeof window === 'undefined') return 'light';
   const stored = localStorage.getItem(THEME_STORAGE_KEY);
   if (stored === 'light' || stored === 'dark' || stored === 'system') return stored;
-  return 'dark';
+  return 'light';
 }

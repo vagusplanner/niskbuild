@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 72" fill="none" aria-hidden="true">
+  <g transform="translate(4,8)">
+    <polygon points="20,6 34,14 20,22 6,14" fill="#D1D5FF"/>
+    <polygon points="6,14 20,22 20,36 6,28" fill="#8467B3"/>
+    <polygon points="20,22 34,14 34,28 20,36" fill="#5E81FF"/>
+  </g>
+  <text x="52" y="30" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="22" font-weight="800" letter-spacing="0.1em" fill="#FFFFFF">NISK</text>
+  <text x="128" y="30" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="22" font-weight="800" letter-spacing="0.1em" fill="#5E81FF">BUILD</text>
+  <text x="52" y="52" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="10" font-weight="500" letter-spacing="0.16em" fill="#9CA3AF">BUILD ANYTHING. OWN EVERYTHING.</text>
+</svg>

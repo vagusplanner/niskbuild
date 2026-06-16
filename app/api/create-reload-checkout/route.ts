@@ -3,11 +3,13 @@ import Stripe from 'stripe';
 import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createClient } from '@/lib/supabase/server';
-import { getReloadPack } from '@/lib/reload-packs';
+import { getReloadPack, PACK_ID_TO_BOOST } from '@/lib/reload-packs';
+import { getReloadPriceId, getReloadPriceIdByPackId } from '@/lib/stripe-price-ids';
 import { isPaidAndActive } from '@/lib/tier-config';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
+/** Legacy route — prefer POST /api/create-checkout with { isReload: true, packId } */
 export async function POST(request: NextRequest) {
   const guard = await guardApiRequest(request);
   if (!guard.ok) return guard.response;
@@ -19,6 +21,10 @@ export async function POST(request: NextRequest) {
     if (!pack) {
       return NextResponse.json({ error: 'Invalid reload pack' }, { status: 400 });
     }
+
+    const boostType = PACK_ID_TO_BOOST[packId];
+    const stripePriceId =
+      (boostType ? getReloadPriceId(boostType) : null) || getReloadPriceIdByPackId(packId);
 
     const supabase = await createClient();
     const user = guard.user!;
@@ -40,25 +46,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!stripePriceId) {
+      return NextResponse.json({ error: 'Invalid price configuration' }, { status: 400 });
+    }
+
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       payment_method_types: ['card'],
       customer_email: user.email,
-      line_items: [
-        {
-          price_data: {
-            currency: 'usd',
-            unit_amount: pack.priceUsd * 100,
-            product_data: {
-              name: `NiskBuild Reload: ${pack.name}`,
-              description: `${pack.credits} cloud credits — ${pack.description}`,
-            },
-          },
-          quantity: 1,
-        },
-      ],
+      line_items: [{ price: stripePriceId, quantity: 1 }],
       success_url: `${appUrl}/dashboard/settings?reload=success&credits=${pack.credits}`,
       cancel_url: `${appUrl}/pricing?reload_canceled=true`,
       metadata: {
@@ -66,6 +64,8 @@ export async function POST(request: NextRequest) {
         packId: pack.id,
         credits: String(pack.credits),
         userId: user.id,
+        boostType: boostType || '',
+        isReload: 'true',
       },
     });
 

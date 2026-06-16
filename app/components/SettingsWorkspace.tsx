@@ -496,6 +496,18 @@ export default function SettingsWorkspace() {
                   }} disabled={keysSaving} className="btn-secondary px-4 py-2 rounded-lg text-sm">Save API Keys</button>
                 </section>
               )}
+              <section className="bg-nisk-card border border-nisk rounded-xl p-6">
+                <h2 className="text-lg font-semibold text-white mb-2">Support</h2>
+                <p className="text-sm text-nisk-muted mb-4">
+                  Pro and above get ticket tracking. Free, Sandbox & Basic use the contact form.
+                </p>
+                <Link
+                  href="/dashboard/support"
+                  className="inline-flex items-center gap-2 text-sm text-[var(--accent-cyan)] hover:underline"
+                >
+                  Open support →
+                </Link>
+              </section>
               <ReferralCard />
             </>
           )}

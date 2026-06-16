@@ -14,7 +14,7 @@ export async function getAuthenticatedProfile() {
   const { data: profile } = await supabase
     .from('profiles')
     .select(
-      'subscription_tier, subscription_status, cloud_credits_remaining, stripe_customer_id, email'
+      'subscription_tier, subscription_status, cloud_credits_remaining, stripe_customer_id, email, full_name, admin_discount_percent, admin_discount_note'
     )
     .eq('id', user.id)
     .single();

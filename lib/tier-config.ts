@@ -1,8 +1,12 @@
 import { hasPaidTier, PAID_TIERS } from '@/lib/access';
+import { TIER_ORDER, tierAtLeast, type TierSlug } from '@/lib/tier-rank';
+
+export { PAID_TIERS, TIER_ORDER, tierAtLeast };
 
 /** Monthly cloud credit allowance per tier (reset on checkout / renewal webhook) */
 export const CLOUD_CREDITS_BY_TIER: Record<string, number> = {
   free: 0,
+  basic: 150,
   pro: 600,
   agency: 2500,
   scale: 10000,
@@ -11,8 +15,8 @@ export const CLOUD_CREDITS_BY_TIER: Record<string, number> = {
   sovereign: 50000,
 };
 
-const TIER_ORDER = [
-  'free',
+/** BYOC (bring your own API keys) — Pro Worker and above */
+export const BYOC_TIERS = [
   'pro',
   'agency',
   'scale',
@@ -21,36 +25,40 @@ const TIER_ORDER = [
   'sovereign',
 ] as const;
 
-/** BYOC (bring your own API keys) — Agency+ only to prevent Pro revenue leak */
-export const BYOC_TIERS = [
-  'agency',
-  'scale',
-  'white_label',
-  'team_enterprise',
-  'sovereign',
-] as const;
-
-/** Local Ollama engine — Agency+ only (same tier gate as BYOC) */
+/** Local Ollama engine in builder — Pro Worker and above */
 export const LOCAL_OLLAMA_TIERS = BYOC_TIERS;
 
 export const LOCAL_OLLAMA_LOCKED_MESSAGE =
-  'Local AI engine is available on Agency plan and above. Upgrade to unlock unlimited local builds.';
+  'Local AI engine is available on Pro Worker plan and above. Upgrade to connect your own Ollama.';
 
 export const LOCAL_OLLAMA_UPGRADE_CTA =
-  'Unlock local AI — Agency plan from $199/month.';
+  'Unlock local AI — Pro Worker from $129/month.';
 
 export const LOCAL_OLLAMA_PRO_BANNER =
-  'You are using NiskBuild cloud AI. Upgrade to Agency to connect your own Ollama engine and build locally for free.';
+  'You are using NiskBuild cloud AI. Upgrade to Pro Worker to connect your own Ollama engine and build locally for free.';
 
 /** Max concurrent browser sessions per tier */
 export const SESSION_LIMITS: Record<string, number> = {
   free: 1,
   sandbox: 1,
-  pro: 2,
-  agency: 3,
-  scale: 5,
+  basic: 2,
+  pro: 5,
+  agency: 10,
+  scale: 20,
   white_label: 999999,
-  team_enterprise: 10,
+  team_enterprise: 999999,
+  sovereign: 999999,
+};
+
+/** Team seats included per tier (0 = not available) */
+export const TEAM_SEATS_BY_TIER: Record<string, number> = {
+  free: 0,
+  basic: 0,
+  pro: 0,
+  agency: 3,
+  scale: 999999,
+  white_label: 999999,
+  team_enterprise: 999999,
   sovereign: 999999,
 };
 
@@ -62,8 +70,12 @@ export function getSessionLimit(tier: string | null | undefined): number {
   return SESSION_LIMITS[tier || 'free'] ?? 1;
 }
 
+export function getTeamSeats(tier: string | null | undefined): number {
+  return TEAM_SEATS_BY_TIER[tier || 'free'] ?? 0;
+}
+
 export function getNextTier(tier: string): { tier: string; name: string; credits: number } | null {
-  const idx = TIER_ORDER.indexOf(tier as (typeof TIER_ORDER)[number]);
+  const idx = TIER_ORDER.indexOf(tier as TierSlug);
   if (idx < 0 || idx >= TIER_ORDER.length - 1) return null;
   const next = TIER_ORDER[idx + 1];
   if (next === 'free') return null;
@@ -86,6 +98,10 @@ export function isSandboxTier(tier: string | null | undefined): boolean {
   return !tier || tier === 'free';
 }
 
+export function isBasicTier(tier: string | null | undefined): boolean {
+  return tier === 'basic';
+}
+
 /** Sandbox may call local /api/generate (user-run Ollama); no cloud credits */
 export function canUseSandboxLocalGenerate(tier: string | null | undefined): boolean {
   return isSandboxTier(tier);
@@ -98,6 +114,30 @@ export function isPaidAndActive(
   return hasPaidTier(tier) && status === 'active';
 }
 
+/** Pro Worker tier and above (excludes Basic) */
+export function isProWorkerOrAbove(
+  tier: string | null | undefined,
+  status: string | null | undefined
+): boolean {
+  return isPaidAndActive(tier, status) && tierAtLeast(tier, 'pro');
+}
+
+/** Agency Studio tier and above */
+export function isAgencyStudioOrAbove(
+  tier: string | null | undefined,
+  status: string | null | undefined
+): boolean {
+  return isPaidAndActive(tier, status) && tierAtLeast(tier, 'agency');
+}
+
+/** White-Label tier and above */
+export function isWhiteLabelOrAbove(
+  tier: string | null | undefined,
+  status: string | null | undefined
+): boolean {
+  return isPaidAndActive(tier, status) && tierAtLeast(tier, 'white_label');
+}
+
 export function canExportCleanZip(
   tier: string | null | undefined,
   status: string | null | undefined
@@ -105,7 +145,7 @@ export function canExportCleanZip(
   return isPaidAndActive(tier, status);
 }
 
-/** PWA export — Pro plan and above */
+/** PWA export — Basic plan and above */
 export function canExportPwa(
   tier: string | null | undefined,
   status: string | null | undefined
@@ -113,37 +153,47 @@ export function canExportPwa(
   return isPaidAndActive(tier, status);
 }
 
-/** Google Places business import — Pro plan and above */
+/** Google Places business import — Pro Worker and above (not Basic) */
 export function canImportGooglePlaces(
   tier: string | null | undefined,
   status: string | null | undefined
 ): boolean {
-  return isPaidAndActive(tier, status);
+  return isProWorkerOrAbove(tier, status);
 }
 
-/** Game template gallery — Agency plan and above */
+/** Competitor comparison intel — Agency Studio and above */
+export function canUseCompetitorIntel(
+  tier: string | null | undefined,
+  status: string | null | undefined
+): boolean {
+  return isAgencyStudioOrAbove(tier, status);
+}
+
+/** Social proof aggregator — Agency Studio and above */
+export function canUseSocialProofAggregator(
+  tier: string | null | undefined,
+  status: string | null | undefined
+): boolean {
+  return isAgencyStudioOrAbove(tier, status);
+}
+
+/** Phaser.js game templates — Pro Worker and above */
 export function canUseGameTemplates(
   tier: string | null | undefined,
   status: string | null | undefined
 ): boolean {
-  if (!isPaidAndActive(tier, status)) return false;
-  const idx = TIER_ORDER.indexOf((tier || 'free') as (typeof TIER_ORDER)[number]);
-  const agencyIdx = TIER_ORDER.indexOf('agency');
-  return idx >= agencyIdx;
+  return isProWorkerOrAbove(tier, status);
 }
 
-/** Native Capacitor export — Agency plan and above */
+/** Native Capacitor export — Agency Studio and above */
 export function canExportNative(
   tier: string | null | undefined,
   status: string | null | undefined
 ): boolean {
-  if (!isPaidAndActive(tier, status)) return false;
-  const idx = TIER_ORDER.indexOf((tier || 'free') as (typeof TIER_ORDER)[number]);
-  const agencyIdx = TIER_ORDER.indexOf('agency');
-  return idx >= agencyIdx;
+  return isAgencyStudioOrAbove(tier, status);
 }
 
-/** Visual CSS editor — Free (sandbox) and all paid active tiers */
+/** Visual CSS editor — Sandbox and all paid active tiers */
 export function canUseVisualEditor(
   tier: string | null | undefined,
   status?: string | null | undefined
@@ -152,18 +202,15 @@ export function canUseVisualEditor(
   return isPaidAndActive(tier, status);
 }
 
-/** Mobile overrides, undo, and reset — Agency plan and above */
+/** Mobile overrides, undo, and reset — Agency Studio and above */
 export function canUseVisualEditorFull(
   tier: string | null | undefined,
   status: string | null | undefined
 ): boolean {
-  if (!isPaidAndActive(tier, status)) return false;
-  const idx = TIER_ORDER.indexOf((tier || 'free') as (typeof TIER_ORDER)[number]);
-  const agencyIdx = TIER_ORDER.indexOf('agency');
-  return idx >= agencyIdx;
+  return isAgencyStudioOrAbove(tier, status);
 }
 
-/** Save SEO settings — Pro plan and above */
+/** Save SEO settings — Basic plan and above */
 export function canSaveSeoSettings(
   tier: string | null | undefined,
   status: string | null | undefined
@@ -171,7 +218,7 @@ export function canSaveSeoSettings(
   return isPaidAndActive(tier, status);
 }
 
-/** AI Generate SEO — Pro plan and above */
+/** AI Generate SEO — Basic plan and above */
 export function canGenerateSeoAi(
   tier: string | null | undefined,
   status: string | null | undefined
@@ -179,58 +226,64 @@ export function canGenerateSeoAi(
   return isPaidAndActive(tier, status);
 }
 
-/** JSON-LD schema editor — Agency plan and above */
+/** JSON-LD schema editor — Agency Studio and above */
 export function canUseSeoSchema(
   tier: string | null | undefined,
   status: string | null | undefined
 ): boolean {
-  if (!isPaidAndActive(tier, status)) return false;
-  const idx = TIER_ORDER.indexOf((tier || 'free') as (typeof TIER_ORDER)[number]);
-  const agencyIdx = TIER_ORDER.indexOf('agency');
-  return idx >= agencyIdx;
+  return isAgencyStudioOrAbove(tier, status);
 }
 
-/** Stripe one-click inject — Pro plan and above */
+/** Stripe one-click inject — Pro Worker and above */
 export function canUseStripeInject(
   tier: string | null | undefined,
   status: string | null | undefined
 ): boolean {
-  return isPaidAndActive(tier, status);
+  return isProWorkerOrAbove(tier, status);
 }
 
-/** Coming-soon integration notify — Agency plan and above */
+/** Custom domain mapping — White-Label and above */
+export function canUseCustomDomains(
+  tier: string | null | undefined,
+  status: string | null | undefined
+): boolean {
+  return isWhiteLabelOrAbove(tier, status);
+}
+
+/** Full white-label rebrand — White-Label and above */
+export function canUseWhiteLabelBranding(
+  tier: string | null | undefined,
+  status: string | null | undefined
+): boolean {
+  return isWhiteLabelOrAbove(tier, status);
+}
+
+/** Coming-soon integration notify — Agency Studio and above */
 export function canNotifyComingSoonIntegrations(
   tier: string | null | undefined,
   status: string | null | undefined
 ): boolean {
-  if (!isPaidAndActive(tier, status)) return false;
-  const idx = TIER_ORDER.indexOf((tier || 'free') as (typeof TIER_ORDER)[number]);
-  const agencyIdx = TIER_ORDER.indexOf('agency');
-  return idx >= agencyIdx;
+  return isAgencyStudioOrAbove(tier, status);
 }
 
-/** Stripe revenue dashboard — Agency plan and above */
+/** Stripe revenue dashboard — Agency Studio and above */
 export function canViewStripeRevenue(
   tier: string | null | undefined,
   status: string | null | undefined
 ): boolean {
-  if (!isPaidAndActive(tier, status)) return false;
-  const idx = TIER_ORDER.indexOf((tier || 'free') as (typeof TIER_ORDER)[number]);
-  const agencyIdx = TIER_ORDER.indexOf('agency');
-  return idx >= agencyIdx;
+  return isAgencyStudioOrAbove(tier, status);
 }
 
 export function tierDisplayName(tier: string): string {
   const names: Record<string, string> = {
     free: 'Sandbox',
-    pro: 'Pro',
-    agency: 'Agency',
-    scale: 'Scale',
+    basic: 'Basic',
+    pro: 'Pro Worker',
+    agency: 'Agency Studio',
+    scale: 'Scale Team',
     white_label: 'White-Label',
     team_enterprise: 'Team Enterprise',
     sovereign: 'Sovereign',
   };
   return names[tier] || tier;
 }
-
-export { PAID_TIERS };

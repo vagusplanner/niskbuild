@@ -2,6 +2,7 @@
 
 import AppTopNav from './AppTopNav';
 import Footer from './Footer';
+import HelpAssistant from './HelpAssistant';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -20,8 +21,8 @@ export default function Layout({
 
   if (variant === 'builder') {
     return (
-      <div className="h-screen overflow-hidden bg-nisk flex flex-col">
-        <AppTopNav variant="app" />
+      <div data-builder-shell className="h-screen overflow-hidden bg-[var(--background)] flex flex-col">
+        <AppTopNav variant="builder" />
         <div className="flex-1 min-h-0 pt-14">{children}</div>
       </div>
     );
@@ -34,6 +35,7 @@ export default function Layout({
         {children}
       </main>
       {showFooter && variant !== 'marketing' && <Footer />}
+      {variant === 'app' && <HelpAssistant mode="user" />}
     </div>
   );
 }

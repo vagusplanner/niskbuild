@@ -1,13 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 48" fill="none" aria-hidden="true">
-  <defs>
-    <linearGradient id="niskN" x1="8" y1="4" x2="32" y2="44" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#22D3EE"/>
-      <stop offset="0.45" stop-color="#4F6EF7"/>
-      <stop offset="1" stop-color="#7C3AED"/>
-    </linearGradient>
-  </defs>
-  <path d="M6 4h8v40H6V4z" fill="url(#niskN)"/>
-  <path d="M26 4h8v40h-8V4z" fill="url(#niskN)"/>
-  <path d="M14 4l12 20-12 20V4z" fill="url(#niskN)" opacity="0.92"/>
-  <path d="M14 4h4l8 16-4 4-8-20z" fill="#CFFAFE" opacity="0.35"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" fill="none">
+  <rect width="40" height="40" rx="8" fill="#0B0E14"/>
+  <g transform="translate(0,2)">
+    <polygon points="20,6 34,14 20,22 6,14" fill="#D1D5FF"/>
+    <polygon points="6,14 20,22 20,36 6,28" fill="#8467B3"/>
+    <polygon points="20,22 34,14 34,28 20,36" fill="#5E81FF"/>
+  </g>
 </svg>

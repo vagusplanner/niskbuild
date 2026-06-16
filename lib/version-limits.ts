@@ -2,6 +2,7 @@
 export const VERSION_LIMITS: Record<string, number | null> = {
   free: 3,
   sandbox: 3,
+  basic: 10,
   pro: 20,
   agency: 100,
   scale: null,

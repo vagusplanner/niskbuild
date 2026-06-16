@@ -2,13 +2,18 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { PRICING_TIERS, type PricingTier } from '@/lib/pricing-tiers';
+import {
+  PRICING_TIERS,
+  type BillingInterval,
+  type PricingTier,
+} from '@/lib/pricing-tiers';
 import ContactSalesModal from '@/app/components/ContactSalesModal';
 
 interface PricingCardsProps {
   variant?: 'landing' | 'page';
+  billingInterval?: BillingInterval;
   loadingTier?: string | null;
-  onSubscribe?: (tier: string) => void;
+  onSubscribe?: (tier: string, interval: BillingInterval) => void;
   /** Open contact form for a tier slug, e.g. from /pricing?contact=sovereign */
   initialContactTier?: string | null;
 }
@@ -28,8 +33,16 @@ function tierButtonClass(tier: PricingTier, variant: 'landing' | 'page') {
   return 'bg-amber-600 hover:bg-amber-500 text-white';
 }
 
+function displayPrice(tier: PricingTier, interval: BillingInterval) {
+  if (interval === 'year' && tier.annualPrice) {
+    return { price: tier.annualPrice, period: tier.annualPeriod || '/year' };
+  }
+  return { price: tier.price, period: tier.period };
+}
+
 export default function PricingCards({
   variant = 'page',
+  billingInterval = 'month',
   loadingTier,
   onSubscribe,
   initialContactTier,
@@ -45,7 +58,10 @@ export default function PricingCards({
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {PRICING_TIERS.map((tier) => (
+        {PRICING_TIERS.map((tier) => {
+          const { price, period } = displayPrice(tier, billingInterval);
+
+          return (
           <div
             key={tier.name}
             className={`relative rounded-2xl p-6 transition-all card-hover flex flex-col ${
@@ -63,8 +79,8 @@ export default function PricingCards({
             <h3 className="text-lg font-bold text-white mb-1">{tier.name}</h3>
             <p className="text-nisk-muted text-sm mb-4 min-h-[40px]">{tier.description}</p>
             <p className="text-3xl font-bold text-white mb-6">
-              {tier.price}
-              <span className="text-sm text-nisk-muted">{tier.period}</span>
+              {price}
+              <span className="text-sm text-nisk-muted">{period}</span>
             </p>
 
             <ul className="space-y-2 mb-8 text-sm flex-1">
@@ -106,7 +122,7 @@ export default function PricingCards({
             </Link>
           ) : (
             <button
-              onClick={() => tier.tier && onSubscribe?.(tier.tier)}
+              onClick={() => tier.tier && onSubscribe?.(tier.tier, billingInterval)}
               disabled={loadingTier === tier.tier}
               className={`w-full py-2.5 rounded-lg font-medium text-sm transition-all disabled:opacity-50 ${tierButtonClass(tier, 'page')}`}
             >
@@ -114,7 +130,8 @@ export default function PricingCards({
             </button>
           )}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       <ContactSalesModal tier={contactTier} onClose={() => setContactTier(null)} />

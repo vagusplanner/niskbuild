@@ -193,7 +193,7 @@ function DashboardContent() {
 
       <div className="mb-10">
         <NiskBuildLogo variant="lockup" size="md" />
-        <h1 className="text-3xl font-bold text-white mt-6">Welcome back</h1>
+        <h1 className="text-3xl font-bold text-[var(--foreground)] mt-6">Welcome back</h1>
         <p className="text-nisk-muted mt-1">{user.email}</p>
         {checkoutMsg && (
           <p className="mt-3 text-sm text-[var(--success)] bg-[var(--success)]/10 border border-[var(--success)]/30 rounded-lg px-4 py-2">
@@ -213,7 +213,7 @@ function DashboardContent() {
           className="group p-6 rounded-2xl border border-nisk bg-nisk-card hover:border-[var(--accent-cyan)] transition-all card-hover"
         >
           <span className="text-2xl">⚡</span>
-          <h2 className="text-lg font-semibold text-white mt-3 group-hover:text-[var(--accent-cyan)]">
+          <h2 className="text-lg font-semibold text-[var(--foreground)] mt-3 group-hover:text-[var(--accent-cyan)]">
             Open Builder
           </h2>
           <p className="text-sm text-nisk-muted mt-1">Start building with AI — large preview, resizable panels.</p>
@@ -223,13 +223,13 @@ function DashboardContent() {
           className="group p-6 rounded-2xl border border-nisk bg-nisk-card hover:border-[var(--primary)] transition-all card-hover"
         >
           <span className="text-2xl">🏪</span>
-          <h2 className="text-lg font-semibold text-white mt-3">Marketplace</h2>
+          <h2 className="text-lg font-semibold text-[var(--foreground)] mt-3">Marketplace</h2>
           <p className="text-sm text-nisk-muted mt-1">Load templates into your workspace instantly.</p>
         </Link>
       </div>
 
       <div className="bg-nisk-card border border-nisk rounded-2xl p-6 mb-8">
-        <h3 className="text-sm font-semibold text-white mb-3">Usage</h3>
+        <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3">Usage</h3>
         <ProjectLimitBadge userId={user.id} currentCount={projects.length} />
         <p className="text-xs text-nisk-muted mt-2">
           {projects.length} saved project{projects.length !== 1 ? 's' : ''}
@@ -247,7 +247,7 @@ function DashboardContent() {
       </div>
 
       <div className="bg-nisk-card border border-nisk rounded-2xl p-6 mb-8">
-        <h3 className="text-sm font-semibold text-white mb-4">Saved Projects</h3>
+        <h3 className="text-sm font-semibold text-[var(--foreground)] mb-4">Saved Projects</h3>
         {projects.length === 0 ? (
           <p className="text-sm text-nisk-muted">
             No saved projects yet.{' '}
@@ -267,7 +267,7 @@ function DashboardContent() {
                   <SeoScoreBadge score={project.seo_score} />
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="font-medium text-white truncate">{project.title}</p>
+                      <p className="font-medium text-[var(--foreground)] truncate">{project.title}</p>
                       {project.latest_version != null && project.latest_version > 0 && (
                         <span className="text-[10px] text-nisk-muted font-mono shrink-0">
                           v{project.latest_version}
@@ -319,7 +319,7 @@ function DashboardContent() {
           <Link
             key={item.href}
             href={item.href}
-            className="flex items-center gap-3 px-4 py-3 rounded-xl border border-nisk bg-nisk-surface hover:border-[var(--primary)]/50 transition-all text-sm text-gray-300 hover:text-white"
+            className="flex items-center gap-3 px-4 py-3 rounded-xl border border-nisk bg-nisk-surface hover:border-[var(--primary)]/50 transition-all text-sm text-gray-300 hover:text-[var(--foreground)]"
           >
             <span>{item.icon}</span>
             {item.label}

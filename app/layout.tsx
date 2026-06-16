@@ -27,8 +27,8 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "32x32", type: "image/x-icon" },
-      { url: "/logo/niskbuild-n-icon.svg", type: "image/svg+xml" },
-      { url: "/logo.svg", type: "image/svg+xml" },
+      { url: "/logo/icon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/logo/niskbuild-icon-brand.png", type: "image/png" },
     ],
     apple: "/logo/icon-180.png",
   },
@@ -48,7 +48,7 @@ export default function RootLayout({
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var k=${JSON.stringify(THEME_STORAGE_KEY)};var s=localStorage.getItem(k);var p=s==='light'||s==='dark'||s==='system'?s:'dark';var r=p==='system'?(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):p;document.documentElement.setAttribute('data-theme',r);document.documentElement.style.colorScheme=r;}catch(e){}})();`,
+            __html: `(function(){try{var k=${JSON.stringify(THEME_STORAGE_KEY)};var s=localStorage.getItem(k);var p=s==='light'||s==='dark'||s==='system'?s:'light';var r=p==='system'?(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):p;document.documentElement.setAttribute('data-theme',r);document.documentElement.style.colorScheme=r;}catch(e){}})();`,
           }}
         />
       </head>

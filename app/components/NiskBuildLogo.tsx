@@ -1,8 +1,16 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 
 type LogoSize = 'micro' | 'sm' | 'md' | 'lg' | 'xl';
 type LogoVariant = 'full' | 'icon' | 'lockup' | 'text' | 'image';
+
+/** Brand assets exported from attached PDFs (public/logo/*.pdf) */
+const BRAND = {
+  icon: '/logo/niskbuild-icon-brand.png',
+  lockup: '/logo/niskbuild-lockup-brand.png',
+  wordmark: '/logo/niskbuild-wordmark-brand.png',
+} as const;
 
 interface NiskBuildLogoProps {
   variant?: LogoVariant;
@@ -12,40 +20,39 @@ interface NiskBuildLogoProps {
   className?: string;
 }
 
-const SIZE_MAP: Record<LogoSize, { icon: number; text: string; tagline: string; lockupH: string; gap: string }> = {
-  micro: { icon: 22, text: 'text-sm', tagline: 'text-[7px]', lockupH: 'h-6', gap: 'gap-2' },
-  sm: { icon: 26, text: 'text-base', tagline: 'text-[8px]', lockupH: 'h-7', gap: 'gap-2' },
-  md: { icon: 32, text: 'text-lg', tagline: 'text-[9px]', lockupH: 'h-8', gap: 'gap-2.5' },
-  lg: { icon: 40, text: 'text-xl', tagline: 'text-[10px]', lockupH: 'h-10', gap: 'gap-3' },
-  xl: { icon: 52, text: 'text-2xl', tagline: 'text-xs', lockupH: 'h-14', gap: 'gap-3' },
+const SIZE_MAP: Record<
+  LogoSize,
+  { iconPx: number; lockupH: string; wordmarkH: string }
+> = {
+  micro: { iconPx: 24, lockupH: 'h-8', wordmarkH: 'h-7' },
+  sm: { iconPx: 28, lockupH: 'h-9', wordmarkH: 'h-8' },
+  md: { iconPx: 36, lockupH: 'h-11', wordmarkH: 'h-10' },
+  lg: { iconPx: 44, lockupH: 'h-14', wordmarkH: 'h-12' },
+  xl: { iconPx: 56, lockupH: 'h-[4.5rem]', wordmarkH: 'h-16' },
 };
 
-function NIcon({ size }: { size: number }) {
+function BrandImage({
+  src,
+  alt,
+  heightClass,
+  className = '',
+  priority = false,
+}: {
+  src: string;
+  alt: string;
+  heightClass: string;
+  className?: string;
+  priority?: boolean;
+}) {
   return (
     <Image
-      src="/logo/niskbuild-n-icon.svg"
-      alt=""
-      width={size}
-      height={Math.round(size * 1.2)}
-      className="shrink-0"
-      aria-hidden
+      src={src}
+      alt={alt}
+      width={640}
+      height={160}
+      className={`object-contain w-auto ${heightClass} ${className}`}
+      priority={priority}
     />
-  );
-}
-
-function Wordmark({ textClass, showTagline, taglineClass }: { textClass: string; showTagline?: boolean; taglineClass: string }) {
-  return (
-    <div className="flex flex-col leading-none">
-      <span className={`font-extrabold tracking-[0.12em] ${textClass}`}>
-        <span className="text-white">NISK</span>
-        <span className="text-[var(--secondary)]"> BUILD</span>
-      </span>
-      {showTagline && (
-        <span className={`${taglineClass} text-[var(--accent-cyan)] tracking-[0.2em] mt-1 font-semibold uppercase`}>
-          Build anything. Own everything.
-        </span>
-      )}
-    </div>
   );
 }
 
@@ -58,78 +65,83 @@ export default function NiskBuildLogo({
 }: NiskBuildLogoProps) {
   const s = SIZE_MAP[size];
 
-  if (variant === 'image') {
-    const img = (
+  const wrap = (node: ReactNode) =>
+    href ? (
+      <Link href={href} className="hover:opacity-90 transition-opacity inline-flex">
+        {node}
+      </Link>
+    ) : (
+      node
+    );
+
+  if (variant === 'icon') {
+    return wrap(
       <Image
-        src="/logo/niskbuild-lockup.png"
+        src={BRAND.icon}
         alt="NiskBuild"
-        width={280}
-        height={56}
-        className={`object-contain w-auto ${s.lockupH} ${className}`}
+        width={s.iconPx}
+        height={s.iconPx}
+        className={`shrink-0 rounded-xl object-cover ${className}`}
         priority
       />
     );
-    if (href) {
-      return (
-        <Link href={href} className="hover:opacity-90 transition-opacity inline-flex">
-          {img}
-        </Link>
-      );
-    }
-    return img;
   }
 
   if (variant === 'text') {
-    const textLogo = (
-      <span className={`font-bold text-gradient-brand ${s.text} ${className}`}>NiskBuild</span>
-    );
-    if (href) {
-      return (
-        <Link href={href} className="hover:opacity-90 transition-opacity">
-          {textLogo}
-        </Link>
-      );
-    }
-    return textLogo;
-  }
-
-  if (variant === 'lockup') {
-    const lockup = (
-      <Image
-        src="/logo/niskbuild-lockup.svg"
+    return wrap(
+      <BrandImage
+        src={BRAND.wordmark}
         alt="NiskBuild — Build anything. Own everything."
-        width={300}
-        height={52}
-        className={`object-contain w-auto ${s.lockupH} ${className}`}
+        heightClass={s.wordmarkH}
+        className={className}
         priority
       />
     );
-    if (href) {
-      return (
-        <Link href={href} className="hover:opacity-90 transition-opacity inline-flex">
-          {lockup}
-        </Link>
-      );
-    }
-    return lockup;
   }
 
-  const content = (
-    <div className={`flex items-center ${variant === 'icon' ? '' : s.gap} ${className}`}>
-      {(variant === 'full' || variant === 'icon') && <NIcon size={s.icon} />}
-      {(variant === 'full') && (
-        <Wordmark textClass={s.text} showTagline={showTagline} taglineClass={s.tagline} />
-      )}
-    </div>
-  );
+  const lockupAlt = 'NiskBuild — Build anything. Own everything.';
 
-  if (href) {
-    return (
-      <Link href={href} className="hover:opacity-90 transition-opacity inline-flex">
-        {content}
-      </Link>
+  if (variant === 'image' || variant === 'lockup') {
+    return wrap(
+      <BrandImage
+        src={BRAND.lockup}
+        alt={lockupAlt}
+        heightClass={s.lockupH}
+        className={className}
+        priority
+      />
     );
   }
 
-  return content;
+  // full: icon + lockup wordmark row, or full lockup when tagline requested
+  if (showTagline) {
+    return wrap(
+      <BrandImage
+        src={BRAND.lockup}
+        alt={lockupAlt}
+        heightClass={s.lockupH}
+        className={className}
+        priority
+      />
+    );
+  }
+
+  return wrap(
+    <div className={`flex items-center gap-2.5 ${className}`}>
+      <Image
+        src={BRAND.icon}
+        alt=""
+        width={s.iconPx}
+        height={s.iconPx}
+        className="shrink-0 rounded-lg object-cover"
+        aria-hidden
+        priority
+      />
+      <BrandImage
+        src={BRAND.wordmark}
+        alt={lockupAlt}
+        heightClass={s.wordmarkH}
+      />
+    </div>
+  );
 }

@@ -42,6 +42,7 @@ export const AUTH_PATHS = ['/dashboard'];
 export const PAID_PATH_PREFIXES = ['/marketplace', '/admin'];
 
 export const PAID_TIERS = [
+  'basic',
   'pro',
   'agency',
   'scale',

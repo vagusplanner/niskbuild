@@ -1,5 +1,6 @@
 "use client";
 
+import Link from 'next/link';
 import Layout from '@/app/components/Layout';
 
 export default function TermsPage() {
@@ -34,12 +35,13 @@ export default function TermsPage() {
             <h2 className="text-2xl font-semibold text-white mb-4">4. Subscription and Payments</h2>
             <ul className="list-disc pl-6 space-y-2">
               <li>Sandbox ($0/month): 1 project, preview-only exports</li>
-              <li>Pro ($69/month): Freelancers — clean exports, cloud credits</li>
-              <li>Agency ($199/month): Studios — BYOC, preview links, 15 projects</li>
-              <li>Scale ($549/month): Teams — unlimited projects, priority AI</li>
-              <li>White-Label ($999/month): Resellers — full rebrand</li>
-              <li>Team Enterprise ($1,799/month): Mid companies — contact team@niskbuild.com</li>
-              <li>Sovereign ($3,499/month): Enterprise — contact team@niskbuild.com</li>
+              <li>Basic ($69/month): Solo freelancers — clean ZIP + PWA, no BYOC</li>
+              <li>Pro Worker ($129/month): Power users — BYOC, Google Places AI, Phaser.js games</li>
+              <li>Agency Studio ($299/month): Studios — preview links, team seats, client workflow</li>
+              <li>Scale Team ($799/month): Teams — unlimited projects, priority AI</li>
+              <li>White-Label ($1,199/month): Resellers — full rebrand, custom domains</li>
+              <li>Team Enterprise ($1,999/month): Mid companies — <Link href="/pricing" className="text-purple-400 hover:text-purple-300">self-serve checkout</Link> or annual billing</li>
+              <li>Sovereign ($3,999/month + $1,500 setup): Enterprise — <Link href="/pricing" className="text-purple-400 hover:text-purple-300">self-serve checkout</Link> with one-time setup fee</li>
               <li>Payments processed securely via Stripe</li>
               <li>Cancel anytime — no long-term contracts</li>
               <li>Refunds handled on a case-by-case basis</li>
@@ -90,7 +92,12 @@ export default function TermsPage() {
 
           <section>
             <h2 className="text-2xl font-semibold text-white mb-4">11. Contact</h2>
-            <p>Questions about these Terms? Contact us at <a href="mailto:hello@niskbuild.com" className="text-purple-400 hover:text-purple-300">hello@niskbuild.com</a></p>
+            <p>
+              Questions about these Terms?{' '}
+              <Link href="/landing#contact" className="text-purple-400 hover:text-purple-300">
+                Use our contact form →
+              </Link>
+            </p>
           </section>
         </div>
 

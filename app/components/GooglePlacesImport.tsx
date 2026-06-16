@@ -10,10 +10,17 @@ import type {
 
 type GooglePlacesImportProps = {
   canImport: boolean;
+  canUseCompetitorIntel?: boolean;
+  canUseSocialProof?: boolean;
   onImport: (business: GooglePlacesBusiness, context: GooglePlacesProjectContext) => void;
 };
 
-export default function GooglePlacesImport({ canImport, onImport }: GooglePlacesImportProps) {
+export default function GooglePlacesImport({
+  canImport,
+  canUseCompetitorIntel = false,
+  canUseSocialProof = false,
+  onImport,
+}: GooglePlacesImportProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<GooglePlacesSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -22,7 +29,11 @@ export default function GooglePlacesImport({ canImport, onImport }: GooglePlaces
   const [pendingContext, setPendingContext] = useState<GooglePlacesProjectContext | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [showEnrichment, setShowEnrichment] = useState(true);
+  const [showCompetitors, setShowCompetitors] = useState(false);
+  const [showSocialProof, setShowSocialProof] = useState(false);
   const [wasEnriched, setWasEnriched] = useState(false);
+  const [hasCompetitorIntel, setHasCompetitorIntel] = useState(false);
+  const [hasSocialProof, setHasSocialProof] = useState(false);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const searchBusinesses = useCallback(async (query: string) => {
@@ -79,13 +90,23 @@ export default function GooglePlacesImport({ canImport, onImport }: GooglePlaces
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ action: 'details', placeId, enrich: showEnrichment }),
+          body: JSON.stringify({
+            action: 'details',
+            placeId,
+            enrich: showEnrichment,
+            competitors: showCompetitors && canUseCompetitorIntel,
+            socialProof: showSocialProof && canUseSocialProof,
+          }),
         });
         const data = await response.json();
 
         if (!response.ok) {
           if (response.status === 403 && data.upgrade) {
-            setError('Pro plan required for Google Places import.');
+            if (data.upgradeTier === 'agency') {
+              setError('Competitor comparison requires Agency plan or above.');
+            } else {
+              setError('Pro plan required for Google Places import.');
+            }
             return;
           }
           setError(data.error || 'Could not load business details');
@@ -96,6 +117,8 @@ export default function GooglePlacesImport({ canImport, onImport }: GooglePlaces
           setSelectedBusiness(data.business);
           setPendingContext(data.projectContext || null);
           setWasEnriched(!!data.enriched);
+          setHasCompetitorIntel(!!data.competitorIntel || !!data.business.competitorIntel);
+          setHasSocialProof(!!data.socialProof || !!data.business.socialProof);
         }
       } catch {
         setError('Network error — try again');
@@ -103,7 +126,7 @@ export default function GooglePlacesImport({ canImport, onImport }: GooglePlaces
         setLoading(false);
       }
     },
-    [showEnrichment]
+    [showEnrichment, showCompetitors, showSocialProof, canUseCompetitorIntel, canUseSocialProof]
   );
 
   const handleImport = () => {
@@ -115,6 +138,8 @@ export default function GooglePlacesImport({ canImport, onImport }: GooglePlaces
     setSelectedBusiness(null);
     setPendingContext(null);
     setWasEnriched(false);
+    setHasCompetitorIntel(false);
+    setHasSocialProof(false);
     setError(null);
   };
 
@@ -133,7 +158,7 @@ export default function GooglePlacesImport({ canImport, onImport }: GooglePlaces
     <>
       <div className="shrink-0 px-0 pb-0">
         <p className="text-[10px] text-nisk-muted mb-2">
-          Building for a local business? Import their info automatically.
+          Import a local business with AI enrichment — not just data, real insight.
         </p>
         <button
           type="button"
@@ -173,7 +198,7 @@ export default function GooglePlacesImport({ canImport, onImport }: GooglePlaces
                 Search for your client&apos;s business name and city.
               </p>
 
-              <div className="flex items-center justify-between mb-4 p-3 rounded-xl border border-nisk bg-nisk-surface">
+              <div className="flex items-center justify-between mb-3 p-3 rounded-xl border border-nisk bg-nisk-surface">
                 <div>
                   <p className="text-sm text-white font-medium">AI Enrichment</p>
                   <p className="text-[10px] text-nisk-muted">Predict website, SEO keywords & review insights</p>
@@ -188,6 +213,68 @@ export default function GooglePlacesImport({ canImport, onImport }: GooglePlaces
                   }`}
                 >
                   {showEnrichment ? '✓ Enrichment ON' : 'Enrichment OFF'}
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between mb-4 p-3 rounded-xl border border-nisk bg-nisk-surface">
+                <div>
+                  <p className="text-sm text-white font-medium">Competitor Intel</p>
+                  <p className="text-[10px] text-nisk-muted">
+                    {canUseCompetitorIntel
+                      ? 'Find top 3 local rivals + comparison table'
+                      : 'Agency plan required'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!canUseCompetitorIntel) {
+                      const go = confirm(
+                        'Competitor comparison requires Agency plan or above.\n\nOpen Pricing?'
+                      );
+                      if (go) window.location.href = '/pricing';
+                      return;
+                    }
+                    setShowCompetitors((v) => !v);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    showCompetitors && canUseCompetitorIntel
+                      ? 'bg-orange-600 text-white'
+                      : 'bg-nisk border border-nisk text-nisk-muted'
+                  }`}
+                >
+                  {showCompetitors && canUseCompetitorIntel ? '✓ Competitors ON' : 'Competitors OFF'}
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between mb-4 p-3 rounded-xl border border-nisk bg-nisk-surface">
+                <div>
+                  <p className="text-sm text-white font-medium">Social Proof Wall</p>
+                  <p className="text-[10px] text-nisk-muted">
+                    {canUseSocialProof
+                      ? 'Instagram-style feed, counters & photo gallery'
+                      : 'Agency plan required'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!canUseSocialProof) {
+                      const go = confirm(
+                        'Social proof aggregator requires Agency plan or above.\n\nOpen Pricing?'
+                      );
+                      if (go) window.location.href = '/pricing';
+                      return;
+                    }
+                    setShowSocialProof((v) => !v);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    showSocialProof && canUseSocialProof
+                      ? 'bg-pink-600 text-white'
+                      : 'bg-nisk border border-nisk text-nisk-muted'
+                  }`}
+                >
+                  {showSocialProof && canUseSocialProof ? '✓ Social ON' : 'Social OFF'}
                 </button>
               </div>
 
@@ -340,9 +427,168 @@ export default function GooglePlacesImport({ canImport, onImport }: GooglePlaces
                               &ldquo;{selectedBusiness.testimonialQuote}&rdquo;
                             </p>
                           )}
+                          {selectedBusiness.improvementSuggestions &&
+                            selectedBusiness.improvementSuggestions.length > 0 && (
+                              <div className="mt-3">
+                                <p className="text-[10px] text-[var(--primary)] font-medium">
+                                  💡 Suggested improvements
+                                </p>
+                                <ul className="text-xs text-gray-300 ml-4 mt-1 list-disc">
+                                  {selectedBusiness.improvementSuggestions.map((s) => (
+                                    <li key={s}>{s}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                        </div>
+                      )}
+
+                      {selectedBusiness.photos && selectedBusiness.photos.length > 0 && (
+                        <div className="p-4 rounded-xl border border-nisk bg-nisk-surface">
+                          <h3 className="font-semibold text-white text-sm mb-2">📷 Business Photos</h3>
+                          <div className="grid grid-cols-3 gap-2">
+                            {selectedBusiness.photos.map((src) => (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                key={src}
+                                src={src}
+                                alt={selectedBusiness.name}
+                                className="w-full h-16 object-cover rounded-lg border border-nisk"
+                              />
+                            ))}
+                          </div>
                         </div>
                       )}
                     </>
+                  )}
+
+                  {hasCompetitorIntel && selectedBusiness.competitorIntel && (
+                    <div className="p-4 rounded-xl border border-orange-500/30 bg-orange-500/10">
+                      <h3 className="font-semibold text-orange-300 text-sm mb-2">
+                        🏆 Competitor Intel
+                      </h3>
+                      <p className="text-xs text-gray-300 mb-2">
+                        <span className="text-nisk-muted">USP:</span>{' '}
+                        {selectedBusiness.competitorIntel.uniqueSellingPoint}
+                      </p>
+                      <p className="text-xs text-nisk-muted italic mb-3">
+                        {selectedBusiness.competitorIntel.whyChooseUs}
+                      </p>
+                      {selectedBusiness.competitorIntel.competitors.map((c) => (
+                        <div
+                          key={c.name}
+                          className="text-xs text-gray-300 py-1.5 border-t border-orange-500/20 first:border-0"
+                        >
+                          <span className="text-white font-medium">{c.name}</span>
+                          {c.rating != null && (
+                            <span className="text-yellow-400 ml-2">★ {c.rating}</span>
+                          )}
+                          <span className="text-nisk-muted ml-2 capitalize">({c.pricingTier})</span>
+                          <p className="text-[10px] text-nisk-muted mt-0.5">{c.differentiator}</p>
+                        </div>
+                      ))}
+                      {selectedBusiness.competitorIntel.comparisonTable.length > 0 && (
+                        <div className="mt-3 overflow-x-auto">
+                          <table className="w-full text-[10px]">
+                            <thead>
+                              <tr className="text-nisk-muted">
+                                <th className="text-left py-1 pr-2">Feature</th>
+                                <th className="text-left py-1 pr-2">Client</th>
+                                {selectedBusiness.competitorIntel.competitors.map((c) => (
+                                  <th key={c.name} className="text-left py-1 pr-2 truncate max-w-[72px]">
+                                    {c.name.split(' ')[0]}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {selectedBusiness.competitorIntel.comparisonTable.map((row) => (
+                                <tr key={row.feature} className="border-t border-orange-500/10">
+                                  <td className="py-1 pr-2 text-nisk-muted">{row.feature}</td>
+                                  <td className="py-1 pr-2 text-white">{row.client}</td>
+                                  {row.competitors.map((val, i) => (
+                                    <td key={`${row.feature}-${i}`} className="py-1 pr-2 text-gray-300">
+                                      {val}
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {hasSocialProof && selectedBusiness.socialProof && (
+                    <div className="p-4 rounded-xl border border-pink-500/30 bg-pink-500/10">
+                      <h3 className="font-semibold text-pink-300 text-sm mb-2">
+                        📱 Social Proof Wall
+                      </h3>
+                      <p className="text-xs text-gray-300 mb-2">
+                        <span className="text-nisk-muted">Instagram:</span>{' '}
+                        <a
+                          href={selectedBusiness.socialProof.instagramProfileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-pink-300 hover:underline"
+                        >
+                          {selectedBusiness.socialProof.instagramHandle}
+                        </a>
+                      </p>
+                      <p className="text-[10px] text-nisk-muted mb-2">
+                        {selectedBusiness.socialProof.facebookPresence}
+                      </p>
+                      <p className="text-[10px] text-nisk-muted mb-3">
+                        {selectedBusiness.socialProof.tiktokMentionEstimate}
+                      </p>
+                      {selectedBusiness.socialProof.counters.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {selectedBusiness.socialProof.counters.map((c) => (
+                            <span
+                              key={c.label}
+                              className="px-2 py-1 rounded-lg text-[10px] border border-pink-500/30 bg-pink-500/5 text-white"
+                            >
+                              {c.label}: <strong>{c.value}</strong>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {selectedBusiness.socialProof.asSeenOnBadges.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mb-3">
+                          {selectedBusiness.socialProof.asSeenOnBadges.map((badge) => (
+                            <span
+                              key={badge}
+                              className="px-2 py-0.5 rounded-full text-[10px] bg-nisk text-nisk-muted border border-nisk"
+                            >
+                              {badge}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {selectedBusiness.socialProof.wallPosts.length > 0 && (
+                        <div className="grid grid-cols-3 gap-2">
+                          {selectedBusiness.socialProof.wallPosts.slice(0, 6).map((post, i) => (
+                            <div
+                              key={`${post.caption}-${i}`}
+                              className="rounded-lg border border-pink-500/20 overflow-hidden bg-nisk-surface"
+                            >
+                              {post.imageUrl && (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={post.imageUrl}
+                                  alt=""
+                                  className="w-full h-12 object-cover"
+                                />
+                              )}
+                              <p className="text-[9px] text-gray-300 p-1.5 line-clamp-2">
+                                {post.caption}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               )}

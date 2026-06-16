@@ -120,6 +120,13 @@ export default function CommandPalette() {
         run: () => router.push('/dashboard/settings'),
       },
       {
+        id: 'qa-support',
+        label: 'Open Support',
+        section: 'Quick Actions',
+        href: '/dashboard/support',
+        run: () => router.push('/dashboard/support'),
+      },
+      {
         id: 'qa-billing',
         label: 'View Billing',
         section: 'Quick Actions',

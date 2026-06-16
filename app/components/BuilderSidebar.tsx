@@ -1,6 +1,7 @@
 "use client";
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { MAIN_NAV } from '@/lib/nav-config';
@@ -37,7 +38,17 @@ export default function BuilderSidebar({
   );
 
   return (
-    <aside className="w-14 shrink-0 flex flex-col items-center py-3 gap-1 border-r border-nisk bg-nisk-card">
+    <aside className="w-[60px] shrink-0 flex flex-col items-center py-3 gap-1 border-r border-nisk bg-nisk-card shadow-[2px_0_24px_rgba(0,0,0,0.35)]">
+      <Link href="/dashboard" className="mb-2 p-1.5 rounded-xl hover:bg-[var(--surface-elevated)] transition-colors" title="Dashboard">
+        <Image
+          src="/logo/niskbuild-icon-brand.png"
+          alt="NiskBuild"
+          width={28}
+          height={28}
+          className="shrink-0 rounded-lg object-cover"
+        />
+      </Link>
+
       {items.map((item) => {
         if (item.href === '/builder') {
           return (
@@ -45,10 +56,10 @@ export default function BuilderSidebar({
               key={item.href}
               href={item.href}
               title={item.label}
-              className={`w-10 h-10 flex items-center justify-center rounded-xl text-lg transition-all ${
+              className={`w-11 h-11 flex items-center justify-center rounded-xl text-lg transition-all ${
                 pathname === '/builder'
-                  ? 'bg-[var(--accent-cyan)]/15 text-[var(--accent-cyan)] ring-1 ring-[var(--accent-cyan)]/30'
-                  : 'text-nisk-muted hover:text-white hover:bg-[var(--surface-elevated)]'
+                  ? 'bg-[var(--primary)]/12 text-[var(--primary)] ring-1 ring-[var(--primary)]/25 shadow-sm'
+                  : 'text-nisk-muted hover:text-[var(--foreground)] hover:bg-[var(--surface-elevated)]'
               }`}
             >
               {item.icon}
@@ -60,10 +71,10 @@ export default function BuilderSidebar({
             key={item.href}
             href={item.href}
             title={item.label}
-            className={`w-10 h-10 flex items-center justify-center rounded-xl text-lg transition-all ${
+            className={`w-11 h-11 flex items-center justify-center rounded-xl text-lg transition-all ${
               pathname.startsWith(item.href)
-                ? 'bg-[var(--primary)]/15 text-[var(--primary)]'
-                : 'text-nisk-muted hover:text-white hover:bg-[var(--surface-elevated)]'
+                ? 'bg-[var(--secondary)]/10 text-[var(--secondary)] ring-1 ring-[var(--secondary)]/20'
+                : 'text-nisk-muted hover:text-[var(--foreground)] hover:bg-[var(--surface-elevated)]'
             }`}
           >
             {item.icon}
@@ -77,56 +88,41 @@ export default function BuilderSidebar({
         type="button"
         onClick={onProjectsClick}
         title="Projects"
-        className={`relative w-10 h-10 flex items-center justify-center rounded-xl text-lg transition-all ${
+        className={`relative w-11 h-11 flex items-center justify-center rounded-xl text-lg transition-all ${
           projectsOpen
-            ? 'bg-[var(--secondary)]/15 text-[var(--secondary)]'
-            : 'text-nisk-muted hover:text-white hover:bg-[var(--surface-elevated)]'
+            ? 'bg-amber-500/12 text-amber-600 ring-1 ring-amber-500/25'
+            : 'text-nisk-muted hover:text-[var(--foreground)] hover:bg-slate-100'
         }`}
       >
         📁
         {projectCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-[var(--accent-cyan)] text-[#050508] text-[9px] font-bold flex items-center justify-center">
-            {projectCount}
+          <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-[var(--primary)] text-white text-[9px] font-bold flex items-center justify-center">
+            {projectCount > 9 ? '9+' : projectCount}
           </span>
         )}
       </button>
-
-      <Link
-        href="/dashboard"
-        title="Dashboard"
-        className={`w-10 h-10 flex items-center justify-center rounded-xl text-lg transition-all ${
-          pathname === '/dashboard'
-            ? 'bg-[var(--primary)]/15 text-[var(--primary)]'
-            : 'text-nisk-muted hover:text-white hover:bg-[var(--surface-elevated)]'
-        }`}
-      >
-        📊
-      </Link>
-
-      <Link
-        href="/dashboard/settings"
-        title="Settings"
-        className={`w-10 h-10 flex items-center justify-center rounded-xl text-lg transition-all ${
-          pathname.startsWith('/dashboard/settings') || pathname === '/settings'
-            ? 'bg-[var(--accent-cyan)]/15 text-[var(--accent-cyan)]'
-            : 'text-nisk-muted hover:text-white hover:bg-[var(--surface-elevated)]'
-        }`}
-      >
-        ⚙️
-      </Link>
 
       <div className="flex-1" />
 
       <Link
         href="/dashboard/settings"
-        title="Profile"
-        className="w-10 h-10 rounded-full overflow-hidden border border-nisk flex items-center justify-center bg-gradient-brand text-sm font-bold text-white mb-2"
+        title="Settings"
+        className="w-11 h-11 flex items-center justify-center rounded-xl text-lg text-nisk-muted hover:text-[var(--foreground)] hover:bg-[var(--surface-elevated)] transition-all"
+      >
+        ⚙️
+      </Link>
+
+      <Link
+        href="/dashboard"
+        title="Account"
+        className="w-11 h-11 rounded-xl overflow-hidden ring-1 ring-nisk hover:ring-[var(--primary)]/40 transition-all mb-1"
       >
         {avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
           <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
         ) : (
-          initials
+          <span className="w-full h-full flex items-center justify-center bg-gradient-brand text-white text-sm font-bold">
+            {initials}
+          </span>
         )}
       </Link>
     </aside>

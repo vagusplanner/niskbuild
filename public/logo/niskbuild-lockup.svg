@@ -1,18 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 56" fill="none" aria-labelledby="niskbuild-lockup-title">
-  <title id="niskbuild-lockup-title">NiskBuild</title>
-  <defs>
-    <linearGradient id="niskGrad" x1="4" y1="4" x2="36" y2="44" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#22D3EE"/>
-      <stop offset="0.5" stop-color="#4F6EF7"/>
-      <stop offset="1" stop-color="#7C3AED"/>
-    </linearGradient>
-  </defs>
-  <g transform="translate(0,4)">
-    <path d="M4 4h7v36H4V4z" fill="url(#niskGrad)"/>
-    <path d="M25 4h7v36h-7V4z" fill="url(#niskGrad)"/>
-    <path d="M11 4l10 18-10 18V4z" fill="url(#niskGrad)"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 72" fill="none" aria-labelledby="niskbuild-lockup-title">
+  <title id="niskbuild-lockup-title">NiskBuild — Build anything. Own everything.</title>
+  <g transform="translate(4,8)">
+    <polygon points="20,6 34,14 20,22 6,14" fill="#D1D5FF"/>
+    <polygon points="6,14 20,22 20,36 6,28" fill="#8467B3"/>
+    <polygon points="20,22 34,14 34,28 20,36" fill="#5E81FF"/>
   </g>
-  <text x="44" y="26" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="20" font-weight="800" letter-spacing="0.1em" fill="#FFFFFF">NISK</text>
-  <text x="112" y="26" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="20" font-weight="800" letter-spacing="0.1em" fill="#7C3AED">BUILD</text>
-  <text x="44" y="46" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="9" font-weight="600" letter-spacing="0.18em" fill="#22D3EE">BUILD ANYTHING. OWN EVERYTHING.</text>
+  <text x="52" y="30" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="22" font-weight="800" letter-spacing="0.1em" fill="#FFFFFF">NISK</text>
+  <text x="128" y="30" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="22" font-weight="800" letter-spacing="0.1em" fill="#5E81FF">BUILD</text>
+  <text x="52" y="52" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="10" font-weight="500" letter-spacing="0.16em" fill="#9CA3AF">BUILD ANYTHING. OWN EVERYTHING.</text>
 </svg>

@@ -3,6 +3,8 @@ import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { ENTERPRISE_SALES_EMAIL, PRICING_TIERS } from '@/lib/pricing-tiers';
 import { sendEmail } from '@/lib/send-email';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { createSupportTicket, notifyAdminNewTicket } from '@/lib/support-tickets';
 
 const CONTACT_SALES_TIERS = new Set(
   PRICING_TIERS.filter((t) => t.contactSales).map((t) => t.tier)
@@ -53,6 +55,33 @@ export async function POST(request: NextRequest) {
     const recipient = tierMeta?.contactEmail || ENTERPRISE_SALES_EMAIL;
 
     const subject = `Sales inquiry: ${planName} (${planPrice}/mo)`;
+    const fullMessage = company ? `Company: ${company}\n\n${message}` : message;
+
+    const admin = createAdminClient();
+    const ticket = await createSupportTicket(admin, {
+      userId: guard.user?.id ?? null,
+      email,
+      name,
+      subject,
+      category: 'sales',
+      message: fullMessage,
+      planTier: plan,
+      source: 'contact_sales',
+      priority: 'high',
+    });
+
+    if (ticket) {
+      void notifyAdminNewTicket({
+        ticketId: ticket.id,
+        subject,
+        name,
+        email,
+        category: 'sales',
+        message: fullMessage,
+        planTier: planName,
+      });
+    }
+
     const html = `
       <div style="font-family:system-ui,sans-serif;max-width:560px;color:#111;">
         <h2 style="margin:0 0 16px;">New ${escapeHtml(planName)} inquiry</h2>

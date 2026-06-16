@@ -13,6 +13,7 @@ import type { NiskBuildPromptEntry } from '@/lib/niskbuild-config';
 import { parseNiskBuildConfig } from '@/lib/niskbuild-config';
 import Layout from '@/app/components/Layout';
 import WelcomeAssistant from '@/app/components/WelcomeAssistant';
+import HelpAssistant from '@/app/components/HelpAssistant';
 import DemographicOnboarding from '@/app/components/DemographicOnboarding';
 import type { DemographicTier } from '@/lib/demographic-tiers';
 import InspectPicker, { injectInspectScript, type InspectTarget } from '@/app/components/InspectPicker';
@@ -29,6 +30,8 @@ import {
   canExportNative,
   canExportPwa,
   canImportGooglePlaces,
+  canUseCompetitorIntel,
+  canUseSocialProofAggregator,
   canUseLocalOllama,
   canUseSeoSchema,
   canUseVisualEditor,
@@ -88,7 +91,7 @@ const CodeEditor = dynamic(() => import('@/app/components/CodeEditor'), {
 const EDITOR_PLACEHOLDER = `// Your generated code will appear here...
 // Describe your app below and press Generate`;
 
-const PLACEHOLDER_PREVIEW = `<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#0B0F19;color:#94A3B8;font-family:system-ui,sans-serif;font-size:14px;text-align:center;padding:2rem;"><div><div style="font-size:32px;margin-bottom:12px">⚡</div>Your live preview will appear here<br><span style="color:#4F6EF7;margin-top:8px;display:block">Describe your app and hit Generate</span></div></div>`;
+const PLACEHOLDER_PREVIEW = `<div style="display:flex;align-items:center;justify-content:center;height:100%;background:linear-gradient(160deg,#f8fafc 0%,#e2e8f0 100%);color:#64748b;font-family:system-ui,sans-serif;font-size:14px;text-align:center;padding:2rem;"><div style="max-width:320px;padding:2rem;background:#fff;border-radius:16px;box-shadow:0 8px 32px rgba(15,23,42,0.08);border:1px solid #e2e8f0;"><div style="font-size:36px;margin-bottom:12px">✨</div><p style="margin:0 0 8px;font-weight:600;color:#0f172a;">Your preview appears here</p><p style="margin:0;font-size:13px;">Describe your app in the chat and hit <strong style="color:#3B5BD9">Generate</strong></p></div></div>`;
 
 interface SavedProject {
   id: string;
@@ -1285,10 +1288,10 @@ function BuilderContent() {
 
   if (authChecking) {
     return (
-      <div className="h-screen flex items-center justify-center bg-nisk">
-        <div className="text-center">
+      <div className="h-screen flex items-center justify-center bg-[var(--background)]">
+        <div className="text-center p-8 rounded-2xl bg-nisk-card shadow-lg border border-nisk">
           <div className="w-10 h-10 border-4 border-[var(--primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-nisk-muted text-sm">Loading builder...</p>
+          <p className="text-nisk-muted text-sm font-medium">Loading builder...</p>
         </div>
       </div>
     );
@@ -1301,6 +1304,8 @@ function BuilderContent() {
   const canVisualEdit = canUseVisualEditor(subscriptionTier, subscriptionStatus);
   const canVisualEditFull = canUseVisualEditorFull(subscriptionTier, subscriptionStatus);
   const canGooglePlaces = canImportGooglePlaces(subscriptionTier, subscriptionStatus);
+  const canCompetitorIntel = canUseCompetitorIntel(subscriptionTier, subscriptionStatus);
+  const canSocialProof = canUseSocialProofAggregator(subscriptionTier, subscriptionStatus);
   const cloudCreditsAllowance = getCloudCreditsForTier(subscriptionTier);
   const importedBusinessName = projectContext?.business?.name ?? null;
   const recentProjects = savedProjects.slice(0, 5);
@@ -1314,6 +1319,7 @@ function BuilderContent() {
     <Layout variant="builder">
       <DemographicOnboarding open={showDemographic} onComplete={handleDemographicComplete} />
       <WelcomeAssistant open={showWelcome} onComplete={handleWelcomeComplete} userName={userName} />
+      <HelpAssistant mode="user" projectId={activeProjectId} />
       <MobileExportModal
         open={showMobileExport}
         projectTitle={prompt.substring(0, 50) || 'Untitled Project'}
@@ -1327,7 +1333,7 @@ function BuilderContent() {
 
         <button
         onClick={() => setShowWelcome(true)}
-        className="fixed bottom-4 right-4 z-40 w-10 h-10 rounded-full bg-nisk-card border border-nisk text-white hover:border-[var(--accent-cyan)] shadow-lg transition-colors flex items-center justify-center text-sm font-bold"
+        className="fixed bottom-4 right-4 z-40 w-10 h-10 rounded-full bg-nisk-card border border-nisk text-[var(--primary)] hover:border-[var(--primary)] shadow-lg transition-colors flex items-center justify-center text-sm font-bold"
         title="Help tour (? for shortcuts)"
         aria-label="Open help tour"
       >
@@ -1472,6 +1478,8 @@ function BuilderContent() {
           }}
           isSandboxAtLimit={isSandboxTier(subscriptionTier) && savedProjects.length >= projectLimit}
           canImportGooglePlaces={canGooglePlaces}
+          canUseCompetitorIntel={canCompetitorIntel}
+          canUseSocialProof={canSocialProof}
           importedBusinessName={importedBusinessName}
           onGooglePlacesImport={handleGooglePlacesImport}
           seoSettings={seoSettings}
