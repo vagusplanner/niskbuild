@@ -38,14 +38,14 @@ export default function BuilderSidebar({
   );
 
   return (
-    <aside className="w-[60px] shrink-0 flex flex-col items-center py-3 gap-1 border-r border-nisk bg-nisk-card shadow-[2px_0_24px_rgba(0,0,0,0.35)]">
-      <Link href="/dashboard" className="mb-2 p-1.5 rounded-xl hover:bg-[var(--surface-elevated)] transition-colors" title="Dashboard">
+    <aside className="w-[60px] shrink-0 flex flex-col items-center py-3 gap-1 border-r border-nisk bg-nisk-card shadow-[2px_0_16px_rgba(15,23,42,0.06)]">
+      <Link href="/dashboard" className="mb-2 p-1 rounded-xl hover:bg-[var(--surface-elevated)] transition-colors" title="Dashboard">
         <Image
-          src="/logo/niskbuild-icon-brand.png"
+          src="/logo/niskbuild-icon.svg"
           alt="NiskBuild"
-          width={28}
-          height={28}
-          className="shrink-0 rounded-lg object-cover"
+          width={40}
+          height={40}
+          className="shrink-0 object-contain drop-shadow-[0_2px_6px_rgba(15,23,42,0.12)] rounded-lg"
         />
       </Link>
 

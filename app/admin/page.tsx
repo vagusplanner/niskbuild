@@ -171,7 +171,7 @@ export default function AdminDashboard() {
     return (
       <Layout>
         <div className="flex items-center justify-center h-64">
-          <div className="text-gray-400">Loading admin dashboard...</div>
+          <div className="text-nisk-muted">Loading admin dashboard...</div>
         </div>
       </Layout>
     );
@@ -183,7 +183,7 @@ export default function AdminDashboard() {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-red-400 mb-4">Unauthorized</h1>
-            <p className="text-gray-400">Admin access only</p>
+            <p className="text-nisk-muted">Admin access only</p>
           </div>
         </div>
       </Layout>
@@ -201,37 +201,37 @@ export default function AdminDashboard() {
   return (
     <Layout>
       <div className="max-w-7xl mx-auto py-8 px-4">
-        <h1 className="text-3xl font-bold text-white mb-2">📊 Admin Dashboard</h1>
-        <p className="text-gray-400 mb-6">Platform analytics & user management</p>
+        <h1 className="text-3xl font-bold text-[var(--foreground)] mb-2">📊 Admin Dashboard</h1>
+        <p className="text-nisk-muted mb-6">Platform analytics & user management</p>
 
-        <div className="flex gap-2 mb-6 border-b border-gray-800 pb-2">
+        <div className="flex gap-2 mb-6 border-b border-nisk pb-2">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`px-4 py-2 rounded-lg transition-colors ${activeTab === 'overview' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'}`}
+            className={`px-4 py-2 rounded-lg transition-colors ${activeTab === 'overview' ? 'bg-[var(--primary)] text-white' : 'text-nisk-muted hover:text-[var(--foreground)]'}`}
           >
             📈 Overview
           </button>
           <button
             onClick={() => setActiveTab('users')}
-            className={`px-4 py-2 rounded-lg transition-colors ${activeTab === 'users' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'}`}
+            className={`px-4 py-2 rounded-lg transition-colors ${activeTab === 'users' ? 'bg-[var(--primary)] text-white' : 'text-nisk-muted hover:text-[var(--foreground)]'}`}
           >
             👥 Users
           </button>
           <button
             onClick={() => setActiveTab('builds')}
-            className={`px-4 py-2 rounded-lg transition-colors ${activeTab === 'builds' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'}`}
+            className={`px-4 py-2 rounded-lg transition-colors ${activeTab === 'builds' ? 'bg-[var(--primary)] text-white' : 'text-nisk-muted hover:text-[var(--foreground)]'}`}
           >
             🏗️ Builds
           </button>
           <button
             onClick={() => { window.location.href = '/admin/support'; }}
-            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"
+            className="px-4 py-2 rounded-lg bg-[var(--primary)] hover:opacity-90 text-[var(--foreground)] transition-colors"
           >
             💬 Support
           </button>
           <button
             onClick={() => { window.location.href = '/admin/users'; }}
-            className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white transition-colors"
+            className="px-4 py-2 rounded-lg bg-[var(--surface-elevated)] hover:bg-[var(--card-bg)] text-[var(--foreground)] transition-colors"
           >
             👑 Manage Users
           </button>
@@ -240,64 +240,64 @@ export default function AdminDashboard() {
         {activeTab === 'overview' && data && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-              <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-6">
-                <div className="text-3xl font-bold text-purple-400">{data.totalUsers}</div>
-                <div className="text-sm text-gray-400">Total Users</div>
+              <div className="bg-nisk-card border border-nisk p-6">
+                <div className="text-3xl font-bold text-[var(--primary)]">{data.totalUsers}</div>
+                <div className="text-sm text-nisk-muted">Total Users</div>
               </div>
-              <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-6">
+              <div className="bg-nisk-card border border-nisk p-6">
                 <div className="text-3xl font-bold text-emerald-400">{data.activeUsers7d}</div>
-                <div className="text-sm text-gray-400">Active (7d)</div>
+                <div className="text-sm text-nisk-muted">Active (7d)</div>
               </div>
-              <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-6">
+              <div className="bg-nisk-card border border-nisk p-6">
                 <div className="text-3xl font-bold text-blue-400">{data.totalBuilds}</div>
-                <div className="text-sm text-gray-400">Total Builds</div>
+                <div className="text-sm text-nisk-muted">Total Builds</div>
               </div>
-              <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-6">
+              <div className="bg-nisk-card border border-nisk p-6">
                 <div className="text-3xl font-bold text-yellow-400">
                   {data.conversionRate.toFixed(1)}%
                 </div>
-                <div className="text-sm text-gray-400">Conversion Rate</div>
+                <div className="text-sm text-nisk-muted">Conversion Rate</div>
               </div>
             </div>
 
-            <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-6 mb-8">
-              <h2 className="text-lg font-semibold text-white mb-4">📈 Builds (Last 7 Days)</h2>
+            <div className="bg-nisk-card border border-nisk p-6 mb-8">
+              <h2 className="text-lg font-semibold text-[var(--foreground)] mb-4">📈 Builds (Last 7 Days)</h2>
               <div className="flex items-end gap-2 h-32">
                 {data.buildsByDay.map((day, i) => (
                   <div key={i} className="flex-1 flex flex-col items-center">
                     <div
-                      className="w-full bg-purple-500 rounded-t"
+                      className="w-full bg-[var(--primary)] rounded-t"
                       style={{
                         height: `${Math.min(100, (day.count / maxBuildCount) * 100)}px`,
                       }}
                     />
-                    <div className="text-xs text-gray-400 mt-2">
+                    <div className="text-xs text-nisk-muted mt-2">
                       {new Date(day.date).toLocaleDateString(undefined, { weekday: 'short' })}
                     </div>
-                    <div className="text-xs text-white">{day.count}</div>
+                    <div className="text-xs text-[var(--foreground)]">{day.count}</div>
                   </div>
                 ))}
               </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-6">
-                <h2 className="text-lg font-semibold text-white mb-4">🔥 Top App Categories</h2>
+              <div className="bg-nisk-card border border-nisk p-6">
+                <h2 className="text-lg font-semibold text-[var(--foreground)] mb-4">🔥 Top App Categories</h2>
                 <div className="space-y-3">
                   {data.topCategories.map((cat, i) => (
                     <div key={i} className="flex justify-between items-center">
-                      <span className="text-gray-300 capitalize">{cat.category}</span>
-                      <span className="text-purple-400">{cat.count} builds</span>
+                      <span className="text-nisk-muted capitalize">{cat.category}</span>
+                      <span className="text-[var(--primary)]">{cat.count} builds</span>
                     </div>
                   ))}
                 </div>
               </div>
-              <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-6">
-                <h2 className="text-lg font-semibold text-white mb-4">🔧 Top Features Used</h2>
+              <div className="bg-nisk-card border border-nisk p-6">
+                <h2 className="text-lg font-semibold text-[var(--foreground)] mb-4">🔧 Top Features Used</h2>
                 <div className="space-y-3">
                   {data.topFeatures.map((feature, i) => (
                     <div key={i} className="flex justify-between items-center">
-                      <span className="text-gray-300 capitalize">{feature.feature}</span>
+                      <span className="text-nisk-muted capitalize">{feature.feature}</span>
                       <span className="text-emerald-400">{feature.count} times</span>
                     </div>
                   ))}
@@ -308,17 +308,17 @@ export default function AdminDashboard() {
         )}
 
         {activeTab === 'users' && data && (
-          <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-6">
-            <h2 className="text-lg font-semibold text-white mb-4">👥 Users by Tier</h2>
+          <div className="bg-nisk-card border border-nisk p-6">
+            <h2 className="text-lg font-semibold text-[var(--foreground)] mb-4">👥 Users by Tier</h2>
             <div className="space-y-4">
               <div>
                 <div className="flex justify-between mb-1">
-                  <span className="text-gray-300">Free / Sandbox</span>
-                  <span className="text-gray-400">{freeUsers} users</span>
+                  <span className="text-nisk-muted">Free / Sandbox</span>
+                  <span className="text-nisk-muted">{freeUsers} users</span>
                 </div>
-                <div className="w-full bg-gray-800 rounded-full h-2">
+                <div className="w-full bg-[var(--accent-lavender)] rounded-full h-2">
                   <div
-                    className="bg-gray-500 h-2 rounded-full"
+                    className="bg-[var(--muted)] h-2 rounded-full"
                     style={{
                       width: `${data.totalUsers ? (freeUsers / data.totalUsers) * 100 : 0}%`,
                     }}
@@ -327,10 +327,10 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <div className="flex justify-between mb-1">
-                  <span className="text-gray-300">Pro Worker ($129)</span>
+                  <span className="text-nisk-muted">Pro Worker ($129)</span>
                   <span className="text-blue-400">{data.proUsers} users</span>
                 </div>
-                <div className="w-full bg-gray-800 rounded-full h-2">
+                <div className="w-full bg-[var(--accent-lavender)] rounded-full h-2">
                   <div
                     className="bg-blue-500 h-2 rounded-full"
                     style={{
@@ -341,12 +341,12 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <div className="flex justify-between mb-1">
-                  <span className="text-gray-300">Agency Studio ($299)</span>
-                  <span className="text-purple-400">{data.agencyUsers} users</span>
+                  <span className="text-nisk-muted">Agency Studio ($299)</span>
+                  <span className="text-[var(--primary)]">{data.agencyUsers} users</span>
                 </div>
-                <div className="w-full bg-gray-800 rounded-full h-2">
+                <div className="w-full bg-[var(--accent-lavender)] rounded-full h-2">
                   <div
-                    className="bg-purple-500 h-2 rounded-full"
+                    className="bg-[var(--primary)] h-2 rounded-full"
                     style={{
                       width: `${data.totalUsers ? (data.agencyUsers / data.totalUsers) * 100 : 0}%`,
                     }}
@@ -355,12 +355,12 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <div className="flex justify-between mb-1">
-                  <span className="text-gray-300">Scale ($549) / White-Label</span>
+                  <span className="text-nisk-muted">Scale ($549) / White-Label</span>
                   <span className="text-emerald-400">
                     {data.scaleUsers + data.whiteLabelUsers} users
                   </span>
                 </div>
-                <div className="w-full bg-gray-800 rounded-full h-2">
+                <div className="w-full bg-[var(--accent-lavender)] rounded-full h-2">
                   <div
                     className="bg-emerald-500 h-2 rounded-full"
                     style={{
@@ -374,20 +374,20 @@ export default function AdminDashboard() {
         )}
 
         {activeTab === 'builds' && data && (
-          <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-6">
-            <h2 className="text-lg font-semibold text-white mb-4">🏗️ Build Statistics</h2>
+          <div className="bg-nisk-card border border-nisk p-6">
+            <h2 className="text-lg font-semibold text-[var(--foreground)] mb-4">🏗️ Build Statistics</h2>
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div>
-                <div className="text-2xl font-bold text-white">{data.totalBuilds}</div>
-                <div className="text-xs text-gray-400">Total builds (all time)</div>
+                <div className="text-2xl font-bold text-[var(--foreground)]">{data.totalBuilds}</div>
+                <div className="text-xs text-nisk-muted">Total builds (all time)</div>
               </div>
               <div>
                 <div className="text-2xl font-bold text-emerald-400">{data.buildsToday}</div>
-                <div className="text-xs text-gray-400">Builds today</div>
+                <div className="text-xs text-nisk-muted">Builds today</div>
               </div>
               <div>
-                <div className="text-2xl font-bold text-purple-400">{data.totalProjects}</div>
-                <div className="text-xs text-gray-400">Saved projects</div>
+                <div className="text-2xl font-bold text-[var(--primary)]">{data.totalProjects}</div>
+                <div className="text-xs text-nisk-muted">Saved projects</div>
               </div>
               <div>
                 <div className="text-2xl font-bold text-blue-400">
@@ -395,7 +395,7 @@ export default function AdminDashboard() {
                     ? (data.totalBuilds / data.totalProjects).toFixed(1)
                     : '0.0'}
                 </div>
-                <div className="text-xs text-gray-400">Avg builds per project</div>
+                <div className="text-xs text-nisk-muted">Avg builds per project</div>
               </div>
             </div>
           </div>

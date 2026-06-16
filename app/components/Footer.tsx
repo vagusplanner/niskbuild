@@ -7,7 +7,7 @@ export default function Footer() {
     <footer className="border-t border-[var(--border)] py-8 text-center glass-panel rounded-t-2xl mt-8">
       <div className="container mx-auto px-4">
         <div className="flex justify-center mb-4">
-          <NiskBuildLogo href="/landing" variant="full" size="sm" showTagline />
+          <NiskBuildLogo href="/landing" variant="lockup" size="md" />
         </div>
         <p className="text-xs text-nisk-muted mb-3">Fully local export · You own the code</p>
         <div className="flex justify-center flex-wrap gap-4 text-xs text-nisk-muted">

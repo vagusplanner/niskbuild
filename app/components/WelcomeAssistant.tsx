@@ -78,7 +78,7 @@ export default function WelcomeAssistant({ open, onComplete, userName }: Welcome
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={handleSkip} />
+      <div className="absolute inset-0 bg-[var(--overlay)] backdrop-blur-sm" onClick={handleSkip} />
 
       <div className="relative w-full max-w-lg bg-nisk-card border border-nisk rounded-2xl shadow-2xl overflow-hidden">
         <div className="h-1 bg-[var(--border)]">
@@ -96,14 +96,14 @@ export default function WelcomeAssistant({ open, onComplete, userName }: Welcome
                 <p className="text-[10px] uppercase tracking-wider text-nisk-muted">
                   Step {step + 1} of {STEPS.length}
                 </p>
-                <h2 className="text-xl font-bold text-white">
+                <h2 className="text-xl font-bold text-[var(--foreground)]">
                   {step === 0 && userName ? `Welcome, ${userName}!` : current.title}
                 </h2>
               </div>
             </div>
             <button
               onClick={handleSkip}
-              className="text-nisk-muted hover:text-white text-sm transition-colors"
+              className="text-nisk-muted hover:text-[var(--foreground)] text-sm transition-colors"
               aria-label="Close"
             >
               ✕
@@ -155,14 +155,14 @@ export default function WelcomeAssistant({ open, onComplete, userName }: Welcome
               {step > 0 && (
                 <button
                   onClick={() => setStep((s) => s - 1)}
-                  className="px-4 py-2 text-sm text-nisk-muted hover:text-white transition-colors"
+                  className="px-4 py-2 text-sm text-nisk-muted hover:text-[var(--foreground)] transition-colors"
                 >
                   Back
                 </button>
               )}
               <button
                 onClick={handleSkip}
-                className="px-4 py-2 text-sm text-nisk-muted hover:text-white transition-colors"
+                className="px-4 py-2 text-sm text-nisk-muted hover:text-[var(--foreground)] transition-colors"
               >
                 Skip tour
               </button>

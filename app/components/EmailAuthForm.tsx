@@ -49,14 +49,14 @@ export default function EmailAuthForm({ nextPath = '/pricing', onSuccess }: Emai
         <button
           type="button"
           onClick={() => { setMode('signin'); setError(''); setMessage(''); }}
-          className={`flex-1 py-2 transition-colors ${mode === 'signin' ? 'bg-[var(--primary)] text-white' : 'text-nisk-muted hover:text-white'}`}
+          className={`flex-1 py-2 transition-colors ${mode === 'signin' ? 'bg-[var(--primary)] text-white' : 'text-nisk-muted hover:text-[var(--foreground)]'}`}
         >
           Sign In
         </button>
         <button
           type="button"
           onClick={() => { setMode('signup'); setError(''); setMessage(''); }}
-          className={`flex-1 py-2 transition-colors ${mode === 'signup' ? 'bg-[var(--primary)] text-white' : 'text-nisk-muted hover:text-white'}`}
+          className={`flex-1 py-2 transition-colors ${mode === 'signup' ? 'bg-[var(--primary)] text-white' : 'text-nisk-muted hover:text-[var(--foreground)]'}`}
         >
           Sign Up
         </button>
@@ -68,7 +68,7 @@ export default function EmailAuthForm({ nextPath = '/pricing', onSuccess }: Emai
         onChange={(e) => setEmail(e.target.value)}
         placeholder="Email address"
         required
-        className="w-full px-4 py-2.5 rounded-lg bg-nisk border border-nisk text-white placeholder-gray-500 focus:outline-none focus:border-[var(--primary)] text-sm"
+        className="w-full px-4 py-2.5 rounded-lg glass-input placeholder-[var(--placeholder)] focus:outline-none focus:border-[var(--primary)] text-sm"
       />
       <input
         type="password"
@@ -77,13 +77,13 @@ export default function EmailAuthForm({ nextPath = '/pricing', onSuccess }: Emai
         placeholder="Password (min. 6 characters)"
         required
         minLength={6}
-        className="w-full px-4 py-2.5 rounded-lg bg-nisk border border-nisk text-white placeholder-gray-500 focus:outline-none focus:border-[var(--primary)] text-sm"
+        className="w-full px-4 py-2.5 rounded-lg glass-input placeholder-[var(--placeholder)] focus:outline-none focus:border-[var(--primary)] text-sm"
       />
 
       <button
         type="submit"
         disabled={loading}
-        className="w-full py-2.5 rounded-lg bg-[var(--surface-elevated)] border border-nisk hover:border-[var(--primary)] text-white font-medium text-sm transition-colors disabled:opacity-50"
+        className="w-full py-2.5 rounded-lg btn-primary font-medium text-sm transition-colors disabled:opacity-50"
       >
         {loading
           ? 'Please wait...'

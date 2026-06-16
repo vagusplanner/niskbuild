@@ -363,13 +363,22 @@ export default function SettingsWorkspace() {
                   ? t.id === 'danger'
                     ? 'bg-red-600/20 text-red-400 border border-red-500/30'
                     : 'bg-[var(--accent-cyan)]/10 text-[var(--accent-cyan)] border border-[var(--accent-cyan)]/30'
-                  : 'text-nisk-muted hover:text-white hover:bg-[var(--surface-elevated)] border border-transparent'
+                  : 'text-nisk-muted hover:text-[var(--foreground)] hover:bg-[var(--surface-elevated)] border border-transparent'
               }`}
             >
               <span>{t.icon}</span>
               {t.label}
             </button>
           ))}
+          <Link
+            href="/settings/github"
+            className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm text-nisk-muted hover:text-[var(--foreground)] hover:bg-[var(--surface-elevated)] border border-transparent transition-colors"
+          >
+            <span className="text-base" aria-hidden="true">
+              🐙
+            </span>
+            GitHub Sync
+          </Link>
         </nav>
 
         <div className="flex-1 min-w-0 space-y-6">

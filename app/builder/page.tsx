@@ -225,6 +225,12 @@ function BuilderContent() {
   }, []);
 
   useEffect(() => {
+    if (generatedCode.trim()) {
+      localStorage.setItem('niskbuild_current_code', generatedCode);
+    }
+  }, [generatedCode]);
+
+  useEffect(() => {
     const onExport = () => void handleExportZip();
     const onNewProject = () => handleNewProject();
     window.addEventListener(BUILDER_EXPORT_EVENT, onExport);
@@ -1244,6 +1250,19 @@ function BuilderContent() {
     setActiveEditorTab('chat');
   };
 
+  const handleFigmaImport = (result: import('@/app/components/FigmaImport').FigmaImportResult) => {
+    applyGeneratedCode(
+      result.code,
+      `🎨 Figma import — ${result.components.length} component${result.components.length === 1 ? '' : 's'}`
+    );
+    setPrompt(
+      result.fileName
+        ? `Refine this UI imported from Figma (“${result.fileName}”) — polish layout, typography, and responsiveness.`
+        : 'Refine this UI imported from Figma — polish layout, typography, and responsiveness.'
+    );
+    setActiveEditorTab('preview');
+  };
+
   const handleNewProject = () => {
     if (
       isExportableCode(generatedCode) &&
@@ -1482,6 +1501,7 @@ function BuilderContent() {
           canUseSocialProof={canSocialProof}
           importedBusinessName={importedBusinessName}
           onGooglePlacesImport={handleGooglePlacesImport}
+          onFigmaImport={handleFigmaImport}
           seoSettings={seoSettings}
           onSeoChange={setSeoSettings}
           activeProjectId={activeProjectId}

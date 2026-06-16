@@ -47,7 +47,7 @@ export default function AppTopNav({ variant = 'app' }: AppTopNavProps) {
   const isBuilder = variant === 'builder';
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-14 glass-nav">
+    <header className="fixed top-0 left-0 right-0 z-50 h-16 glass-nav">
       <div className="h-full max-w-[1800px] mx-auto px-4 flex items-center justify-between gap-4">
         <NiskBuildLogo
           href={user ? '/dashboard' : '/landing'}

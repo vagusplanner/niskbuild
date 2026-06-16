@@ -62,11 +62,11 @@ function buildEscalationEmailHtml(params: {
               ${params.conversationHistory
                 .map((msg) => {
                   const isUser = msg.role === 'user';
-                  const accent = isUser ? '#0891B2' : '#059669';
+                  const accent = isUser ? '#0284C7' : '#046A38';
                   return `
-                <div style="background:#F8FAFC;border-radius:6px;padding:8px 12px;margin:4px 0;border-left:3px solid ${accent};">
+                <div style="background:#E8EEF4;border-radius:6px;padding:8px 12px;margin:4px 0;border-left:3px solid ${accent};">
                   <strong style="font-size:11px;color:${accent};">${isUser ? 'User' : 'AI'}:</strong>
-                  <span style="font-size:13px;color:#334155;"> ${escapeHtml(msg.content)}</span>
+                  <span style="font-size:13px;color:#2D3748;"> ${escapeHtml(msg.content)}</span>
                 </div>`;
                 })
                 .join('')}
@@ -77,25 +77,25 @@ function buildEscalationEmailHtml(params: {
       <!DOCTYPE html>
       <html>
       <head><meta charset="utf-8" /></head>
-      <body style="font-family:system-ui,sans-serif;background:#EEF2F7;color:#0F172A;padding:20px;margin:0;">
-        <div style="max-width:600px;margin:0 auto;background:#FFFFFF;border-radius:12px;padding:30px;border:1px solid #E2E8F0;">
-          <h1 style="margin:0 0 16px;color:#0891B2;font-size:22px;">AI agent escalation</h1>
+      <body style="font-family:system-ui,sans-serif;background:linear-gradient(135deg,#D9E2EC,#BCCCDC);color:#0F172A;padding:20px;margin:0;">
+        <div style="max-width:600px;margin:0 auto;background:#FFFFFF;border-radius:12px;padding:30px;border:1px solid rgba(15,23,42,0.1);">
+          <h1 style="margin:0 0 16px;color:#046A38;font-size:22px;">AI agent escalation</h1>
           <p><strong>User:</strong> ${escapeHtml(params.userName)}</p>
           <p><strong>Email:</strong> ${escapeHtml(params.userEmail || 'Not provided')}</p>
           <p><strong>Tier:</strong> ${escapeHtml(params.userTier)}</p>
           <p><strong>Priority:</strong>
-            <span style="display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;margin-left:6px;background:${isHigh ? '#DC2626' : '#0891B2'};color:#FFFFFF;">
+            <span style="display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;margin-left:6px;background:${isHigh ? '#0F172A' : '#046A38'};color:#FFFFFF;">
               ${isHigh ? 'High' : 'Normal'}
             </span>
           </p>
-          <div style="background:#F8FAFC;border-radius:8px;padding:16px;border:1px solid #E2E8F0;margin:16px 0;">
+          <div style="background:#E8EEF4;border-radius:8px;padding:16px;border:1px solid rgba(15,23,42,0.08);margin:16px 0;">
             <p style="font-weight:600;margin:0 0 8px;color:#0F172A;">User question</p>
-            <p style="margin:0;white-space:pre-wrap;line-height:1.5;color:#334155;">${escapeHtml(params.message)}</p>
+            <p style="margin:0;white-space:pre-wrap;line-height:1.5;color:#2D3748;">${escapeHtml(params.message)}</p>
           </div>
           ${historyHtml}
-          <p style="font-size:12px;color:#64748B;margin-top:20px;">Reply to this email to respond to the user.</p>
-          <div style="margin-top:20px;color:#94A3B8;font-size:12px;border-top:1px solid #E2E8F0;padding-top:16px;">
-            <p style="margin:0;">NiskBuild Support — <a href="https://www.niskbuild.com" style="color:#0891B2;">niskbuild.com</a></p>
+          <p style="font-size:12px;color:#4A5568;margin-top:20px;">Reply to this email to respond to the user.</p>
+          <div style="margin-top:20px;color:#4A5568;font-size:12px;border-top:1px solid rgba(15,23,42,0.1);padding-top:16px;">
+            <p style="margin:0;">NiskBuild Support — <a href="https://www.niskbuild.com" style="color:#0284C7;">niskbuild.com</a></p>
           </div>
         </div>
       </body>

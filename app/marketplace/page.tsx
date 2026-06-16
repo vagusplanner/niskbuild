@@ -132,7 +132,7 @@ function MarketplaceContent() {
     <Layout>
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col items-center mb-8">
-          <NiskBuildLogo variant="full" size="md" showTagline />
+          <NiskBuildLogo variant="lockup" size="md" />
           <h1 className="text-3xl font-bold text-white mt-6 mb-2">Template Marketplace</h1>
           <p className="text-center text-nisk-muted max-w-xl">
             2 free starter templates · Premium builds from $9 · Full enterprise suites up to $49.

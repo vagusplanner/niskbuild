@@ -363,7 +363,7 @@ export default function HelpAssistant({
             className="w-[min(100vw-2rem,420px)] h-[min(72vh,600px)] flex flex-col rounded-2xl border border-nisk bg-nisk-card shadow-2xl overflow-hidden pointer-events-auto"
           >
             <div
-              className={`shrink-0 px-4 py-3 flex items-center gap-2 border-b border-nisk bg-gradient-to-r from-[var(--secondary)] via-[var(--primary)] to-[var(--accent-teal)]`}
+              className={`shrink-0 px-4 py-3 flex items-center gap-2 border-b border-nisk bg-gradient-brand`}
             >
               <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold text-white shrink-0">
                 AI

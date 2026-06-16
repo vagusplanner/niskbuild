@@ -93,7 +93,7 @@ export default function AppMenu({ variant = 'app', showAuth = true }: AppMenuPro
         className="flex items-center gap-2 bg-[var(--card-bg)]/90 backdrop-blur-md border border-[var(--border)] rounded-xl px-3 py-2 shadow-lg hover:border-[var(--primary)]/40 transition-colors"
         aria-label="Open menu"
       >
-        <NiskBuildLogo variant="full" size="micro" />
+            <NiskBuildLogo variant="lockup" size="micro" />
         <svg
           className={`w-4 h-4 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}
           fill="none"

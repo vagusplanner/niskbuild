@@ -12,11 +12,13 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",
+    "@figma/plugin-typings": "^1.128.0",
     "@monaco-editor/react": "^4.7.0",
     "@sentry/nextjs": "^10.57.0",
     "@stripe/stripe-js": "^9.7.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.2",
+    "figma-api": "^2.2.0-beta",
     "groq-sdk": "^1.2.0",
     "jszip": "^3.10.1",
     "next": "16.2.6",

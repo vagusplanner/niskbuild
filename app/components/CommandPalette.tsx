@@ -11,7 +11,6 @@ import {
   pushRecentPaletteItem,
   type RecentPaletteItem,
 } from '@/lib/command-palette-events';
-import { useTheme } from '@/app/components/ThemeProvider';
 import { modKey, shortcut } from '@/lib/keyboard';
 
 type Section = 'Recent' | 'Projects' | 'Templates' | 'Quick Actions' | 'Docs';
@@ -66,7 +65,6 @@ export default function CommandPalette() {
   >([]);
   const [recent, setRecent] = useState<RecentPaletteItem[]>([]);
   const router = useRouter();
-  const { resolved, setPreference } = useTheme();
   const mod = modKey();
 
   const close = useCallback(() => {
@@ -135,13 +133,6 @@ export default function CommandPalette() {
         run: () => router.push('/dashboard/settings?tab=billing'),
       },
       {
-        id: 'qa-theme',
-        label: 'Toggle Dark/Light Mode',
-        section: 'Quick Actions',
-        hint: shortcut(mod, '⇧L'),
-        run: () => setPreference(resolved === 'dark' ? 'light' : 'dark'),
-      },
-      {
         id: 'qa-docs-help',
         label: 'Open Docs',
         section: 'Quick Actions',
@@ -150,7 +141,7 @@ export default function CommandPalette() {
         run: () => router.push('/docs/pwa'),
       },
     ],
-    [mod, resolved, router, setPreference]
+    [mod, router]
   );
 
   useEffect(() => {

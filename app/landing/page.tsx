@@ -86,7 +86,7 @@ export default function LandingPage() {
       <LandingSectionNav />
 
       {/* Hero */}
-      <section className="pt-12 pb-16 px-4 relative overflow-hidden">
+      <section className="pt-24 pb-16 px-4 relative overflow-hidden">
         <div
           className="absolute inset-0 opacity-[0.07]"
           style={{
@@ -95,6 +95,9 @@ export default function LandingPage() {
           }}
         />
         <div className="max-w-5xl mx-auto text-center relative z-10">
+          <div className="flex justify-center mb-10">
+            <NiskBuildLogo variant="lockup" size="hero" href="/landing" className="max-w-[min(100%,680px)]" />
+          </div>
           <h1 className="text-4xl md:text-6xl font-bold mb-5 text-gradient-brand leading-tight">
             Build client apps in minutes.
             <br />
@@ -272,7 +275,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="py-10 px-4 border-t border-[var(--border)]">
         <div className="max-w-6xl mx-auto text-center">
-          <NiskBuildLogo variant="image" size="md" />
+          <NiskBuildLogo variant="lockup" size="lg" href="/landing" />
           <div className="flex justify-center flex-wrap gap-5 text-sm text-nisk-muted mt-5 mb-4">
             {FOOTER_LINKS.map((link) => (
               <Link key={link.href} href={link.href} className="hover:text-[var(--primary)] transition-colors">

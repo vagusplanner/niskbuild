@@ -58,7 +58,7 @@ export default function AuthModal({
 
         <div className="text-center mb-6">
           <div className="flex justify-center mb-4">
-            <NiskBuildLogo variant="full" size="md" showTagline />
+            <NiskBuildLogo variant="lockup" size="md" />
           </div>
           <h2 id="auth-modal-title" className="text-2xl font-bold text-white mb-2 text-center">{title}</h2>
           <p className="text-nisk-muted text-sm">{subtitle}</p>

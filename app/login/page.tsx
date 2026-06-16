@@ -65,9 +65,9 @@ function LoginContent() {
       <div className="w-full max-w-md bg-nisk-card border border-nisk rounded-2xl p-8 shadow-xl">
         <div className="text-center mb-6">
           <div className="flex justify-center mb-4">
-            <NiskBuildLogo variant="image" size="lg" />
+            <NiskBuildLogo variant="lockup" size="xl" />
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2 text-center">Sign in to NiskBuild</h1>
+          <h1 className="text-2xl font-bold text-[var(--foreground)] mb-2 text-center">Sign in to NiskBuild</h1>
           <p className="text-nisk-muted text-sm">
             Sign in or create an account. After that, choose a plan to unlock the builder and marketplace.
           </p>

@@ -8,6 +8,7 @@ import BuilderActionsMenu from '@/app/components/BuilderActionsMenu';
 import BuilderInspectorPanel, { type InspectorTab } from '@/app/components/BuilderInspectorPanel';
 import VisualEditorToolbar from '@/app/components/VisualEditorToolbar';
 import GooglePlacesImport from '@/app/components/GooglePlacesImport';
+import FigmaImport, { type FigmaImportResult } from '@/app/components/FigmaImport';
 import CollapsibleSection from '@/app/components/CollapsibleSection';
 import PromptBar from '@/app/components/PromptBar';
 import { PROMPT_SUGGESTIONS, PROMPT_SUGGESTION_COUNT } from '@/lib/prompt-suggestions';
@@ -105,6 +106,7 @@ export type BuilderWorkspaceLayoutProps = {
     business: GooglePlacesBusiness,
     context: GooglePlacesProjectContext
   ) => void;
+  onFigmaImport: (result: FigmaImportResult) => void;
   seoSettings: import('@/lib/seo-types').ProjectSeoSettings;
   onSeoChange: (settings: import('@/lib/seo-types').ProjectSeoSettings) => void;
   activeProjectId: string | null;
@@ -409,6 +411,7 @@ function ChatPanelContent({
   canUseSocialProof,
   importedBusinessName,
   onGooglePlacesImport,
+  onFigmaImport,
   useLocalOllama,
   onUseLocalOllamaChange,
   onOllamaUpgrade,
@@ -440,6 +443,7 @@ function ChatPanelContent({
     business: GooglePlacesBusiness,
     context: GooglePlacesProjectContext
   ) => void;
+  onFigmaImport: (result: FigmaImportResult) => void;
   useLocalOllama: boolean;
   onUseLocalOllamaChange: (enabled: boolean) => void;
   onOllamaUpgrade: () => void;
@@ -509,6 +513,7 @@ function ChatPanelContent({
             canUseSocialProof={canUseSocialProof}
             onImport={onGooglePlacesImport}
           />
+          <FigmaImport onImport={onFigmaImport} />
         </CollapsibleSection>
 
         {recentProjects.length > 0 && (
@@ -639,6 +644,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
     canUseSocialProof,
     importedBusinessName,
     onGooglePlacesImport,
+    onFigmaImport,
     seoSettings,
     onSeoChange,
     activeProjectId,
@@ -709,6 +715,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
       canUseSocialProof={canUseSocialProof}
       importedBusinessName={importedBusinessName}
       onGooglePlacesImport={onGooglePlacesImport}
+      onFigmaImport={onFigmaImport}
       useLocalOllama={useLocalOllama}
       onUseLocalOllamaChange={onUseLocalOllamaChange}
       onOllamaUpgrade={onOllamaUpgrade}

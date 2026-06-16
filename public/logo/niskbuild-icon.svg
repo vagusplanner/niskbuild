@@ -1,5 +1,29 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-  <polygon points="20,6 34,14 20,22 6,14" fill="#D1D5FF"/>
-  <polygon points="6,14 20,22 20,36 6,28" fill="#8467B3"/>
-  <polygon points="20,22 34,14 34,28 20,36" fill="#5E81FF"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" aria-label="NiskBuild" role="img">
+  <defs>
+    <linearGradient id="iconGlacialMist" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#D9E2EC"/>
+      <stop offset="100%" stop-color="#BCCCDC"/>
+    </linearGradient>
+    <linearGradient id="iconObsidianPillars" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E293B"/>
+      <stop offset="100%" stop-color="#0F172A"/>
+    </linearGradient>
+    <linearGradient id="iconCoreFrostL" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#BAE6FD"/>
+    </linearGradient>
+    <linearGradient id="iconCoreFrostR" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#064E3B"/>
+      <stop offset="100%" stop-color="#38BDF8"/>
+    </linearGradient>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#iconGlacialMist)" rx="12"/>
+  <g transform="translate(52, 40)">
+    <path d="M 0,0 L 45,0 L 45,150 L 0,150 Z" fill="url(#iconObsidianPillars)"/>
+    <path d="M 90,0 L 135,0 L 135,150 L 90,150 Z" fill="url(#iconObsidianPillars)"/>
+    <path d="M 45,0 L 68,75 L 45,115 L 45,45 Z" fill="url(#iconCoreFrostL)"/>
+    <path d="M 90,150 L 68,75 L 90,35 L 90,105 Z" fill="url(#iconCoreFrostR)"/>
+    <polygon points="45,115 68,75 90,150" fill="#0F172A" opacity="0.25"/>
+    <polygon points="90,35 68,75 45,0" fill="#FFFFFF" opacity="0.4"/>
+  </g>
 </svg>

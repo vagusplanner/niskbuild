@@ -69,7 +69,7 @@ function PricingContent() {
     <Layout>
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-center mb-8">
-          <NiskBuildLogo href="/landing" variant="full" size="md" showTagline />
+          <NiskBuildLogo href="/landing" variant="lockup" size="md" />
         </div>
 
         {/* Hero */}

@@ -62,7 +62,7 @@ export default function PromptBar({
                 onChange={(e) => onPlanModeChange(e.target.checked)}
                 className="rounded border-nisk"
               />
-              <span className="text-[10px] text-gray-300">
+              <span className="text-[10px] text-nisk-muted">
                 Plan Mode <span className="text-[var(--accent-cyan)]">(0 credits)</span>
               </span>
             </label>
@@ -77,7 +77,7 @@ export default function PromptBar({
               key={s}
               type="button"
               onClick={() => onChange(s)}
-              className="shrink-0 max-w-[220px] truncate px-3 py-1.5 rounded-full text-[11px] border border-nisk text-gray-300 hover:border-[var(--accent-cyan)] hover:text-[var(--accent-cyan)] hover:bg-[var(--accent-cyan)]/5 transition-all"
+              className="shrink-0 max-w-[220px] truncate px-3 py-1.5 rounded-full text-[11px] border border-nisk text-nisk-muted hover:border-[var(--accent-cyan)] hover:text-[var(--accent-cyan)] hover:bg-[var(--accent-cyan)]/5 transition-all"
             >
               {s}
             </button>
@@ -93,7 +93,7 @@ export default function PromptBar({
               type="button"
               onClick={() => onChange(s)}
               title={s}
-              className="shrink-0 max-w-[140px] truncate px-2 py-1 rounded-full text-[10px] border border-nisk text-gray-400 hover:border-[var(--accent-cyan)]/50 hover:text-[var(--accent-cyan)] transition-all"
+              className="shrink-0 max-w-[140px] truncate px-2 py-1 rounded-full text-[10px] border border-nisk text-nisk-muted hover:border-[var(--accent-cyan)]/50 hover:text-[var(--accent-cyan)] transition-all"
             >
               {s}
             </button>
@@ -106,7 +106,7 @@ export default function PromptBar({
         onChange={(e) => onChange(e.target.value)}
         placeholder="Describe what you want to build..."
         rows={isDock ? 4 : isSidebar ? 6 : 2}
-        className={`w-full bg-nisk border border-nisk rounded-xl px-3 py-2.5 text-white text-sm placeholder-gray-500 resize-none focus:outline-none focus:border-[var(--accent-cyan)] focus:ring-1 focus:ring-[var(--accent-cyan)]/30 ${
+        className={`w-full glass-input rounded-xl px-3 py-2.5 text-sm placeholder-[var(--placeholder)] resize-none focus:outline-none focus:border-[var(--accent-cyan)] focus:ring-1 focus:ring-[var(--accent-cyan)]/30 ${
           isSidebar ? 'flex-1 min-h-[100px]' : ''
         }`}
         onKeyDown={(e) => {
@@ -147,7 +147,7 @@ export default function PromptBar({
               onChange={(e) => onPlanModeChange(e.target.checked)}
               className="rounded border-nisk scale-90"
             />
-            <span className="text-[10px] text-gray-400">Plan</span>
+            <span className="text-[10px] text-nisk-muted">Plan</span>
           </label>
         )}
 

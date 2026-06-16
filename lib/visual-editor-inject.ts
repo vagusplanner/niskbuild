@@ -195,7 +195,7 @@ export function injectVisualEditorScript(html: string): string {
     cursor: pointer !important;
   }
   .nisk-visual-selected {
-    outline: 2px solid #0891B2 !important;
+    outline: 2px solid #0284C7 !important;
     outline-offset: 2px !important;
   }
 </style>`;
