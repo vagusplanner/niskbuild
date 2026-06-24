@@ -1,0 +1,1 @@
+export default function TaskForm() { return <div className="p-4 bg-white rounded-xl shadow-sm"><h3>Task Form</h3><input className="w-full px-3 py-2 border rounded-lg" placeholder="Task title" /></div>; }

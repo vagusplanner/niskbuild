@@ -1,0 +1,14 @@
+{
+  "name": "vagus-planner-mobile",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "sync": "cap sync ios",
+    "open": "cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "^7.2.0",
+    "@capacitor/cli": "^7.2.0",
+    "@capacitor/ios": "^7.2.0"
+  }
+}

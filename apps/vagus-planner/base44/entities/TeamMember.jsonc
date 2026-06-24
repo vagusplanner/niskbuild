@@ -1,0 +1,55 @@
+{
+  "name": "TeamMember",
+  "type": "object",
+  "properties": {
+    "team_id": {
+      "type": "string",
+      "description": "Team ID"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Member email"
+    },
+    "user_name": {
+      "type": "string",
+      "description": "Member display name"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "owner",
+        "admin",
+        "member",
+        "viewer"
+      ],
+      "default": "member",
+      "description": "Role in team: owner=full control, admin=manage tasks+members, member=create+edit tasks, viewer=read only"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "invited",
+        "left"
+      ],
+      "default": "invited"
+    },
+    "invited_by": {
+      "type": "string",
+      "description": "Email of person who sent the invite"
+    },
+    "tasks_completed": {
+      "type": "number",
+      "default": 0,
+      "description": "Productivity counter"
+    },
+    "tasks_assigned": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "team_id",
+    "user_email"
+  ]
+}

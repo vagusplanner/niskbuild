@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* NSC Palette — Pages 2 + 8 deep navy-blue */
+    --background: 214 30% 90%;         /* #D4E0EC P8 ice blue */
+    --foreground: 214 52% 10%;         /* #0D1A2A near black */
+    --card: 210 35% 94%;               /* #E8EEF5 pale ice card */
+    --card-foreground: 214 50% 12%;
+    --popover: 210 30% 96%;
+    --popover-foreground: 214 50% 12%;
+    --primary: 207 64% 42%;            /* #1D6FB8 royal blue */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 25% 82%;          /* #C0CDD9 P8 blue-gray light */
+    --secondary-foreground: 214 52% 12%;
+    --muted: 210 22% 86%;              /* #CDD6E0 muted blue */
+    --muted-foreground: 214 25% 42%;   /* #526070 */
+    --accent: 199 55% 50%;             /* #29ABE2 cyan accent */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 65% 50%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 214 22% 72%;             /* #A4B2C0 blue border */
+    --input: 214 22% 88%;              /* #D4DCE6 */
+    --ring: 207 64% 42%;
+    --chart-1: 207 64% 42%;
+    --chart-2: 199 55% 50%;
+    --chart-3: 214 40% 28%;
+    --chart-4: 207 32% 55%;
+    --chart-5: 210 25% 70%;
+    --radius: 0.75rem;
+    --sidebar-background: 214 52% 14%;
+    --sidebar-foreground: 210 40% 92%;
+    --sidebar-primary: 207 64% 42%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 214 35% 22%;
+    --sidebar-accent-foreground: 210 40% 85%;
+    --sidebar-border: 214 30% 25%;
+    --sidebar-ring: 207 64% 42%;
+  }
+  .dark {
+    --background: 214 52% 8%;
+    --foreground: 210 40% 90%;
+    --card: 214 40% 12%;
+    --card-foreground: 210 40% 90%;
+    --popover: 214 40% 12%;
+    --popover-foreground: 210 40% 90%;
+    --primary: 207 64% 42%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 214 35% 20%;
+    --secondary-foreground: 210 35% 75%;
+    --muted: 214 30% 16%;
+    --muted-foreground: 207 20% 55%;
+    --accent: 199 55% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 60% 45%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 214 25% 22%;
+    --input: 214 25% 20%;
+    --ring: 207 64% 42%;
+    --chart-1: 207 64% 42%;
+    --chart-2: 199 55% 50%;
+    --chart-3: 214 35% 40%;
+    --chart-4: 207 28% 60%;
+    --chart-5: 210 20% 70%;
+    --sidebar-background: 214 52% 8%;
+    --sidebar-foreground: 210 40% 85%;
+    --sidebar-primary: 207 64% 42%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 214 35% 15%;
+    --sidebar-accent-foreground: 210 35% 80%;
+    --sidebar-border: 214 25% 18%;
+    --sidebar-ring: 207 64% 42%;
+  }
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  body { @apply bg-background text-foreground; }
+}

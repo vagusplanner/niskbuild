@@ -1,0 +1,105 @@
+{
+  "name": "FamilyCalendarEvent",
+  "type": "object",
+  "properties": {
+    "family_group_id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "event_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "start_time": {
+      "type": "string"
+    },
+    "end_time": {
+      "type": "string"
+    },
+    "is_all_day": {
+      "type": "boolean",
+      "default": false
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "family",
+        "prayer",
+        "school",
+        "appointment",
+        "birthday",
+        "holiday",
+        "other"
+      ],
+      "default": "family"
+    },
+    "owner_email": {
+      "type": "string"
+    },
+    "owner_name": {
+      "type": "string"
+    },
+    "color": {
+      "type": "string"
+    },
+    "recurrence": {
+      "type": "string",
+      "enum": [
+        "none",
+        "daily",
+        "weekly"
+      ],
+      "default": "none"
+    },
+    "prayer_name": {
+      "type": "string",
+      "description": "Fajr, Dhuhr, Asr, Maghrib, Isha \u2014 if type=prayer"
+    },
+    "approval_status": {
+      "type": "string",
+      "enum": [
+        "approved",
+        "pending",
+        "rejected"
+      ],
+      "default": "approved",
+      "description": "pending = proposed by a member, awaiting admin approval"
+    },
+    "approvals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "member_email": {
+            "type": "string"
+          },
+          "member_name": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approved",
+              "rejected"
+            ]
+          },
+          "decided_at": {
+            "type": "string"
+          }
+        }
+      },
+      "default": [],
+      "description": "Per-member approval responses"
+    }
+  },
+  "required": [
+    "family_group_id",
+    "title",
+    "event_date"
+  ]
+}

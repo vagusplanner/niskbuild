@@ -1,0 +1,86 @@
+{
+  "name": "PackingList",
+  "type": "object",
+  "properties": {
+    "trip_id": {
+      "type": "string",
+      "description": "ID of Holiday or TravelContext this list belongs to"
+    },
+    "trip_title": {
+      "type": "string"
+    },
+    "destination": {
+      "type": "string"
+    },
+    "trip_length_days": {
+      "type": "number"
+    },
+    "departure_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "categories": {
+      "type": "array",
+      "description": "AI-generated packing categories with items",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "item": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                },
+                "essential": {
+                  "type": "boolean"
+                },
+                "packed": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "weather_summary": {
+      "type": "object",
+      "properties": {
+        "avg_temp": {
+          "type": "number"
+        },
+        "condition": {
+          "type": "string"
+        },
+        "rain_chance": {
+          "type": "number"
+        }
+      }
+    },
+    "total_items": {
+      "type": "number",
+      "default": 0
+    },
+    "packed_items": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "destination"
+  ]
+}

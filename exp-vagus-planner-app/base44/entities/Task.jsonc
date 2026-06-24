@@ -1,0 +1,187 @@
+{
+  "name": "Task",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Task title"
+    },
+    "description": {
+      "type": "string",
+      "description": "Task description"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "work",
+        "personal",
+        "health",
+        "shopping",
+        "learning",
+        "home",
+        "other"
+      ],
+      "default": "personal",
+      "description": "Task category"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "urgent"
+      ],
+      "default": "medium",
+      "description": "Priority level"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "todo",
+        "in_progress",
+        "completed",
+        "blocked"
+      ],
+      "default": "todo",
+      "description": "Current status"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Task deadline"
+    },
+    "due_time": {
+      "type": "string",
+      "description": "Specific time for deadline (HH:MM)"
+    },
+    "estimated_minutes": {
+      "type": "number",
+      "description": "Estimated time to complete in minutes"
+    },
+    "assigned_to": {
+      "type": "string",
+      "description": "Email of assigned user"
+    },
+    "assigned_by": {
+      "type": "string",
+      "description": "Email of user who assigned the task"
+    },
+    "team_id": {
+      "type": "string",
+      "description": "Associated team ID"
+    },
+    "event_id": {
+      "type": "string",
+      "description": "Associated event ID"
+    },
+    "gcal_event_id": {
+      "type": "string",
+      "description": "Google Calendar event ID for synced tasks"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Task tags"
+    },
+    "subtasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "completed": {
+            "type": "boolean"
+          }
+        }
+      },
+      "description": "Subtasks checklist"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    },
+    "is_recurring": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether task repeats"
+    },
+    "recurrence_type": {
+      "type": "string",
+      "enum": [
+        "daily",
+        "weekly",
+        "monthly",
+        "yearly"
+      ],
+      "description": "How often task repeats"
+    },
+    "recurrence_interval": {
+      "type": "number",
+      "default": 1,
+      "description": "Repeat every N days/weeks/months/years"
+    },
+    "recurrence_end_type": {
+      "type": "string",
+      "enum": [
+        "never",
+        "date",
+        "occurrences"
+      ],
+      "default": "never",
+      "description": "How recurrence ends"
+    },
+    "recurrence_end_date": {
+      "type": "string",
+      "format": "date",
+      "description": "When recurring tasks should stop"
+    },
+    "recurrence_occurrences": {
+      "type": "number",
+      "description": "Number of times to repeat"
+    },
+    "recurrence_days": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 6
+      },
+      "description": "Days for weekly recurrence (0=Sunday, 6=Saturday)"
+    },
+    "parent_recurring_task_id": {
+      "type": "string",
+      "description": "Parent task ID for recurring instances"
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          },
+          "task_title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "blocks",
+              "required_by",
+              "related"
+            ]
+          }
+        }
+      },
+      "description": "Task dependencies and relationships"
+    }
+  },
+  "required": [
+    "title"
+  ]
+}

@@ -1,0 +1,1 @@
+export default function AccountDeletionDialog({ open, onClose }) { return open ? <div className="fixed inset-0 bg-black/50 flex items-center justify-center"><div className="bg-white p-6 rounded-xl"><h3>Delete Account?</h3><button onClick={onClose}>Cancel</button></div></div> : null; }

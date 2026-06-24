@@ -1,0 +1,68 @@
+{
+  "name": "FamilyBudget",
+  "type": "object",
+  "properties": {
+    "family_group_id": {
+      "type": "string"
+    },
+    "month": {
+      "type": "string",
+      "description": "YYYY-MM e.g. 2026-04"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "groceries",
+        "dining",
+        "transport",
+        "utilities",
+        "clothing",
+        "education",
+        "health",
+        "entertainment",
+        "sadaqah",
+        "savings",
+        "other"
+      ],
+      "default": "other"
+    },
+    "label": {
+      "type": "string",
+      "description": "Custom label for this entry"
+    },
+    "amount": {
+      "type": "number"
+    },
+    "currency": {
+      "type": "string",
+      "default": "GBP"
+    },
+    "entry_type": {
+      "type": "string",
+      "enum": [
+        "expense",
+        "limit"
+      ],
+      "default": "expense"
+    },
+    "logged_by_email": {
+      "type": "string"
+    },
+    "logged_by_name": {
+      "type": "string"
+    },
+    "note": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "required": [
+    "month",
+    "category",
+    "amount",
+    "entry_type"
+  ]
+}

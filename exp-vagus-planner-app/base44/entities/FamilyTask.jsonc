@@ -1,0 +1,69 @@
+{
+  "name": "FamilyTask",
+  "type": "object",
+  "properties": {
+    "family_group_id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "assigned_to_email": {
+      "type": "string"
+    },
+    "assigned_to_name": {
+      "type": "string"
+    },
+    "assigned_by_email": {
+      "type": "string"
+    },
+    "assigned_by_name": {
+      "type": "string"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ],
+      "default": "medium"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "in_progress",
+        "completed",
+        "cancelled"
+      ],
+      "default": "pending"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "chores",
+        "errands",
+        "cooking",
+        "finances",
+        "school",
+        "other"
+      ],
+      "default": "other"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "family_group_id",
+    "title"
+  ]
+}

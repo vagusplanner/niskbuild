@@ -1,0 +1,56 @@
+{
+  "name": "GroceryItem",
+  "type": "object",
+  "properties": {
+    "family_group_id": {
+      "type": "string",
+      "description": "ID of the family group"
+    },
+    "name": {
+      "type": "string",
+      "description": "Item name"
+    },
+    "quantity": {
+      "type": "string",
+      "description": "e.g. 2 litres, 500g"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "produce",
+        "dairy",
+        "meat_halal",
+        "bakery",
+        "frozen",
+        "pantry",
+        "household",
+        "other"
+      ],
+      "default": "other"
+    },
+    "added_by_name": {
+      "type": "string"
+    },
+    "added_by_email": {
+      "type": "string"
+    },
+    "is_checked": {
+      "type": "boolean",
+      "default": false
+    },
+    "checked_by": {
+      "type": "string"
+    },
+    "is_halal_verified": {
+      "type": "boolean",
+      "default": false
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "family_group_id",
+    "name"
+  ]
+}

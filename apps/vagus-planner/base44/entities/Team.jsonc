@@ -1,0 +1,26 @@
+{
+  "name": "Team",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Team/project name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Team description"
+    },
+    "avatar_color": {
+      "type": "string",
+      "default": "blue",
+      "description": "Color theme for team"
+    },
+    "invite_code": {
+      "type": "string",
+      "description": "Unique join code"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}
