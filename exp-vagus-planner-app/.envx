@@ -1,9 +1,0 @@
-# Supabase Configuration
-VITE_SUPABASE_URL=https://yjphqwbvqmtwydqkjaup.supabase.co/rest/v1/
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlqcGhxd2J2cW10d3lkcWtqYXVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1NjMwOTIsImV4cCI6MjA5NTEzOTA5Mn0.QftFc-H5lN5qwVCOqk9vOgDoxZxLqUMdsAAI5b5MYlA
-
-# App Configuration  
-VITE_APP_URL=http://localhost:5173
-
-# NiskBuild API (optional)
-VITE_NISKBUILD_API_URL=http://localhost:5000
