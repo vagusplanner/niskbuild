@@ -63,7 +63,7 @@ function StepIcon({ state }: { state: StepState }) {
   }
   if (state === 'done') {
     return (
-      <span className="w-7 h-7 flex items-center justify-center text-emerald-500 border-2 border-emerald-500 text-xs font-bold">
+      <span className="w-7 h-7 flex items-center justify-center text-[var(--copper-melt)] border-2 border-[var(--copper-primary)] text-xs font-bold">
         ✓
       </span>
     );
@@ -85,7 +85,7 @@ function StepIcon({ state }: { state: StepState }) {
 function ChecklistDot({ ok }: { ok: boolean }) {
   return (
     <span
-      className={`inline-block w-2.5 h-2.5 rounded-full shrink-0 ${ok ? 'bg-emerald-500' : 'bg-amber-500'}`}
+      className={`inline-block w-2.5 h-2.5 rounded-full shrink-0 ${ok ? 'bg-[var(--copper-primary)]' : 'bg-[var(--ember)]'}`}
       aria-hidden
     />
   );
@@ -96,8 +96,8 @@ function AppExportContent() {
   const pathname = usePathname();
   const router = useRouter();
   const appId =
-    typeof params.appId === 'string'
-      ? params.appId
+    typeof params.id === 'string'
+      ? params.id
       : pathname.match(/\/builder\/([^/]+)\/export/)?.[1] ?? '';
   const appMeta = getClientBuilderApp(appId);
 
@@ -244,7 +244,7 @@ function AppExportContent() {
         <main className="min-w-0">
           <Link
             href={`/builder/${appId}`}
-            className="text-xs text-[var(--accent-teal-bright)] hover:underline"
+            className="text-xs text-[var(--copper-melt)] hover:underline"
           >
             ← Back to {appMeta.name} Studio
           </Link>
@@ -258,7 +258,7 @@ function AppExportContent() {
           {!canExport && (
             <div className="mt-6 p-4 border-2 border-amber-500/40 bg-amber-500/10 text-sm rounded-xl">
               App Store export requires an active Agency plan or above.{' '}
-              <Link href="/pricing" className="underline text-[var(--accent-teal-bright)]">
+              <Link href="/pricing" className="underline text-[var(--copper-melt)]">
                 View plans
               </Link>
             </div>
@@ -311,8 +311,8 @@ function AppExportContent() {
               </button>
 
               {status === 'ready_for_xcode' && (
-                <div className="p-5 border-2 border-emerald-500/30 bg-emerald-500/5 rounded-xl space-y-3">
-                  <h2 className="text-lg font-semibold text-emerald-400">Your build is ready</h2>
+                <div className="p-5 border-2 border-[var(--copper-primary)]/30 bg-[var(--copper-primary)]/5 rounded-xl space-y-3">
+                  <h2 className="text-lg font-semibold text-[var(--copper-melt)]">Your build is ready</h2>
                   <p className="text-sm text-[var(--foreground)]/80">
                     Now on your Mac terminal, from the project root:
                   </p>

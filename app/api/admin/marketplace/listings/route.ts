@@ -92,3 +92,52 @@ export async function GET(request: NextRequest) {
     return apiErrorResponse(error, 'Failed to load marketplace listings');
   }
 }
+
+export async function POST(request: NextRequest) {
+  const owner = await requirePlatformOwner(request);
+  if (!owner.ok) return owner.response;
+
+  try {
+    const body = await request.json();
+    const title = typeof body.title === 'string' ? body.title.trim() : '';
+    const description = typeof body.description === 'string' ? body.description.trim() : '';
+    const priceCents = parseInt(String(body.price_cents ?? body.priceCents ?? 0), 10);
+    const category = typeof body.category === 'string' ? body.category : 'productivity';
+    const prompt = typeof body.prompt === 'string' ? body.prompt : '';
+    const listingType = body.listing_type === 'ready_made' ? 'ready_made' : 'template';
+
+    if (!title || !Number.isFinite(priceCents) || priceCents < 0) {
+      return NextResponse.json({ error: 'Title and valid price required' }, { status: 400 });
+    }
+
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .schema('marketplace')
+      .from('listings')
+      .insert({
+        title,
+        description: description || null,
+        price_cents: priceCents,
+        listing_type: listingType,
+        seller_user_id: owner.user.id,
+        is_active: true,
+        app_source: {
+          prompt,
+          category,
+          author: 'NiskBuild',
+          featured: body.featured === true,
+          complexity: Math.min(10, Math.max(1, parseInt(String(body.complexity ?? 5), 10))),
+        },
+      })
+      .select('id, title')
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ listing: data }, { status: 201 });
+  } catch (error) {
+    return apiErrorResponse(error, 'Failed to create listing');
+  }
+}

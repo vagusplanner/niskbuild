@@ -5,6 +5,7 @@ import {
   isAuthOnlyPath,
   isPaidPath,
   isPhoneVerifyExemptPath,
+  isPlatformOwnerPath,
   isPreviewPath,
   isPublicPath,
   isTenantRuntimePath,
@@ -76,6 +77,18 @@ export async function proxy(request: NextRequest) {
 
   const tier = profile?.subscription_tier ?? 'free';
   const paid = hasPaidTier(tier) && profile?.subscription_status === 'active';
+
+  // Platform-owner routes (3-layer admin + VP studio) — no paid tier required
+  if (isPlatformOwnerPath(pathname)) {
+    const { data: isOwner } = await supabase.rpc('is_platform_owner').single();
+    if (!isOwner) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/dashboard';
+      url.searchParams.set('error', 'admin_required');
+      return NextResponse.redirect(url);
+    }
+    return supabaseResponse;
+  }
 
   if (!paid && !profile?.phone_verified && !isPhoneVerifyExemptPath(pathname)) {
     const url = request.nextUrl.clone();

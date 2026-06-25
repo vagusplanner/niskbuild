@@ -84,8 +84,8 @@ export default function AiProviderSelector({
 
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden />
-          <div className="absolute left-0 bottom-full mb-1 w-52 rounded-xl border border-nisk bg-nisk-card shadow-2xl z-50 py-1 overflow-hidden">
+          <div className="fixed inset-0 z-[64]" onClick={() => setOpen(false)} aria-hidden />
+          <div className="absolute left-0 bottom-full mb-1 w-52 rounded-xl border border-nisk bg-nisk-card shadow-2xl z-[65] py-1 overflow-hidden">
             {options.map((opt) => (
               <button
                 key={opt.id}

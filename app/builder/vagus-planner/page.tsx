@@ -1,7 +1,10 @@
 import AppBuilderWorkspace from '@/app/builder/AppBuilderWorkspace';
+import { requirePlatformOwnerPage } from '@/lib/platform-owner-auth';
 
-/** Vagus Planner studio — /builder/vagus-planner */
-export default function VagusPlannerBuilderPage() {
+/** Vagus Planner studio — platform owner only */
+export default async function VagusPlannerBuilderPage() {
+  await requirePlatformOwnerPage('/builder/vagus-planner');
+
   return (
     <AppBuilderWorkspace
       appId="vagus-planner"

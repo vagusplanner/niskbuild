@@ -1,53 +1,52 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 750 200" width="750" height="200" aria-label="NiskBuild Sovereign Integrated Logo - Ultra Clean" role="img">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 750 200" width="750" height="200" aria-label="NiskBuild Forged Iron and Copper Logo" role="img">
   <defs>
-    <linearGradient id="integratedGlacialMist" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#D9E2EC"/>
-      <stop offset="100%" stop-color="#BCCCDC"/>
+    <linearGradient id="forgePlateBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2a2622"/>
+      <stop offset="100%" stop-color="#1a1612"/>
     </linearGradient>
-    <linearGradient id="cleanObsidianPillars" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1E293B"/>
-      <stop offset="100%" stop-color="#0F172A"/>
+    <linearGradient id="ironPillars" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3d3530"/>
+      <stop offset="100%" stop-color="#12100e"/>
     </linearGradient>
-    <linearGradient id="cleanCoreFrostL" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FFFFFF"/>
-      <stop offset="100%" stop-color="#BAE6FD"/>
+    <linearGradient id="copperFacetL" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e8b87a"/>
+      <stop offset="100%" stop-color="#d4a574"/>
     </linearGradient>
-    <linearGradient id="cleanCoreFrostR" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#064E3B"/>
-      <stop offset="100%" stop-color="#38BDF8"/>
+    <linearGradient id="copperFacetR" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8b5a2b"/>
+      <stop offset="100%" stop-color="#b87333"/>
     </linearGradient>
-    <linearGradient id="cleanNiskBlend" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#0F172A"/>
-      <stop offset="100%" stop-color="#1E293B"/>
+    <linearGradient id="niskIron" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f5ebe0"/>
+      <stop offset="100%" stop-color="#d4a574"/>
     </linearGradient>
-    <linearGradient id="cleanBuildBlend" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#064E3B"/>
-      <stop offset="30%" stop-color="#059669"/>
-      <stop offset="80%" stop-color="#38BDF8"/>
-      <stop offset="100%" stop-color="#BAE6FD"/>
+    <linearGradient id="buildCopper" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#b87333"/>
+      <stop offset="45%" stop-color="#e8b87a"/>
+      <stop offset="100%" stop-color="#d4a574"/>
     </linearGradient>
-    <linearGradient id="cleanTaglineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#064E3B"/>
-      <stop offset="60%" stop-color="#0F172A"/>
-      <stop offset="100%" stop-color="#0284C7"/>
+    <linearGradient id="taglineCopper" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#d4a574"/>
+      <stop offset="55%" stop-color="#b87333"/>
+      <stop offset="100%" stop-color="#8b5a2b"/>
     </linearGradient>
   </defs>
-  <rect width="100%" height="100%" fill="url(#integratedGlacialMist)" rx="12"/>
+  <rect width="100%" height="100%" fill="url(#forgePlateBg)" rx="12"/>
   <g transform="translate(45, 25)">
-    <path d="M 0,0 L 45,0 L 45,150 L 0,150 Z" fill="url(#cleanObsidianPillars)"/>
-    <path d="M 90,0 L 135,0 L 135,150 L 90,150 Z" fill="url(#cleanObsidianPillars)"/>
-    <path d="M 45,0 L 68,75 L 45,115 L 45,45 Z" fill="url(#cleanCoreFrostL)"/>
-    <path d="M 90,150 L 68,75 L 90,35 L 90,105 Z" fill="url(#cleanCoreFrostR)"/>
-    <polygon points="45,115 68,75 90,150" fill="#0F172A" opacity="0.25"/>
-    <polygon points="90,35 68,75 45,0" fill="#FFFFFF" opacity="0.4"/>
+    <path d="M 0,0 L 45,0 L 45,150 L 0,150 Z" fill="url(#ironPillars)"/>
+    <path d="M 90,0 L 135,0 L 135,150 L 90,150 Z" fill="url(#ironPillars)"/>
+    <path d="M 45,0 L 68,75 L 45,115 L 45,45 Z" fill="url(#copperFacetL)"/>
+    <path d="M 90,150 L 68,75 L 90,35 L 90,105 Z" fill="url(#copperFacetR)"/>
+    <polygon points="45,115 68,75 90,150" fill="#12100e" opacity="0.35"/>
+    <polygon points="90,35 68,75 45,0" fill="#e8b87a" opacity="0.35"/>
   </g>
   <g transform="translate(215, 112)">
     <text font-family="system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" font-size="68" font-weight="900" letter-spacing="-1.5">
-      <tspan fill="url(#cleanNiskBlend)">NISK</tspan>
-      <tspan fill="url(#cleanBuildBlend)" dx="16">BUILD</tspan>
+      <tspan fill="url(#niskIron)">NISK</tspan>
+      <tspan fill="url(#buildCopper)" dx="16">BUILD</tspan>
     </text>
   </g>
   <g transform="translate(218, 152)">
-    <text font-family="system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,monospace" font-size="14" font-weight="900" fill="url(#cleanTaglineGrad)">BUILD ANYTHING. OWN EVERYTHING.</text>
+    <text font-family="system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,monospace" font-size="14" font-weight="900" fill="url(#taglineCopper)">BUILD ANYTHING. OWN EVERYTHING.</text>
   </g>
 </svg>

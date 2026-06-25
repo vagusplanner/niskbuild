@@ -24,6 +24,7 @@ export const metadata: Metadata = {
   title: "NiskBuild - Build Apps with AI",
   description:
     "The AI app builder that gives you the code. Build locally. Own forever.",
+  themeColor: "#1a1612",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "32x32", type: "image/x-icon" },

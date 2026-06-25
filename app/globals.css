@@ -1,61 +1,74 @@
 @import "tailwindcss";
 
-/* NiskBuild — Glacial Mist Light Canvas (dark readable text, exact SVG palette) */
+/* NiskBuild — Forged Iron & Melted Copper (muted forge) */
 :root,
 [data-theme="light"],
 [data-theme="dark"] {
-  --background: #D9E2EC;
-  --background-gradient: linear-gradient(135deg, #D9E2EC 0%, #C8D4E0 48%, #BCCCDC 100%);
-  --foreground: #0F172A;
-  --primary: #046A38;
-  --primary-hover: #064E3B;
-  --secondary: #2D3748;
-  --secondary-hover: #0F172A;
-  --accent-teal: #046A38;
-  --accent-teal-light: #38BDF8;
-  --accent-teal-bright: #BAE6FD;
-  --accent-lavender: #E0F2FE;
-  --accent-cyan: #0284C7;
-  --accent-cyan-hover: #0369A1;
-  --brand-gradient: linear-gradient(90deg, #046A38 0%, #0284C7 35%, #0369A1 70%, #0F172A 100%);
-  --build-gradient: linear-gradient(90deg, #046A38 0%, #0284C7 35%, #0369A1 70%, #0F172A 100%);
-  --nisk-color: #0F172A;
-  --tagline-color: #064E3B;
-  --success: #046A38;
-  --error: #0F172A;
-  --border: rgba(15, 23, 42, 0.12);
-  --card-bg: rgba(255, 255, 255, 0.86);
-  --surface: #E8EEF4;
-  --surface-elevated: rgba(255, 255, 255, 0.96);
-  --glass-bg: rgba(255, 255, 255, 0.76);
-  --nav-bg: rgba(217, 226, 236, 0.94);
-  --overlay: rgba(15, 23, 42, 0.32);
-  --muted: #4A5568;
-  --tagline: #064E3B;
-  --code-bg: rgba(255, 255, 255, 0.92);
-  --code-keyword: #064E3B;
-  --code-string: #046A38;
-  --code-comment: #4A5568;
-  --code-function: #0284C7;
-  --code-number: #0369A1;
-  --code-tag: #0F172A;
-  --code-attr: #059669;
-  --scrollbar-track: #D9E2EC;
-  --scrollbar-thumb: #BCCCDC;
-  --scrollbar-thumb-hover: #4A5568;
-  --placeholder: #4A5568;
-  --selection-bg: #BAE6FD;
-  --selection-fg: #0F172A;
-  --dot-grid: rgba(4, 106, 56, 0.06);
-  --canvas-start: #D9E2EC;
-  --canvas-end: #BCCCDC;
-  --carbon: #0F172A;
-  --slate: #2D3748;
+  --iron-dark: #0a0908;
+  --iron-mid: #0f0d0b;
+  --iron-light: #141210;
+  --iron-surface: #1c1916;
+  --copper-primary: #9a6530;
+  --copper-dark: #6b4423;
+  --copper-light: #a87a48;
+  --copper-melt: #a87a48;
+  --copper-glow: rgba(107, 68, 35, 0.12);
+  --ember: #8f3d18;
+
+  --background: #0a0908;
+  --background-gradient: linear-gradient(145deg, #080706 0%, #0f0d0b 42%, #141210 100%);
+  --foreground: #c9baa8;
+  --primary: var(--copper-primary);
+  --primary-hover: var(--copper-dark);
+  --secondary: var(--iron-light);
+  --secondary-hover: var(--iron-surface);
+  --accent-teal: var(--copper-primary);
+  --accent-teal-light: var(--copper-dark);
+  --accent-teal-bright: var(--copper-melt);
+  --accent-lavender: rgba(168, 122, 72, 0.1);
+  --accent-cyan: var(--copper-light);
+  --accent-cyan-hover: var(--copper-primary);
+  --brand-gradient: linear-gradient(90deg, #3d2814 0%, #6b4423 35%, #9a6530 70%, #7a5028 100%);
+  --build-gradient: linear-gradient(90deg, #4a2e18 0%, #6b4423 50%, #9a6530 100%);
+  --nisk-color: #c9baa8;
+  --tagline-color: var(--copper-light);
+  --success: #7d5a32;
+  --error: #a84a20;
+  --border: rgba(154, 101, 48, 0.12);
+  --card-bg: rgba(20, 18, 16, 0.97);
+  --surface: #141210;
+  --surface-elevated: rgba(28, 25, 22, 0.98);
+  --glass-bg: rgba(20, 18, 16, 0.94);
+  --nav-bg: rgba(15, 13, 11, 0.98);
+  --overlay: rgba(10, 9, 8, 0.8);
+  --muted: #6e6256;
+  --tagline: var(--copper-light);
+  --code-bg: #0c0a09;
+  --code-keyword: #a87a48;
+  --code-string: #8a7358;
+  --code-comment: #5c5248;
+  --code-function: #9a6530;
+  --code-number: var(--ember);
+  --code-tag: #b8a898;
+  --code-attr: #8a7358;
+  --scrollbar-track: #141210;
+  --scrollbar-thumb: #3a332c;
+  --scrollbar-thumb-hover: var(--copper-primary);
+  --placeholder: #5c5248;
+  --selection-bg: rgba(154, 101, 48, 0.32);
+  --selection-fg: #e8dcc8;
+  --dot-grid: rgba(154, 101, 48, 0.06);
+  --canvas-start: #141210;
+  --canvas-end: #1c1916;
+  --carbon: #080706;
+  --slate: #1c1916;
 }
 
 body {
   background-color: var(--background);
-  background-image: var(--background-gradient);
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(107, 68, 35, 0.04), transparent 50%),
+    var(--background-gradient);
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
   min-height: 100%;
@@ -126,14 +139,32 @@ pre, code {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border);
-  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
 }
 .glass-nav {
   background: var(--nav-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.85);
+  box-shadow: 0 1px 0 rgba(232, 184, 122, 0.08);
+}
+.forge-plate {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--copper-dark) 12%, var(--iron-mid)) 0%,
+      color-mix(in srgb, var(--copper-primary) 10%, var(--iron-dark)) 50%,
+      color-mix(in srgb, var(--copper-dark) 16%, var(--iron-dark)) 100%
+    );
+  border-bottom: 1px solid color-mix(in srgb, var(--copper-primary) 28%, var(--border));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--copper-melt) 18%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--copper-dark) 40%, transparent),
+    0 4px 20px var(--copper-glow);
+}
+.forge-plate.glass-nav {
+  backdrop-filter: blur(20px) saturate(1.1);
+  -webkit-backdrop-filter: blur(20px) saturate(1.1);
 }
 .glass-input {
   background: var(--surface-elevated);
@@ -200,15 +231,16 @@ pre, code {
 
 .btn-primary {
   background: var(--brand-gradient);
-  color: #FFFFFF !important;
+  color: #1a1208 !important;
   font-weight: 600;
   transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
-  box-shadow: 0 4px 20px rgba(4, 106, 56, 0.22);
+  box-shadow: 0 4px 20px var(--copper-glow);
+  border: 1px solid color-mix(in srgb, var(--copper-melt) 50%, transparent);
 }
 .btn-primary:hover:not(:disabled) {
   opacity: 0.96;
   transform: translateY(-1px);
-  box-shadow: 0 8px 28px rgba(2, 132, 199, 0.28);
+  box-shadow: 0 6px 20px rgba(139, 90, 43, 0.22);
 }
 .btn-secondary {
   background: var(--surface-elevated);
@@ -244,8 +276,8 @@ pre, code {
 }
 .card-hover:hover {
   transform: translateY(-2px);
-  box-shadow: 0 16px 40px -12px rgba(4, 106, 56, 0.14);
-  border-color: color-mix(in srgb, var(--primary) 28%, var(--border));
+  box-shadow: 0 16px 40px -12px var(--copper-glow);
+  border-color: color-mix(in srgb, var(--copper-primary) 45%, var(--border));
 }
 
 .status-dot {
@@ -256,8 +288,8 @@ pre, code {
 }
 
 .status-dot-active {
-  background-color: var(--primary);
-  box-shadow: 0 0 10px rgba(2, 132, 199, 0.35);
+  background-color: var(--copper-melt);
+  box-shadow: 0 0 10px var(--copper-glow);
   animation: pulse 2s infinite;
 }
 
@@ -268,54 +300,54 @@ pre, code {
   }
 }
 
-/* Builder — Glacial Mist light shell */
+/* Builder — forged iron shell */
 [data-builder-shell] {
-  --background: #D9E2EC;
-  --background-gradient: linear-gradient(135deg, #D9E2EC 0%, #C8D4E0 48%, #BCCCDC 100%);
-  --card-bg: rgba(255, 255, 255, 0.9);
-  --surface: #E8EEF4;
-  --surface-elevated: rgba(255, 255, 255, 0.98);
-  --glass-bg: rgba(255, 255, 255, 0.8);
-  --nav-bg: rgba(217, 226, 236, 0.96);
-  --border: rgba(15, 23, 42, 0.1);
-  --muted: #4A5568;
-  --foreground: #0F172A;
+  --background: #1a1612;
+  --background-gradient: linear-gradient(145deg, #12100e 0%, #1c1916 45%, #2c241c 100%);
+  --card-bg: rgba(44, 36, 28, 0.95);
+  --surface: #241f1a;
+  --surface-elevated: rgba(50, 44, 38, 0.98);
+  --glass-bg: rgba(36, 31, 26, 0.88);
+  --nav-bg: rgba(22, 18, 14, 0.97);
+  --border: rgba(212, 165, 116, 0.18);
+  --muted: #a89580;
+  --foreground: #f5ebe0;
 }
 
 [data-builder-shell] .builder-preview-canvas {
-  background-color: #E8EEF4;
-  background-image: radial-gradient(circle at 1px 1px, rgba(4, 106, 56, 0.05) 1px, transparent 0);
+  background-color: #1e1a16;
+  background-image: radial-gradient(circle at 1px 1px, var(--dot-grid) 1px, transparent 0);
   background-size: 20px 20px;
 }
 
-[data-builder-shell] .builder-chat-panel {
-  box-shadow: 2px 0 24px rgba(15, 23, 42, 0.05);
-}
-
 [data-builder-shell] .builder-canvas-header {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(232, 238, 244, 0.96) 100%);
-  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.06);
+  background: linear-gradient(180deg, rgba(50, 44, 38, 0.98) 0%, rgba(36, 31, 26, 0.96) 100%);
+  box-shadow: 0 1px 0 rgba(184, 115, 51, 0.12);
 }
 
 [data-builder-shell] .builder-prompt-dock {
-  box-shadow: 0 -6px 32px rgba(15, 23, 42, 0.06);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, #D9E2EC 100%);
+  box-shadow: 0 -6px 32px rgba(0, 0, 0, 0.35);
+  background: linear-gradient(180deg, rgba(44, 36, 28, 0.98) 0%, #1a1612 100%);
+}
+
+[data-builder-shell] .builder-chat-panel {
+  box-shadow: 2px 0 24px rgba(0, 0, 0, 0.35);
 }
 
 [data-builder-shell] .builder-inspector-overlay {
-  box-shadow: -12px 0 40px rgba(15, 23, 42, 0.08);
+  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.4);
 }
 
 [data-builder-shell] .builder-section-chip {
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(44, 36, 28, 0.9);
   border-color: var(--border);
   color: var(--muted);
 }
 
 [data-builder-shell] .builder-section-chip:hover {
-  background: rgba(4, 106, 56, 0.08);
-  border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
-  color: var(--primary);
+  background: rgba(184, 115, 51, 0.12);
+  border-color: color-mix(in srgb, var(--copper-primary) 50%, var(--border));
+  color: var(--copper-melt);
 }
 
 .builder-workspace {
@@ -329,14 +361,19 @@ pre, code {
 }
 
 .builder-chat-panel {
-  width: min(28%, 320px);
-  min-width: 260px;
+  width: min(24%, 280px);
+  min-width: 240px;
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   background-color: var(--card-bg);
   flex-shrink: 0;
   overflow: hidden;
+}
+
+.builder-chat-panel--collapsed {
+  width: 3rem !important;
+  min-width: 3rem !important;
 }
 
 .builder-chat-scroll {
@@ -375,10 +412,10 @@ pre, code {
   flex-direction: column;
   background-color: var(--card-bg);
   border-left: 1px solid var(--border);
-  box-shadow: -10px 0 32px rgba(15, 23, 42, 0.07);
+  box-shadow: -10px 0 32px rgba(0, 0, 0, 0.3);
 }
 
-/* Readable dark copy on Glacial Mist — legacy utility overrides */
+/* Iron theme — readable copy on dark forged surfaces */
 .text-white {
   color: var(--foreground) !important;
 }

@@ -7,14 +7,14 @@ import {
   resolveBuilderApp,
 } from '@/lib/builder-apps/handlers';
 
-type RouteContext = { params: Promise<{ appId: string }> };
+type RouteContext = { params: Promise<{ id: string }> };
 
 export async function GET(request: NextRequest, context: RouteContext) {
   const guard = await guardApiRequest(request, { rateLimit: 30 });
   if (!guard.ok) return guard.response;
 
   try {
-    const { appId } = await context.params;
+    const { id: appId } = await context.params;
     const app = resolveBuilderApp(appId);
     if (!app) {
       return NextResponse.json({ error: 'Unknown builder app' }, { status: 404 });
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
   if (!guard.ok) return guard.response;
 
   try {
-    const { appId } = await context.params;
+    const { id: appId } = await context.params;
     const app = resolveBuilderApp(appId);
     if (!app) {
       return NextResponse.json({ error: 'Unknown builder app' }, { status: 404 });

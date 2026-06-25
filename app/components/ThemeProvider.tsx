@@ -16,7 +16,7 @@ function applyLightTheme() {
   document.documentElement.style.colorScheme = 'light';
 }
 
-/** Brand is light-only — attached assets use a light blue-grey background. */
+/** Brand uses forged iron & melted copper palette — single theme across the app. */
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [preference, setPreferenceState] = useState<ThemePreference>('light');
 

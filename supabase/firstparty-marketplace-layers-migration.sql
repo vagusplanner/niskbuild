@@ -66,6 +66,13 @@ create table if not exists firstparty.vp_categories (
   updated_at timestamptz not null default now()
 );
 
+-- Upgrade older vp_categories tables created without sort_order / updated_at
+alter table firstparty.vp_categories
+  add column if not exists color text not null default '#C9884A',
+  add column if not exists icon text,
+  add column if not exists sort_order integer not null default 0,
+  add column if not exists updated_at timestamptz not null default now();
+
 create index if not exists idx_firstparty_vp_categories_user
   on firstparty.vp_categories (user_id, sort_order);
 
@@ -83,6 +90,30 @@ create table if not exists firstparty.vp_tasks (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Upgrade older vp_tasks tables (due_at → due_date, missing status, etc.)
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'firstparty'
+      and table_name = 'vp_tasks'
+      and column_name = 'due_at'
+  ) and not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'firstparty'
+      and table_name = 'vp_tasks'
+      and column_name = 'due_date'
+  ) then
+    alter table firstparty.vp_tasks rename column due_at to due_date;
+  end if;
+end $$;
+
+alter table firstparty.vp_tasks
+  add column if not exists due_date timestamptz,
+  add column if not exists status text not null default 'pending',
+  add column if not exists completed_at timestamptz,
+  add column if not exists updated_at timestamptz not null default now();
 
 create index if not exists idx_firstparty_vp_tasks_user_due
   on firstparty.vp_tasks (user_id, due_date nulls last);
@@ -110,13 +141,66 @@ create table if not exists firstparty.vp_events (
   updated_at timestamptz not null default now()
 );
 
+-- Upgrade older vp_events tables that used "date" instead of "event_date"
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'firstparty'
+      and table_name = 'vp_events'
+      and column_name = 'date'
+  ) and not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'firstparty'
+      and table_name = 'vp_events'
+      and column_name = 'event_date'
+  ) then
+    alter table firstparty.vp_events rename column date to event_date;
+  end if;
+end $$;
+
+alter table firstparty.vp_events
+  add column if not exists event_date timestamptz,
+  add column if not exists description text,
+  add column if not exists location text,
+  add column if not exists updated_at timestamptz not null default now();
+
 create index if not exists idx_firstparty_vp_events_user_date
   on firstparty.vp_events (user_id, event_date nulls last);
 
--- Seed Vagus Planner registry row (idempotent)
+-- Seed Vagus Planner registry row (idempotent; safe if app_name unique is missing)
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint c
+    join pg_class t on t.oid = c.conrelid
+    join pg_namespace n on n.oid = t.relnamespace
+    where n.nspname = 'firstparty'
+      and t.relname = 'app_registry'
+      and c.conname = 'app_registry_app_name_unique'
+  ) and not exists (
+    select 1
+    from firstparty.app_registry
+    group by app_name
+    having count(*) > 1
+  ) then
+    alter table firstparty.app_registry
+      add constraint app_registry_app_name_unique unique (app_name);
+  end if;
+end $$;
+
+create unique index if not exists idx_firstparty_app_registry_app_name
+  on firstparty.app_registry (app_name);
+
+update firstparty.app_registry
+set status = 'active'
+where app_name = 'Vagus Planner';
+
 insert into firstparty.app_registry (app_name, status)
-values ('Vagus Planner', 'active')
-on conflict (app_name) do update set status = excluded.status;
+select 'Vagus Planner', 'active'
+where not exists (
+  select 1 from firstparty.app_registry where app_name = 'Vagus Planner'
+);
 
 -- RLS — firstparty
 alter table firstparty.platform_owners enable row level security;
@@ -214,6 +298,29 @@ create table if not exists marketplace.purchases (
   cloned_project_id uuid,
   purchased_at timestamptz not null default now()
 );
+
+-- Upgrade older marketplace.purchases tables (created_at → purchased_at)
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'marketplace'
+      and table_name = 'purchases'
+      and column_name = 'created_at'
+  ) and not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'marketplace'
+      and table_name = 'purchases'
+      and column_name = 'purchased_at'
+  ) then
+    alter table marketplace.purchases rename column created_at to purchased_at;
+  end if;
+end $$;
+
+alter table marketplace.purchases
+  add column if not exists purchased_at timestamptz not null default now(),
+  add column if not exists stripe_payment_id text,
+  add column if not exists cloned_project_id uuid;
 
 create index if not exists idx_marketplace_purchases_buyer
   on marketplace.purchases (buyer_user_id, purchased_at desc);

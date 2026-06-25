@@ -9,14 +9,14 @@ import { canExportNative } from '@/lib/tier-config';
 
 export const maxDuration = 300;
 
-type RouteContext = { params: Promise<{ appId: string }> };
+type RouteContext = { params: Promise<{ id: string }> };
 
 export async function POST(request: NextRequest, context: RouteContext) {
   const guard = await guardApiRequest(request, { rateLimit: 3 });
   if (!guard.ok) return guard.response;
 
   try {
-    const { appId } = await context.params;
+    const { id: appId } = await context.params;
 
     if (!isExportSupported(appId)) {
       return NextResponse.json({ error: 'Export is not supported for this app' }, { status: 404 });

@@ -29,7 +29,7 @@ function tierButtonClass(tier: PricingTier, variant: 'landing' | 'page') {
   if (!tier.tier) return 'bg-[var(--surface-elevated)] cursor-default text-nisk-muted border border-nisk';
   if (tier.highlighted) return 'bg-[var(--secondary)] hover:bg-[var(--secondary-hover)] text-white';
   if (tier.tier === 'pro') return 'bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white';
-  if (tier.tier === 'scale') return 'bg-emerald-600 hover:bg-emerald-500 text-white';
+  if (tier.tier === 'scale') return 'bg-[var(--copper-dark)] hover:bg-[var(--copper-primary)] text-white';
   return 'bg-amber-600 hover:bg-amber-500 text-white';
 }
 

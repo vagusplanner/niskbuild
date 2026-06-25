@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from 'react';
+import type { PreviewDevice } from '@/app/components/PreviewDeviceSwitcher';
 
 type BuilderActionsMenuProps = {
   canAct: boolean;
@@ -17,6 +18,15 @@ type BuilderActionsMenuProps = {
   onToggleVisualEdit: () => void;
   onToggleInspect: () => void;
   onRestoreZip: (file: File) => Promise<void>;
+  onOpenInspector?: () => void;
+  inspectorOpen?: boolean;
+  onToggleFullscreen?: () => void;
+  onOpenHistory?: () => void;
+  versionHistoryOpen?: boolean;
+  previewDevice?: PreviewDevice;
+  onPreviewDeviceChange?: (device: PreviewDevice) => void;
+  canShareSocial?: boolean;
+  onOpenSocialPublisher?: () => void;
 };
 
 export default function BuilderActionsMenu({
@@ -34,6 +44,15 @@ export default function BuilderActionsMenu({
   onToggleVisualEdit,
   onToggleInspect,
   onRestoreZip,
+  onOpenInspector,
+  inspectorOpen,
+  onToggleFullscreen,
+  onOpenHistory,
+  versionHistoryOpen,
+  previewDevice,
+  onPreviewDeviceChange,
+  canShareSocial,
+  onOpenSocialPublisher,
 }: BuilderActionsMenuProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -66,44 +85,98 @@ export default function BuilderActionsMenu({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        disabled={!canAct && !canVisualEdit}
-        className="btn-secondary px-3 py-1.5 text-xs rounded-lg disabled:opacity-40 flex items-center gap-1.5"
+        className="btn-secondary px-3 py-1.5 text-xs rounded-lg flex items-center gap-1.5"
         aria-expanded={open}
         aria-haspopup="menu"
       >
-        Actions
+        Menu
         <span className="text-[10px] opacity-70">▾</span>
       </button>
 
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full mt-1 w-56 rounded-xl border border-nisk bg-nisk-card shadow-2xl z-50 py-1 overflow-hidden"
+          className="absolute right-0 top-full mt-1 w-52 rounded-xl border border-nisk bg-nisk-card shadow-2xl z-50 py-1 overflow-hidden"
         >
+          {onOpenInspector && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => { onOpenInspector(); close(); }}
+              className={`w-full text-left px-4 py-2 text-sm hover:bg-[var(--surface-elevated)] ${
+                inspectorOpen ? 'text-[var(--copper-melt)]' : 'text-gray-200'
+              }`}
+            >
+              {inspectorOpen ? 'Hide inspector' : 'Show inspector'}
+            </button>
+          )}
+          {onOpenHistory && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => { onOpenHistory(); close(); }}
+              className={`w-full text-left px-4 py-2 text-sm hover:bg-[var(--surface-elevated)] ${
+                versionHistoryOpen ? 'text-[var(--copper-melt)]' : 'text-gray-200'
+              }`}
+            >
+              Version history
+            </button>
+          )}
+          {onToggleFullscreen && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => { onToggleFullscreen(); close(); }}
+              className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-[var(--surface-elevated)]"
+            >
+              Fullscreen preview
+            </button>
+          )}
+          {onPreviewDeviceChange && (
+            <>
+              <div className="border-t border-nisk my-1" />
+              <p className="px-4 py-1 text-[10px] uppercase tracking-wider text-nisk-muted">Preview size</p>
+              {(
+                [
+                  { id: 'desktop' as const, label: 'Desktop 🖥' },
+                  { id: 'tablet' as const, label: 'Tablet 📱' },
+                  { id: 'mobile' as const, label: 'Mobile 📲' },
+                ] as const
+              ).map((d) => (
+                <button
+                  key={d.id}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => { onPreviewDeviceChange(d.id); close(); }}
+                  className={`w-full text-left px-4 py-2 text-sm hover:bg-[var(--surface-elevated)] ${
+                    previewDevice === d.id ? 'text-[var(--copper-melt)]' : 'text-gray-200'
+                  }`}
+                >
+                  {d.label}
+                </button>
+              ))}
+            </>
+          )}
+          {(onOpenInspector || onOpenHistory || onToggleFullscreen) && (
+            <div className="border-t border-nisk my-1" />
+          )}
           <button
             type="button"
             role="menuitem"
             onClick={() => { onToggleVisualEdit(); close(); }}
             disabled={!canVisualEdit}
-            className={`w-full text-left px-4 py-2.5 text-sm hover:bg-[var(--surface-elevated)] disabled:opacity-40 ${
-              visualEditMode ? 'text-emerald-400' : 'text-gray-200'
-            }`}
+            className="w-full text-left px-4 py-2 text-sm hover:bg-[var(--surface-elevated)] disabled:opacity-40 text-gray-200"
           >
-            🎨 {visualEditMode ? 'Exit visual edit' : 'Visual edit mode'}
-            {!canVisualEdit && (
-              <span className="block text-[10px] text-nisk-muted">Pro plan required</span>
-            )}
+            {visualEditMode ? 'Exit visual edit' : 'Visual edit'}
           </button>
           <button
             type="button"
             role="menuitem"
             onClick={() => { onToggleInspect(); close(); }}
             disabled={visualEditMode}
-            className={`w-full text-left px-4 py-2.5 text-sm hover:bg-[var(--surface-elevated)] disabled:opacity-40 ${
-              inspectMode ? 'text-[var(--accent-cyan)]' : 'text-gray-200'
-            }`}
+            className="w-full text-left px-4 py-2 text-sm hover:bg-[var(--surface-elevated)] disabled:opacity-40 text-gray-200"
           >
-            🎯 {inspectMode ? 'Exit target mode' : 'Target element edit'}
+            {inspectMode ? 'Exit target mode' : 'Target element'}
           </button>
           <div className="border-t border-nisk my-1" />
           <button
@@ -111,46 +184,55 @@ export default function BuilderActionsMenu({
             role="menuitem"
             onClick={() => { onSave(); close(); }}
             disabled={!canAct}
-            className="w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-[var(--surface-elevated)] disabled:opacity-40"
+            className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-[var(--surface-elevated)] disabled:opacity-40"
           >
-            💾 Save project
+            Save project
           </button>
           <button
             type="button"
             role="menuitem"
             onClick={() => { onExportZip(); close(); }}
             disabled={!canAct || isExporting}
-            className="w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-[var(--surface-elevated)] disabled:opacity-40"
+            className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-[var(--surface-elevated)] disabled:opacity-40"
           >
-            {isExporting ? '📦 Exporting…' : '📦 Export ZIP'}
+            {isExporting ? 'Exporting…' : 'Export ZIP'}
           </button>
           <button
             type="button"
             role="menuitem"
             onClick={() => { onMobileExport(); close(); }}
             disabled={!canAct || mobileExporting}
-            className="w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-[var(--surface-elevated)] disabled:opacity-40"
+            className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-[var(--surface-elevated)] disabled:opacity-40"
           >
-            📱 Export as Mobile App
-            {!canPwa && <span className="block text-[10px] text-nisk-muted">Pro plan required</span>}
+            Export mobile app
           </button>
           <button
             type="button"
             role="menuitem"
             onClick={() => { fileRef.current?.click(); }}
-            className="w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-[var(--surface-elevated)]"
+            className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-[var(--surface-elevated)]"
           >
-            📂 Import ZIP
+            Import ZIP
           </button>
           <div className="border-t border-nisk my-1" />
+          {canShareSocial && onOpenSocialPublisher && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => { onOpenSocialPublisher(); close(); }}
+              className="w-full text-left px-4 py-2 text-sm text-[var(--copper-melt)] hover:bg-[var(--surface-elevated)]"
+            >
+              Share to Social
+            </button>
+          )}
           <button
             type="button"
             role="menuitem"
             onClick={() => { onDeployLive(); close(); }}
             disabled={!canAct}
-            className="w-full text-left px-4 py-2.5 text-sm text-[var(--success)] hover:bg-[var(--surface-elevated)] disabled:opacity-40"
+            className="w-full text-left px-4 py-2 text-sm text-[var(--copper-melt)] hover:bg-[var(--surface-elevated)] disabled:opacity-40"
           >
-            🌐 Deploy live preview
+            Deploy live preview
           </button>
         </div>
       )}

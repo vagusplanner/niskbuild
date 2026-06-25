@@ -3,7 +3,14 @@ import Stripe from 'stripe';
 import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createClient } from '@/lib/supabase/server';
-import { getTemplateById, canAccessTemplate } from '@/lib/marketplace-templates';
+import {
+  isListingOwned,
+  fetchUserLegacyPurchasedIds,
+  fetchUserPurchasedListingIds,
+  fetchUserSubscriptionTier,
+  resolvePurchasableItem,
+} from '@/lib/marketplace-service';
+import { listingIncludedInTier } from '@/lib/marketplace-types';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -18,34 +25,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Template ID required' }, { status: 400 });
     }
 
-    const template = getTemplateById(templateId);
-    if (!template) {
+    const supabase = await createClient();
+    const user = guard.user!;
+
+    const resolved = await resolvePurchasableItem(supabase, templateId);
+    if (!resolved) {
       return NextResponse.json({ error: 'Template not found' }, { status: 404 });
     }
+
+    const { item: template, listingRow } = resolved;
 
     if (template.price === 0) {
       return NextResponse.json({ error: 'This template is free' }, { status: 400 });
     }
 
-    const supabase = await createClient();
-    const user = guard.user!;
-
     if (!user.email) {
       return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
     }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('subscription_tier, purchased_templates')
-      .eq('id', user.id)
-      .single();
+    const [tier, purchasedListingIds, legacyIds] = await Promise.all([
+      fetchUserSubscriptionTier(supabase, user.id),
+      fetchUserPurchasedListingIds(supabase, user.id),
+      fetchUserLegacyPurchasedIds(supabase, user.id),
+    ]);
 
-    const tier = profile?.subscription_tier || 'free';
-    const purchasedIds = Array.isArray(profile?.purchased_templates)
-      ? profile.purchased_templates
-      : [];
-
-    if (canAccessTemplate(template, tier, purchasedIds)) {
+    if (
+      isListingOwned(template, tier, purchasedListingIds, legacyIds) ||
+      listingIncludedInTier(template, tier, legacyIds)
+    ) {
       return NextResponse.json({ alreadyOwned: true });
     }
 
@@ -68,11 +75,12 @@ export async function POST(request: NextRequest) {
           quantity: 1,
         },
       ],
-      success_url: `${appUrl}/marketplace?purchased=${templateId}&session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${appUrl}/marketplace?purchased=${template.id}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/marketplace?canceled=true`,
       metadata: {
         type: 'template',
         templateId: template.id,
+        listingId: listingRow?.id ?? '',
         userId: user.id,
       },
     });

@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
     const { data: profile, error } = await supabase
       .from('profiles')
-      .select('subscription_tier, subscription_status, cloud_credits_remaining')
+      .select('subscription_tier, subscription_status, cloud_credits_remaining, purchased_templates')
       .eq('id', user.id)
       .single();
 
@@ -59,6 +59,9 @@ export async function GET(request: NextRequest) {
       status,
       credits: profile?.cloud_credits_remaining ?? 0,
       creditsAllowance: getCloudCreditsForTier(tier),
+      purchasedTemplates: Array.isArray(profile?.purchased_templates)
+        ? profile.purchased_templates
+        : [],
     });
   } catch (error) {
     captureApiException(error);

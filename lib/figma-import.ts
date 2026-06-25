@@ -82,7 +82,7 @@ export function generateReactCode(components: FigmaComponentSummary[]): string {
 
 export default function App() {
   return (
-    <div className="min-h-screen p-8 text-center" style={{ background: '${BRAND_COLORS.bgGradient}', color: '${BRAND_COLORS.carbonObsidian}' }}>
+    <div className="min-h-screen p-8 text-center" style={{ background: '${BRAND_COLORS.bgGradient}', color: '${BRAND_COLORS.parchment}' }}>
       <h1 className="text-2xl font-bold">No components found</h1>
       <p className="mt-2 opacity-70">Add components to your Figma file and import again.</p>
     </div>
@@ -101,13 +101,13 @@ function ${comp.componentName}() {
       style={{
         width: ${typeof w === 'number' ? w : `'${w}'`},
         height: ${typeof h === 'number' ? h : `'${h}'`},
-        borderColor: '${BRAND_COLORS.glacialMistEnd}',
-        background: '${BRAND_COLORS.white}',
+        borderColor: '${BRAND_COLORS.copperLight}',
+        background: '${BRAND_COLORS.ironSurface}',
       }}
       className="rounded-xl border p-4"
     >
-      <div className="text-sm font-semibold" style={{ color: '${BRAND_COLORS.carbonObsidian}' }}>${comp.name}</div>
-      <div className="text-xs mt-1" style={{ color: '${BRAND_COLORS.forestDeep}' }}>${comp.type}</div>
+      <div className="text-sm font-semibold" style={{ color: '${BRAND_COLORS.parchment}' }}>${comp.name}</div>
+      <div className="text-xs mt-1" style={{ color: '${BRAND_COLORS.parchmentMuted}' }}>${comp.type}</div>
     </div>
   );
 }`;
@@ -122,9 +122,9 @@ ${componentBlocks}
 
 export default function App() {
   return (
-    <div className="min-h-screen p-8" style={{ background: '${BRAND_COLORS.bgGradient}', color: '${BRAND_COLORS.carbonObsidian}' }}>
+    <div className="min-h-screen p-8" style={{ background: '${BRAND_COLORS.bgGradient}', color: '${BRAND_COLORS.parchment}' }}>
       <h1 className="text-2xl font-bold mb-2">Figma import</h1>
-      <p className="text-sm mb-6" style={{ color: '${BRAND_COLORS.forestDeep}' }}>${components.length} component${components.length === 1 ? '' : 's'} imported from Figma</p>
+      <p className="text-sm mb-6" style={{ color: '${BRAND_COLORS.parchmentMuted}' }}>${components.length} component${components.length === 1 ? '' : 's'} imported from Figma</p>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         ${jsx}
       </div>

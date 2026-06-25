@@ -17,12 +17,14 @@ function PricingContent() {
   const searchParams = useSearchParams();
 
   const [needsUpgrade, setNeedsUpgrade] = useState(false);
+  const [isWelcome, setIsWelcome] = useState(false);
 
   useEffect(() => {
     if (searchParams.get('canceled') === 'true' || searchParams.get('checkout') === 'cancel') {
       setCanceled(true);
     }
     if (searchParams.get('upgrade') === '1') setNeedsUpgrade(true);
+    if (searchParams.get('welcome') === '1') setIsWelcome(true);
   }, [searchParams]);
 
   const handleSubscribe = async (tier: string, interval: BillingInterval) => {
@@ -89,10 +91,12 @@ function PricingContent() {
           </p>
         </div>
 
-        {needsUpgrade && (
+        {(needsUpgrade || isWelcome) && (
           <div className="mb-6 p-4 rounded-xl bg-[var(--primary)]/10 border border-[var(--primary)]/30 text-sm text-center">
-            <p className="text-[var(--foreground)] font-medium mb-1">Choose a plan to unlock the builder</p>
-            <p className="text-nisk-muted">Sign in is complete — upgrade below to access the builder and marketplace.</p>
+            <p className="text-[var(--foreground)] font-medium mb-1">Choose a plan to unlock the full app</p>
+            <p className="text-nisk-muted">
+              Your account is created. Pick a plan below — after payment you&apos;ll land on your dashboard with Builder, Marketplace, and exports.
+            </p>
           </div>
         )}
 

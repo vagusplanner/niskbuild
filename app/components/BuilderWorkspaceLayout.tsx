@@ -11,7 +11,9 @@ import GooglePlacesImport from '@/app/components/GooglePlacesImport';
 import FigmaImport, { type FigmaImportResult } from '@/app/components/FigmaImport';
 import CollapsibleSection from '@/app/components/CollapsibleSection';
 import PromptBar from '@/app/components/PromptBar';
-import { PROMPT_SUGGESTIONS, PROMPT_SUGGESTION_COUNT } from '@/lib/prompt-suggestions';
+import PreviewDeviceSwitcher, {
+  type PreviewDevice,
+} from '@/app/components/PreviewDeviceSwitcher';
 import type {
   GooglePlacesBusiness,
   GooglePlacesProjectContext,
@@ -55,6 +57,10 @@ export type BuilderWorkspaceLayoutProps = {
   previewHtml: string;
   placeholderPreview: string;
   previewFrameClass: string;
+  previewDevice?: PreviewDevice;
+  onPreviewDeviceChange?: (device: PreviewDevice) => void;
+  canShareSocial?: boolean;
+  onOpenSocialPublisher?: () => void;
   visualEditMode: boolean;
   visualMobilePreview: boolean;
   selectedVisualElement: SelectedVisualElement | null;
@@ -120,6 +126,10 @@ export type BuilderWorkspaceLayoutProps = {
   onIntegrationStatus?: (message: string) => void;
   onOpenHistory?: () => void;
   versionHistoryOpen?: boolean;
+  previewDevice?: PreviewDevice;
+  onPreviewDeviceChange?: (device: PreviewDevice) => void;
+  canShareSocial?: boolean;
+  onOpenSocialPublisher?: () => void;
 };
 
 function CanvasHeader({
@@ -147,6 +157,10 @@ function CanvasHeader({
   showViewToggle = false,
   onOpenHistory,
   versionHistoryOpen,
+  previewDevice = 'desktop',
+  onPreviewDeviceChange,
+  canShareSocial = false,
+  onOpenSocialPublisher,
 }: {
   canAct: boolean;
   isExporting: boolean;
@@ -172,20 +186,24 @@ function CanvasHeader({
   showViewToggle?: boolean;
   onOpenHistory?: () => void;
   versionHistoryOpen?: boolean;
+  previewDevice?: PreviewDevice;
+  onPreviewDeviceChange?: (device: PreviewDevice) => void;
+  canShareSocial?: boolean;
+  onOpenSocialPublisher?: () => void;
 }) {
   const codeViewActive = inspectorOpen && inspectorTab === 'code';
 
   return (
-    <div className="shrink-0 flex items-center justify-between gap-2 px-4 py-2.5 border-b border-nisk builder-canvas-header">
-      <div className="flex items-center gap-2 min-w-0 flex-wrap">
+    <div className="shrink-0 flex items-center justify-between gap-2 px-3 py-2 border-b border-nisk builder-canvas-header">
+      <div className="flex items-center gap-2 min-w-0">
         {showViewToggle && onFocusPreview && onOpenCodeView && (
-          <div className="flex gap-1 mr-1 p-0.5 rounded-lg bg-[var(--surface-elevated)] border border-nisk">
+          <div className="flex gap-0.5 p-0.5 rounded-lg bg-[var(--surface)] border border-nisk">
             <button
               type="button"
               onClick={onFocusPreview}
-              className={`px-2.5 py-1 text-xs rounded-md transition-colors font-medium ${
+              className={`px-2.5 py-1 text-xs rounded-md font-medium transition-colors ${
                 !codeViewActive
-                  ? 'bg-[var(--card-bg)] text-[var(--primary)] shadow-sm ring-1 ring-[var(--primary)]/20'
+                  ? 'bg-[var(--card-bg)] text-[var(--copper-melt)]'
                   : 'text-nisk-muted hover:text-[var(--foreground)]'
               }`}
             >
@@ -194,9 +212,9 @@ function CanvasHeader({
             <button
               type="button"
               onClick={onOpenCodeView}
-              className={`px-2.5 py-1 text-xs rounded-md transition-colors font-medium ${
+              className={`px-2.5 py-1 text-xs rounded-md font-medium transition-colors ${
                 codeViewActive
-                  ? 'bg-[var(--card-bg)] text-[var(--secondary)] shadow-sm ring-1 ring-[var(--secondary)]/20'
+                  ? 'bg-[var(--card-bg)] text-[var(--copper-melt)]'
                   : 'text-nisk-muted hover:text-[var(--foreground)]'
               }`}
             >
@@ -204,38 +222,22 @@ function CanvasHeader({
             </button>
           </div>
         )}
-        <span className="w-2 h-2 rounded-full bg-[var(--success)] status-dot-active shrink-0" />
-        <span className="text-sm font-semibold text-[var(--foreground)] truncate hidden sm:inline">Live Preview</span>
-        {(visualEditMode || inspectMode) && (
-          <span className="text-[10px] px-2 py-0.5 rounded-full border border-[var(--accent-cyan)]/30 text-[var(--accent-cyan)]">
-            {visualEditMode ? 'Visual edit' : 'Target mode'}
-          </span>
+        {onPreviewDeviceChange && (
+          <div className="hidden sm:block">
+            <PreviewDeviceSwitcher device={previewDevice} onChange={onPreviewDeviceChange} />
+          </div>
         )}
+        <span className="w-1.5 h-1.5 rounded-full bg-[var(--copper-primary)] status-dot-active shrink-0 hidden sm:block" />
+        <span className="text-xs font-medium text-nisk-muted hidden lg:inline">Live preview</span>
       </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <span className="hidden sm:inline text-[10px] text-nisk-muted font-mono">
-          {cloudCreditsRemaining > 0 ? `${cloudCreditsRemaining} cr` : 'sandbox'}
-        </span>
-        {onToggleFullscreen && (
+      <div className="flex items-center gap-1.5 shrink-0">
+        {canShareSocial && onOpenSocialPublisher && (
           <button
             type="button"
-            onClick={onToggleFullscreen}
-            className="btn-secondary px-2.5 py-1.5 text-xs rounded-lg"
-            title="Fullscreen preview (F)"
+            onClick={onOpenSocialPublisher}
+            className="btn-secondary px-2.5 py-1.5 text-xs rounded-lg hidden sm:inline-flex"
           >
-            ⛶
-          </button>
-        )}
-        {onOpenHistory && (
-          <button
-            type="button"
-            onClick={onOpenHistory}
-            className={`btn-secondary px-2.5 py-1.5 text-xs rounded-lg ${
-              versionHistoryOpen ? 'border-[var(--accent-cyan)]/50 text-[var(--accent-cyan)]' : ''
-            }`}
-            title="Version history"
-          >
-            🕐
+            Share to Social
           </button>
         )}
         <BuilderActionsMenu
@@ -253,17 +255,16 @@ function CanvasHeader({
           onToggleVisualEdit={onToggleVisualEdit}
           onToggleInspect={onToggleInspect}
           onRestoreZip={onRestoreZip}
+          onOpenInspector={onOpenInspector}
+          inspectorOpen={inspectorOpen}
+          onToggleFullscreen={onToggleFullscreen}
+          onOpenHistory={onOpenHistory}
+          versionHistoryOpen={versionHistoryOpen}
+          previewDevice={previewDevice}
+          onPreviewDeviceChange={onPreviewDeviceChange}
+          canShareSocial={canShareSocial}
+          onOpenSocialPublisher={onOpenSocialPublisher}
         />
-        <button
-          type="button"
-          onClick={onOpenInspector}
-          className={`hidden md:inline-flex btn-secondary px-2.5 py-1.5 text-xs rounded-lg ${
-            inspectorOpen ? 'border-[var(--accent-cyan)]/50 text-[var(--accent-cyan)]' : ''
-          }`}
-          title={inspectorOpen ? 'Hide code inspector' : 'Show code inspector'}
-        >
-          {inspectorOpen ? '◧ Inspector' : '◨ Inspector'}
-        </button>
       </div>
     </div>
   );
@@ -448,31 +449,24 @@ function ChatPanelContent({
   onUseLocalOllamaChange: (enabled: boolean) => void;
   onOllamaUpgrade: () => void;
 }) {
-  const pct =
-    cloudCreditsAllowance > 0
-      ? Math.min(100, Math.round((cloudCreditsRemaining / cloudCreditsAllowance) * 100))
-      : 0;
-
   return (
     <>
-      <div className="shrink-0 px-4 py-3 border-b border-nisk bg-gradient-to-r from-[var(--primary)]/8 to-[var(--secondary)]/5">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-[var(--foreground)] truncate">Build with AI</p>
-          <p className="text-[10px] text-nisk-muted mt-0.5">Describe your site — we generate the code</p>
-          {userId && (
-            <div className="mt-1.5">
-              <ProjectLimitBadge userId={userId} currentCount={savedProjectsCount} />
-            </div>
-          )}
+      <div className="shrink-0 px-3 py-2.5 border-b border-nisk">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-semibold text-[var(--foreground)]">AI Builder</p>
+          <button
+            type="button"
+            onClick={onNewProject}
+            className="px-2.5 py-1 text-[10px] font-semibold rounded-md border border-[var(--border)] hover:border-[var(--copper-primary)]/50 text-nisk-muted hover:text-[var(--copper-melt)] transition-colors"
+          >
+            + New
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={onNewProject}
-          className="shrink-0 mt-2 w-full px-3 py-2 text-xs font-semibold rounded-lg bg-[var(--primary)] text-white hover:opacity-90 shadow-sm transition-opacity"
-          title="Start fresh project"
-        >
-          + New project
-        </button>
+        {userId && (
+          <div className="mt-1.5">
+            <ProjectLimitBadge userId={userId} currentCount={savedProjectsCount} />
+          </div>
+        )}
       </div>
 
       {isSandboxAtLimit && (
@@ -491,22 +485,7 @@ function ChatPanelContent({
           </div>
         )}
 
-        <CollapsibleSection title="Ideas" defaultOpen>
-          <div className="flex flex-wrap gap-1.5">
-            {PROMPT_SUGGESTIONS.slice(0, PROMPT_SUGGESTION_COUNT).map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => onPromptChange(s)}
-                className="text-left px-2.5 py-2 rounded-lg text-[10px] border builder-section-chip transition-all line-clamp-2 max-w-full"
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        </CollapsibleSection>
-
-        <CollapsibleSection title="Tools" defaultOpen={!!importedBusinessName}>
+        <CollapsibleSection title="Import tools" defaultOpen={false}>
           <GooglePlacesImport
             canImport={canImportGooglePlaces}
             canUseCompetitorIntel={canUseCompetitorIntel}
@@ -530,7 +509,7 @@ function ChatPanelContent({
 
       <div className="builder-prompt-dock">
         <PromptBar
-          variant="dock"
+          variant="cursor"
           prompt={prompt}
           onChange={onPromptChange}
           onGenerate={onGenerate}
@@ -547,23 +526,15 @@ function ChatPanelContent({
         <div className="px-3 pb-2 flex items-center justify-between text-[10px] text-nisk-muted">
           <span className="capitalize">{subscriptionTier.replace('_', ' ')}</span>
           {cloudCreditsAllowance > 0 ? (
-            <span className="text-[var(--accent-cyan)]">
-              {cloudCreditsRemaining}/{cloudCreditsAllowance} cr
+            <span className="text-[var(--copper-melt)]">
+              {cloudCreditsRemaining}/{cloudCreditsAllowance} credits
             </span>
           ) : (
-            <span>Sandbox</span>
+            <Link href="/pricing" className="text-[var(--copper-melt)] hover:underline">
+              Upgrade
+            </Link>
           )}
         </div>
-        {cloudCreditsAllowance > 0 && (
-          <div className="px-3 pb-2">
-            <div className="w-full bg-nisk rounded-full h-1 overflow-hidden">
-              <div
-                className="bg-gradient-brand h-1 rounded-full transition-all"
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-          </div>
-        )}
       </div>
     </>
   );
@@ -597,6 +568,10 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
     previewHtml,
     placeholderPreview,
     previewFrameClass,
+    previewDevice = 'desktop',
+    onPreviewDeviceChange,
+    canShareSocial = false,
+    onOpenSocialPublisher,
     visualEditMode,
     visualMobilePreview,
     selectedVisualElement,
@@ -742,6 +717,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
 
   const previewFullscreenRef = useRef<HTMLDivElement>(null);
   const mobilePreviewFullscreenRef = useRef<HTMLDivElement>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const togglePreviewFullscreen = () => {
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
@@ -888,11 +864,17 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
               onToggleFullscreen={togglePreviewFullscreen}
               onOpenHistory={onOpenHistory}
               versionHistoryOpen={versionHistoryOpen}
+              previewDevice={previewDevice}
+              onPreviewDeviceChange={onPreviewDeviceChange}
+              canShareSocial={canShareSocial}
+              onOpenSocialPublisher={onOpenSocialPublisher}
             />
             {visualToolbar}
             <div
               ref={mobilePreviewFullscreenRef}
-              className={`flex-1 min-h-0 relative builder-preview-canvas ${visualMobilePreview ? 'bg-slate-200' : ''}`}
+              className={`flex-1 min-h-0 relative builder-preview-canvas ${
+                previewDevice !== 'desktop' || visualMobilePreview ? 'bg-[var(--iron-surface)]' : ''
+              }`}
             >
               <PreviewIframe
                 previewHtml={previewHtml}
@@ -937,8 +919,33 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
 
       {/* Desktop: three-panel workspace */}
       <div className="hidden md:flex builder-workspace flex-1 min-h-0">
-        <aside className="builder-chat-panel flex flex-col min-h-0">
-          {chatPanel}
+        <aside
+          className={`builder-chat-panel flex flex-col min-h-0 relative transition-[width,min-width] duration-200 ease-out ${
+            sidebarCollapsed ? 'builder-chat-panel--collapsed' : ''
+          }`}
+        >
+          <button
+            type="button"
+            className="absolute -right-3 top-14 z-20 w-6 h-6 rounded-full border border-nisk bg-[var(--card-bg)] text-[10px] text-nisk-muted hover:text-[var(--copper-melt)] hover:border-[var(--copper-primary)]/50 flex items-center justify-center shadow-md"
+            onClick={() => setSidebarCollapsed((v) => !v)}
+            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {sidebarCollapsed ? '›' : '‹'}
+          </button>
+          {sidebarCollapsed ? (
+            <div className="flex flex-col items-center py-4 gap-4 flex-1">
+              <button
+                type="button"
+                onClick={() => setSidebarCollapsed(false)}
+                className="p-2 rounded-lg text-lg hover:bg-[var(--surface-elevated)]"
+                title="Expand AI panel"
+              >
+                💬
+              </button>
+            </div>
+          ) : (
+            chatPanel
+          )}
         </aside>
 
         <main className="builder-preview-panel">
@@ -967,11 +974,17 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
             onToggleFullscreen={togglePreviewFullscreen}
             onOpenHistory={onOpenHistory}
             versionHistoryOpen={versionHistoryOpen}
+            previewDevice={previewDevice}
+            onPreviewDeviceChange={onPreviewDeviceChange}
+            canShareSocial={canShareSocial}
+            onOpenSocialPublisher={onOpenSocialPublisher}
           />
           {visualToolbar}
           <div
             ref={previewFullscreenRef}
-            className={`flex-1 min-h-0 relative builder-preview-canvas ${visualMobilePreview ? 'bg-slate-200' : ''}`}
+            className={`flex-1 min-h-0 relative builder-preview-canvas ${
+              previewDevice !== 'desktop' || visualMobilePreview ? 'bg-[var(--iron-surface)]' : ''
+            }`}
           >
             <div
               className={`builder-inspector-backdrop hidden md:block ${inspectorOpen ? 'is-open' : ''}`}

@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:vp": "npm run dev --prefix apps/vagus-planner -- --port 5175 --host",
+    "dev:all": "npm run dev & npm run dev:vp",
     "build": "next build",
     "generate:logo-pdf": "node scripts/generate-logo-pdf.mjs",
     "export:brand-logos": "node scripts/export-brand-logos.mjs",

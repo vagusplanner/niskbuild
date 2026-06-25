@@ -1,3 +1,23 @@
+/** Paths restricted to platform owners (firstparty.admin + VP studio) */
+export const PLATFORM_OWNER_PATH_PREFIXES = [
+  '/admin/layer-overview',
+  '/admin/tenants',
+  '/admin/apps',
+  '/admin/marketplace',
+  '/admin',
+  '/admin/users',
+  '/admin/support',
+  '/admin/insights',
+  '/builder/vagus-planner',
+  '/vagus-planner',
+] as const;
+
+export function isPlatformOwnerPath(pathname: string) {
+  return PLATFORM_OWNER_PATH_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
+}
+
 export const PUBLIC_PATHS = [
   '/',
   '/landing',

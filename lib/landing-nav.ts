@@ -1,20 +1,18 @@
 export const LANDING_SECTIONS = [
-  { id: 'try-it-now', label: 'Try Demo' },
+  { id: 'try-it-now', label: 'Demo' },
   { id: 'features', label: 'Features' },
-  { id: 'how-it-works', label: 'How It Works' },
+  { id: 'how-it-works', label: 'How it works' },
   { id: 'templates', label: 'Templates' },
   { id: 'pricing', label: 'Pricing' },
   { id: 'faq', label: 'FAQ' },
   { id: 'contact', label: 'Contact' },
 ] as const;
 
-export const MARKETING_NAV = [
-  { href: '/landing#try-it-now', label: 'Try Demo' },
-  { href: '/landing#features', label: 'Features' },
-  { href: '/landing#templates', label: 'Templates' },
-  { href: '/pricing', label: 'Pricing' },
-  { href: '/landing#contact', label: 'Contact' },
-];
+/** Single marketing nav — section anchors + pricing (no duplicate sticky bar). */
+export const MARKETING_NAV = LANDING_SECTIONS.map((s) => ({
+  href: s.id === 'pricing' ? '/pricing' : `/landing#${s.id}`,
+  label: s.label,
+}));
 
 export const FOOTER_LINKS = [
   { href: '/builder', label: 'Builder' },

@@ -7,7 +7,7 @@ import { notFound, useRouter } from 'next/navigation';
 import BuilderSidebar from '@/app/components/BuilderSidebar';
 import HelpAssistant from '@/app/components/HelpAssistant';
 import PromptBar from '@/app/components/PromptBar';
-import AppBuilderPreview from '@/app/builder/[appId]/preview';
+import AppBuilderPreview from '@/app/builder/[id]/preview';
 import { getClientBuilderApp } from '@/lib/builder-apps/client-registry';
 import type { BuilderAppTarget } from '@/lib/builder-apps/types';
 import { getSafeSession } from '@/lib/supabaseSession';

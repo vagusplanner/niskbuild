@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { captureApiException } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
-import { isAdminUser } from '@/lib/admin-auth';
+import { isPlatformOwner } from '@/lib/platform-owner-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 import {
   computeAgentAnalytics,
@@ -45,8 +45,8 @@ export async function GET(request: NextRequest) {
   }
 
   const mode = request.nextUrl.searchParams.get('mode') === 'admin' ? 'admin' : 'user';
-  if (mode === 'admin' && !isAdminUser(guard.user)) {
-    return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+  if (mode === 'admin' && !(await isPlatformOwner())) {
+    return NextResponse.json({ error: 'Platform owner access required' }, { status: 403 });
   }
 
   try {
@@ -116,8 +116,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Please sign in to use the assistant' }, { status: 401 });
     }
 
-    if (mode === 'admin' && !isAdminUser(user)) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    if (mode === 'admin' && !(await isPlatformOwner())) {
+      return NextResponse.json({ error: 'Platform owner access required' }, { status: 403 });
     }
 
     const supabase = createAdminClient();

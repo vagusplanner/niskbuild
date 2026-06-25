@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getSafeSession } from '@/lib/supabaseSession';
-import { isAdminUser } from '@/lib/admin-auth';
+import { isPlatformOwnerClient } from '@/lib/platform-owner-client';
 import Layout from '@/app/components/Layout';
 import { statusLabel, type SupportTicketStatus } from '@/lib/support-access';
 
@@ -52,20 +52,28 @@ export default function AdminSupportPage() {
   const [status, setStatus] = useState('in_progress');
   const [sending, setSending] = useState(false);
 
-  useEffect(() => {
-    getSafeSession().then((s) => {
-      setAuthorized(isAdminUser(s?.user ?? null));
-      setLoading(false);
-      if (isAdminUser(s?.user ?? null)) void loadTickets('all');
-    });
-  }, []);
-
   const loadTickets = useCallback(async (statusFilter: string) => {
     const q = statusFilter === 'all' ? '' : `?status=${statusFilter}`;
     const res = await fetch(`/api/admin/support/tickets${q}`, { credentials: 'include' });
     const data = await res.json();
     if (res.ok) setTickets(data.tickets || []);
   }, []);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const s = await getSafeSession();
+      if (!s?.user) {
+        setAuthorized(false);
+        setLoading(false);
+        return;
+      }
+      const owner = await isPlatformOwnerClient();
+      setAuthorized(owner);
+      setLoading(false);
+      if (owner) void loadTickets('all');
+    };
+    void checkAuth();
+  }, [loadTickets]);
 
   const openTicket = async (id: string) => {
     setSelectedId(id);

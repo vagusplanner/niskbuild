@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { getSafeSession } from '@/lib/supabaseSession';
-import { isAdminUser } from '@/lib/admin-auth';
+import { isPlatformOwnerClient } from '@/lib/platform-owner-client';
 import Layout from '@/app/components/Layout';
 
 type AdminUser = {
@@ -28,7 +28,14 @@ export default function AdminUsersPage() {
     const checkAuth = async () => {
       const session = await getSafeSession();
 
-      if (isAdminUser(session?.user ?? null)) {
+      if (!session?.user) {
+        setAuthorized(false);
+        setLoading(false);
+        return;
+      }
+
+      const owner = await isPlatformOwnerClient();
+      if (owner) {
         setAuthorized(true);
         fetchUsers();
       } else {

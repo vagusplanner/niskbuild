@@ -7,12 +7,11 @@ import PricingCards from '@/app/components/PricingCards';
 import NiskBuildLogo from '@/app/components/NiskBuildLogo';
 import AppTopNav from '@/app/components/AppTopNav';
 import TryItNowDemo from '@/app/components/TryItNowDemo';
-import LandingSectionNav from '@/app/components/LandingSectionNav';
 import LandingWaitlist from '@/app/components/LandingWaitlist';
 import ContactForm from '@/app/components/ContactForm';
 import { FOOTER_LINKS } from '@/lib/landing-nav';
 import { PRICING_FAQ } from '@/lib/pricing-tiers';
-import { complexityLabel, formatTemplatePrice } from '@/lib/marketplace-templates';
+import { complexityLabel, formatTemplatePrice } from '@/lib/marketplace-types';
 
 interface FeaturedTemplate {
   id: string;
@@ -64,29 +63,20 @@ export default function LandingPage() {
       .then((r) => r.json())
       .then((d) => setWaitlistCount(d.count || 0))
       .catch(() => {});
-    fetch('/api/marketplace?featured=true&limit=6')
+    fetch('/api/marketplace/listings?featured=true&limit=6')
       .then((r) => r.json())
       .then((d) => setFeaturedTemplates(d.templates || []))
       .catch(() => {});
   }, []);
 
-  const templates =
-    featuredTemplates.length > 0
-      ? featuredTemplates
-      : [
-          { id: '1', name: 'Portfolio Builder', description: 'Single-page creative portfolio', price: 0, complexity: 1, category: 'portfolio' },
-          { id: '2', name: 'Waitlist Landing Page', description: 'Email capture landing page', price: 0, complexity: 2, category: 'marketing' },
-          { id: '8', name: 'Ecommerce Dashboard', description: 'Products, orders & revenue charts', price: 25, complexity: 6, category: 'ecommerce' },
-          { id: '15', name: 'Online Learning Platform', description: 'Full LMS with courses & quizzes', price: 49, complexity: 10, category: 'education' },
-        ];
+  const templates = featuredTemplates;
 
   return (
     <div className="min-h-screen bg-nisk text-[var(--foreground)]">
       <AppTopNav variant="marketing" />
-      <LandingSectionNav />
 
       {/* Hero */}
-      <section className="pt-24 pb-16 px-4 relative overflow-hidden">
+      <section className="pt-20 pb-16 px-4 relative overflow-hidden">
         <div
           className="absolute inset-0 opacity-[0.07]"
           style={{
@@ -169,13 +159,16 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-bold text-center mb-3">Templates</h2>
           <p className="text-nisk-muted text-center mb-2 max-w-2xl mx-auto">
-            2 free starters · Premium from $9 · Enterprise suites $49
+            Live listings from the NiskBuild marketplace
           </p>
           <p className="text-center mb-10">
             <Link href="/marketplace" className="text-[var(--accent-cyan)] hover:underline text-sm font-medium">
               View all templates in Marketplace →
             </Link>
           </p>
+          {templates.length === 0 ? (
+            <p className="text-center text-nisk-muted text-sm">No listings available yet.</p>
+          ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {templates.map((template) => (
               <div
@@ -207,6 +200,7 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
+          )}
         </div>
       </section>
 

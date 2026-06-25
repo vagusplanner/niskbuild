@@ -125,23 +125,18 @@ export async function POST(request: NextRequest) {
       }
     } else if (session.metadata?.type === 'template' && userId) {
       const templateId = session.metadata.templateId;
+      const listingId = session.metadata.listingId || undefined;
       if (templateId) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('purchased_templates')
-          .eq('id', userId)
-          .single();
-
-        const existing: string[] = Array.isArray(profile?.purchased_templates)
-          ? profile.purchased_templates
-          : [];
-
-        if (!existing.includes(templateId)) {
-          await supabase
-            .from('profiles')
-            .update({ purchased_templates: [...existing, templateId] })
-            .eq('id', userId);
-        }
+        const { fulfillTemplatePurchase } = await import('@/lib/marketplace-service');
+        await fulfillTemplatePurchase(supabase, {
+          userId,
+          templateId,
+          listingId: listingId || undefined,
+          stripePaymentId:
+            typeof session.payment_intent === 'string'
+              ? session.payment_intent
+              : session.id,
+        });
         console.log(`✅ User ${userId} purchased template ${templateId}`);
       }
     } else if (session.mode === 'subscription') {

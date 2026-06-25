@@ -1,30 +1,23 @@
-/** Glacial Mist Light Canvas — exact SVG palette (dark readable text) */
+/** Forged Iron & Melted Copper — NiskBuild brand palette (dark forge, muted copper) */
 export const BRAND_COLORS = {
-  glacialMistStart: '#D9E2EC',
-  glacialMistEnd: '#BCCCDC',
-  bgGradient: 'linear-gradient(135deg, #D9E2EC 0%, #C8D4E0 50%, #BCCCDC 100%)',
-  carbonObsidian: '#0F172A',
-  charcoal: '#1A202C',
-  slateGray: '#2D3748',
-  slateMuted: '#4A5568',
-  forestDeep: '#064E3B',
-  forestRoot: '#046A38',
-  forestMid: '#059669',
-  forestDark: '#022C22',
-  arcticBlue: '#0284C7',
-  arcticDeep: '#0369A1',
-  arcticFrost: '#38BDF8',
-  arcticLight: '#BAE6FD',
-  arcticPale: '#E0F2FE',
-  white: '#FFFFFF',
-  shadow: '#1A202C',
-  niskColor: '#0F172A',
+  ironDark: '#0a0908',
+  ironMid: '#0f0d0b',
+  ironLight: '#141210',
+  ironSurface: '#1c1916',
+  copperPrimary: '#9a6530',
+  copperDark: '#6b4423',
+  copperLight: '#a87a48',
+  copperMelt: '#a87a48',
+  copperGlow: 'rgba(107, 68, 35, 0.12)',
+  ember: '#8f3d18',
+  parchment: '#c9baa8',
+  parchmentMuted: '#6e6256',
+  bgGradient:
+    'linear-gradient(145deg, #080706 0%, #0f0d0b 42%, #141210 100%)',
   buildGradient:
-    'linear-gradient(90deg, #046A38 0%, #0284C7 35%, #0369A1 70%, #0F172A 100%)',
-  taglineColor: '#064E3B',
-  pillarsGradient: 'linear-gradient(135deg, #4A5568 0%, #2D3748 50%, #064E3B 100%)',
-  frostLeftGradient:
-    'linear-gradient(135deg, #FFFFFF 0%, #BAE6FD 40%, #059669 85%)',
-  frostRightGradient:
-    'linear-gradient(135deg, #022C22 0%, #38BDF8 60%, #E0F2FE 100%)',
+    'linear-gradient(90deg, #4a2e18 0%, #6b4423 50%, #9a6530 100%)',
+  brandGradient:
+    'linear-gradient(90deg, #3d2814 0%, #6b4423 35%, #9a6530 70%, #7a5028 100%)',
+  taglineColor: '#a87a48',
+  niskColor: '#c9baa8',
 } as const;

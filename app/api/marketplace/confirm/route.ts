@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createClient } from '@/lib/supabase/server';
+import { fulfillTemplatePurchase } from '@/lib/marketplace-service';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -31,28 +32,24 @@ export async function POST(request: NextRequest) {
     }
 
     const templateId = session.metadata.templateId;
+    const listingId = session.metadata.listingId || undefined;
+
     if (!templateId) {
       return NextResponse.json({ error: 'Missing template' }, { status: 400 });
     }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('purchased_templates')
-      .eq('id', user.id)
-      .single();
+    const result = await fulfillTemplatePurchase(supabase, {
+      userId: user.id,
+      templateId,
+      listingId: listingId || undefined,
+      stripePaymentId: session.payment_intent?.toString() ?? session.id,
+    });
 
-    const existing: string[] = Array.isArray(profile?.purchased_templates)
-      ? profile.purchased_templates
-      : [];
-
-    if (!existing.includes(templateId)) {
-      await supabase
-        .from('profiles')
-        .update({ purchased_templates: [...existing, templateId] })
-        .eq('id', user.id);
-    }
-
-    return NextResponse.json({ success: true, templateId });
+    return NextResponse.json({
+      success: result.success,
+      templateId: result.resolvedTemplateId ?? templateId,
+      clonedProjectId: result.clonedProjectId ?? null,
+    });
   } catch (error) {
     return apiErrorResponse(error, 'Failed to confirm purchase');
   }

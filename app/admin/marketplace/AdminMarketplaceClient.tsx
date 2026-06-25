@@ -45,6 +45,24 @@ export default function AdminMarketplaceClient() {
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    title: '',
+    description: '',
+    price_dollars: '9',
+    category: 'productivity',
+    prompt: '',
+  });
+  const [exportJobs, setExportJobs] = useState<
+    { id: string; status: string; requester_email: string; fee_cents: number; created_at: string }[]
+  >([]);
+
+  const fetchExportJobs = useCallback(async () => {
+    const res = await fetch('/api/admin/marketplace/export-jobs');
+    const data = await res.json();
+    if (res.ok) setExportJobs(data.jobs ?? []);
+  }, []);
 
   const fetchListings = useCallback(async () => {
     setLoading(true);
@@ -71,7 +89,39 @@ export default function AdminMarketplaceClient() {
 
   useEffect(() => {
     fetchListings();
-  }, [fetchListings]);
+    fetchExportJobs();
+  }, [fetchListings, fetchExportJobs]);
+
+  const createListing = async () => {
+    setCreating(true);
+    const priceCents = Math.round(parseFloat(createForm.price_dollars) * 100);
+    const res = await fetch('/api/admin/marketplace/listings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: createForm.title,
+        description: createForm.description,
+        price_cents: priceCents,
+        category: createForm.category,
+        prompt: createForm.prompt,
+      }),
+    });
+    setCreating(false);
+    if (res.ok) {
+      setShowCreate(false);
+      setCreateForm({ title: '', description: '', price_dollars: '9', category: 'productivity', prompt: '' });
+      fetchListings();
+    }
+  };
+
+  const updateExportJob = async (id: string, status: string) => {
+    await fetch('/api/admin/marketplace/export-jobs', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, status }),
+    });
+    fetchExportJobs();
+  };
 
   const runAction = async (id: string, action: 'approve' | 'reject' | 'feature' | 'unfeature') => {
     setUpdatingId(id);
@@ -117,7 +167,113 @@ export default function AdminMarketplaceClient() {
         <button type="button" onClick={fetchListings} className="px-4 py-2 rounded-lg border border-nisk text-sm">
           Refresh
         </button>
+        <button
+          type="button"
+          onClick={() => setShowCreate((v) => !v)}
+          className="px-4 py-2 rounded-lg btn-primary text-sm"
+        >
+          + New listing
+        </button>
       </div>
+
+      {showCreate && (
+        <div className="mb-8 p-5 rounded-xl border border-nisk bg-nisk-card grid md:grid-cols-2 gap-4">
+          <input
+            placeholder="Title"
+            value={createForm.title}
+            onChange={(e) => setCreateForm((f) => ({ ...f, title: e.target.value }))}
+            className="bg-[var(--surface)] border border-nisk rounded-lg px-3 py-2 text-sm"
+          />
+          <input
+            placeholder="Price (USD)"
+            value={createForm.price_dollars}
+            onChange={(e) => setCreateForm((f) => ({ ...f, price_dollars: e.target.value }))}
+            className="bg-[var(--surface)] border border-nisk rounded-lg px-3 py-2 text-sm"
+          />
+          <input
+            placeholder="Category"
+            value={createForm.category}
+            onChange={(e) => setCreateForm((f) => ({ ...f, category: e.target.value }))}
+            className="bg-[var(--surface)] border border-nisk rounded-lg px-3 py-2 text-sm"
+          />
+          <textarea
+            placeholder="Description"
+            value={createForm.description}
+            onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))}
+            className="md:col-span-2 bg-[var(--surface)] border border-nisk rounded-lg px-3 py-2 text-sm min-h-[60px]"
+          />
+          <textarea
+            placeholder="Builder prompt (loaded when purchased)"
+            value={createForm.prompt}
+            onChange={(e) => setCreateForm((f) => ({ ...f, prompt: e.target.value }))}
+            className="md:col-span-2 bg-[var(--surface)] border border-nisk rounded-lg px-3 py-2 text-sm min-h-[80px]"
+          />
+          <button
+            type="button"
+            disabled={creating || !createForm.title.trim()}
+            onClick={createListing}
+            className="md:col-span-2 btn-primary py-2 rounded-lg text-sm disabled:opacity-50"
+          >
+            {creating ? 'Creating…' : 'Publish listing'}
+          </button>
+        </div>
+      )}
+
+      {exportJobs.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-sm font-semibold text-[var(--foreground)] mb-3">Export job queue</h2>
+          <div className="bg-nisk-card border border-nisk rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-[var(--surface-elevated)] border-b border-nisk">
+                <tr>
+                  <th className="text-left p-3 text-nisk-muted">Requester</th>
+                  <th className="text-left p-3 text-nisk-muted">Status</th>
+                  <th className="text-left p-3 text-nisk-muted">Fee</th>
+                  <th className="text-left p-3 text-nisk-muted">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {exportJobs.map((job) => (
+                  <tr key={job.id} className="border-b border-nisk">
+                    <td className="p-3">{job.requester_email}</td>
+                    <td className="p-3 capitalize">{job.status.replace('_', ' ')}</td>
+                    <td className="p-3">${(job.fee_cents / 100).toFixed(2)}</td>
+                    <td className="p-3 flex gap-2">
+                      {job.status === 'requested' && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => updateExportJob(job.id, 'approved')}
+                            className="px-2 py-1 text-xs rounded bg-[var(--copper-primary)]/20 text-[var(--copper-melt)]"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateExportJob(job.id, 'rejected')}
+                            className="px-2 py-1 text-xs rounded border border-nisk"
+                          >
+                            Reject
+                          </button>
+                        </>
+                      )}
+                      {job.status === 'approved' && (
+                        <button
+                          type="button"
+                          onClick={() => updateExportJob(job.id, 'completed')}
+                          className="px-2 py-1 text-xs rounded bg-[var(--copper-primary)]/20"
+                        >
+                          Mark complete
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <p className="text-nisk-muted py-12 text-center">Loading listings...</p>

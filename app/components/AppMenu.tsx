@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { getSafeSession } from '@/lib/supabaseSession';
+import { usePlatformOwner } from '@/lib/use-platform-owner';
 import AuthButton from './AuthButton';
 import NiskBuildLogo from './NiskBuildLogo';
 
@@ -31,9 +32,14 @@ const BASE_NAV = [
 ];
 
 const ADMIN_NAV = [
+  { href: '/admin/layer-overview', label: '3-Layer Dashboard' },
+  { href: '/admin/tenants', label: 'Tenants' },
+  { href: '/admin/apps', label: 'Apps' },
+  { href: '/admin/marketplace', label: 'Listings' },
+  { href: '/builder/vagus-planner', label: 'VP Studio' },
   { href: '/admin', label: 'Analytics' },
   { href: '/admin/users', label: 'Users' },
-  { href: '/admin/insights', label: 'Insights' },
+  { href: '/admin/support', label: 'Support' },
 ];
 
 export default function AppMenu({ variant = 'app', showAuth = true }: AppMenuProps) {
@@ -66,11 +72,8 @@ export default function AppMenu({ variant = 'app', showAuth = true }: AppMenuPro
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const isAdmin = user?.email === 'sofiane.kemih@gmail.com';
+  const isPlatformOwnerNav = usePlatformOwner(user);
   const navItems = [...BASE_NAV];
-  if (isAdmin) {
-    navItems.push({ href: '/admin', label: 'Admin' });
-  }
 
   const linkClass = (href: string) => {
     const active = pathname === href || (href !== '/builder' && pathname.startsWith(href));
@@ -119,7 +122,7 @@ export default function AppMenu({ variant = 'app', showAuth = true }: AppMenuPro
             ))}
           </nav>
 
-          {isAdmin && (
+          {isPlatformOwnerNav && (
             <div className="px-2 pb-1 border-t border-[var(--border)] pt-1">
               <p className="px-3 py-1 text-[10px] uppercase tracking-wider text-nisk-muted">Admin</p>
               {ADMIN_NAV.map((item) => (

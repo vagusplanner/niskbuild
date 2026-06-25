@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { getSafeSession } from '@/lib/supabaseSession';
-import { isAdminUser } from '@/lib/admin-auth';
+import { isPlatformOwnerClient } from '@/lib/platform-owner-client';
 import Layout from '@/app/components/Layout';
 
 interface AnalyticsData {
@@ -31,7 +30,13 @@ export default function AdminDashboard() {
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (isAdminUser(session?.user ?? null)) {
+      if (!session?.user) {
+        setAuthorized(false);
+        setLoading(false);
+        return;
+      }
+      const owner = await isPlatformOwnerClient();
+      if (owner) {
         setAuthorized(true);
         fetchAnalytics();
       } else {

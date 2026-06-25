@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { getSafeSession } from '@/lib/supabaseSession';
 import Layout from '@/app/components/Layout';
 import NiskBuildLogo from '@/app/components/NiskBuildLogo';
-import { complexityLabel, formatTemplatePrice } from '@/lib/marketplace-templates';
+import { complexityLabel, formatTemplatePrice } from '@/lib/marketplace-types';
 
 interface Template {
   id: string;
@@ -19,6 +19,15 @@ interface Template {
   author: string;
   category: string;
   owned?: boolean;
+  listingType?: string;
+  source?: string;
+  sourceLayer?: string;
+}
+
+interface PurchaseRow {
+  id: string;
+  purchasedAt: string;
+  listing: Template;
 }
 
 const CATEGORIES = [
@@ -30,25 +39,64 @@ const CATEGORIES = [
   { value: 'crm', label: 'CRM' },
   { value: 'analytics', label: 'Analytics' },
   { value: 'education', label: 'Education' },
+  { value: 'firstparty', label: 'NiskBuild Originals' },
 ];
 
 function MarketplaceContent() {
   const searchParams = useSearchParams();
+  const [tab, setTab] = useState<'browse' | 'purchases'>('browse');
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [purchases, setPurchases] = useState<PurchaseRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState('all');
   const [search, setSearch] = useState('');
   const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
   const [purchasingId, setPurchasingId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [catalogFilter, setCatalogFilter] = useState<'all' | 'originals' | 'community' | 'templates'>('all');
 
   useEffect(() => {
     getSafeSession().then((s) => setUser(s?.user ?? null));
   }, []);
 
-  useEffect(() => {
-    fetchTemplates();
+  const fetchTemplates = useCallback(async () => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (category !== 'all') params.append('category', category);
+    if (search) params.append('search', search);
+
+    const response = await fetch(`/api/marketplace/listings?${params.toString()}`);
+    const data = await response.json();
+    setTemplates(data.templates || []);
+    setLoading(false);
   }, [category, search]);
+
+  const fetchPurchases = useCallback(async () => {
+    if (!user) {
+      setPurchases([]);
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await fetch('/api/marketplace/my-purchases');
+      if (response.ok) {
+        const data = await response.json();
+        setPurchases(data.purchases || []);
+      }
+    } catch {
+      setPurchases([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (tab === 'browse') {
+      fetchTemplates();
+    } else {
+      fetchPurchases();
+    }
+  }, [tab, fetchTemplates, fetchPurchases]);
 
   useEffect(() => {
     const sessionId = searchParams.get('session_id');
@@ -63,7 +111,8 @@ function MarketplaceContent() {
         .then((d) => {
           if (d.success) {
             setToast('Template unlocked! Click Use Template to open in Builder.');
-            fetchTemplates();
+            setTab('purchases');
+            fetchPurchases();
             window.history.replaceState({}, '', '/marketplace');
           }
         })
@@ -73,19 +122,7 @@ function MarketplaceContent() {
       setToast('Purchase canceled.');
       window.history.replaceState({}, '', '/marketplace');
     }
-  }, [searchParams]);
-
-  const fetchTemplates = async () => {
-    setLoading(true);
-    const params = new URLSearchParams();
-    if (category !== 'all') params.append('category', category);
-    if (search) params.append('search', search);
-
-    const response = await fetch(`/api/marketplace?${params.toString()}`);
-    const data = await response.json();
-    setTemplates(data.templates || []);
-    setLoading(false);
-  };
+  }, [searchParams, fetchPurchases]);
 
   const useTemplate = (template: Template) => {
     localStorage.setItem('niskbuild_template_prompt', template.prompt);
@@ -128,26 +165,141 @@ function MarketplaceContent() {
     }
   };
 
+  const filteredTemplates = templates.filter((t) => {
+    if (catalogFilter === 'all') return true;
+    if (catalogFilter === 'originals') return t.sourceLayer === 'firstparty';
+    if (catalogFilter === 'community') return t.sourceLayer === 'subscriber';
+    if (catalogFilter === 'templates') return t.listingType === 'template' || !t.listingType;
+    return true;
+  });
+
+  const renderTemplateCard = (template: Template, showOwnedBadge = true) => {
+    const owned = template.owned || template.price === 0;
+    return (
+      <div
+        key={template.id}
+        className="bg-nisk-card rounded-2xl border border-nisk p-6 hover:border-[var(--copper-primary)]/50 transition-all card-hover flex flex-col"
+      >
+        <Link href={`/marketplace/${template.id}`} className="flex-1 flex flex-col">
+          <div className="flex justify-between items-start gap-2 mb-2">
+            <h3 className="text-lg font-semibold text-[var(--foreground)] leading-tight hover:text-[var(--copper-melt)]">
+              {template.name}
+            </h3>
+          <span
+            className={`shrink-0 text-sm font-bold px-2 py-0.5 rounded-lg ${
+              template.price === 0
+                ? 'bg-[var(--copper-primary)]/15 text-[var(--copper-melt)]'
+                : 'bg-[var(--primary)]/15 text-[var(--primary)]'
+            }`}
+          >
+            {formatTemplatePrice(template.price)}
+          </span>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mb-3">
+          <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-nisk-surface text-nisk-muted border border-nisk">
+            {complexityLabel(template.complexity as 1)}
+          </span>
+          <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-nisk-surface text-nisk-muted border border-nisk capitalize">
+            {template.category}
+          </span>
+          {template.sourceLayer === 'firstparty' && (
+            <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-[var(--copper-primary)]/10 text-[var(--copper-melt)] border border-[var(--copper-primary)]/25">
+              NiskBuild original
+            </span>
+          )}
+          {template.sourceLayer === 'subscriber' && (
+            <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-nisk-surface text-nisk-muted border border-nisk">
+              Community
+            </span>
+          )}
+          {template.listingType === 'ready_made' && (
+            <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-[var(--ember)]/10 text-[var(--copper-melt)] border border-[var(--copper-primary)]/25">
+              Ready-made
+            </span>
+          )}
+          {showOwnedBadge && owned && template.price > 0 && (
+            <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-[var(--copper-primary)]/10 text-[var(--copper-melt)] border border-[var(--copper-primary)]/25">
+              Owned
+            </span>
+          )}
+        </div>
+
+        <p className="text-nisk-muted text-sm mb-4 flex-1">{template.description}</p>
+
+        <div className="flex justify-between items-center text-xs text-nisk-muted mb-4">
+          <span>{template.author}</span>
+          <span>{template.downloads.toLocaleString()} uses</span>
+        </div>
+        </Link>
+
+        <button
+          type="button"
+          onClick={() => handleAction(template)}
+          disabled={purchasingId === template.id}
+          className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-50 ${
+            owned ? 'btn-primary' : 'btn-secondary'
+          }`}
+        >
+          {purchasingId === template.id
+            ? 'Redirecting...'
+            : owned
+              ? 'Use Template →'
+              : `Buy for $${template.price}`}
+        </button>
+      </div>
+    );
+  };
+
   return (
     <Layout>
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col items-center mb-8">
           <NiskBuildLogo variant="lockup" size="md" />
-          <h1 className="text-3xl font-bold text-white mt-6 mb-2">Template Marketplace</h1>
+          <h1 className="text-3xl font-bold text-gradient-brand mt-6 mb-2">Template Marketplace</h1>
           <p className="text-center text-nisk-muted max-w-xl">
-            2 free starter templates · Premium builds from $9 · Full enterprise suites up to $49.
-            Agency plans include everything.
+            Browse live listings from the NiskBuild marketplace — templates, ready-made apps, and community builds.
           </p>
         </div>
 
-        {/* Price ladder */}
+        <div className="flex justify-center gap-2 mb-8">
+          <button
+            type="button"
+            onClick={() => setTab('browse')}
+            className={`px-5 py-2 rounded-xl text-sm font-semibold border transition-all ${
+              tab === 'browse'
+                ? 'border-[var(--copper-primary)] bg-[var(--copper-primary)]/15 text-[var(--copper-melt)]'
+                : 'border-nisk text-nisk-muted hover:border-[var(--copper-primary)]/40'
+            }`}
+          >
+            Browse
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (!user) {
+                window.location.href = '/login?next=/marketplace';
+                return;
+              }
+              setTab('purchases');
+            }}
+            className={`px-5 py-2 rounded-xl text-sm font-semibold border transition-all ${
+              tab === 'purchases'
+                ? 'border-[var(--copper-primary)] bg-[var(--copper-primary)]/15 text-[var(--copper-melt)]'
+                : 'border-nisk text-nisk-muted hover:border-[var(--copper-primary)]/40'
+            }`}
+          >
+            My Purchases
+          </button>
+        </div>
+
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-8">
           {[
-            { label: 'Free', range: '2 starters', color: 'text-emerald-400 border-emerald-500/30' },
-            { label: '$9–$19', range: 'Essential', color: 'text-[var(--accent-cyan)] border-[var(--accent-cyan)]/30' },
+            { label: 'Free', range: '2 starters', color: 'text-[var(--copper-melt)] border-[var(--copper-primary)]/30' },
+            { label: '$9–$19', range: 'Essential', color: 'text-[var(--copper-light)] border-[var(--copper-light)]/30' },
             { label: '$25–$29', range: 'Pro', color: 'text-[var(--primary)] border-[var(--primary)]/30' },
             { label: '$35–$42', range: 'Advanced', color: 'text-[var(--secondary)] border-[var(--secondary)]/30' },
-            { label: '$49', range: 'Enterprise', color: 'text-amber-400 border-amber-500/30' },
+            { label: '$49', range: 'Enterprise', color: 'text-[var(--ember)] border-[var(--ember)]/30' },
           ].map((tier) => (
             <div
               key={tier.label}
@@ -160,7 +312,7 @@ function MarketplaceContent() {
         </div>
 
         {toast && (
-          <div className="mb-6 p-3 rounded-xl bg-[var(--success)]/10 border border-[var(--success)]/30 text-[var(--success)] text-sm text-center">
+          <div className="mb-6 p-3 rounded-xl bg-[var(--success)]/10 border border-[var(--success)]/30 text-[var(--copper-melt)] text-sm text-center">
             {toast}
             <button type="button" className="ml-2 underline" onClick={() => setToast(null)}>
               dismiss
@@ -168,100 +320,87 @@ function MarketplaceContent() {
           </div>
         )}
 
-        <div className="flex flex-col md:flex-row gap-4 mb-8">
-          <input
-            type="text"
-            placeholder="Search templates..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 bg-nisk-card border border-nisk rounded-xl p-3 text-white placeholder-gray-500 focus:outline-none focus:border-[var(--accent-cyan)]"
-          />
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="bg-nisk-card border border-nisk rounded-xl p-3 text-white focus:outline-none focus:border-[var(--accent-cyan)]"
-          >
-            {CATEGORIES.map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
-              </option>
+        {tab === 'browse' && (
+          <>
+          <div className="flex flex-wrap justify-center gap-2 mb-6">
+            {(
+              [
+                { id: 'all', label: 'All' },
+                { id: 'originals', label: 'NiskBuild originals' },
+                { id: 'community', label: 'Community' },
+                { id: 'templates', label: 'Templates' },
+              ] as const
+            ).map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setCatalogFilter(f.id)}
+                className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                  catalogFilter === f.id
+                    ? 'border-[var(--copper-primary)] bg-[var(--copper-primary)]/15 text-[var(--copper-melt)]'
+                    : 'border-nisk text-nisk-muted hover:border-[var(--copper-primary)]/40'
+                }`}
+              >
+                {f.label}
+              </button>
             ))}
-          </select>
-        </div>
+          </div>
+          <div className="flex flex-col md:flex-row gap-4 mb-8">
+            <input
+              type="text"
+              placeholder="Search templates..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="flex-1 bg-nisk-card border border-nisk rounded-xl p-3 text-[var(--foreground)] placeholder-gray-500 focus:outline-none focus:border-[var(--copper-primary)]"
+            />
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="bg-nisk-card border border-nisk rounded-xl p-3 text-[var(--foreground)] focus:outline-none focus:border-[var(--copper-primary)]"
+            >
+              {CATEGORIES.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          </>
+        )}
 
         {loading ? (
-          <div className="text-center text-nisk-muted py-12">Loading templates...</div>
-        ) : templates.length === 0 ? (
+          <div className="text-center text-nisk-muted py-12">Loading…</div>
+        ) : tab === 'purchases' ? (
+          purchases.length === 0 ? (
+            <div className="text-center text-nisk-muted py-12">
+              <p className="text-xl mb-2">No purchases yet</p>
+              <p className="text-sm">
+                Browse templates and unlock premium builds, or{' '}
+                <button type="button" className="text-[var(--copper-melt)] underline" onClick={() => setTab('browse')}>
+                  view the catalog
+                </button>
+                .
+              </p>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {purchases.map((row) => renderTemplateCard({ ...row.listing, owned: true }, false))}
+            </div>
+          )
+        ) : filteredTemplates.length === 0 ? (
           <div className="text-center text-nisk-muted py-12">
-            <p className="text-xl mb-2">No templates found</p>
-            <p className="text-sm">Try a different search or category</p>
+            <p className="text-xl mb-2">No listings available</p>
+            <p className="text-sm">Check back soon or try a different filter.</p>
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {templates.map((template) => {
-              const owned = template.owned || template.price === 0;
-              return (
-                <div
-                  key={template.id}
-                  className="bg-nisk-card rounded-2xl border border-nisk p-6 hover:border-[var(--accent-cyan)]/50 transition-all card-hover flex flex-col"
-                >
-                  <div className="flex justify-between items-start gap-2 mb-2">
-                    <h3 className="text-lg font-semibold text-white leading-tight">{template.name}</h3>
-                    <span
-                      className={`shrink-0 text-sm font-bold px-2 py-0.5 rounded-lg ${
-                        template.price === 0
-                          ? 'bg-emerald-500/15 text-emerald-400'
-                          : 'bg-[var(--primary)]/15 text-[var(--primary)]'
-                      }`}
-                    >
-                      {formatTemplatePrice(template.price)}
-                    </span>
-                  </div>
-
-                  <div className="flex gap-2 mb-3">
-                    <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-nisk-surface text-nisk-muted border border-nisk">
-                      {complexityLabel(template.complexity as 1)}
-                    </span>
-                    <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-nisk-surface text-nisk-muted border border-nisk capitalize">
-                      {template.category}
-                    </span>
-                    {owned && template.price > 0 && (
-                      <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                        Owned
-                      </span>
-                    )}
-                  </div>
-
-                  <p className="text-gray-400 text-sm mb-4 flex-1">{template.description}</p>
-
-                  <div className="flex justify-between items-center text-xs text-gray-500 mb-4">
-                    <span>{template.author}</span>
-                    <span>{template.downloads.toLocaleString()} uses</span>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleAction(template)}
-                    disabled={purchasingId === template.id}
-                    className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-50 ${
-                      owned ? 'btn-primary' : 'btn-secondary'
-                    }`}
-                  >
-                    {purchasingId === template.id
-                      ? 'Redirecting...'
-                      : owned
-                        ? 'Use Template →'
-                        : `Buy for $${template.price}`}
-                  </button>
-                </div>
-              );
-            })}
+            {filteredTemplates.map((template) => renderTemplateCard(template))}
           </div>
         )}
 
         <p className="text-center text-sm text-nisk-muted mt-10">
           Agency, Scale, White-Label, Team Enterprise &amp; Sovereign plans include all marketplace templates.{' '}
-          <Link href="/pricing" className="text-[var(--accent-cyan)] hover:underline">
+          <Link href="/pricing" className="text-[var(--copper-melt)] hover:underline">
             Compare plans →
           </Link>
         </p>
@@ -275,7 +414,7 @@ export default function MarketplacePage() {
     <Suspense
       fallback={
         <Layout>
-          <div className="text-center text-nisk-muted py-12">Loading marketplace...</div>
+          <div className="text-center text-nisk-muted py-12">Loading marketplace…</div>
         </Layout>
       }
     >

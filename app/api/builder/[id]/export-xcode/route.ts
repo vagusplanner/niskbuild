@@ -14,14 +14,14 @@ const execFileAsync = promisify(execFile);
 
 const IOS_WORKSPACE = 'mobile/vagus-planner/ios/App/App.xcworkspace';
 
-type RouteContext = { params: Promise<{ appId: string }> };
+type RouteContext = { params: Promise<{ id: string }> };
 
 export async function POST(request: NextRequest, context: RouteContext) {
   const guard = await guardApiRequest(request, { rateLimit: 3 });
   if (!guard.ok) return guard.response;
 
   try {
-    const { appId } = await context.params;
+    const { id: appId } = await context.params;
     const app = resolveBuilderApp(appId);
     if (!app) {
       return NextResponse.json({ error: 'Unknown builder app' }, { status: 404 });

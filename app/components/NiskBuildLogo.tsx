@@ -73,8 +73,8 @@ export default function NiskBuildLogo({
 
   const frameClass =
     variant === 'icon'
-      ? 'rounded-xl overflow-hidden ring-1 ring-[rgba(15,23,42,0.08)] shadow-[0_2px_8px_rgba(15,23,42,0.08)]'
-      : 'rounded-xl overflow-hidden ring-1 ring-[rgba(15,23,42,0.08)] shadow-[0_4px_20px_rgba(15,23,42,0.08)]';
+      ? 'rounded-xl overflow-hidden ring-1 ring-[rgba(184,115,51,0.25)] shadow-[0_2px_12px_var(--copper-glow)]'
+      : 'rounded-xl overflow-hidden ring-1 ring-[rgba(184,115,51,0.22)] shadow-[0_4px_20px_var(--copper-glow)]';
 
   const wrap = (node: ReactNode) =>
     href ? (

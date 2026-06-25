@@ -21,6 +21,8 @@ import SubscriptionGuard from '@/app/components/SubscriptionGuard';
 import BuilderSidebar from '@/app/components/BuilderSidebar';
 import BuilderProjectsDrawer from '@/app/components/BuilderProjectsDrawer';
 import BuilderWorkspaceLayout from '@/app/components/BuilderWorkspaceLayout';
+import SocialPublisherPanel from '@/app/components/SocialPublisherPanel';
+import { type PreviewDevice, previewFrameClassForDevice } from '@/app/components/PreviewDeviceSwitcher';
 import VersionHistoryPanel from '@/app/components/VersionHistoryPanel';
 import { type InspectorTab } from '@/app/components/BuilderInspectorPanel';
 import PlanPanel from '@/app/components/PlanPanel';
@@ -147,6 +149,9 @@ function BuilderContent() {
   const [seoMessage, setSeoMessage] = useState('');
   const [visualEditMode, setVisualEditMode] = useState(false);
   const [visualMobilePreview, setVisualMobilePreview] = useState(false);
+  const [previewDevice, setPreviewDevice] = useState<PreviewDevice>('desktop');
+  const [socialPublisherOpen, setSocialPublisherOpen] = useState(false);
+  const [purchasedTemplates, setPurchasedTemplates] = useState<unknown[]>([]);
   const [selectedVisualElement, setSelectedVisualElement] = useState<SelectedVisualElement | null>(null);
   const [stylePanel, setStylePanel] = useState<StyleChanges>({});
   const [visualEditApplying, setVisualEditApplying] = useState(false);
@@ -196,6 +201,9 @@ function BuilderContent() {
           setProjectLimit(data.projectLimit ?? getProjectLimit(data.tier));
           if (typeof data.credits === 'number') {
             setCloudCreditsRemaining(data.credits);
+          }
+          if (Array.isArray(data.purchasedTemplates)) {
+            setPurchasedTemplates(data.purchasedTemplates);
           }
         }
         })
@@ -1329,9 +1337,10 @@ function BuilderContent() {
   const importedBusinessName = projectContext?.business?.name ?? null;
   const recentProjects = savedProjects.slice(0, 5);
 
-  const previewFrameClass = visualMobilePreview
-    ? 'absolute top-0 left-1/2 -translate-x-1/2 w-[375px] max-w-full h-full border-x border-nisk shadow-xl'
-    : 'absolute inset-0 w-full h-full';
+  const previewFrameClass =
+    visualMobilePreview && canVisualEditFull
+      ? previewFrameClassForDevice('mobile')
+      : previewFrameClassForDevice(previewDevice);
 
   return (
     <SubscriptionGuard>
@@ -1348,6 +1357,15 @@ function BuilderContent() {
         onClose={() => setShowMobileExport(false)}
         onExportPwa={handleExportPwa}
         onExportNative={handleExportNative}
+      />
+      <SocialPublisherPanel
+        open={socialPublisherOpen}
+        onClose={() => setSocialPublisherOpen(false)}
+        prompt={prompt}
+        blueprint={blueprintData}
+        subscriptionTier={subscriptionTier}
+        subscriptionStatus={subscriptionStatus}
+        purchasedTemplates={purchasedTemplates}
       />
 
         <button
@@ -1433,6 +1451,10 @@ function BuilderContent() {
           previewHtml={previewHtml}
           placeholderPreview={PLACEHOLDER_PREVIEW}
           previewFrameClass={previewFrameClass}
+          previewDevice={previewDevice}
+          onPreviewDeviceChange={setPreviewDevice}
+          canShareSocial={canAct}
+          onOpenSocialPublisher={() => setSocialPublisherOpen(true)}
           visualEditMode={visualEditMode}
           visualMobilePreview={visualMobilePreview}
           selectedVisualElement={selectedVisualElement}

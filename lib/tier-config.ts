@@ -177,6 +177,36 @@ export function canUseSocialProofAggregator(
   return isAgencyStudioOrAbove(tier, status);
 }
 
+/** Copy social posts — all authenticated plans */
+export function canCopySocialPosts(): boolean {
+  return true;
+}
+
+/** Direct publish + OAuth connect — Agency+ or Social Pro add-on */
+export function canDirectPublishSocial(
+  tier: string | null | undefined,
+  status: string | null | undefined,
+  hasSocialProAddon = false
+): boolean {
+  if (hasSocialProAddon) return true;
+  return isAgencyStudioOrAbove(tier, status);
+}
+
+/** Schedule social posts — Scale+ or Social Pro add-on */
+export function canScheduleSocialPosts(
+  tier: string | null | undefined,
+  status: string | null | undefined,
+  hasSocialProAddon = false
+): boolean {
+  if (hasSocialProAddon) return true;
+  return isPaidAndActive(tier, status) && tierAtLeast(tier, 'scale');
+}
+
+export function hasSocialProAddon(purchasedTemplates: unknown): boolean {
+  if (!Array.isArray(purchasedTemplates)) return false;
+  return purchasedTemplates.includes('social_pro');
+}
+
 /** Phaser.js game templates — Pro Worker and above */
 export function canUseGameTemplates(
   tier: string | null | undefined,
@@ -191,6 +221,14 @@ export function canExportNative(
   status: string | null | undefined
 ): boolean {
   return isAgencyStudioOrAbove(tier, status);
+}
+
+/** Subscriber mobile / App Store export pipeline — Pro Worker and above */
+export function canExportMobileProject(
+  tier: string | null | undefined,
+  status: string | null | undefined
+): boolean {
+  return isProWorkerOrAbove(tier, status);
 }
 
 /** Visual CSS editor — Sandbox and all paid active tiers */

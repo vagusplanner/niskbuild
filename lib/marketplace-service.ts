@@ -1,10 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
-  ALL_MARKETPLACE_TEMPLATES,
-  canAccessTemplate,
-  getTemplateById,
+  listingIncludedInTier,
   type MarketplaceTemplate,
-} from '@/lib/marketplace-templates';
+} from '@/lib/marketplace-types';
 
 export type MarketplaceListingRow = {
   id: string;
@@ -15,6 +13,8 @@ export type MarketplaceListingRow = {
   listing_type: 'template' | 'ready_made' | 'commission';
   seller_user_id: string | null;
   is_active: boolean;
+  app_store_url?: string | null;
+  hosted_url?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -31,7 +31,10 @@ export type MarketplacePurchaseRow = {
 export type MarketplaceListingItem = MarketplaceTemplate & {
   owned?: boolean;
   listingType?: MarketplaceListingRow['listing_type'];
-  source: 'database' | 'memory';
+  sourceLayer?: 'firstparty' | 'subscriber' | string;
+  appStoreUrl?: string | null;
+  hostedUrl?: string | null;
+  source: 'database';
 };
 
 export type MarketplacePurchaseItem = {
@@ -39,7 +42,7 @@ export type MarketplacePurchaseItem = {
   purchasedAt: string;
   stripePaymentId: string | null;
   listing: MarketplaceListingItem;
-  source: 'database' | 'memory';
+  source: 'database';
 };
 
 function asNumber(value: unknown, fallback: number): number {
@@ -60,6 +63,15 @@ export function listingRowToTemplate(row: MarketplaceListingRow): MarketplaceLis
   const appSource = row.app_source ?? {};
   const legacyId = legacyTemplateIdFromAppSource(appSource);
   const complexity = Math.min(10, Math.max(1, asNumber(appSource.complexity, 5))) as MarketplaceTemplate['complexity'];
+  const sourceLayer = asString(appSource.layer, 'subscriber');
+  const hostedUrl =
+    (typeof row.hosted_url === 'string' && row.hosted_url.trim()) ||
+    asString(appSource.hosted_url || appSource.hostedUrl, '') ||
+    null;
+  const appStoreUrl =
+    (typeof row.app_store_url === 'string' && row.app_store_url.trim()) ||
+    asString(appSource.app_store_url || appSource.appStoreUrl, '') ||
+    null;
 
   return {
     id: row.id,
@@ -74,13 +86,37 @@ export function listingRowToTemplate(row: MarketplaceListingRow): MarketplaceLis
     featured: appSource.featured === true,
     createdAt: row.created_at.slice(0, 10),
     listingType: row.listing_type,
+    sourceLayer,
+    hostedUrl: hostedUrl || null,
+    appStoreUrl: appStoreUrl || null,
     source: 'database',
     ...(legacyId ? { legacyTemplateId: legacyId } : {}),
   } as MarketplaceListingItem & { legacyTemplateId?: string };
 }
 
-export function memoryTemplateToListingItem(template: MarketplaceTemplate): MarketplaceListingItem {
-  return { ...template, source: 'memory' };
+export async function fetchListingByLegacyIdFromDb(
+  supabase: SupabaseClient,
+  legacyId: string
+): Promise<MarketplaceListingRow | null> {
+  const { data: byLegacy } = await supabase
+    .schema('marketplace')
+    .from('listings')
+    .select('*')
+    .eq('app_source->>legacyTemplateId', legacyId)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (byLegacy) return byLegacy as MarketplaceListingRow;
+
+  const { data: byTemplate } = await supabase
+    .schema('marketplace')
+    .from('listings')
+    .select('*')
+    .eq('app_source->>templateId', legacyId)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  return (byTemplate as MarketplaceListingRow | null) ?? null;
 }
 
 export async function fetchActiveListingsFromDb(
@@ -168,7 +204,7 @@ export function isListingOwned(
   legacyPurchasedIds: string[]
 ): boolean {
   if (listing.price === 0) return true;
-  if (canAccessTemplate(listing, tier, legacyPurchasedIds)) return true;
+  if (listingIncludedInTier(listing, tier, legacyPurchasedIds)) return true;
   if (purchasedListingIds.includes(listing.id)) return true;
 
   const legacyId = (listing as MarketplaceListingItem & { legacyTemplateId?: string }).legacyTemplateId;
@@ -212,34 +248,25 @@ export function filterListings(
 
 export async function resolveMarketplaceCatalog(
   supabase: SupabaseClient
-): Promise<{ listings: MarketplaceListingItem[]; fromDatabase: boolean }> {
+): Promise<{ listings: MarketplaceListingItem[] }> {
   const rows = await fetchActiveListingsFromDb(supabase);
-
-  if (rows.length === 0) {
-    return {
-      listings: ALL_MARKETPLACE_TEMPLATES.map(memoryTemplateToListingItem),
-      fromDatabase: false,
-    };
-  }
-
   return {
     listings: rows.map(listingRowToTemplate),
-    fromDatabase: true,
   };
 }
 
 export async function resolvePurchasableItem(
   supabase: SupabaseClient,
   id: string
-): Promise<{ item: MarketplaceListingItem; listingRow: MarketplaceListingRow | null } | null> {
+): Promise<{ item: MarketplaceListingItem; listingRow: MarketplaceListingRow } | null> {
   const dbRow = await fetchListingByIdFromDb(supabase, id);
   if (dbRow) {
     return { item: listingRowToTemplate(dbRow), listingRow: dbRow };
   }
 
-  const template = getTemplateById(id);
-  if (template) {
-    return { item: memoryTemplateToListingItem(template), listingRow: null };
+  const legacyRow = await fetchListingByLegacyIdFromDb(supabase, id);
+  if (legacyRow) {
+    return { item: listingRowToTemplate(legacyRow), listingRow: legacyRow };
   }
 
   return null;
@@ -274,6 +301,7 @@ export async function recordMarketplacePurchase(
     buyerUserId: string;
     listingId: string;
     stripePaymentId?: string | null;
+    clonedProjectId?: string | null;
   }
 ): Promise<{ created: boolean; purchaseId?: string }> {
   if (params.stripePaymentId) {
@@ -308,6 +336,7 @@ export async function recordMarketplacePurchase(
       listing_id: params.listingId,
       buyer_user_id: params.buyerUserId,
       stripe_payment_id: params.stripePaymentId ?? null,
+      cloned_project_id: params.clonedProjectId ?? null,
     })
     .select('id')
     .single();
@@ -320,6 +349,33 @@ export async function recordMarketplacePurchase(
   return { created: true, purchaseId: data.id };
 }
 
+async function cloneTemplatePromptToProject(
+  supabase: SupabaseClient,
+  userId: string,
+  title: string,
+  prompt: string
+): Promise<string | null> {
+  if (!prompt.trim()) return null;
+
+  const { data, error } = await supabase
+    .from('projects')
+    .insert({
+      user_id: userId,
+      title: title.slice(0, 120) || 'Marketplace template',
+      prompt,
+      generated_code: '',
+    })
+    .select('id')
+    .single();
+
+  if (error) {
+    console.error('cloneTemplatePromptToProject failed:', error.message);
+    return null;
+  }
+
+  return data.id as string;
+}
+
 export async function fulfillTemplatePurchase(
   supabase: SupabaseClient,
   params: {
@@ -328,17 +384,26 @@ export async function fulfillTemplatePurchase(
     templateId?: string;
     stripePaymentId?: string | null;
   }
-): Promise<{ success: boolean; resolvedTemplateId?: string }> {
+): Promise<{ success: boolean; resolvedTemplateId?: string; clonedProjectId?: string }> {
   let legacyTemplateId = params.templateId;
   let listingId = params.listingId;
+  let clonedProjectId: string | null = null;
 
   if (listingId) {
     const row = await fetchListingByIdFromDb(supabase, listingId);
     if (row) {
+      const prompt = asString(row.app_source?.prompt);
+      clonedProjectId = await cloneTemplatePromptToProject(
+        supabase,
+        params.userId,
+        row.title,
+        prompt
+      );
       await recordMarketplacePurchase(supabase, {
         buyerUserId: params.userId,
         listingId,
         stripePaymentId: params.stripePaymentId,
+        clonedProjectId,
       });
       legacyTemplateId = legacyTemplateId ?? legacyTemplateIdFromAppSource(row.app_source) ?? listingId;
     }
@@ -350,9 +415,27 @@ export async function fulfillTemplatePurchase(
 
   if (legacyTemplateId) {
     await syncLegacyPurchasedTemplate(supabase, params.userId, legacyTemplateId);
+
+    if (!clonedProjectId) {
+      const legacyRow = legacyTemplateId
+        ? await fetchListingByLegacyIdFromDb(supabase, legacyTemplateId)
+        : null;
+      if (legacyRow) {
+        clonedProjectId = await cloneTemplatePromptToProject(
+          supabase,
+          params.userId,
+          legacyRow.title,
+          asString(legacyRow.app_source?.prompt)
+        );
+      }
+    }
   }
 
-  return { success: true, resolvedTemplateId: legacyTemplateId };
+  return {
+    success: true,
+    resolvedTemplateId: legacyTemplateId,
+    ...(clonedProjectId ? { clonedProjectId } : {}),
+  };
 }
 
 export async function buildListingsResponse(
@@ -360,7 +443,7 @@ export async function buildListingsResponse(
   userId: string | null,
   opts: { category?: string | null; search?: string | null; featured?: boolean; limit?: number }
 ) {
-  const { listings: catalog, fromDatabase } = await resolveMarketplaceCatalog(supabase);
+  const { listings: catalog } = await resolveMarketplaceCatalog(supabase);
 
   let tier = 'free';
   let purchasedListingIds: string[] = [];
@@ -394,7 +477,42 @@ export async function buildListingsResponse(
       max: prices.length ? Math.max(...prices) : 0,
       freeCount: catalog.filter((t) => t.price === 0).length,
     },
-    source: fromDatabase ? 'database' as const : 'memory' as const,
+    source: 'database' as const,
+  };
+}
+
+export async function buildListingDetailResponse(
+  supabase: SupabaseClient,
+  userId: string | null,
+  listingId: string
+) {
+  const row =
+    (await fetchListingByIdFromDb(supabase, listingId)) ??
+    (await fetchListingByLegacyIdFromDb(supabase, listingId));
+
+  if (!row) return null;
+
+  let tier = 'free';
+  let purchasedListingIds: string[] = [];
+  let legacyPurchasedIds: string[] = [];
+
+  if (userId) {
+    [tier, purchasedListingIds, legacyPurchasedIds] = await Promise.all([
+      fetchUserSubscriptionTier(supabase, userId),
+      fetchUserPurchasedListingIds(supabase, userId),
+      fetchUserLegacyPurchasedIds(supabase, userId),
+    ]);
+  }
+
+  const listing = listingRowToTemplate(row);
+  return {
+    listing: {
+      ...listing,
+      owned: userId
+        ? isListingOwned(listing, tier, purchasedListingIds, legacyPurchasedIds)
+        : listing.price === 0,
+    },
+    source: 'database' as const,
   };
 }
 
@@ -453,15 +571,15 @@ export async function buildMyPurchasesResponse(
   for (const legacyId of legacyIds) {
     if (coveredLegacyIds.has(legacyId)) continue;
 
-    const template = getTemplateById(legacyId);
-    if (!template) continue;
+    const row = await fetchListingByLegacyIdFromDb(supabase, legacyId);
+    if (!row) continue;
 
     purchases.push({
       id: `legacy-${legacyId}`,
       purchasedAt: '',
       stripePaymentId: null,
-      listing: { ...memoryTemplateToListingItem(template), owned: true },
-      source: 'memory',
+      listing: { ...listingRowToTemplate(row), owned: true },
+      source: 'database',
     });
   }
 

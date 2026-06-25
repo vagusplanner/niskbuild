@@ -28,8 +28,6 @@ function canAccessBuilder(data: { tier?: string; status?: string; paid?: boolean
 export default function SubscriptionGuard({ children, onLock }: SubscriptionGuardProps) {
   const [hasAccess, setHasAccess] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
-  const [subscriptionTier, setSubscriptionTier] = useState<string>('free');
-  const [isSandbox, setIsSandbox] = useState(false);
 
   const checkSubscription = useCallback(async () => {
     try {
@@ -57,8 +55,6 @@ export default function SubscriptionGuard({ children, onLock }: SubscriptionGuar
       const data = await response.json();
       const access = canAccessBuilder(data);
       setHasAccess(access);
-      setSubscriptionTier(data.tier || 'free');
-      setIsSandbox((data.tier || 'free') === 'free');
 
       if (!access) onLock?.();
     } catch {
@@ -131,23 +127,6 @@ export default function SubscriptionGuard({ children, onLock }: SubscriptionGuar
 
   return (
     <>
-      <div className="fixed top-[4.25rem] right-4 z-40 pointer-events-none hidden sm:block">
-        <div
-          className={`rounded-full px-3 py-1 backdrop-blur-sm border ${
-            isSandbox
-              ? 'bg-amber-500/10 border-amber-500/30'
-              : 'bg-emerald-500/10 border-emerald-500/30'
-          }`}
-        >
-          <span
-            className={`text-xs capitalize ${
-              isSandbox ? 'text-amber-400' : 'text-emerald-400'
-            }`}
-          >
-            {isSandbox ? 'Sandbox' : `${subscriptionTier.replace('_', ' ')} active`}
-          </span>
-        </div>
-      </div>
       {children}
     </>
   );

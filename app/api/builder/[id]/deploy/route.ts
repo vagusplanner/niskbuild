@@ -8,14 +8,14 @@ import { deployVagusPlanner } from '@/lib/vp-deploy';
 
 export const maxDuration = 300;
 
-type RouteContext = { params: Promise<{ appId: string }> };
+type RouteContext = { params: Promise<{ id: string }> };
 
 export async function POST(request: NextRequest, context: RouteContext) {
   const guard = await guardApiRequest(request, { rateLimit: 5 });
   if (!guard.ok) return guard.response;
 
   try {
-    const { appId } = await context.params;
+    const { id: appId } = await context.params;
     const app = resolveBuilderApp(appId);
     if (!app) {
       return NextResponse.json({ error: 'Unknown builder app' }, { status: 404 });

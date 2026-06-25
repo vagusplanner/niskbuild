@@ -4,7 +4,7 @@ import { fetchAppStoreChecklist, getExportJob, logTail } from '@/lib/builder-exp
 import { isExportSupported } from '@/lib/builder-export/config';
 import { isPlatformOwner } from '@/lib/platform-owner-auth';
 
-type RouteContext = { params: Promise<{ appId: string }> };
+type RouteContext = { params: Promise<{ id: string }> };
 
 async function canReadJob(
   job: NonNullable<Awaited<ReturnType<typeof getExportJob>>>,
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
   const guard = await guardApiRequest(request, { rateLimit: 120 });
   if (!guard.ok) return guard.response;
 
-  const { appId } = await context.params;
+  const { id: appId } = await context.params;
 
   if (!isExportSupported(appId)) {
     return NextResponse.json({ error: 'Export is not supported for this app' }, { status: 404 });

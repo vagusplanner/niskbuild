@@ -12,12 +12,30 @@ interface PromptBarProps {
   statusMessage?: string;
   planMode?: boolean;
   onPlanModeChange?: (enabled: boolean) => void;
-  variant?: 'bottom' | 'sidebar' | 'dock';
+  variant?: 'bottom' | 'sidebar' | 'dock' | 'cursor';
   subscriptionTier?: string;
   subscriptionStatus?: string;
   useLocalOllama?: boolean;
   onUseLocalOllamaChange?: (enabled: boolean) => void;
   onProviderUpgrade?: () => void;
+}
+
+function SuggestionChips({ onPick }: { onPick: (s: string) => void }) {
+  return (
+    <div className="flex flex-wrap gap-1.5 px-3 pt-2.5 pb-1">
+      {PROMPT_SUGGESTIONS.slice(0, PROMPT_SUGGESTION_COUNT).map((s) => (
+        <button
+          key={s}
+          type="button"
+          onClick={() => onPick(s)}
+          className="text-left px-2.5 py-1 rounded-lg border border-[var(--border)] bg-[var(--code-bg)] text-[10px] text-[var(--code-comment)] hover:text-[var(--code-keyword)] hover:border-[var(--copper-primary)]/40 transition-colors line-clamp-1 max-w-full"
+          title={s}
+        >
+          {s}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 export default function PromptBar({
@@ -35,143 +53,126 @@ export default function PromptBar({
   onUseLocalOllamaChange,
   onProviderUpgrade,
 }: PromptBarProps) {
-  const isDock = variant === 'dock';
+  const isCursor = variant === 'cursor' || variant === 'dock';
   const isSidebar = variant === 'sidebar';
   const mod = modKey();
+
+  const toolbar = (
+    <div className="flex items-center gap-2 flex-wrap px-3 py-2 border-t border-[var(--border)]/60 bg-[var(--surface)]/50 relative z-[1]">
+      {isCursor && onUseLocalOllamaChange && onProviderUpgrade && (
+        <AiProviderSelector
+          tier={subscriptionTier}
+          status={subscriptionStatus}
+          useLocalOllama={useLocalOllama}
+          onUseLocalOllamaChange={onUseLocalOllamaChange}
+          onUpgrade={onProviderUpgrade}
+        />
+      )}
+      {onPlanModeChange && (
+        <label className="flex items-center gap-1.5 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={planMode}
+            onChange={(e) => onPlanModeChange(e.target.checked)}
+            className="rounded border-nisk scale-90 accent-[var(--copper-primary)]"
+          />
+          <span className="text-[10px] text-nisk-muted">Plan</span>
+        </label>
+      )}
+      <button
+        type="button"
+        onClick={onGenerate}
+        disabled={isGenerating || !prompt.trim()}
+        className="btn-primary rounded-lg text-xs font-semibold disabled:opacity-50 ml-auto px-4 py-2"
+      >
+        {isGenerating
+          ? planMode
+            ? 'Planning…'
+            : 'Building…'
+          : planMode
+            ? 'Plan'
+            : 'Generate'}
+      </button>
+    </div>
+  );
+
+  if (isCursor) {
+    return (
+      <div className="flex flex-col gap-0 px-3 py-3">
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--code-bg)] shadow-[0_4px_24px_rgba(0,0,0,0.25)] overflow-hidden focus-within:border-[var(--copper-primary)]/40 focus-within:ring-1 focus-within:ring-[var(--copper-primary)]/20 transition-all">
+          <SuggestionChips onPick={onChange} />
+          <textarea
+            value={prompt}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="Describe what you want to build…"
+            rows={4}
+            className="w-full bg-transparent px-3 py-2 text-sm text-[var(--foreground)] placeholder-[var(--placeholder)] resize-none focus:outline-none min-h-[96px] font-mono"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) onGenerate();
+            }}
+          />
+          {toolbar}
+        </div>
+        {statusMessage && (
+          <p
+            className={`text-[11px] mt-2 px-1 leading-snug ${
+              statusMessage.includes('✅')
+                ? 'text-[var(--success)]'
+                : statusMessage.includes('❌')
+                  ? 'text-[var(--error)]'
+                  : 'text-[var(--copper-melt)]'
+            }`}
+          >
+            {statusMessage}
+          </p>
+        )}
+        <p className="text-[10px] text-nisk-muted mt-1 px-1">{mod} + Enter to generate</p>
+      </div>
+    );
+  }
 
   return (
     <div
       className={
-        isDock
-          ? 'flex flex-col gap-2 px-3 py-3'
-          : isSidebar
-            ? 'flex-1 min-h-0 flex flex-col px-4 py-4 gap-3 overflow-hidden'
-            : 'shrink-0 border-t border-nisk bg-nisk-card/95 backdrop-blur-md px-4 py-3'
+        isSidebar
+          ? 'flex-1 min-h-0 flex flex-col px-4 py-4 gap-3 overflow-hidden'
+          : 'shrink-0 border-t border-nisk bg-nisk-card/95 backdrop-blur-md px-4 py-3'
       }
     >
-      {!isDock && (
-        <div className={`flex items-center justify-between ${isSidebar ? 'shrink-0' : 'mb-2'}`}>
-          <p className="text-[10px] uppercase tracking-wider text-nisk-muted">
-            {isSidebar ? 'Describe your app' : 'Suggested prompts'}
-          </p>
-          {onPlanModeChange && (
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={planMode}
-                onChange={(e) => onPlanModeChange(e.target.checked)}
-                className="rounded border-nisk"
-              />
-              <span className="text-[10px] text-nisk-muted">
-                Plan Mode <span className="text-[var(--accent-cyan)]">(0 credits)</span>
-              </span>
-            </label>
-          )}
-        </div>
-      )}
-
-      {!isSidebar && !isDock && (
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
-          {PROMPT_SUGGESTIONS.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => onChange(s)}
-              className="shrink-0 max-w-[220px] truncate px-3 py-1.5 rounded-full text-[11px] border border-nisk text-nisk-muted hover:border-[var(--accent-cyan)] hover:text-[var(--accent-cyan)] hover:bg-[var(--accent-cyan)]/5 transition-all"
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {isDock && (
-        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin -mx-1 px-1">
-          {PROMPT_SUGGESTIONS.slice(0, PROMPT_SUGGESTION_COUNT).map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => onChange(s)}
-              title={s}
-              className="shrink-0 max-w-[140px] truncate px-2 py-1 rounded-full text-[10px] border border-nisk text-nisk-muted hover:border-[var(--accent-cyan)]/50 hover:text-[var(--accent-cyan)] transition-all"
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <textarea
-        value={prompt}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="Describe what you want to build..."
-        rows={isDock ? 4 : isSidebar ? 6 : 2}
-        className={`w-full glass-input rounded-xl px-3 py-2.5 text-sm placeholder-[var(--placeholder)] resize-none focus:outline-none focus:border-[var(--accent-cyan)] focus:ring-1 focus:ring-[var(--accent-cyan)]/30 ${
-          isSidebar ? 'flex-1 min-h-[100px]' : ''
-        }`}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) onGenerate();
-        }}
-      />
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--code-bg)] overflow-hidden">
+        <SuggestionChips onPick={onChange} />
+        <textarea
+          value={prompt}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Describe what you want to build..."
+          rows={isSidebar ? 6 : 2}
+          className={`w-full bg-transparent px-3 py-2.5 text-sm placeholder-[var(--placeholder)] resize-none focus:outline-none font-mono text-[var(--foreground)] ${
+            isSidebar ? 'flex-1 min-h-[100px]' : ''
+          }`}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) onGenerate();
+          }}
+        />
+      </div>
 
       {statusMessage && (
-        <p
-          className={`text-[11px] shrink-0 leading-snug ${
-            statusMessage.includes('✅')
-              ? 'text-[var(--success)]'
-              : statusMessage.includes('❌')
-                ? 'text-[var(--error)]'
-                : 'text-[var(--accent-cyan)]'
-          }`}
-        >
-          {statusMessage}
-        </p>
+        <p className="text-[11px] shrink-0 leading-snug text-[var(--copper-melt)]">{statusMessage}</p>
       )}
 
-      <div className={`flex items-center gap-2 ${isDock ? 'flex-wrap' : 'gap-3'}`}>
-        {isDock && onUseLocalOllamaChange && onProviderUpgrade && (
-          <AiProviderSelector
-            tier={subscriptionTier}
-            status={subscriptionStatus}
-            useLocalOllama={useLocalOllama}
-            onUseLocalOllamaChange={onUseLocalOllamaChange}
-            onUpgrade={onProviderUpgrade}
-          />
-        )}
-
-        {isDock && onPlanModeChange && (
-          <label className="flex items-center gap-1.5 cursor-pointer ml-auto sm:ml-0">
-            <input
-              type="checkbox"
-              checked={planMode}
-              onChange={(e) => onPlanModeChange(e.target.checked)}
-              className="rounded border-nisk scale-90"
-            />
-            <span className="text-[10px] text-nisk-muted">Plan</span>
-          </label>
-        )}
-
+      <div className="flex items-center gap-2 flex-wrap">
         <button
           type="button"
           onClick={onGenerate}
           disabled={isGenerating || !prompt.trim()}
           className={`btn-primary rounded-xl text-sm font-semibold disabled:opacity-50 ${
-            isDock ? 'flex-1 min-w-[120px] py-2.5' : isSidebar ? 'w-full py-3 shrink-0' : 'shrink-0 px-6 py-3'
+            isSidebar ? 'flex-1 py-3' : 'px-6 py-3'
           }`}
         >
-          {isGenerating
-            ? planMode
-              ? 'Planning...'
-              : 'Building...'
-            : planMode
-              ? 'Generate Plan'
-              : 'Generate'}
+          {isGenerating ? 'Building…' : 'Generate'}
         </button>
       </div>
 
-      <p className="text-[10px] text-nisk-muted shrink-0">
-        {mod} + Enter to generate
-      </p>
+      <p className="text-[10px] text-nisk-muted shrink-0">{mod} + Enter to generate</p>
     </div>
   );
 }

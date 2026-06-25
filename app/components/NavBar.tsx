@@ -8,19 +8,39 @@ import { getSafeSession } from '@/lib/supabaseSession';
 import { openCommandPalette } from '@/lib/command-palette-events';
 import { modKey } from '@/lib/keyboard';
 import NiskBuildLogo from './NiskBuildLogo';
-import AuthButton from './AuthButton';
+import UserAccountMenu from './UserAccountMenu';
 import ThemeToggle from './ThemeToggle';
-import { MAIN_NAV, type NavItem } from '@/lib/nav-config';
+import { WORKSPACE_NAV, DISCOVER_NAV, APP_NAV, type NavItem } from '@/lib/nav-config';
 import { MARKETING_NAV } from '@/lib/landing-nav';
 
-/** Admin-only nav entries (not in MAIN_NAV). */
-const ADMIN_NAV: NavItem[] = [
+/** Platform-owner admin — 3-layer architecture control */
+const PLATFORM_ADMIN_NAV: NavItem[] = [
+  {
+    href: '/admin/layer-overview',
+    label: '3-Layer Dashboard',
+    icon: '📊',
+    description: 'Public · Firstparty · Marketplace overview',
+  },
+  { href: '/admin/tenants', label: 'Tenants', icon: '👥', description: 'Subscriber layer' },
+  { href: '/admin/apps', label: 'Apps', icon: '📱', description: 'Firstparty app registry' },
+  {
+    href: '/admin/marketplace',
+    label: 'Listings',
+    icon: '🏪',
+    description: 'Marketplace moderation',
+  },
   {
     href: '/builder/vagus-planner',
-    label: 'Vagus Planner',
+    label: 'VP Studio',
     icon: '🛠️',
     description: 'Edit Vagus Planner with AI',
   },
+];
+
+/** Logged-out visitors on app pages */
+const GUEST_NAV: NavItem[] = [
+  { href: '/landing', label: 'Home', icon: '🏠' },
+  { href: '/pricing', label: 'Pricing', icon: '💳' },
 ];
 
 export interface NavBarProps {
@@ -30,41 +50,59 @@ export interface NavBarProps {
 export default function NavBar({ variant = 'app' }: NavBarProps) {
   const pathname = usePathname();
   const [user, setUser] = useState<{ email?: string } | null>(null);
+  const [subscriptionTier, setSubscriptionTier] = useState('free');
+  const [subscriptionStatus, setSubscriptionStatus] = useState('inactive');
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    getSafeSession().then((s) => setUser(s?.user ?? null));
+    getSafeSession().then((s) => {
+      setUser(s?.user ?? null);
+      if (s?.user) {
+        fetch('/api/subscription/status', { credentials: 'include' })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((d) => {
+            if (d?.tier) setSubscriptionTier(d.tier);
+            if (d?.status) setSubscriptionStatus(d.status);
+          })
+          .catch(() => {});
+      }
+    });
   }, []);
 
   const isPlatformOwnerNav = usePlatformOwner(user);
 
   const nav = useMemo(() => {
-    const base =
-      variant === 'marketing'
-        ? MARKETING_NAV
-        : MAIN_NAV.filter((n) => n.href !== '/landing');
-
-    if (variant === 'marketing' || !isPlatformOwnerNav) {
-      return base;
+    if (variant === 'marketing') {
+      return MARKETING_NAV.map((item) => ({
+        ...item,
+        icon: '',
+        description: undefined,
+      }));
     }
 
-    return [...base, ...ADMIN_NAV];
-  }, [variant, isPlatformOwnerNav]);
+    if (!user) {
+      return GUEST_NAV;
+    }
+
+    return [...WORKSPACE_NAV, ...DISCOVER_NAV, ...APP_NAV.filter((n) => n.href !== '/landing')];
+  }, [variant, user]);
 
   const isNavActive = (href: string) => {
     const path = href.split('#')[0];
     if (path === '/dashboard') return pathname === '/dashboard';
+    if (path === '/admin/layer-overview') return pathname.startsWith('/admin');
     return pathname === path || pathname.startsWith(`${path}/`);
   };
 
   const linkClass = (href: string) => {
     const base =
-      'px-3 py-2 text-sm font-semibold transition-all border-2 border-transparent text-nisk-muted hover:text-[var(--accent-teal-bright)] hover:border-[var(--primary)]/40 hover:bg-[var(--surface)]';
+      'px-3 py-2 text-sm font-semibold transition-all border-2 border-transparent text-nisk-muted hover:text-[var(--copper-melt)] hover:border-[var(--copper-primary)]/40 hover:bg-[var(--surface)]';
     if (!mounted) return base;
     return isNavActive(href)
-      ? 'px-3 py-2 text-sm font-semibold transition-all border-2 border-[var(--primary)] bg-[var(--primary)]/15 text-[var(--accent-teal-bright)] shadow-[3px_3px_0_rgba(139,90,43,0.25)]'
+      ? 'px-3 py-2 text-sm font-semibold transition-all border-2 border-[var(--copper-primary)] bg-[var(--copper-primary)]/15 text-[var(--copper-melt)] shadow-[3px_3px_0_var(--copper-glow)]'
       : base;
   };
 
@@ -86,6 +124,38 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
                 {item.label}
               </Link>
             ))}
+
+            {isPlatformOwnerNav && variant !== 'marketing' && (
+              <div className="relative ml-1 z-[60]">
+                <button
+                  type="button"
+                  onClick={() => setAdminOpen((v) => !v)}
+                  className={`${linkClass('/admin/layer-overview')} flex items-center gap-1`}
+                  aria-expanded={adminOpen}
+                  aria-haspopup="true"
+                >
+                  Admin
+                  <svg className="w-3 h-3 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {adminOpen && (
+                  <div className="absolute top-full left-0 mt-1 min-w-[220px] py-1 rounded-xl border border-nisk bg-[var(--card-bg)] shadow-xl z-50">
+                    {PLATFORM_ADMIN_NAV.map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className="block px-4 py-2.5 text-sm text-nisk-muted hover:text-[var(--copper-melt)] hover:bg-[var(--surface)] transition-colors"
+                        onClick={() => setAdminOpen(false)}
+                      >
+                        <span className="mr-2">{item.icon}</span>
+                        {item.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </nav>
         )}
 
@@ -99,7 +169,7 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
         )}
 
         <div className="flex items-center gap-2">
-          {(variant === 'app' || isBuilder) && (
+          {(variant === 'app' || isBuilder) && user && (
             <>
               <button
                 type="button"
@@ -143,7 +213,11 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
             </Link>
           )}
           {user ? (
-            <AuthButton user={user} nextPath="/builder" />
+            <UserAccountMenu
+              user={user}
+              subscriptionTier={subscriptionTier}
+              subscriptionStatus={subscriptionStatus}
+            />
           ) : variant === 'marketing' ? (
             <Link href="/login" className="btn-primary text-sm px-4 py-2">
               Get Started
@@ -178,6 +252,21 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
               {item.label}
             </Link>
           ))}
+          {isPlatformOwnerNav && variant !== 'marketing' && (
+            <>
+              <p className="px-3 pt-2 text-[10px] uppercase tracking-wider text-nisk-muted">Admin</p>
+              {PLATFORM_ADMIN_NAV.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={linkClass(item.href)}
+                  onClick={() => setMobileOpen(false)}
+                >
+                  {item.icon} {item.label}
+                </Link>
+              ))}
+            </>
+          )}
         </div>
       )}
     </header>

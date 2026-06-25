@@ -77,4 +77,8 @@ export async function signOut() {
   if (error) {
     await supabase.auth.signOut({ scope: 'local' });
   }
+
+  if (typeof window !== 'undefined') {
+    window.location.href = '/landing';
+  }
 }

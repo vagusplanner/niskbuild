@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSafeSession } from '@/lib/supabaseSession';
-import { ALL_MARKETPLACE_TEMPLATES, complexityLabel } from '@/lib/marketplace-templates';
+import { complexityLabel } from '@/lib/marketplace-types';
 import { DOCS_INDEX } from '@/lib/docs-index';
 import {
   COMMAND_PALETTE_OPEN_EVENT,
@@ -64,6 +64,9 @@ export default function CommandPalette() {
     { id: string; title: string; prompt: string; created_at: string; project_context?: unknown }[]
   >([]);
   const [recent, setRecent] = useState<RecentPaletteItem[]>([]);
+  const [marketplaceListings, setMarketplaceListings] = useState<
+    { id: string; name: string; description: string; prompt: string; complexity: number }[]
+  >([]);
   const router = useRouter();
   const mod = modKey();
 
@@ -163,6 +166,10 @@ export default function CommandPalette() {
         .then((data) => setProjects(data.projects || []))
         .catch(() => setProjects([]));
     });
+    fetch('/api/marketplace/listings?limit=20')
+      .then((r) => r.json())
+      .then((data) => setMarketplaceListings(data.templates || []))
+      .catch(() => setMarketplaceListings([]));
   }, [open]);
 
   const projectItems: PaletteItem[] = useMemo(
@@ -184,7 +191,7 @@ export default function CommandPalette() {
 
   const templateItems: PaletteItem[] = useMemo(
     () =>
-      ALL_MARKETPLACE_TEMPLATES.map((t) => ({
+      marketplaceListings.map((t) => ({
         id: `template-${t.id}`,
         label: t.name,
         description: t.description,
@@ -196,7 +203,7 @@ export default function CommandPalette() {
           router.push('/builder');
         },
       })),
-    [router]
+    [marketplaceListings, router]
   );
 
   const docItems: PaletteItem[] = useMemo(
