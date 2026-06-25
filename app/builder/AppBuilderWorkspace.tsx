@@ -270,7 +270,6 @@ function AppBuilderWorkspaceInner({ appId, loginNextPath }: AppBuilderWorkspaceP
         onProjectsClick={() => {}}
         projectCount={0}
         projectsOpen={false}
-        user={user}
       />
 
       <div className="flex-1 min-w-0 flex flex-col">
