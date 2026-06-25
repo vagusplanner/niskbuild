@@ -1,14 +1,14 @@
 "use client";
 
 import Link from 'next/link';
-import { tierAtLeast } from '@/lib/tier-rank';
+import { tierAtLeast, type TierSlug } from '@/lib/tier-rank';
 import { tierDisplayName } from '@/lib/tier-config';
 
 type UpgradeGateProps = {
   featureName: string;
   headline: string;
   body: string;
-  requiredTier: string;
+  requiredTier: TierSlug;
   currentTier: string;
   subscriptionStatus?: string;
   children?: React.ReactNode;
@@ -28,7 +28,7 @@ export default function UpgradeGate({
   secondaryLabel = "See what's included",
 }: UpgradeGateProps) {
   const paid = subscriptionStatus === 'active';
-  const entitled = paid && tierAtLeast(currentTier, requiredTier);
+  const entitled = paid && tierAtLeast(currentTier || 'free', requiredTier);
 
   if (entitled) {
     return <>{children}</>;
