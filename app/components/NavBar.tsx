@@ -49,7 +49,7 @@ export interface NavBarProps {
 
 export default function NavBar({ variant = 'app' }: NavBarProps) {
   const pathname = usePathname();
-  const [user, setUser] = useState<{ email?: string } | null>(null);
+  const [user, setUser] = useState<{ id?: string; email?: string } | null>(null);
   const [subscriptionTier, setSubscriptionTier] = useState('free');
   const [subscriptionStatus, setSubscriptionStatus] = useState('inactive');
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -72,7 +72,7 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
     });
   }, []);
 
-  const isPlatformOwnerNav = usePlatformOwner(user);
+  const isPlatformOwnerNav = usePlatformOwner(user?.id ? { id: user.id } : null);
 
   const nav = useMemo(() => {
     if (variant === 'marketing') {
