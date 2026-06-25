@@ -126,10 +126,6 @@ export type BuilderWorkspaceLayoutProps = {
   onIntegrationStatus?: (message: string) => void;
   onOpenHistory?: () => void;
   versionHistoryOpen?: boolean;
-  previewDevice?: PreviewDevice;
-  onPreviewDeviceChange?: (device: PreviewDevice) => void;
-  canShareSocial?: boolean;
-  onOpenSocialPublisher?: () => void;
 };
 
 function CanvasHeader({
