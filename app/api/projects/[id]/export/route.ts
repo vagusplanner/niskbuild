@@ -5,6 +5,8 @@ import { createProjectExportJob } from '@/lib/project-export/jobs';
 import { startProjectExportJob } from '@/lib/project-export/run-export';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
 import { canExportMobileProject } from '@/lib/tier-config';
+import { recordUsageEvent } from '@/lib/usage-events';
+import { clientIpFromHeaders } from '@/lib/coarse-town';
 import type { ComponentBlueprint } from '@/lib/blueprint-schema';
 
 export const maxDuration = 300;
@@ -71,8 +73,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
         blueprint_json: (project.blueprint_json as ComponentBlueprint | null) ?? null,
         bundle_id: (project.bundle_id as string | null) ?? null,
       },
-      downloadApiPath
+      downloadApiPath,
+      user.id
     );
+
+    void recordUsageEvent({
+      eventType: 'export',
+      userId: user.id,
+      projectId: project.id,
+      prompt: project.prompt || '',
+      clientIp: clientIpFromHeaders(request.headers),
+    });
 
     return NextResponse.json({
       jobId: job.id,

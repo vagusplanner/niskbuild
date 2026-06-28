@@ -28,6 +28,10 @@ export function resolvePostAuthPath(
 
   const safeNext = sanitizeNextPath(requestedNext);
 
+  if (safeNext?.startsWith('/reset-password')) {
+    return safeNext;
+  }
+
   if (!paid && !profile.phone_verified) {
     if (safeNext?.startsWith('/verify-phone')) return safeNext;
     return '/verify-phone';

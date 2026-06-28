@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { resolvePostAuthPath } from '@/lib/post-auth-redirect';
+import { recordSignupIfNewUser } from '@/lib/usage-events';
+import { sendWelcomeEmail } from '@/lib/email/lifecycle';
+import { clientIpFromHeaders } from '@/lib/coarse-town';
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
@@ -29,6 +32,13 @@ export async function GET(request: Request) {
     }
 
     userId = data.user?.id ?? null;
+    const isPasswordRecovery = next === '/reset-password';
+    if (userId && data.user?.email && !isPasswordRecovery) {
+      void recordSignupIfNewUser(userId, {
+        clientIp: clientIpFromHeaders(new Headers(request.headers)),
+      });
+      void sendWelcomeEmail(userId, data.user.email);
+    }
   }
 
   if (userId) {

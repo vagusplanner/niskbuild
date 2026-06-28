@@ -25,7 +25,7 @@ export const SOCIAL_SYSTEM_PROMPT = `Generate social media posts announcing this
 instagram (max 2200 chars, casual tone, hashtags, emoji),
 linkedin (max 1300 chars, professional, business value),
 twitter (max 280 chars, punchy hook),
-facebook (max 600 chars, friendly),
+facebook (max 500 chars, friendly),
 google_business (max 300 chars, local SEO),
 tiktok_script (60 second narration script),
 whatsapp (max 139 chars).

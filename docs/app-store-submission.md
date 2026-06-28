@@ -20,6 +20,17 @@ Use this checklist to track progress across all phases.
 - [ ] **App icon** 1024 × 1024 px (no transparency, no rounded corners — Apple applies the mask)
 - [ ] **Support URL** and **marketing URL** (optional but recommended)
 
+### Phase 0 — Notifications (before export)
+
+Complete [vp-push-notifications-setup.md](./vp-push-notifications-setup.md) first. Push and email must work on a **physical device** before Capacitor/Xcode packaging.
+
+- [ ] Run `supabase/vp-notifications-infrastructure-migration.sql`
+- [ ] Configure `RESEND_API_KEY`, `CRON_SECRET`, APNs secrets (`APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_KEY`, `APNS_BUNDLE_ID`)
+- [ ] Deploy `vp-send-reminders` edge function with 5-minute cron
+- [ ] `@capacitor/push-notifications` installed; `npx cap sync ios`
+- [ ] Xcode: Push Notifications + Background Modes → Remote notifications
+- [ ] Physical device test: token registered, test reminder delivered (push and/or email)
+
 ### Phase 1 — Export from NiskBuild
 
 - [ ] Production Supabase + VP configured (see [production-deployment.md](./production-deployment.md))

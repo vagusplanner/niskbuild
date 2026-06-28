@@ -2,6 +2,7 @@ import 'server-only';
 
 import { createHash } from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { logFeatureUsage } from '@/lib/feature-usage';
 
 export async function logPwaExport(params: {
   userId: string;
@@ -33,4 +34,6 @@ export async function logPwaExport(params: {
   if (error) {
     console.error('PWA export metadata log error:', error.message);
   }
+
+  void logFeatureUsage(params.userId, 'pwa');
 }

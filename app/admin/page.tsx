@@ -235,6 +235,18 @@ export default function AdminDashboard() {
             💬 Support
           </button>
           <button
+            onClick={() => { window.location.href = '/admin/analytics'; }}
+            className="px-4 py-2 rounded-lg bg-[var(--surface-elevated)] hover:bg-[var(--card-bg)] text-[var(--foreground)] transition-colors"
+          >
+            📊 Demand Analytics
+          </button>
+          <button
+            onClick={() => { window.location.href = '/admin/insights'; }}
+            className="px-4 py-2 rounded-lg bg-[var(--surface-elevated)] hover:bg-[var(--card-bg)] text-[var(--foreground)] transition-colors"
+          >
+            📈 Privacy &amp; Analytics
+          </button>
+          <button
             onClick={() => { window.location.href = '/admin/users'; }}
             className="px-4 py-2 rounded-lg bg-[var(--surface-elevated)] hover:bg-[var(--card-bg)] text-[var(--foreground)] transition-colors"
           >

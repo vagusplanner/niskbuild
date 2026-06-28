@@ -3,6 +3,7 @@ export type ProjectExportJobStatus =
   | 'building'
   | 'syncing'
   | 'ready'
+  | 'ready_zip_only'
   | 'failed';
 
 export type ProjectExportJobRecord = {
@@ -12,6 +13,7 @@ export type ProjectExportJobRecord = {
   status: ProjectExportJobStatus;
   log: string;
   download_url: string | null;
+  storage_path: string | null;
   capacitor_root: string | null;
   ios_workspace: string | null;
   started_at: string;

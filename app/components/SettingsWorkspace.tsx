@@ -12,7 +12,6 @@ import ReferralCard from '@/app/components/ReferralCard';
 import PhoneVerification from '@/app/components/PhoneVerification';
 import ActiveSessionsPanel from '@/app/components/ActiveSessionsPanel';
 import ReloadPacks from '@/app/components/ReloadPacks';
-import ThemeToggle from '@/app/components/ThemeToggle';
 import { LocalOllamaLockedCard } from '@/app/components/BuilderOllamaSettings';
 import { DEMOGRAPHIC_OPTIONS, type DemographicTier } from '@/lib/demographic-tiers';
 import {
@@ -114,7 +113,7 @@ export default function SettingsWorkspace() {
   const [exportingData, setExportingData] = useState(false);
 
   const [demographicTier, setDemographicTier] = useState<DemographicTier>('unspecified');
-  const [telemetryOptOut, setTelemetryOptOut] = useState(false);
+  const [analyticsOptIn, setAnalyticsOptIn] = useState(true);
   const [analyticsRegion, setAnalyticsRegion] = useState<AnalyticsRegion>('Other');
   const [detectedRegion, setDetectedRegion] = useState<AnalyticsRegion>('Other');
   const [privacySaving, setPrivacySaving] = useState(false);
@@ -166,7 +165,7 @@ export default function SettingsWorkspace() {
       setBilling(billRes);
       setPayments(histRes.payments || []);
       setDemographicTier(privacyRes.demographicTier || 'unspecified');
-      setTelemetryOptOut(privacyRes.telemetryOptOut ?? false);
+      setAnalyticsOptIn(privacyRes.analyticsOptIn !== false);
       const detected = detectBrowserRegion();
       setDetectedRegion(detected);
       setAnalyticsRegion(
@@ -457,16 +456,86 @@ export default function SettingsWorkspace() {
 
               <section className="bg-nisk-card border border-nisk rounded-xl p-6">
                 <h2 className="text-lg font-semibold text-white mb-2">Appearance</h2>
-                <ThemeToggle />
+                <p className="text-sm text-nisk-muted mb-4 leading-relaxed">
+                  NiskBuild uses the <strong className="text-gray-200">Forged Iron</strong> brand palette — warm
+                  copper accents on a dark workshop surface. This keeps the builder, dashboard, and exports visually
+                  consistent.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="flex items-start gap-3 p-3 rounded-lg border-2 border-[var(--copper-primary)] bg-[var(--copper-primary)]/10 cursor-default">
+                    <input type="radio" name="theme" checked readOnly className="mt-1 accent-[var(--copper-primary)]" />
+                    <span>
+                      <span className="text-sm font-medium text-gray-200 block">Forged Iron (default)</span>
+                      <span className="text-xs text-nisk-muted">Copper &amp; ember accents — optimized for long build sessions</span>
+                    </span>
+                  </label>
+                  <label className="flex items-start gap-3 p-3 rounded-lg border border-nisk bg-nisk opacity-60 cursor-not-allowed">
+                    <input type="radio" name="theme" disabled className="mt-1" />
+                    <span>
+                      <span className="text-sm font-medium text-gray-400 block">Light mode</span>
+                      <span className="text-xs text-nisk-muted">Coming soon</span>
+                    </span>
+                  </label>
+                </div>
+                <div className="mt-4">
+                  <p className="text-xs text-nisk-muted uppercase tracking-wider mb-2">Interface density</p>
+                  <select
+                    defaultValue="comfortable"
+                    className="w-full max-w-xs bg-nisk border border-nisk rounded-lg px-3 py-2 text-white text-sm"
+                    aria-label="Interface density"
+                  >
+                    <option value="comfortable">Comfortable (default)</option>
+                    <option value="compact" disabled>
+                      Compact — coming soon
+                    </option>
+                  </select>
+                </div>
               </section>
 
               <section className="bg-nisk-card border border-nisk rounded-xl p-6">
                 <h2 className="text-lg font-semibold text-white mb-2">Privacy &amp; Analytics</h2>
-                <p className="text-sm text-nisk-muted mb-4">Anonymous macro trends only — never your name, email, or raw prompts.</p>
+                <div className="text-sm text-nisk-muted mb-4 space-y-3 leading-relaxed">
+                  <p>
+                    To improve NiskBuild, we collect anonymized, aggregated usage trends — app
+                    category (not prompt text), country/region, optional coarse town grouping, and
+                    optional age range. This is never linked to your name or email in any report.
+                  </p>
+                  <p>
+                    Small groupings (e.g. a category in a specific town) are automatically
+                    suppressed when too few users match, so individuals cannot be identified.
+                  </p>
+                  <p className="text-[11px]">
+                    See our{' '}
+                    <Link href="/privacy" className="text-[var(--copper-melt)] hover:underline">
+                      Privacy Policy
+                    </Link>{' '}
+                    for full details on aggregate data and future commercial insights products.
+                  </p>
+                </div>
+                <label className="flex items-start gap-3 mb-4 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={analyticsOptIn}
+                    onChange={(e) => setAnalyticsOptIn(e.target.checked)}
+                    className="mt-0.5 rounded accent-[var(--copper-primary)]"
+                  />
+                  <span className="text-sm">
+                    <span className="text-gray-200 font-medium block mb-1">
+                      Help improve NiskBuild with anonymous usage trends
+                    </span>
+                    <span className="text-nisk-muted leading-relaxed">
+                      We use anonymized app-category and region data to understand demand and
+                      improve the platform. No names, exact locations, or prompt text are ever
+                      stored for this. You can turn this off anytime.
+                    </span>
+                  </span>
+                </label>
+                <p className="text-xs text-nisk-muted mb-2">Analytics region (country-level)</p>
                 <select value={analyticsRegion} onChange={(e) => setAnalyticsRegion(e.target.value as AnalyticsRegion)} className="w-full bg-nisk border border-nisk rounded-lg px-3 py-2 text-white text-sm mb-3">
                   {ANALYTICS_REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
                 </select>
                 <p className="text-[11px] text-nisk-muted mb-3">Detected: {detectedRegion}</p>
+                <p className="text-xs text-nisk-muted mb-2">Demographic tier (optional)</p>
                 <select value={demographicTier} onChange={(e) => setDemographicTier(e.target.value as DemographicTier)} className="w-full bg-nisk border border-nisk rounded-lg px-3 py-2 text-white text-sm mb-3">
                   <option value="unspecified">Prefer not to say</option>
                   {DEMOGRAPHIC_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -474,7 +543,7 @@ export default function SettingsWorkspace() {
                 <button type="button" onClick={async () => {
                   setPrivacySaving(true);
                   try {
-                    const res = await fetch('/api/settings/privacy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ demographicTier, telemetryOptOut, analyticsRegion }) });
+                    const res = await fetch('/api/settings/privacy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ demographicTier, analyticsOptIn, analyticsRegion }) });
                     if (!res.ok) throw new Error();
                     showToast('Privacy settings saved', 'success');
                   } catch { showToast('Failed to save privacy', 'error'); }

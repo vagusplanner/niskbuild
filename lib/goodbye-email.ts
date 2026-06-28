@@ -12,9 +12,9 @@ export async function sendGoodbyeEmail(to: string): Promise<boolean> {
     </div>
   `;
 
-  return sendEmail({
+  return (await sendEmail({
     to,
     subject: 'Farewell from NiskBuild',
     html,
-  });
+  })).ok;
 }

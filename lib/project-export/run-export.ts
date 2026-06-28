@@ -6,6 +6,8 @@ import { spawn } from 'child_process';
 import JSZip from 'jszip';
 import type { ComponentBlueprint } from '@/lib/blueprint-schema';
 import { buildNativeZip, slugifyFilename } from '@/lib/pwa-generator';
+import { createDistArchiveBuffer, materializeDistFromNativeZip } from '@/lib/project-export/dist-archive';
+import { uploadProjectExportZip } from '@/lib/project-export/export-storage';
 import {
   appendProjectExportLog,
   failProjectExportJob,
@@ -106,19 +108,42 @@ async function ensureCapacitorShell(
   }
 }
 
+async function uploadDistArchive(params: {
+  jobId: string;
+  projectId: string;
+  userId: string;
+  distDir: string;
+}): Promise<string> {
+  const archiveBuffer = await createDistArchiveBuffer(params.distDir);
+  const storagePath = await uploadProjectExportZip({
+    userId: params.userId,
+    projectId: params.projectId,
+    jobId: params.jobId,
+    zipBuffer: archiveBuffer,
+  });
+  await logLine(
+    params.jobId,
+    `[${new Date().toISOString()}] Uploaded dist archive to project-exports/${storagePath}\n`
+  );
+  return storagePath;
+}
+
 export async function runProjectExportPipeline(
   jobId: string,
   project: ProjectExportInput,
-  downloadApiPath: string
+  downloadApiPath: string,
+  userId: string
 ): Promise<void> {
   const workDir = path.join(EXPORTS_ROOT, jobId);
   const capDir = path.join(workDir, 'capacitor');
   const wwwDir = path.join(capDir, 'www');
+  const distDir = path.join(workDir, 'dist');
   const zipPath = path.join(workDir, 'native-export.zip');
   const appName = project.title?.trim() || 'NiskBuild App';
   const appId =
     project.bundle_id?.trim() ||
     `com.niskbuild.${project.id.replace(/-/g, '').slice(0, 12)}`;
+  const isDarwin = process.platform === 'darwin';
 
   try {
     await fs.mkdir(workDir, { recursive: true });
@@ -134,9 +159,10 @@ export async function runProjectExportPipeline(
     });
 
     await fs.writeFile(zipPath, zipBuffer);
-    await logLine(jobId, `[${new Date().toISOString()}] Native starter ZIP written.`);
+    await materializeDistFromNativeZip(zipBuffer, distDir);
+    await logLine(jobId, `[${new Date().toISOString()}] Dist folder materialized for archiver.\n`);
 
-    if (process.platform === 'darwin') {
+    if (isDarwin) {
       await updateProjectExportJob(jobId, { status: 'syncing' }, project.id);
       await logLine(jobId, `[${new Date().toISOString()}] Syncing Capacitor (macOS)…`);
 
@@ -172,7 +198,22 @@ export async function runProjectExportPipeline(
         void appendProjectExportLog(jobId, chunk);
       });
 
-      const iosWorkspace = path.join('tmp', 'project-exports', jobId, 'capacitor', 'ios', 'App', 'App.xcworkspace');
+      const iosWorkspace = path.join(
+        'tmp',
+        'project-exports',
+        jobId,
+        'capacitor',
+        'ios',
+        'App',
+        'App.xcworkspace'
+      );
+      const storagePath = await uploadDistArchive({
+        jobId,
+        projectId: project.id,
+        userId,
+        distDir,
+      });
+
       const job = await getProjectExportJob(jobId);
       const log = `${job?.log ?? ''}\n[${new Date().toISOString()}] Capacitor sync complete — ready for Xcode.\n`;
 
@@ -182,6 +223,7 @@ export async function runProjectExportPipeline(
           status: 'ready',
           log,
           download_url: downloadApiPath,
+          storage_path: storagePath,
           capacitor_root: path.relative(ROOT, capDir),
           ios_workspace: iosWorkspace,
           finished_at: new Date().toISOString(),
@@ -191,15 +233,23 @@ export async function runProjectExportPipeline(
       return;
     }
 
+    const storagePath = await uploadDistArchive({
+      jobId,
+      projectId: project.id,
+      userId,
+      distDir,
+    });
+
     const job = await getProjectExportJob(jobId);
-    const log = `${job?.log ?? ''}\n[${new Date().toISOString()}] Export package ready for download.\n`;
+    const log = `${job?.log ?? ''}\n[${new Date().toISOString()}] ZIP-only export uploaded — finish on Mac with npx cap sync ios.\n`;
 
     await updateProjectExportJob(
       jobId,
       {
-        status: 'ready',
+        status: 'ready_zip_only',
         log,
         download_url: downloadApiPath,
+        storage_path: storagePath,
         finished_at: new Date().toISOString(),
       },
       project.id
@@ -207,17 +257,21 @@ export async function runProjectExportPipeline(
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await failProjectExportJob(jobId, message, project.id);
+  } finally {
+    await fs.rm(workDir, { recursive: true, force: true }).catch(() => {});
   }
 }
 
 export function startProjectExportJob(
   jobId: string,
   project: ProjectExportInput,
-  downloadApiPath: string
+  downloadApiPath: string,
+  userId: string
 ): void {
-  void runProjectExportPipeline(jobId, project, downloadApiPath);
+  void runProjectExportPipeline(jobId, project, downloadApiPath, userId);
 }
 
+/** @deprecated Local artifact fallback — prefer storage_path on the job row. */
 export function projectExportArtifactPath(jobId: string): string {
   return path.join(EXPORTS_ROOT, jobId, 'native-export.zip');
 }

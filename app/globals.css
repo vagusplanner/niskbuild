@@ -1,23 +1,24 @@
 @import "tailwindcss";
 
-/* NiskBuild — Forged Iron & Melted Copper (muted forge) */
+/* NiskBuild — Forged Iron & Melted Copper */
 :root,
 [data-theme="light"],
 [data-theme="dark"] {
-  --iron-dark: #0a0908;
-  --iron-mid: #0f0d0b;
-  --iron-light: #141210;
-  --iron-surface: #1c1916;
-  --copper-primary: #9a6530;
-  --copper-dark: #6b4423;
-  --copper-light: #a87a48;
-  --copper-melt: #a87a48;
-  --copper-glow: rgba(107, 68, 35, 0.12);
-  --ember: #8f3d18;
+  --bg-base: #1a1612;
+  --iron-dark: #1a1612;
+  --iron-mid: #171411;
+  --iron-light: #1e1a16;
+  --iron-surface: #262018;
+  --copper-primary: #b87333;
+  --copper-dark: #8f5a28;
+  --copper-light: #d49a5c;
+  --copper-melt: #d49a5c;
+  --copper-glow: rgba(184, 115, 51, 0.15);
+  --ember: #a84a20;
 
-  --background: #0a0908;
-  --background-gradient: linear-gradient(145deg, #080706 0%, #0f0d0b 42%, #141210 100%);
-  --foreground: #c9baa8;
+  --background: var(--bg-base);
+  --background-gradient: linear-gradient(145deg, #151210 0%, #1a1612 42%, #1e1a16 100%);
+  --foreground: #e8dcc8;
   --primary: var(--copper-primary);
   --primary-hover: var(--copper-dark);
   --secondary: var(--iron-light);
@@ -25,49 +26,54 @@
   --accent-teal: var(--copper-primary);
   --accent-teal-light: var(--copper-dark);
   --accent-teal-bright: var(--copper-melt);
-  --accent-lavender: rgba(168, 122, 72, 0.1);
+  --accent-lavender: rgba(212, 154, 92, 0.12);
   --accent-cyan: var(--copper-light);
   --accent-cyan-hover: var(--copper-primary);
-  --brand-gradient: linear-gradient(90deg, #3d2814 0%, #6b4423 35%, #9a6530 70%, #7a5028 100%);
-  --build-gradient: linear-gradient(90deg, #4a2e18 0%, #6b4423 50%, #9a6530 100%);
-  --nisk-color: #c9baa8;
-  --tagline-color: var(--copper-light);
-  --success: #7d5a32;
-  --error: #a84a20;
-  --border: rgba(154, 101, 48, 0.12);
-  --card-bg: rgba(20, 18, 16, 0.97);
-  --surface: #141210;
-  --surface-elevated: rgba(28, 25, 22, 0.98);
-  --glass-bg: rgba(20, 18, 16, 0.94);
-  --nav-bg: rgba(15, 13, 11, 0.98);
-  --overlay: rgba(10, 9, 8, 0.8);
-  --muted: #6e6256;
-  --tagline: var(--copper-light);
-  --code-bg: #0c0a09;
-  --code-keyword: #a87a48;
-  --code-string: #8a7358;
-  --code-comment: #5c5248;
-  --code-function: #9a6530;
+  --brand-gradient: linear-gradient(90deg, #6b4423 0%, #8f5a28 35%, #b87333 70%, #d49a5c 100%);
+  --build-gradient: linear-gradient(90deg, #8f5a28 0%, #b87333 50%, #d49a5c 100%);
+  --nisk-color: #e8dcc8;
+  --tagline-color: var(--copper-melt);
+  --success: #8a6a3a;
+  --error: #c45a28;
+  --border: rgba(184, 115, 51, 0.18);
+  --card-bg: rgba(30, 26, 22, 0.97);
+  --surface: #1e1a16;
+  --surface-elevated: rgba(38, 32, 24, 0.98);
+  --glass-bg: rgba(30, 26, 22, 0.94);
+  --nav-bg: rgba(26, 22, 18, 0.98);
+  --overlay: rgba(21, 18, 16, 0.82);
+  --muted: #8a7d6e;
+  --tagline: var(--copper-melt);
+  --code-bg: #1e1a16;
+  --code-keyword: #d49a5c;
+  --code-string: #a89070;
+  --code-comment: #6e6256;
+  --code-function: #b87333;
   --code-number: var(--ember);
-  --code-tag: #b8a898;
-  --code-attr: #8a7358;
-  --scrollbar-track: #141210;
-  --scrollbar-thumb: #3a332c;
+  --code-tag: #d4c4b0;
+  --code-attr: #a89070;
+  --scrollbar-track: #1e1a16;
+  --scrollbar-thumb: #3d342c;
   --scrollbar-thumb-hover: var(--copper-primary);
-  --placeholder: #5c5248;
-  --selection-bg: rgba(154, 101, 48, 0.32);
+  --placeholder: #6e6256;
+  --selection-bg: rgba(184, 115, 51, 0.32);
   --selection-fg: #e8dcc8;
-  --dot-grid: rgba(154, 101, 48, 0.06);
-  --canvas-start: #141210;
-  --canvas-end: #1c1916;
-  --carbon: #080706;
-  --slate: #1c1916;
+  --dot-grid: rgba(184, 115, 51, 0.08);
+  --canvas-start: #1e1a16;
+  --canvas-end: #262018;
+  --carbon: #151210;
+  --slate: #262018;
+  /* Iron brick motif — Option B accents only; apply deliberately by class name */
+  --brick-base: #9a6530;
+  --brick-highlight: #d49a5c;
+  --brick-mortar: rgba(18, 16, 14, 0.55);
+  --brick-pattern-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='28' viewBox='0 0 64 28'%3E%3Crect width='30' height='11' x='1' y='1' rx='1' fill='%239a6530'/%3E%3Crect width='30' height='11' x='33' y='1' rx='1' fill='%238a5528'/%3E%3Crect width='30' height='2' x='1' y='1' fill='%23d49a5c' opacity='.38'/%3E%3Crect width='30' height='2' x='33' y='1' fill='%23d49a5c' opacity='.28'/%3E%3Crect width='64' height='2' x='0' y='12' fill='%2312100e' opacity='.52'/%3E%3Crect width='30' height='11' x='17' y='15' rx='1' fill='%239a6530'/%3E%3Crect width='30' height='11' x='49' y='15' rx='1' fill='%238a5528'/%3E%3Crect width='14' height='11' x='-15' y='15' rx='1' fill='%238a5528'/%3E%3Crect width='30' height='2' x='17' y='15' fill='%23d49a5c' opacity='.32'/%3E%3C/svg%3E");
 }
 
 body {
   background-color: var(--background);
   background-image:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(107, 68, 35, 0.04), transparent 50%),
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(184, 115, 51, 0.09), transparent 50%),
     var(--background-gradient);
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
@@ -227,6 +233,68 @@ pre, code {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+/**
+ * Iron brick wall motif — Option B (thin accents only).
+ * Apply deliberately: .brick-header-strip, .brick-card-top, .brick-divider.
+ * Card/header bodies and all text stay flat underneath.
+ */
+.brick-header-strip {
+  position: relative;
+}
+
+.brick-header-strip::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background-color: var(--brick-base);
+  background-image: var(--brick-pattern-image);
+  background-size: 32px 14px;
+  pointer-events: none;
+  z-index: 60;
+}
+
+.brick-card-top {
+  position: relative;
+}
+
+.brick-card-top::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: inherit;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  background-color: var(--brick-base);
+  background-image: var(--brick-pattern-image);
+  background-size: 28px 12px;
+  opacity: 0.88;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.brick-divider {
+  display: block;
+  width: 100%;
+  height: 5px;
+  border: none;
+  margin: 1.75rem 0;
+  padding: 0;
+  background-color: transparent;
+  background-image:
+    repeating-linear-gradient(90deg, var(--brick-base) 0 11px, transparent 11px 12px),
+    repeating-linear-gradient(90deg, transparent 0 6px, var(--brick-base) 6px 17px, transparent 17px 18px);
+  background-size: 24px 2px, 36px 2px;
+  background-position: 0 0, 12px 3px;
+  background-repeat: repeat-x;
+  opacity: 0.48;
 }
 
 .btn-primary {

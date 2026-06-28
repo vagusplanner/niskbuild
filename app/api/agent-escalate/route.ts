@@ -173,14 +173,14 @@ export async function POST(request: NextRequest) {
       conversationHistory,
     });
 
-    const sent = await sendEmail({
+    const sendResult = await sendEmail({
       to: supportInbox(),
       subject: `AI escalation: ${userName} (${userTier})`,
       html,
       replyTo: userEmail || undefined,
     });
 
-    if (sent) {
+    if (sendResult.ok) {
       await supabase
         .from('agent_escalations')
         .update({ email_sent: true })
@@ -190,7 +190,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       escalationId: escalation.id,
-      emailSent: sent,
+      emailSent: sendResult.ok,
       message:
         'Your request has been escalated to our support team. We will respond within 24 hours.',
     });

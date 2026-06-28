@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { ProjectExportJobStatus } from '@/lib/project-export/types';
 
 export type ExportStepState = 'pending' | 'running' | 'done' | 'failed';
@@ -17,7 +17,7 @@ function stepStateForStatus(
   log: string
 ): ExportStepState {
   if (!status || status === 'pending') return stepIndex === 0 ? 'running' : 'pending';
-  if (status === 'ready') return 'done';
+  if (status === 'ready' || status === 'ready_zip_only') return 'done';
   if (status === 'building') {
     return stepIndex === 0 ? 'running' : 'pending';
   }
@@ -80,10 +80,23 @@ export default function ExportProgressTracker({
   downloadLabel = 'Download export package',
   iosWorkspace,
 }: ExportProgressTrackerProps) {
+  const [copied, setCopied] = useState(false);
   const stepStates = useMemo(
     () => DEFAULT_STEPS.map((_, i) => stepStateForStatus(status, i, logTail)),
     [status, logTail]
   );
+
+  const copyCapCommand = async () => {
+    try {
+      await navigator.clipboard.writeText('npx cap sync ios');
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const isComplete = status === 'ready' || status === 'ready_zip_only';
 
   return (
     <div className="space-y-4">
@@ -96,7 +109,11 @@ export default function ExportProgressTracker({
             <li key={step.key} className="flex items-start gap-3">
               <StepIcon state={stepStates[i]} />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-[var(--foreground)]">{step.label}</p>
+                <p className="text-sm font-medium text-[var(--foreground)]">
+                  {step.key === 'sync' && status === 'ready_zip_only'
+                    ? 'Finish on Mac (npx cap sync ios)'
+                    : step.label}
+                </p>
                 {stepStates[i] === 'failed' && logTail && (
                   <pre className="mt-2 text-[10px] font-mono text-[var(--error)] whitespace-pre-wrap max-h-24 overflow-y-auto bg-[var(--code-bg)] p-2 rounded border border-[var(--error)]/20">
                     {logTail.slice(-800)}
@@ -108,28 +125,53 @@ export default function ExportProgressTracker({
         </ol>
       </div>
 
-      {logTail && status !== 'ready' && status !== 'failed' && (
+      {logTail && !isComplete && status !== 'failed' && (
         <pre className="text-[10px] font-mono text-nisk-muted whitespace-pre-wrap max-h-40 overflow-y-auto bg-[var(--code-bg)] p-3 rounded-xl border border-[var(--border)]">
           {logTail}
         </pre>
+      )}
+
+      {status === 'ready_zip_only' && downloadUrl && (
+        <div className="p-5 border-2 border-[var(--copper-primary)]/30 bg-[var(--copper-primary)]/5 rounded-xl space-y-3">
+          <h3 className="text-lg font-semibold text-[var(--copper-melt)]">
+            Your native project is ready to download
+          </h3>
+          <p className="text-sm text-nisk-muted">
+            Download the ZIP below, unzip it on your Mac, then run one command to finish preparing
+            it for Xcode:
+          </p>
+          <div className="flex items-center justify-between gap-2 bg-[var(--code-bg)] p-3 rounded-lg border border-[var(--border)]">
+            <code className="text-sm font-mono text-[var(--copper-melt)]">npx cap sync ios</code>
+            <button
+              type="button"
+              onClick={() => void copyCapCommand()}
+              className="text-xs px-3 py-1 rounded-lg border border-[var(--border)] hover:border-[var(--copper-primary)]/40"
+            >
+              {copied ? 'Copied' : 'Copy'}
+            </button>
+          </div>
+          <p className="text-xs text-nisk-muted">
+            This syncs your web build into the native project. After that, follow the normal Xcode
+            steps to archive and submit.
+          </p>
+          <a href={downloadUrl} className="inline-flex btn-primary px-5 py-2.5 rounded-xl text-sm font-semibold">
+            {downloadLabel}
+          </a>
+        </div>
       )}
 
       {status === 'ready' && downloadUrl && (
         <div className="p-5 border-2 border-[var(--copper-primary)]/30 bg-[var(--copper-primary)]/5 rounded-xl space-y-3">
           <h3 className="text-lg font-semibold text-[var(--copper-melt)]">Your build is ready</h3>
           <p className="text-sm text-nisk-muted">
-            Download the Capacitor starter package, then open Xcode on your Mac to sign and submit to
-            the App Store.
+            Capacitor sync completed on this Mac. Download the package or open Xcode directly.
           </p>
-          <a
-            href={downloadUrl}
-            className="inline-flex btn-primary px-5 py-2.5 rounded-xl text-sm font-semibold"
-          >
+          <a href={downloadUrl} className="inline-flex btn-primary px-5 py-2.5 rounded-xl text-sm font-semibold">
             {downloadLabel}
           </a>
           {iosWorkspace && (
             <div className="text-xs text-nisk-muted space-y-2 pt-2 border-t border-[var(--border)]">
-              <p>On your Mac, from the synced Capacitor folder:</p>
+              <p>From the synced Capacitor folder:</p>
               <pre className="font-mono bg-[var(--code-bg)] p-3 rounded-lg border border-[var(--border)] overflow-x-auto">
                 cd {iosWorkspace.replace(/\/ios\/App\/App\.xcworkspace$/, '')}
                 {'\n'}npx cap open ios

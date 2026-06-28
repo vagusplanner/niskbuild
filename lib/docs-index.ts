@@ -11,14 +11,14 @@ export const DOCS_INDEX: DocsIndexEntry[] = [
     id: 'pwa',
     title: 'Progressive Web Apps (PWA)',
     section: 'Mobile',
-    href: '/docs/pwa',
+    href: '/docs/progressive-web-apps-pwa',
     keywords: ['pwa', 'mobile', 'install', 'home screen', 'android', 'iphone'],
   },
   {
     id: 'google-import',
     title: 'Google Places Import',
     section: 'Builder',
-    href: '/docs/google-import',
+    href: '/docs/importing-from-base44',
     keywords: ['google', 'places', 'business', 'import', 'local'],
   },
   {

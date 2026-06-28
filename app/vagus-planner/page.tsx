@@ -1,16 +1,22 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getSafeSession } from '@/lib/supabaseSession';
 
 const VAGUS_PLANNER_URL =
   process.env.NEXT_PUBLIC_VAGUS_PLANNER_URL?.trim() || 'http://localhost:5175';
 
-export default function VagusPlannerEmbedPage() {
+function VagusPlannerEmbedInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [ready, setReady] = useState(false);
   const [denied, setDenied] = useState(false);
+
+  const routeParam = searchParams.get('route') || '/Dashboard';
+  const route = routeParam.startsWith('/') ? routeParam : `/${routeParam}`;
+  const builderKey = searchParams.get('builder') || '1';
+  const iframeSrc = `${VAGUS_PLANNER_URL.replace(/\/$/, '')}${route}?builder=${builderKey}`;
 
   useEffect(() => {
     let cancelled = false;
@@ -67,9 +73,7 @@ export default function VagusPlannerEmbedPage() {
         <div className="text-center">
           <div className="w-10 h-10 border-4 border-[var(--copper-primary)] border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="mt-4 text-nisk-muted text-sm">Loading Vagus Planner…</p>
-          <p className="mt-1 text-[10px] text-nisk-muted">
-            Requires VP dev server on port 5175
-          </p>
+          <p className="mt-1 text-[10px] text-nisk-muted">Requires VP dev server on port 5175</p>
         </div>
       </div>
     );
@@ -77,10 +81,24 @@ export default function VagusPlannerEmbedPage() {
 
   return (
     <iframe
-      src={VAGUS_PLANNER_URL}
+      src={iframeSrc}
       title="Vagus Planner"
       className="fixed inset-0 h-full w-full border-0 bg-[var(--background)]"
       allow="clipboard-read; clipboard-write; fullscreen"
     />
+  );
+}
+
+export default function VagusPlannerEmbedPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="fixed inset-0 flex items-center justify-center bg-nisk">
+          <div className="w-10 h-10 border-4 border-[var(--copper-primary)] border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <VagusPlannerEmbedInner />
+    </Suspense>
   );
 }

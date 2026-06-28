@@ -8,7 +8,6 @@ import BuilderActionsMenu from '@/app/components/BuilderActionsMenu';
 import BuilderInspectorPanel, { type InspectorTab } from '@/app/components/BuilderInspectorPanel';
 import VisualEditorToolbar from '@/app/components/VisualEditorToolbar';
 import GooglePlacesImport from '@/app/components/GooglePlacesImport';
-import FigmaImport, { type FigmaImportResult } from '@/app/components/FigmaImport';
 import CollapsibleSection from '@/app/components/CollapsibleSection';
 import PromptBar from '@/app/components/PromptBar';
 import PreviewDeviceSwitcher, {
@@ -112,7 +111,7 @@ export type BuilderWorkspaceLayoutProps = {
     business: GooglePlacesBusiness,
     context: GooglePlacesProjectContext
   ) => void;
-  onFigmaImport: (result: FigmaImportResult) => void;
+  onBuildFromFigmaScreenshot: (combinedPrompt: string) => void;
   seoSettings: import('@/lib/seo-types').ProjectSeoSettings;
   onSeoChange: (settings: import('@/lib/seo-types').ProjectSeoSettings) => void;
   activeProjectId: string | null;
@@ -127,6 +126,42 @@ export type BuilderWorkspaceLayoutProps = {
   onOpenHistory?: () => void;
   versionHistoryOpen?: boolean;
 };
+
+function ProjectPageTabs({
+  projectFiles,
+  activeFile,
+  onSelectFile,
+}: {
+  projectFiles: ProjectFile[];
+  activeFile: string;
+  onSelectFile: (path: string) => void;
+}) {
+  if (projectFiles.length <= 1) return null;
+
+  return (
+    <div className="flex items-center gap-1 min-w-0 overflow-x-auto max-w-[min(50vw,420px)] scrollbar-thin">
+      {projectFiles.map((file) => {
+        const label = file.path.replace(/^pages\//, '').replace(/\.html$/, '') || file.path;
+        const active = file.path === activeFile;
+        return (
+          <button
+            key={file.path}
+            type="button"
+            onClick={() => onSelectFile(file.path)}
+            className={`shrink-0 px-2.5 py-1 text-[10px] font-medium rounded-md border transition-colors truncate max-w-[120px] ${
+              active
+                ? 'border-[var(--copper-primary)] bg-[var(--copper-primary)]/15 text-[var(--copper-melt)]'
+                : 'border-transparent text-nisk-muted hover:text-[var(--foreground)] hover:bg-[var(--surface)]'
+            }`}
+            title={file.path}
+          >
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 function CanvasHeader({
   canAct,
@@ -157,6 +192,9 @@ function CanvasHeader({
   onPreviewDeviceChange,
   canShareSocial = false,
   onOpenSocialPublisher,
+  projectFiles = [],
+  activeFile = '',
+  onSelectFile,
 }: {
   canAct: boolean;
   isExporting: boolean;
@@ -186,6 +224,9 @@ function CanvasHeader({
   onPreviewDeviceChange?: (device: PreviewDevice) => void;
   canShareSocial?: boolean;
   onOpenSocialPublisher?: () => void;
+  projectFiles?: ProjectFile[];
+  activeFile?: string;
+  onSelectFile?: (path: string) => void;
 }) {
   const codeViewActive = inspectorOpen && inspectorTab === 'code';
 
@@ -225,6 +266,13 @@ function CanvasHeader({
         )}
         <span className="w-1.5 h-1.5 rounded-full bg-[var(--copper-primary)] status-dot-active shrink-0 hidden sm:block" />
         <span className="text-xs font-medium text-nisk-muted hidden lg:inline">Live preview</span>
+        {onSelectFile && (
+          <ProjectPageTabs
+            projectFiles={projectFiles}
+            activeFile={activeFile}
+            onSelectFile={onSelectFile}
+          />
+        )}
       </div>
       <div className="flex items-center gap-1.5 shrink-0">
         {canShareSocial && onOpenSocialPublisher && (
@@ -283,6 +331,27 @@ function PreviewIframe({
       className={`${previewFrameClass} border-0 bg-white`}
       sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"
     />
+  );
+}
+
+function ShareThisBuildFab({
+  visible,
+  onOpen,
+}: {
+  visible: boolean;
+  onOpen?: () => void;
+}) {
+  if (!visible || !onOpen) return null;
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="absolute bottom-4 right-4 z-[12] px-4 py-2.5 rounded-full bg-gradient-to-r from-[var(--copper-primary)] to-[var(--copper-melt)] text-white text-xs font-semibold shadow-lg hover:opacity-90 transition-opacity"
+      aria-label="Share this build to social media"
+    >
+      Share This Build
+    </button>
   );
 }
 
@@ -408,10 +477,12 @@ function ChatPanelContent({
   canUseSocialProof,
   importedBusinessName,
   onGooglePlacesImport,
-  onFigmaImport,
+  onBuildFromFigmaScreenshot,
+  activeProjectId,
   useLocalOllama,
   onUseLocalOllamaChange,
   onOllamaUpgrade,
+  onRestoreZip,
 }: {
   userId?: string;
   savedProjectsCount: number;
@@ -440,10 +511,12 @@ function ChatPanelContent({
     business: GooglePlacesBusiness,
     context: GooglePlacesProjectContext
   ) => void;
-  onFigmaImport: (result: FigmaImportResult) => void;
+  onBuildFromFigmaScreenshot: (combinedPrompt: string) => void;
+  activeProjectId: string | null;
   useLocalOllama: boolean;
   onUseLocalOllamaChange: (enabled: boolean) => void;
   onOllamaUpgrade: () => void;
+  onRestoreZip: (file: File) => Promise<void>;
 }) {
   return (
     <>
@@ -481,14 +554,13 @@ function ChatPanelContent({
           </div>
         )}
 
-        <CollapsibleSection title="Import tools" defaultOpen={false}>
+        <CollapsibleSection title="Import tools" defaultOpen={false} id="builder-import-tools">
           <GooglePlacesImport
             canImport={canImportGooglePlaces}
             canUseCompetitorIntel={canUseCompetitorIntel}
             canUseSocialProof={canUseSocialProof}
             onImport={onGooglePlacesImport}
           />
-          <FigmaImport onImport={onFigmaImport} />
         </CollapsibleSection>
 
         {recentProjects.length > 0 && (
@@ -509,6 +581,12 @@ function ChatPanelContent({
           prompt={prompt}
           onChange={onPromptChange}
           onGenerate={onGenerate}
+          onBuildFromFigmaScreenshot={onBuildFromFigmaScreenshot}
+          onUploadZip={(file) => void onRestoreZip(file)}
+          onOpenGooglePlaces={() => {
+            document.getElementById('builder-import-tools')?.scrollIntoView({ behavior: 'smooth' });
+          }}
+          projectId={activeProjectId}
           isGenerating={isGenerating}
           statusMessage={statusMessage}
           planMode={planMode}
@@ -615,7 +693,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
     canUseSocialProof,
     importedBusinessName,
     onGooglePlacesImport,
-    onFigmaImport,
+    onBuildFromFigmaScreenshot,
     seoSettings,
     onSeoChange,
     activeProjectId,
@@ -686,10 +764,12 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
       canUseSocialProof={canUseSocialProof}
       importedBusinessName={importedBusinessName}
       onGooglePlacesImport={onGooglePlacesImport}
-      onFigmaImport={onFigmaImport}
+      onBuildFromFigmaScreenshot={onBuildFromFigmaScreenshot}
+      activeProjectId={activeProjectId}
       useLocalOllama={useLocalOllama}
       onUseLocalOllamaChange={onUseLocalOllamaChange}
       onOllamaUpgrade={onOllamaUpgrade}
+      onRestoreZip={props.onRestoreZip}
     />
   );
 
@@ -864,6 +944,9 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
               onPreviewDeviceChange={onPreviewDeviceChange}
               canShareSocial={canShareSocial}
               onOpenSocialPublisher={onOpenSocialPublisher}
+              projectFiles={projectFiles}
+              activeFile={activeFile}
+              onSelectFile={onSelectFile}
             />
             {visualToolbar}
             <div
@@ -876,6 +959,10 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
                 previewHtml={previewHtml}
                 placeholderPreview={placeholderPreview}
                 previewFrameClass={previewFrameClass}
+              />
+              <ShareThisBuildFab
+                visible={canShareSocial}
+                onOpen={onOpenSocialPublisher}
               />
             </div>
           </main>
@@ -974,6 +1061,9 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
             onPreviewDeviceChange={onPreviewDeviceChange}
             canShareSocial={canShareSocial}
             onOpenSocialPublisher={onOpenSocialPublisher}
+            projectFiles={projectFiles}
+            activeFile={activeFile}
+            onSelectFile={onSelectFile}
           />
           {visualToolbar}
           <div
@@ -992,6 +1082,10 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
                 previewHtml={previewHtml}
                 placeholderPreview={placeholderPreview}
                 previewFrameClass={previewFrameClass}
+              />
+              <ShareThisBuildFab
+                visible={canShareSocial}
+                onOpen={onOpenSocialPublisher}
               />
             </div>
             <button

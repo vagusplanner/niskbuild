@@ -7,6 +7,7 @@ type CollapsibleSectionProps = {
   defaultOpen?: boolean;
   children: ReactNode;
   badge?: string;
+  id?: string;
 };
 
 export default function CollapsibleSection({
@@ -14,11 +15,12 @@ export default function CollapsibleSection({
   defaultOpen = false,
   children,
   badge,
+  id,
 }: CollapsibleSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className="border-b border-nisk/60">
+    <div id={id} className="border-b border-nisk/60">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

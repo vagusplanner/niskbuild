@@ -12,13 +12,13 @@ export async function sendEmail({
   subject,
   html,
   replyTo,
-}: SendEmailOptions): Promise<boolean> {
+}: SendEmailOptions): Promise<{ ok: boolean; id?: string }> {
   const resendKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM || 'NiskBuild <support@niskbuild.com>';
 
   if (!resendKey) {
     console.log('📧 [dev email]', { to, subject });
-    return true;
+    return { ok: true, id: `dev-${Date.now()}` };
   }
 
   try {
@@ -39,11 +39,13 @@ export async function sendEmail({
 
     if (!res.ok) {
       console.error('Resend error:', await res.text());
-      return false;
+      return { ok: false };
     }
-    return true;
+
+    const data = (await res.json()) as { id?: string };
+    return { ok: true, id: data.id };
   } catch (err) {
     console.error('Email send failed:', err);
-    return false;
+    return { ok: false };
   }
 }

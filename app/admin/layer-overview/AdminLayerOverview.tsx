@@ -79,6 +79,18 @@ export default async function AdminLayerOverview() {
           >
             Marketplace
           </Link>
+          <Link
+            href="/admin/analytics"
+            className="px-3 py-1.5 text-xs rounded-lg border border-nisk text-nisk-muted hover:text-[var(--foreground)] hover:bg-[var(--surface-elevated)]"
+          >
+            Analytics
+          </Link>
+          <Link
+            href="/admin/insights"
+            className="px-3 py-1.5 text-xs rounded-lg border border-nisk text-nisk-muted hover:text-[var(--foreground)] hover:bg-[var(--surface-elevated)]"
+          >
+            Privacy &amp; Analytics
+          </Link>
         </div>
       </div>
 

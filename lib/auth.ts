@@ -37,6 +37,20 @@ export async function signUpWithEmail(email: string, password: string) {
   return data;
 }
 
+export async function requestPasswordReset(email: string) {
+  const supabase = createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+    redirectTo: `${getOrigin()}/auth/callback?next=/reset-password`,
+  });
+  if (error) throw error;
+}
+
+export async function updatePassword(newPassword: string) {
+  const supabase = createClient();
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) throw error;
+}
+
 export function getOnboardingKey(userId: string) {
   return `niskbuild_onboarding_${userId}`;
 }

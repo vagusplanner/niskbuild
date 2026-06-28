@@ -17,14 +17,16 @@ interface TrendSummary {
 export default function AdminInsights() {
   const [data, setData] = useState<TrendSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState<'7d' | '30d' | '365d'>('30d');
 
   useEffect(() => {
-    fetch('/api/insights/summary')
+    setLoading(true);
+    fetch(`/api/insights/summary?period=${period}`, { credentials: 'include' })
       .then((res) => res.json())
       .then(setData)
-      .catch(() => setData({ error: 'Failed to load', total_events: 0, success_rate: '0%', top_verticals: [], top_frameworks: [], demographic_mix: [], period: '30d', data_source: '' }))
+      .catch(() => setData({ error: 'Failed to load', total_events: 0, success_rate: '0%', top_verticals: [], top_frameworks: [], demographic_mix: [], period, data_source: '' }))
       .finally(() => setLoading(false));
-  }, []);
+  }, [period]);
 
   if (loading) {
     return (
@@ -45,11 +47,27 @@ export default function AdminInsights() {
   return (
     <Layout>
       <div className="text-white max-w-6xl mx-auto">
-        <h1 className="text-2xl font-bold mb-2">Real-Time Software Composition Index</h1>
-        <p className="text-nisk-muted text-sm mb-8">
+        <h1 className="text-2xl font-bold mb-2">Privacy &amp; Analytics</h1>
+        <p className="text-nisk-muted text-sm mb-4">
           Privacy-first macro telemetry — no user IDs, emails, or raw prompts. Source:{' '}
           <code className="text-[var(--accent-cyan)]">{data?.data_source}</code>
         </p>
+        <div className="flex gap-2 mb-8">
+          {(['7d', '30d', '365d'] as const).map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => setPeriod(p)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${
+                period === p
+                  ? 'border-[var(--copper-primary)] bg-[var(--copper-primary)]/15 text-[var(--copper-melt)]'
+                  : 'border-nisk text-nisk-muted hover:text-[var(--foreground)]'
+              }`}
+            >
+              {p === '7d' ? '7 days' : p === '30d' ? '30 days' : '1 year'}
+            </button>
+          ))}
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <div className="bg-nisk-card border border-nisk p-4 rounded-xl">

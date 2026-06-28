@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { getSafeSession } from '@/lib/supabaseSession';
 import Layout from '@/app/components/Layout';
 import NiskBuildLogo from '@/app/components/NiskBuildLogo';
-import { complexityLabel, formatTemplatePrice } from '@/lib/marketplace-types';
+import { complexityLabel, formatTemplatePrice, PRICE_TIER_BUCKETS, matchesPriceTier, type PriceTierId } from '@/lib/marketplace-types';
 
 interface Template {
   id: string;
@@ -54,6 +54,7 @@ function MarketplaceContent() {
   const [purchasingId, setPurchasingId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [catalogFilter, setCatalogFilter] = useState<'all' | 'originals' | 'community' | 'templates'>('all');
+  const [priceTier, setPriceTier] = useState<PriceTierId>('all');
 
   useEffect(() => {
     getSafeSession().then((s) => setUser(s?.user ?? null));
@@ -166,6 +167,7 @@ function MarketplaceContent() {
   };
 
   const filteredTemplates = templates.filter((t) => {
+    if (!matchesPriceTier(t.price, priceTier)) return false;
     if (catalogFilter === 'all') return true;
     if (catalogFilter === 'originals') return t.sourceLayer === 'firstparty';
     if (catalogFilter === 'community') return t.sourceLayer === 'subscriber';
@@ -294,21 +296,28 @@ function MarketplaceContent() {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-8">
-          {[
-            { label: 'Free', range: '2 starters', color: 'text-[var(--copper-melt)] border-[var(--copper-primary)]/30' },
-            { label: '$9–$19', range: 'Essential', color: 'text-[var(--copper-light)] border-[var(--copper-light)]/30' },
-            { label: '$25–$29', range: 'Pro', color: 'text-[var(--primary)] border-[var(--primary)]/30' },
-            { label: '$35–$42', range: 'Advanced', color: 'text-[var(--secondary)] border-[var(--secondary)]/30' },
-            { label: '$49', range: 'Enterprise', color: 'text-[var(--ember)] border-[var(--ember)]/30' },
-          ].map((tier) => (
-            <div
-              key={tier.label}
-              className={`text-center py-3 px-2 rounded-xl border bg-nisk-card ${tier.color}`}
-            >
-              <p className="text-sm font-bold">{tier.label}</p>
-              <p className="text-[10px] text-nisk-muted mt-0.5">{tier.range}</p>
-            </div>
-          ))}
+          {PRICE_TIER_BUCKETS.map((tier) => {
+            const selected = priceTier === tier.id;
+            return (
+              <button
+                key={tier.id}
+                type="button"
+                onClick={() => setPriceTier((current) => (current === tier.id ? 'all' : tier.id))}
+                className={`text-center py-3 px-2 rounded-xl border bg-nisk-card transition-all ${
+                  selected
+                    ? 'border-[var(--copper-primary)] bg-[var(--copper-primary)]/15 shadow-[3px_3px_0_var(--copper-glow)] ring-1 ring-[var(--copper-primary)]/25'
+                    : tier.color
+                }`}
+              >
+                <p className={`text-sm font-bold ${selected ? 'text-[var(--copper-melt)]' : ''}`}>
+                  {tier.label}
+                </p>
+                <p className={`text-[10px] mt-0.5 ${selected ? 'text-[var(--copper-melt)]/80' : 'text-nisk-muted'}`}>
+                  {tier.range}
+                </p>
+              </button>
+            );
+          })}
         </div>
 
         {toast && (

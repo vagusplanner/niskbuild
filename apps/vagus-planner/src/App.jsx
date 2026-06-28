@@ -55,6 +55,8 @@ const LayoutWrapper = ({ children, currentPageName }) => Layout ?
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated } = useAuth();
   const path = window.location.pathname;
+  const searchParams = new URLSearchParams(window.location.search);
+  const isBuilderPreview = searchParams.has('builder');
   const isLandingPath = path === '/' || path === '/Landing' || path === '';
   const isPublicLegalPath = path === '/PrivacyPolicy' || path === '/TermsOfService' || path === '/Contact';
   const isLoginPath = path === '/login';
@@ -67,8 +69,12 @@ const AuthenticatedApp = () => {
     );
   }
 
+  if (isLandingPath && isBuilderPreview) {
+    return <Navigate to={`/Dashboard${window.location.search}`} replace />;
+  }
+
   // Always render landing page without any auth check — Landing itself handles the redirect for logged-in users
-  if (isLandingPath) {
+  if (isLandingPath && !isBuilderPreview) {
     return (
       <Routes>
         <Route path="/" element={<Landing />} />
@@ -96,8 +102,8 @@ const AuthenticatedApp = () => {
     );
   }
 
-  // Handle authentication errors
-  if (authError) {
+  // Handle authentication errors (builder studio preview skips login gate)
+  if (authError && !isBuilderPreview) {
     if (authError.type === 'user_not_registered') {
       return <UserNotRegisteredError />;
     }
@@ -106,8 +112,8 @@ const AuthenticatedApp = () => {
     }
   }
 
-  // Redirect unauthenticated users to login
-  if (!isAuthenticated) {
+  // Redirect unauthenticated users to login (builder studio preview skips auth)
+  if (!isAuthenticated && !isBuilderPreview) {
     return <Navigate to={`/login?next=${encodeURIComponent(path)}`} replace />;
   }
 

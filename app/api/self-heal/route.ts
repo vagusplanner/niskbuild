@@ -5,6 +5,9 @@ import { guardApiRequest } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { deductCloudCredit } from '@/lib/credits';
 import { recordAnonymousTelemetry } from '@/lib/record-telemetry';
+import { recordUsageEvent } from '@/lib/usage-events';
+import { touchLastBuildAt } from '@/lib/build-activity';
+import { clientIpFromHeaders } from '@/lib/coarse-town';
 import { getGroqClient } from '@/lib/groq-client';
 
 let together: OpenAI | null = null;
@@ -98,7 +101,7 @@ export async function POST(request: NextRequest) {
   if (!guard.ok) return guard.response;
 
   try {
-    const { prompt } = await request.json();
+    const { prompt, projectId } = await request.json();
     const userId = guard.user!.id;
 
     if (!prompt || prompt.trim() === '') {
@@ -158,6 +161,15 @@ export async function POST(request: NextRequest) {
       },
       userId
     );
+
+    void recordUsageEvent({
+      eventType: 'build',
+      userId,
+      prompt,
+      projectId: typeof projectId === 'string' ? projectId : null,
+      clientIp: clientIpFromHeaders(request.headers),
+    });
+    void touchLastBuildAt(userId);
 
     return NextResponse.json({
       success: true,

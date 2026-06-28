@@ -1,27 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { guardApiRequest } from '@/lib/api-auth';
-import { createClient } from '@/lib/supabase/server';
+import { requirePlatformOwner } from '@/lib/platform-owner-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
-
-const AUTHORIZED_EMAILS = (process.env.ADMIN_INSIGHTS_EMAILS || 'sofiane.kemih@gmail.com')
-  .split(',')
-  .map((e) => e.trim().toLowerCase());
 
 export async function GET(request: NextRequest) {
   const guard = await guardApiRequest(request);
   if (!guard.ok) return guard.response;
 
-  const authClient = await createClient();
-  const {
-    data: { user },
-  } = await authClient.auth.getUser();
+  const owner = await requirePlatformOwner(request);
+  if (!owner.ok) return owner.response;
 
-  if (!user?.email || !AUTHORIZED_EMAILS.includes(user.email.toLowerCase())) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
-
+  const period = request.nextUrl.searchParams.get('period') || '30d';
   const since = new Date();
-  since.setDate(since.getDate() - 30);
+  if (period === '7d') since.setDate(since.getDate() - 7);
+  else if (period === '365d') since.setDate(since.getDate() - 365);
+  else since.setDate(since.getDate() - 30);
 
   const supabase = createAdminClient();
   const { data: rows, error } = await supabase
@@ -59,10 +52,10 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     total_events: records.length,
     success_rate: records.length ? `${((successes / records.length) * 100).toFixed(1)}%` : '0%',
-    top_verticals: sort(verticalCounts).slice(0, 8),
+    top_verticals: sort(verticalCounts).slice(0, 12),
     top_frameworks: sort(stackCounts).slice(0, 8),
     demographic_mix: sort(demoCounts),
-    period: '30d',
+    period,
     data_source: 'public_analytics_telemetry',
   });
 }

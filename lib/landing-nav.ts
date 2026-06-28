@@ -18,8 +18,8 @@ export const FOOTER_LINKS = [
   { href: '/builder', label: 'Builder' },
   { href: '/marketplace', label: 'Marketplace' },
   { href: '/pricing', label: 'Pricing' },
+  { href: '/docs', label: 'Docs' },
   { href: '/landing#contact', label: 'Contact' },
-  { href: '/docs/pwa', label: 'Docs' },
   { href: '/privacy', label: 'Privacy' },
   { href: '/terms', label: 'Terms' },
 ];

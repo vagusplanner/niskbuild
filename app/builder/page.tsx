@@ -712,7 +712,7 @@ function BuilderContent() {
         const localRes = await fetch('/api/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: effectivePrompt }),
+          body: JSON.stringify({ prompt: effectivePrompt, projectId: activeProjectId }),
           credentials: 'include',
         });
         const localData = await localRes.json();
@@ -774,7 +774,7 @@ function BuilderContent() {
       const selfHealRes = await fetch('/api/self-heal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: effectivePrompt }),
+        body: JSON.stringify({ prompt: effectivePrompt, projectId: activeProjectId }),
         credentials: 'include',
       });
       const selfHealData = await selfHealRes.json();
@@ -825,7 +825,7 @@ function BuilderContent() {
       const response = await fetch('/api/cloud-generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: effectivePrompt }),
+        body: JSON.stringify({ prompt: effectivePrompt, projectId: activeProjectId }),
         credentials: 'include',
       });
 
@@ -1258,17 +1258,11 @@ function BuilderContent() {
     setActiveEditorTab('chat');
   };
 
-  const handleFigmaImport = (result: import('@/app/components/FigmaImport').FigmaImportResult) => {
-    applyGeneratedCode(
-      result.code,
-      `🎨 Figma import — ${result.components.length} component${result.components.length === 1 ? '' : 's'}`
-    );
-    setPrompt(
-      result.fileName
-        ? `Refine this UI imported from Figma (“${result.fileName}”) — polish layout, typography, and responsiveness.`
-        : 'Refine this UI imported from Figma — polish layout, typography, and responsiveness.'
-    );
-    setActiveEditorTab('preview');
+  const handleFigmaScreenshotBuild = async (combinedPrompt: string) => {
+    setPlanMode(false);
+    setPrompt(combinedPrompt);
+    setStatusMessage('🎨 Building from Figma screenshot…');
+    await handleGenerate(combinedPrompt);
   };
 
   const handleNewProject = () => {
@@ -1523,7 +1517,7 @@ function BuilderContent() {
           canUseSocialProof={canSocialProof}
           importedBusinessName={importedBusinessName}
           onGooglePlacesImport={handleGooglePlacesImport}
-          onFigmaImport={handleFigmaImport}
+          onBuildFromFigmaScreenshot={(p) => void handleFigmaScreenshotBuild(p)}
           seoSettings={seoSettings}
           onSeoChange={setSeoSettings}
           activeProjectId={activeProjectId}

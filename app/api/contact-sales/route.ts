@@ -96,14 +96,14 @@ export async function POST(request: NextRequest) {
       </div>
     `;
 
-    const sent = await sendEmail({
+    const sendResult = await sendEmail({
       to: recipient,
       subject,
       html,
       replyTo: email,
     });
 
-    if (!sent) {
+    if (!sendResult.ok) {
       return NextResponse.json(
         { error: 'Could not send your inquiry. Please try again shortly.' },
         { status: 500 }

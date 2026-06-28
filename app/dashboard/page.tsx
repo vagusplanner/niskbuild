@@ -114,7 +114,7 @@ function DashboardContent() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--code-bg)] p-4">
+        <div className="brick-card-top rounded-xl border border-[var(--border)] bg-[var(--code-bg)] p-4">
           <p className="text-[10px] uppercase tracking-wider text-nisk-muted">AI generations</p>
           <p className="text-xl font-bold text-[var(--code-keyword)] mt-1">
             {generationsUsed}
@@ -124,22 +124,24 @@ function DashboardContent() {
           </p>
           <p className="text-[10px] text-nisk-muted mt-1">This billing period</p>
         </div>
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--code-bg)] p-4">
+        <div className="brick-card-top rounded-xl border border-[var(--border)] bg-[var(--code-bg)] p-4">
           <p className="text-[10px] uppercase tracking-wider text-nisk-muted">Active projects</p>
           <p className="text-xl font-bold text-[var(--foreground)] mt-1">{projects.length}</p>
         </div>
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--code-bg)] p-4">
+        <div className="brick-card-top rounded-xl border border-[var(--border)] bg-[var(--code-bg)] p-4">
           <p className="text-[10px] uppercase tracking-wider text-nisk-muted">Deployed</p>
           <p className="text-xl font-bold text-[var(--foreground)] mt-1">{deployedCount || liveCount}</p>
           <p className="text-[10px] text-nisk-muted mt-1">Live preview links</p>
         </div>
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--code-bg)] p-4">
+        <div className="brick-card-top rounded-xl border border-[var(--border)] bg-[var(--code-bg)] p-4">
           <p className="text-[10px] uppercase tracking-wider text-nisk-muted">Plan resets</p>
           <p className="text-xl font-bold text-[var(--copper-melt)] mt-1">
             {billing?.daysUntilReset != null ? `${billing.daysUntilReset}d` : '—'}
           </p>
         </div>
       </div>
+
+      <hr className="brick-divider" aria-hidden="true" />
 
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-semibold text-[var(--foreground)]">Your projects</h2>
@@ -159,7 +161,7 @@ function DashboardContent() {
                 key={project.id}
                 href="/builder"
                 onClick={() => localStorage.setItem('niskbuild_load_project_id', project.id)}
-                className="group rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-4 hover:border-[var(--copper-primary)]/40 transition-all"
+                className="group brick-card-top rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-4 hover:border-[var(--copper-primary)]/40 transition-all"
               >
                 <div className="flex items-start gap-3">
                   <span className="text-2xl">{projectIcon(project.title)}</span>
@@ -187,7 +189,7 @@ function DashboardContent() {
 
           <Link
             href="/marketplace"
-            className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-[var(--border)] p-6 text-center hover:border-[var(--copper-primary)]/50 transition-all min-h-[120px]"
+            className="brick-card-top flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-[var(--border)] p-6 text-center hover:border-[var(--copper-primary)]/50 transition-all min-h-[120px]"
           >
             <span className="text-2xl mb-2">🏪</span>
             <p className="text-sm font-medium text-[var(--copper-melt)]">Start from marketplace</p>

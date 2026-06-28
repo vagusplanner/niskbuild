@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { apiErrorResponse } from '@/lib/api-error';
 import { getAdminEmail } from '@/lib/admin-auth';
-import { requireAdmin } from '@/lib/admin-auth-server';
+import { requirePlatformOwner } from '@/lib/platform-owner-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { notifyUserTicketReply } from '@/lib/support-tickets';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function GET(request: NextRequest, context: RouteContext) {
-  const adminGuard = await requireAdmin(request);
-  if (!adminGuard.ok) return adminGuard.response;
+  const ownerGuard = await requirePlatformOwner(request);
+  if (!ownerGuard.ok) return ownerGuard.response;
 
   const { id } = await context.params;
   const supabase = createAdminClient();
@@ -45,8 +45,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
 }
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
-  const adminGuard = await requireAdmin(request);
-  if (!adminGuard.ok) return adminGuard.response;
+  const ownerGuard = await requirePlatformOwner(request);
+  if (!ownerGuard.ok) return ownerGuard.response;
 
   const { id } = await context.params;
   const body = await request.json();
@@ -63,8 +63,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 }
 
 export async function POST(request: NextRequest, context: RouteContext) {
-  const adminGuard = await requireAdmin(request);
-  if (!adminGuard.ok) return adminGuard.response;
+  const ownerGuard = await requirePlatformOwner(request);
+  if (!ownerGuard.ok) return ownerGuard.response;
 
   try {
     const { id } = await context.params;

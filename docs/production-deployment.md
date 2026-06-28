@@ -92,6 +92,8 @@ Events: `checkout.session.completed`, `customer.subscription.*`, `invoice.paid`.
 | `TOGETHER_API_KEY` | Fallback AI provider |
 | `RESEND_API_KEY` | Transactional email |
 | `EMAIL_FROM` | Sender, e.g. `NiskBuild <support@niskbuild.com>` |
+| `CRON_SECRET` | Bearer secret for `/api/cron/email-lifecycle` and VP reminders (Vercel Cron) |
+| `RESEND_WEBHOOK_SECRET` | Resend webhook **Signing secret** (`whsec_...`) from Resend → Webhooks — used for Svix verification on `/api/webhooks/resend` |
 
 ### Optional — Observability & integrations
 
@@ -182,6 +184,12 @@ Open **Supabase → SQL Editor** and run migrations **in order**. Each file is i
 22. `google-places-migration.sql`
 23. `agent-conversations-migration.sql`
 24. `agent-escalations-migration.sql`
+25. `app-import-pipeline-migration.sql` — external app import registry (`firstparty.app_imports`)
+26. `niskbuild-platform-storage-migration.sql` — `imported-apps` + `project-exports` buckets, storage paths on import/export jobs
+27. `docs-hub-migration.sql` — in-app documentation tables (`doc_articles`, `doc_feedback`)
+28. `docs-hub-seed.sql` — documentation article content (run after #27)
+29. `retention-email-churn-migration.sql` — lifecycle email log, NPS, churn tracking (`last_build_at`)
+30. `admin-email-hub-migration.sql` — email send history columns, open/click tracking, `feature_usage`
 
 > If a migration fails with “already exists”, it is safe to skip that statement — migrations are written to be idempotent where possible.
 
@@ -214,6 +222,15 @@ The user must **sign up once** in production so a row exists in `auth.users` bef
 ### 3.4 Verify storage
 
 Confirm the **`vp-deployments`** bucket exists (created by `vp-deployments-storage-migration.sql`) under **Storage** if you use VP deploy from the builder.
+
+### 3.5 Schedule email lifecycle cron
+
+Daily POST to `/api/cron/email-lifecycle` with header `Authorization: Bearer $CRON_SECRET`. Options:
+
+- **Vercel Cron** — add to `vercel.json` (or Vercel dashboard → Cron Jobs): `0 9 * * *` → `https://your-domain.com/api/cron/email-lifecycle`
+- **Supabase Edge Function** — mirror the VP reminders pattern in `supabase/functions/vp-send-reminders`
+
+Also enable Stripe webhook event **`invoice.payment_failed`** on the production endpoint.
 
 ---
 
@@ -252,6 +269,8 @@ Confirm the **`vp-deployments`** bucket exists (created by `vp-deployments-stora
 - `/builder` — generate a project
 - `/pricing` — Stripe checkout (test mode first, then live)
 - `/dashboard` — profile and settings load
+- `/admin/churn` — churn risk table (platform owner only); badge on Admin nav when users are inactive 14+ days
+- NPS survey at `/nps` (linked from day-14 drip email)
 
 ---
 

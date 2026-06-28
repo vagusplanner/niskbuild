@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from 'react';
-import type { PreviewDevice } from '@/app/components/PreviewDeviceSwitcher';
+import {
+  PREVIEW_DEVICE_OPTIONS,
+  type PreviewDevice,
+} from '@/app/components/PreviewDeviceSwitcher';
 
 type BuilderActionsMenuProps = {
   canAct: boolean;
@@ -136,23 +139,20 @@ export default function BuilderActionsMenu({
             <>
               <div className="border-t border-nisk my-1" />
               <p className="px-4 py-1 text-[10px] uppercase tracking-wider text-nisk-muted">Preview size</p>
-              {(
-                [
-                  { id: 'desktop' as const, label: 'Desktop 🖥' },
-                  { id: 'tablet' as const, label: 'Tablet 📱' },
-                  { id: 'mobile' as const, label: 'Mobile 📲' },
-                ] as const
-              ).map((d) => (
+              {PREVIEW_DEVICE_OPTIONS.map(({ id, label, Icon }) => (
                 <button
-                  key={d.id}
+                  key={id}
                   type="button"
                   role="menuitem"
-                  onClick={() => { onPreviewDeviceChange(d.id); close(); }}
+                  onClick={() => { onPreviewDeviceChange(id); close(); }}
                   className={`w-full text-left px-4 py-2 text-sm hover:bg-[var(--surface-elevated)] ${
-                    previewDevice === d.id ? 'text-[var(--copper-melt)]' : 'text-gray-200'
+                    previewDevice === id ? 'text-[var(--copper-melt)]' : 'text-gray-200'
                   }`}
                 >
-                  {d.label}
+                  <span className="flex items-center gap-2">
+                    <Icon className="w-4 h-4 shrink-0" strokeWidth={1.75} aria-hidden />
+                    {label}
+                  </span>
                 </button>
               ))}
             </>

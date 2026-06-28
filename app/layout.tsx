@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import CommandPalette from "./components/CommandPalette";
+import DocsQuickPanel from "./components/DocsQuickPanel";
 import GlobalKeyboardShortcuts from "./components/GlobalKeyboardShortcuts";
 import KeyboardShortcutsModal from "./components/KeyboardShortcutsModal";
 import SessionHeartbeat from "./components/SessionHeartbeat";
@@ -24,7 +25,6 @@ export const metadata: Metadata = {
   title: "NiskBuild - Build Apps with AI",
   description:
     "The AI app builder that gives you the code. Build locally. Own forever.",
-  themeColor: "#1a1612",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "32x32", type: "image/x-icon" },
@@ -33,6 +33,10 @@ export const metadata: Metadata = {
     ],
     apple: "/logo/icon-180.png",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#1a1612",
 };
 
 export default function RootLayout({
@@ -56,6 +60,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <ThemeProvider>
           <CommandPalette />
+          <DocsQuickPanel />
           <GlobalKeyboardShortcuts />
           <KeyboardShortcutsModal />
           <SessionHeartbeat />

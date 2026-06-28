@@ -28,7 +28,9 @@ export default function PrivacyPage() {
             <ul className="list-disc pl-6 space-y-2">
               <li>Project metadata (names, categories, timestamps)</li>
               <li>Anonymous build patterns (app categories, features used)</li>
-              <li>Country or region for macro analytics (configurable in Settings — never GPS or city)</li>
+              <li>Country or region for macro analytics (configurable in Settings — never precise GPS)</li>
+              <li>Optional, self-reported age range (e.g. &quot;25-34&quot;) — never your date of birth</li>
+              <li>Optional coarse town or city grouping where statistically safe — never street-level location</li>
               <li>Subscription tier and usage statistics</li>
             </ul>
             <h3 className="text-xl font-medium text-white mb-2 mt-4">What We DO NOT Collect</h3>
@@ -51,12 +53,53 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-white mb-4">4. Data Storage and Security</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">4. How We Use Aggregate, Anonymized Data</h2>
+            <p className="mb-4">
+              To improve NiskBuild and to understand demand across different types of applications,
+              we collect anonymized, aggregated usage trends. This includes:
+            </p>
+            <ul className="list-disc pl-6 space-y-2 mb-4">
+              <li>
+                The general category of app you build (e.g. &quot;restaurant,&quot; &quot;finance,&quot;
+                &quot;productivity&quot;) — we do not store the exact text of your prompts for this purpose.
+              </li>
+              <li>
+                Your country and general region, and where statistically safe to do so, a coarser
+                town-level grouping. We never collect precise GPS location.
+              </li>
+              <li>
+                An optional, self-reported age range (e.g. &quot;25-34&quot;), never your exact date of birth.
+              </li>
+            </ul>
+            <p className="mb-4">
+              This data is never linked to your name, email, or account identity in any report,
+              dashboard, or export we produce. Small data groupings (for example, a specific app
+              category in a specific town) are automatically suppressed if too few users are
+              represented, so individual users cannot be identified from any breakdown.
+            </p>
+            <p className="mb-4">
+              We may use these aggregated, anonymized trends internally to guide product development,
+              and we may, in the future, offer aggregated market-demand insights as a commercial
+              product to third parties (such as businesses researching demand for certain app
+              categories by region). Any such product will only ever contain aggregate statistics —
+              never your individual prompts, projects, or identifying information.
+            </p>
+            <p>
+              You can opt out of contributing to aggregate analytics at any time in{' '}
+              <Link href="/settings" className="text-[var(--copper-melt)] hover:underline">
+                Settings → Privacy
+              </Link>
+              , without affecting your ability to use NiskBuild.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-semibold text-white mb-4">5. Data Storage and Security</h2>
             <p>Your data is stored securely using Supabase (PostgreSQL). We implement industry-standard security measures including encryption at rest and in transit. Your generated code never touches our servers — it runs locally on your machine.</p>
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-white mb-4">5. Third-Party Services</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">6. Third-Party Services</h2>
             <ul className="list-disc pl-6 space-y-2">
               <li><strong>Supabase:</strong> User authentication and data storage</li>
               <li><strong>Stripe:</strong> Payment processing (PCI compliant)</li>
@@ -66,34 +109,34 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-white mb-4">6. Your Rights</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">7. Your Rights</h2>
             <p>Depending on your location, you may have the right to:</p>
             <ul className="list-disc pl-6 space-y-2 mt-2">
               <li>Access your personal data</li>
               <li>Correct inaccurate data</li>
               <li>Delete your account and associated data</li>
-              <li>Opt out of anonymous telemetry (Settings → Privacy &amp; Analytics)</li>
+              <li>Opt out of aggregate analytics (<Link href="/settings" className="text-[var(--copper-melt)] hover:underline">Settings → Privacy</Link>)</li>
               <li>Export your project data as ZIP</li>
             </ul>
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-white mb-4">7. Data Retention</h2>
-            <p>We retain your account information as long as your account is active. You may delete your account at any time, which will remove your profile and project metadata. Anonymous telemetry data is retained indefinitely for platform improvement (no personal information included).</p>
+            <h2 className="text-2xl font-semibold text-white mb-4">8. Data Retention</h2>
+            <p>We retain your account information as long as your account is active. You may delete your account at any time, which will remove your profile and project metadata. Anonymous aggregate usage trends are retained for platform improvement and may be used in aggregated form only — no personal information is included.</p>
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-white mb-4">8. Children's Privacy</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">9. Children&apos;s Privacy</h2>
             <p>Our service is not intended for children under 13. We do not knowingly collect information from children under 13.</p>
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-white mb-4">9. Changes to This Policy</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">10. Changes to This Policy</h2>
             <p>We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new policy on this page and updating the "Last updated" date.</p>
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-white mb-4">10. Contact Us</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">11. Contact Us</h2>
             <p>If you have questions about this Privacy Policy, please use our contact form:</p>
             <p className="mt-2">
               <Link href="/landing#contact" className="text-purple-400 hover:text-purple-300">

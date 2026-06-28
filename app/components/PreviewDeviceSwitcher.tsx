@@ -1,11 +1,17 @@
 "use client";
 
+import { Monitor, Smartphone, Tablet, type LucideIcon } from 'lucide-react';
+
 export type PreviewDevice = 'desktop' | 'tablet' | 'mobile';
 
-const DEVICES: { id: PreviewDevice; label: string; icon: string }[] = [
-  { id: 'desktop', label: 'Desktop', icon: '🖥' },
-  { id: 'tablet', label: 'Tablet', icon: '📱' },
-  { id: 'mobile', label: 'Mobile', icon: '📲' },
+export const PREVIEW_DEVICE_OPTIONS: {
+  id: PreviewDevice;
+  label: string;
+  Icon: LucideIcon;
+}[] = [
+  { id: 'desktop', label: 'Desktop', Icon: Monitor },
+  { id: 'tablet', label: 'Tablet', Icon: Tablet },
+  { id: 'mobile', label: 'Mobile', Icon: Smartphone },
 ];
 
 type PreviewDeviceSwitcherProps = {
@@ -30,21 +36,21 @@ export default function PreviewDeviceSwitcher({ device, onChange }: PreviewDevic
       role="group"
       aria-label="Preview device size"
     >
-      {DEVICES.map((d) => (
+      {PREVIEW_DEVICE_OPTIONS.map(({ id, label, Icon }) => (
         <button
-          key={d.id}
+          key={id}
           type="button"
-          title={d.label}
-          aria-label={d.label}
-          aria-pressed={device === d.id}
-          onClick={() => onChange(d.id)}
-          className={`px-2 py-1 text-sm rounded-md transition-colors ${
-            device === d.id
+          title={label}
+          aria-label={label}
+          aria-pressed={device === id}
+          onClick={() => onChange(id)}
+          className={`p-1.5 rounded-md transition-colors ${
+            device === id
               ? 'bg-[var(--surface-elevated)] text-[var(--copper-melt)] shadow-sm'
               : 'text-[var(--muted)] hover:text-[var(--foreground)]'
           }`}
         >
-          {d.icon}
+          <Icon className="w-4 h-4" strokeWidth={1.75} aria-hidden />
         </button>
       ))}
     </div>

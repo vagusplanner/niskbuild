@@ -170,7 +170,7 @@ function ProjectExportContent() {
     void poll();
     const interval = setInterval(async () => {
       const next = await poll();
-      if (next === 'ready' || next === 'failed') {
+      if (next === 'ready' || next === 'ready_zip_only' || next === 'failed') {
         clearInterval(interval);
       }
     }, 2000);
@@ -201,6 +201,15 @@ function ProjectExportContent() {
           {projectTitle} — build a Capacitor package and prepare for Xcode on your Mac.
         </p>
 
+        <div className="mt-6 p-4 rounded-xl border border-[var(--border)] bg-[var(--code-bg)]">
+          <p className="text-xs text-nisk-muted leading-relaxed">
+            <span className="font-medium text-[var(--copper-melt)]">Note:</span> After downloading,
+            one quick command on your Mac finishes preparing the project for Xcode (
+            <code className="text-[var(--foreground)]">npx cap sync ios</code>). This step requires
+            a Mac (same as Xcode itself) and cannot be automated from the browser.
+          </p>
+        </div>
+
         <div className="mt-8">
           <UpgradeGate
             featureName="Mobile export"
@@ -225,13 +234,16 @@ function ProjectExportContent() {
                 onClick={() => void startExport()}
                 disabled={
                   starting ||
-                  (status !== null && status !== 'ready' && status !== 'failed')
+                  (status !== null &&
+                    status !== 'ready' &&
+                    status !== 'ready_zip_only' &&
+                    status !== 'failed')
                 }
                 className="btn-primary px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
               >
                 {starting
                   ? 'Starting…'
-                  : status === 'ready' || status === 'failed'
+                  : status === 'ready' || status === 'ready_zip_only' || status === 'failed'
                     ? 'Export to App Store'
                     : status
                       ? 'Export running…'

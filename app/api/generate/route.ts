@@ -7,6 +7,9 @@ import {
   canUseSandboxLocalGenerate,
   LOCAL_OLLAMA_LOCKED_MESSAGE,
 } from '@/lib/tier-config';
+import { recordUsageEvent } from '@/lib/usage-events';
+import { touchLastBuildAt } from '@/lib/build-activity';
+import { clientIpFromHeaders } from '@/lib/coarse-town';
 
 export async function POST(request: NextRequest) {
   const guard = await guardApiRequest(request, { rateLimit: 10 });
@@ -25,7 +28,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: LOCAL_OLLAMA_LOCKED_MESSAGE }, { status: 403 });
     }
 
-    const { prompt } = await request.json();
+    const { prompt, projectId } = await request.json();
 
     if (!prompt || prompt.trim() === '') {
       return NextResponse.json(
@@ -81,6 +84,15 @@ Now generate ONLY the HTML code for this request. Start with <!DOCTYPE html> and
     }
 
     const data = await ollamaResponse.json();
+
+    void recordUsageEvent({
+      eventType: 'build',
+      userId: guard.user!.id,
+      prompt,
+      projectId: typeof projectId === 'string' ? projectId : null,
+      clientIp: clientIpFromHeaders(request.headers),
+    });
+    void touchLastBuildAt(guard.user!.id);
     
     return NextResponse.json({ 
       success: true, 

@@ -6,11 +6,13 @@ import { usePathname } from 'next/navigation';
 import { usePlatformOwner } from '@/lib/use-platform-owner';
 import { getSafeSession } from '@/lib/supabaseSession';
 import { openCommandPalette } from '@/lib/command-palette-events';
+import { openDocsPanel } from '@/lib/docs-panel-events';
 import { modKey } from '@/lib/keyboard';
 import NiskBuildLogo from './NiskBuildLogo';
+import LogoNavMenu from './LogoNavMenu';
 import UserAccountMenu from './UserAccountMenu';
 import ThemeToggle from './ThemeToggle';
-import { WORKSPACE_NAV, DISCOVER_NAV, APP_NAV, type NavItem } from '@/lib/nav-config';
+import { PRIMARY_NAV, OVERFLOW_NAV, type NavItem } from '@/lib/nav-config';
 import { MARKETING_NAV } from '@/lib/landing-nav';
 
 /** Platform-owner admin — 3-layer architecture control */
@@ -28,6 +30,36 @@ const PLATFORM_ADMIN_NAV: NavItem[] = [
     label: 'Listings',
     icon: '🏪',
     description: 'Marketplace moderation',
+  },
+  {
+    href: '/admin/insights',
+    label: 'Privacy & Analytics',
+    icon: '📈',
+    description: 'Macro demand trends — verticals, demographics, regions',
+  },
+  {
+    href: '/admin/analytics',
+    label: 'Analytics',
+    icon: '📊',
+    description: 'Aggregate demand by category and region',
+  },
+  {
+    href: '/admin/revenue',
+    label: 'Revenue',
+    icon: '💰',
+    description: 'MRR, churn, ARPU, feature adoption',
+  },
+  {
+    href: '/admin/emails',
+    label: 'Email hub',
+    icon: '✉️',
+    description: 'Lifecycle send log, templates, resend',
+  },
+  {
+    href: '/admin/churn',
+    label: 'Churn risk',
+    icon: '⚠️',
+    description: 'Paid users inactive 14+ days — re-engagement',
   },
   {
     href: '/builder/vagus-planner',
@@ -54,6 +86,7 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
   const [subscriptionStatus, setSubscriptionStatus] = useState('inactive');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
+  const [churnCount, setChurnCount] = useState(0);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -74,6 +107,16 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
 
   const isPlatformOwnerNav = usePlatformOwner(user?.id ? { id: user.id } : null);
 
+  useEffect(() => {
+    if (!isPlatformOwnerNav || !user) return;
+    fetch('/api/admin/churn/count', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (typeof d?.count === 'number') setChurnCount(d.count);
+      })
+      .catch(() => {});
+  }, [isPlatformOwnerNav, user]);
+
   const nav = useMemo(() => {
     if (variant === 'marketing') {
       return MARKETING_NAV.map((item) => ({
@@ -87,14 +130,24 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
       return GUEST_NAV;
     }
 
-    return [...WORKSPACE_NAV, ...DISCOVER_NAV, ...APP_NAV.filter((n) => n.href !== '/landing')];
+    return [...PRIMARY_NAV];
   }, [variant, user]);
 
   const isNavActive = (href: string) => {
     const path = href.split('#')[0];
     if (path === '/dashboard') return pathname === '/dashboard';
     if (path === '/admin/layer-overview') return pathname.startsWith('/admin');
+    if (path === '/builder/vagus-planner') return pathname.startsWith('/builder/vagus-planner');
     return pathname === path || pathname.startsWith(`${path}/`);
+  };
+
+  const adminLinkClass = (href: string) => {
+    const active = isNavActive(href);
+    return `block px-4 py-2.5 text-sm transition-colors ${
+      active
+        ? 'text-[var(--copper-melt)] bg-[var(--copper-primary)]/10 font-semibold'
+        : 'text-nisk-muted hover:text-[var(--copper-melt)] hover:bg-[var(--surface)]'
+    }`;
   };
 
   const linkClass = (href: string) => {
@@ -109,13 +162,17 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
   const isBuilder = variant === 'builder';
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-16 glass-nav forge-plate">
+    <header className="fixed top-0 left-0 right-0 z-50 h-16 glass-nav forge-plate brick-header-strip">
       <div className="h-full max-w-[1800px] mx-auto px-4 flex items-center justify-between gap-4">
-        <NiskBuildLogo
-          href={user ? '/dashboard' : '/landing'}
-          variant="lockup"
-          size="sm"
-        />
+        {user ? (
+          <LogoNavMenu
+            href="/dashboard"
+            overflowNav={OVERFLOW_NAV}
+            isNavActive={isNavActive}
+          />
+        ) : (
+          <NiskBuildLogo href="/landing" variant="lockup" size="sm" />
+        )}
 
         {!isBuilder && (
           <nav className="hidden md:flex items-center gap-1" aria-label="Main navigation">
@@ -135,6 +192,11 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
                   aria-haspopup="true"
                 >
                   Admin
+                  {churnCount > 0 && (
+                    <span className="ml-1 min-w-[1.25rem] px-1.5 py-0.5 rounded-full bg-red-500/90 text-white text-[10px] font-bold leading-none">
+                      {churnCount > 99 ? '99+' : churnCount}
+                    </span>
+                  )}
                   <svg className="w-3 h-3 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
@@ -145,11 +207,16 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
                       <Link
                         key={item.href}
                         href={item.href}
-                        className="block px-4 py-2.5 text-sm text-nisk-muted hover:text-[var(--copper-melt)] hover:bg-[var(--surface)] transition-colors"
+                        className={adminLinkClass(item.href)}
                         onClick={() => setAdminOpen(false)}
                       >
                         <span className="mr-2">{item.icon}</span>
-                        {item.label}
+                        <span className="flex-1">{item.label}</span>
+                        {item.href === '/admin/churn' && churnCount > 0 && (
+                          <span className="ml-2 px-1.5 py-0.5 rounded-full bg-red-500/90 text-white text-[10px] font-bold">
+                            {churnCount}
+                          </span>
+                        )}
                       </Link>
                     ))}
                   </div>
@@ -171,6 +238,15 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
         <div className="flex items-center gap-2">
           {(variant === 'app' || isBuilder) && user && (
             <>
+              <button
+                type="button"
+                onClick={openDocsPanel}
+                className="flex items-center justify-center h-9 w-9 rounded-lg border border-nisk text-nisk-muted hover:text-[var(--foreground)] hover:border-[var(--primary)]/35 hover:bg-[var(--surface-elevated)] transition-colors"
+                aria-label="Open help documentation"
+                title="Help & docs"
+              >
+                <span className="text-base font-bold leading-none">?</span>
+              </button>
               <button
                 type="button"
                 onClick={openCommandPalette}
@@ -252,10 +328,10 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
               {item.label}
             </Link>
           ))}
-          {isPlatformOwnerNav && variant !== 'marketing' && (
+          {user && variant !== 'marketing' && (
             <>
-              <p className="px-3 pt-2 text-[10px] uppercase tracking-wider text-nisk-muted">Admin</p>
-              {PLATFORM_ADMIN_NAV.map((item) => (
+              <p className="px-3 pt-2 text-[10px] uppercase tracking-wider text-nisk-muted">More</p>
+              {OVERFLOW_NAV.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
@@ -263,6 +339,26 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
                   onClick={() => setMobileOpen(false)}
                 >
                   {item.icon} {item.label}
+                </Link>
+              ))}
+            </>
+          )}
+          {isPlatformOwnerNav && variant !== 'marketing' && (
+            <>
+              <p className="px-3 pt-2 text-[10px] uppercase tracking-wider text-nisk-muted">Admin</p>
+              {PLATFORM_ADMIN_NAV.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={adminLinkClass(item.href)}
+                  onClick={() => setMobileOpen(false)}
+                >
+                  {item.icon} {item.label}
+                  {item.href === '/admin/churn' && churnCount > 0 && (
+                    <span className="ml-auto px-1.5 py-0.5 rounded-full bg-red-500/90 text-white text-[10px] font-bold">
+                      {churnCount}
+                    </span>
+                  )}
                 </Link>
               ))}
             </>

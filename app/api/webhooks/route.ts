@@ -10,6 +10,12 @@ import {
   reactivatePreviewsForUser,
 } from '@/lib/preview-links';
 import { resetCreditAlertFlags } from '@/lib/usage-alerts';
+import { resetBuildsThisPeriod } from '@/lib/build-activity';
+import {
+  sendCancelWarningEmail,
+  sendPaymentFailedEmail,
+  sendUpgradeConfirmedEmail,
+} from '@/lib/email/lifecycle';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -154,10 +160,21 @@ export async function POST(request: NextRequest) {
       if (userId) {
         await supabase.from('profiles').update(updates).eq('id', userId);
         await handleSubscriptionActivated(supabase, customerEmail || '', userId);
+        if (customerEmail) {
+          void sendUpgradeConfirmedEmail(userId, customerEmail, tier);
+        }
         console.log(`✅ User ${userId} upgraded to ${tier} (${updates.cloud_credits_remaining} credits)`);
       } else if (customerEmail) {
         await supabase.from('profiles').update(updates).eq('email', customerEmail);
         await handleSubscriptionActivated(supabase, customerEmail);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('email', customerEmail)
+          .single();
+        if (profile?.id) {
+          void sendUpgradeConfirmedEmail(profile.id, customerEmail, tier);
+        }
         console.log(`✅ User ${customerEmail} upgraded to ${tier} (${updates.cloud_credits_remaining} credits)`);
       }
     }
@@ -196,9 +213,22 @@ export async function POST(request: NextRequest) {
             .from('profiles')
             .update({
               ...profileUpdatesForTier(tier, customerId, subscription.id),
+              cancel_at_period_end: subscription.cancel_at_period_end ?? false,
+              subscription_ended_at: null,
             })
             .eq('email', customer.email);
           await handleSubscriptionActivated(supabase, customer.email);
+
+          if (subscription.cancel_at_period_end) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('id')
+              .eq('email', customer.email)
+              .single();
+            if (profile?.id) {
+              void sendCancelWarningEmail(profile.id, customer.email);
+            }
+          }
         } else if (INACTIVE_SUBSCRIPTION_STATUSES.has(status)) {
           await supabase
             .from('profiles')
@@ -209,6 +239,8 @@ export async function POST(request: NextRequest) {
               use_own_api_keys: false,
               subscription_id: subscription.id,
               stripe_customer_id: customerId,
+              cancel_at_period_end: false,
+              subscription_ended_at: new Date().toISOString(),
             })
             .eq('email', customer.email);
           await handleSubscriptionEnded(supabase, customer.email);
@@ -235,6 +267,8 @@ export async function POST(request: NextRequest) {
             subscription_status: 'inactive',
             cloud_credits_remaining: 0,
             use_own_api_keys: false,
+            cancel_at_period_end: false,
+            subscription_ended_at: new Date().toISOString(),
           })
           .eq('email', customer.email);
 
@@ -275,12 +309,37 @@ export async function POST(request: NextRequest) {
 
       if (profile?.id) {
         await resetCreditAlertFlags(profile.id);
+        await resetBuildsThisPeriod(profile.id);
       }
 
       console.log(`🔄 Credits refreshed for ${customer.email} on invoice.paid`);
     } catch (err) {
       captureApiException(err);
       console.error('Invoice paid handler error:', err);
+    }
+  }
+
+  if (event.type === 'invoice.payment_failed') {
+    const invoice = event.data.object as Stripe.Invoice;
+    const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
+    if (!customerId) return NextResponse.json({ received: true });
+
+    try {
+      const customer = await stripe.customers.retrieve(customerId);
+      if (customer.deleted || !customer.email) return NextResponse.json({ received: true });
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', customer.email)
+        .single();
+
+      if (profile?.id) {
+        void sendPaymentFailedEmail(profile.id, customer.email);
+      }
+    } catch (err) {
+      captureApiException(err);
+      console.error('Invoice payment_failed handler error:', err);
     }
   }
 

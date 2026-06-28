@@ -2,6 +2,7 @@ import 'server-only';
 
 import { createHash } from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { logFeatureUsage } from '@/lib/feature-usage';
 
 export async function logGooglePlacesImport(params: {
   userId: string;
@@ -33,4 +34,6 @@ export async function logGooglePlacesImport(params: {
   if (error) {
     console.error('Google Places import metadata log error:', error.message);
   }
+
+  void logFeatureUsage(params.userId, 'google_places');
 }

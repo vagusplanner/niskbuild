@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { apiErrorResponse } from '@/lib/api-error';
-import { requireAdmin } from '@/lib/admin-auth-server';
+import { requirePlatformOwner } from '@/lib/platform-owner-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 export async function GET(request: NextRequest) {
-  const adminGuard = await requireAdmin(request);
-  if (!adminGuard.ok) return adminGuard.response;
+  const ownerGuard = await requirePlatformOwner(request);
+  if (!ownerGuard.ok) return ownerGuard.response;
 
   const supabase = createAdminClient();
   const status = request.nextUrl.searchParams.get('status');

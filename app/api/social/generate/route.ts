@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { getGroqClient } from '@/lib/groq-client';
+import { logFeatureUsage } from '@/lib/feature-usage';
 import {
   SOCIAL_SYSTEM_PROMPT,
   blueprintContextForSocial,
@@ -46,6 +47,8 @@ export async function POST(request: NextRequest) {
     if (!posts) {
       return NextResponse.json({ error: 'Failed to parse social posts from AI response' }, { status: 502 });
     }
+
+    void logFeatureUsage(guard.user!.id, 'social_publisher');
 
     return NextResponse.json({ posts });
   } catch (error) {

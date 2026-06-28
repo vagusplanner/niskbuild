@@ -2,7 +2,7 @@ import 'server-only';
 
 import { createAdminClient } from '@/lib/supabase/admin';
 
-const TIER_MRR_USD: Record<string, number> = {
+export const TIER_MRR_USD: Record<string, number> = {
   basic: 69,
   pro: 129,
   agency: 299,

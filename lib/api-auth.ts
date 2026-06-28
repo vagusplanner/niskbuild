@@ -21,6 +21,7 @@ export const RATE_LIMITS: Record<string, number> = {
   '/api/ai-agent': 24,
   '/api/agent-escalate': 6,
   '/api/figma/import': 10,
+  '/api/figma/screenshot-import': 10,
   '/api/github/sync': 10,
   '/api/log-build': 30,
 };

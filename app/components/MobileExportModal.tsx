@@ -96,7 +96,7 @@ export default function MobileExportModal({
           </button>
 
           <Link
-            href="/docs/pwa"
+            href="/docs/progressive-web-apps-pwa"
             className="block text-center text-xs text-[var(--accent-cyan)] hover:underline"
             onClick={onClose}
           >

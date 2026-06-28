@@ -77,6 +77,7 @@ import SidebarTools from '@/components/sidebar/SidebarTools';
       import TouchOptimizations from '@/components/mobile/TouchOptimizations';
       import EnhancedOfflineSync from '@/components/offline/EnhancedOfflineSync';
       import WelcomeEmailTrigger from '@/components/auth/WelcomeEmailTrigger';
+      import CapacitorPushRegistration from '@/components/notifications/CapacitorPushRegistration';
 
       // Non-critical: lazy loaded after paint
       const KeyboardShortcutsModal = React.lazy(() => import('@/components/shared/KeyboardShortcutsModal'));
@@ -766,6 +767,7 @@ export default function Layout({ children, currentPageName }) {
       {/* Offline Sync — always mounted */}
       <EnhancedOfflineSync />
       <ServiceWorkerManager />
+      <CapacitorPushRegistration />
 
       {/* Lazy non-critical components */}
       <React.Suspense fallback={null}>

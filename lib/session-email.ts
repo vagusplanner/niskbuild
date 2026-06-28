@@ -20,9 +20,9 @@ export async function sendNewLoginEmail(
     </div>
   `;
 
-  return sendEmail({
+  return (await sendEmail({
     to,
     subject: 'New login detected on NiskBuild',
     html,
-  });
+  })).ok;
 }

@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+node_modules/
 .pdf-tools
 /.pnp
 .pnp.*
@@ -25,6 +26,9 @@
 .DS_Store
 *.pem
 /tmp/project-exports
+/tmp/app-imports
+/apps/imported/*
+!/apps/imported/.gitkeep
 
 # debug
 npm-debug.log*

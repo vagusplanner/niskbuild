@@ -78,6 +78,7 @@ export async function updateProjectExportJob(
     status: ProjectExportJobStatus;
     log: string;
     download_url: string | null;
+    storage_path: string | null;
     capacitor_root: string | null;
     ios_workspace: string | null;
     finished_at: string | null;
@@ -96,9 +97,11 @@ export async function updateProjectExportJob(
     const exportStatus =
       patch.status === 'ready'
         ? 'ready_for_xcode'
-        : patch.status === 'failed'
-          ? 'failed'
-          : patch.status;
+        : patch.status === 'ready_zip_only'
+          ? 'ready_zip_only'
+          : patch.status === 'failed'
+            ? 'failed'
+            : patch.status;
     await db.from('projects').update({ export_status: exportStatus }).eq('id', projectId);
   }
 }

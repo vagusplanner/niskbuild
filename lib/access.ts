@@ -8,6 +8,7 @@ export const PLATFORM_OWNER_PATH_PREFIXES = [
   '/admin/users',
   '/admin/support',
   '/admin/insights',
+  '/admin/analytics',
   '/builder/vagus-planner',
   '/vagus-planner',
 ] as const;
@@ -23,12 +24,11 @@ export const PUBLIC_PATHS = [
   '/landing',
   '/login',
   '/signup',
+  '/reset-password',
   '/auth/callback',
   '/pricing',
   '/privacy',
   '/terms',
-  '/docs/pwa',
-  '/docs/google-import',
   '/games',
 ];
 
@@ -50,13 +50,14 @@ export const PHONE_VERIFY_EXEMPT_PATHS = [
   '/verify-phone',
   '/dashboard/settings',
   '/settings',
+  '/docs',
   '/pricing',
   '/login',
   '/auth/callback',
   ...PUBLIC_PATHS,
 ];
 
-export const AUTH_PATHS = ['/dashboard'];
+export const AUTH_PATH_PREFIXES = ['/dashboard', '/docs', '/nps'];
 
 /** Paid subscription required */
 export const PAID_PATH_PREFIXES = ['/marketplace', '/admin'];
@@ -76,7 +77,7 @@ export function isPublicPath(pathname: string) {
 }
 
 export function isAuthOnlyPath(pathname: string) {
-  return AUTH_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+  return AUTH_PATH_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
 export function isPaidPath(pathname: string) {

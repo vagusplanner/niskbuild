@@ -1,10 +1,12 @@
-import fs from 'fs/promises';
 import { NextRequest, NextResponse } from 'next/server';
 import { guardApiRequest } from '@/lib/api-auth';
 import { getProjectExportJob } from '@/lib/project-export/jobs';
 import { projectExportArtifactPath } from '@/lib/project-export/run-export';
 import { slugifyFilename } from '@/lib/pwa-generator';
+import { downloadStorageObject } from '@/lib/storage/supabase-storage';
+import { STORAGE_BUCKET_PROJECT_EXPORTS } from '@/lib/storage/constants';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
+import fs from 'fs/promises';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -29,23 +31,33 @@ export async function GET(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: 'Export job not found' }, { status: 404 });
   }
 
-  if (job.status !== 'ready') {
+  if (job.status !== 'ready' && job.status !== 'ready_zip_only') {
     return NextResponse.json({ error: 'Export is not ready yet' }, { status: 409 });
   }
 
-  const artifactPath = projectExportArtifactPath(jobId);
+  const { data: project } = await supabase
+    .from('projects')
+    .select('title')
+    .eq('id', projectId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  const filename = `${slugifyFilename(project?.title || 'niskbuild-app')}-native-export.zip`;
+
+  if (job.storage_path) {
+    const buffer = await downloadStorageObject(STORAGE_BUCKET_PROJECT_EXPORTS, job.storage_path);
+    return new NextResponse(new Uint8Array(buffer), {
+      headers: {
+        'Content-Type': 'application/zip',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Cache-Control': 'private, no-store',
+      },
+    });
+  }
+
   try {
-    const buffer = await fs.readFile(artifactPath);
-    const { data: project } = await supabase
-      .from('projects')
-      .select('title')
-      .eq('id', projectId)
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    const filename = `${slugifyFilename(project?.title || 'niskbuild-app')}-native-export.zip`;
-
-    return new NextResponse(buffer, {
+    const buffer = await fs.readFile(projectExportArtifactPath(jobId));
+    return new NextResponse(new Uint8Array(buffer), {
       headers: {
         'Content-Type': 'application/zip',
         'Content-Disposition': `attachment; filename="${filename}"`,
@@ -53,6 +65,6 @@ export async function GET(request: NextRequest, context: RouteContext) {
       },
     });
   } catch {
-    return NextResponse.json({ error: 'Export file not found on server' }, { status: 404 });
+    return NextResponse.json({ error: 'Export file not found' }, { status: 404 });
   }
 }

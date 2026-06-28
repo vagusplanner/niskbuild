@@ -121,6 +121,12 @@ export default function AdminAppsClient() {
         <button type="button" onClick={fetchApps} className="px-4 py-2 rounded-lg border border-nisk text-sm">
           Refresh
         </button>
+        <Link
+          href="/admin/apps/import"
+          className="px-4 py-2 rounded-lg btn-primary text-sm no-underline"
+        >
+          Import ZIP
+        </Link>
       </div>
 
       {loading ? (

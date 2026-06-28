@@ -89,6 +89,7 @@ async function ensureCapacitorProject(config: BuilderExportAppConfig): Promise<v
         '@capacitor/cli': '^7.2.0',
         '@capacitor/ios': '^7.2.0',
         '@capacitor/android': '^7.2.0',
+        '@capacitor/push-notifications': '^7.0.6',
       },
     });
   }

@@ -140,8 +140,8 @@ export default function CommandPalette() {
         label: 'Open Docs',
         section: 'Quick Actions',
         hint: '?',
-        href: '/docs/pwa',
-        run: () => router.push('/docs/pwa'),
+        href: '/docs',
+        run: () => router.push('/docs'),
       },
     ],
     [mod, router]

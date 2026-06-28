@@ -1,13 +1,20 @@
 "use client";
 
+import { useRef, useState } from 'react';
 import { PROMPT_SUGGESTIONS, PROMPT_SUGGESTION_COUNT } from '@/lib/prompt-suggestions';
 import { modKey } from '@/lib/keyboard';
 import AiProviderSelector from '@/app/components/AiProviderSelector';
+import FigmaScreenshotImport from '@/app/components/FigmaScreenshotImport';
+import PromptAttachMenu from '@/app/components/PromptAttachMenu';
 
 interface PromptBarProps {
   prompt: string;
   onChange: (value: string) => void;
   onGenerate: () => void;
+  onBuildFromFigmaScreenshot?: (combinedPrompt: string) => void;
+  onUploadZip?: (file: File) => void;
+  onOpenGooglePlaces?: () => void;
+  projectId?: string | null;
   isGenerating: boolean;
   statusMessage?: string;
   planMode?: boolean;
@@ -42,6 +49,10 @@ export default function PromptBar({
   prompt,
   onChange,
   onGenerate,
+  onBuildFromFigmaScreenshot,
+  onUploadZip,
+  onOpenGooglePlaces,
+  projectId,
   isGenerating,
   statusMessage,
   planMode = false,
@@ -56,9 +67,38 @@ export default function PromptBar({
   const isCursor = variant === 'cursor' || variant === 'dock';
   const isSidebar = variant === 'sidebar';
   const mod = modKey();
+  const [figmaOpen, setFigmaOpen] = useState(false);
+  const figmaTriggerRef = useRef<HTMLDivElement>(null);
+
+  const attachMenu =
+    isCursor && (onUploadZip || onBuildFromFigmaScreenshot || onOpenGooglePlaces) ? (
+      <PromptAttachMenu
+        disabled={isGenerating}
+        onUploadZip={onUploadZip}
+        onOpenGooglePlaces={onOpenGooglePlaces}
+        onOpenFigma={onBuildFromFigmaScreenshot ? () => setFigmaOpen(true) : undefined}
+      />
+    ) : null;
+
+  const figmaHidden =
+    onBuildFromFigmaScreenshot && isCursor ? (
+      <div ref={figmaTriggerRef} className="sr-only">
+        <FigmaScreenshotImport
+          projectId={projectId}
+          userPrompt={prompt}
+          onBuild={onBuildFromFigmaScreenshot}
+          disabled={isGenerating}
+          compact
+          hideTrigger
+          open={figmaOpen}
+          onOpenChange={setFigmaOpen}
+        />
+      </div>
+    ) : null;
 
   const toolbar = (
     <div className="flex items-center gap-2 flex-wrap px-3 py-2 border-t border-[var(--border)]/60 bg-[var(--surface)]/50 relative z-[1]">
+      {attachMenu}
       {isCursor && onUseLocalOllamaChange && onProviderUpgrade && (
         <AiProviderSelector
           tier={subscriptionTier}
@@ -99,7 +139,8 @@ export default function PromptBar({
   if (isCursor) {
     return (
       <div className="flex flex-col gap-0 px-3 py-3">
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--code-bg)] shadow-[0_4px_24px_rgba(0,0,0,0.25)] overflow-hidden focus-within:border-[var(--copper-primary)]/40 focus-within:ring-1 focus-within:ring-[var(--copper-primary)]/20 transition-all">
+        {figmaHidden}
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--code-bg)] shadow-[0_4px_24px_rgba(0,0,0,0.25)] focus-within:border-[var(--copper-primary)]/40 focus-within:ring-1 focus-within:ring-[var(--copper-primary)]/20 transition-all">
           <SuggestionChips onPick={onChange} />
           <textarea
             value={prompt}
@@ -159,7 +200,16 @@ export default function PromptBar({
         <p className="text-[11px] shrink-0 leading-snug text-[var(--copper-melt)]">{statusMessage}</p>
       )}
 
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-end gap-2 flex-wrap">
+        {onBuildFromFigmaScreenshot && (
+          <FigmaScreenshotImport
+            projectId={projectId}
+            userPrompt={prompt}
+            onBuild={onBuildFromFigmaScreenshot}
+            disabled={isGenerating}
+            compact
+          />
+        )}
         <button
           type="button"
           onClick={onGenerate}

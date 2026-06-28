@@ -18,7 +18,9 @@ function buildPreviewSrc(props: AppBuilderPreviewProps): string {
       typeof window !== 'undefined'
         ? window.location.origin
         : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    return `${origin.replace(/\/$/, '')}${props.embedPath}?builder=${props.previewKey}`;
+    const route = props.route || '/Dashboard';
+    const routeQuery = `&route=${encodeURIComponent(route)}`;
+    return `${origin.replace(/\/$/, '')}${props.embedPath}?builder=${props.previewKey}${routeQuery}`;
   }
 
   const base = (props.previewUrl || '').replace(/\/$/, '');
