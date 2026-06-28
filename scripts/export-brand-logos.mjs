@@ -39,6 +39,20 @@ for (const { pdf, png } of sources) {
   }
 }
 
+const pdfAliases = [
+  { src: 'icon logo niskbuild.pdf', dest: 'niskbuild-icon.pdf' },
+  { src: 'logo+typo niskbuild.pdf', dest: 'niskbuild-lockup-full.pdf' },
+  { src: 'logo typo only niskbuild.pdf', dest: 'niskbuild-wordmark.pdf' },
+];
+for (const { src, dest } of pdfAliases) {
+  const from = join(logoDir, src);
+  const to = join(logoDir, dest);
+  if (existsSync(from)) {
+    copyFileSync(from, to);
+    console.log(`PDF alias: ${dest}`);
+  }
+}
+
 for (const size of [32, 180, 512]) {
   const icon = join(logoDir, 'niskbuild-icon-brand.png');
   const out = join(logoDir, `icon-${size}.png`);
@@ -47,4 +61,6 @@ for (const size of [32, 180, 512]) {
 
 copyFileSync(join(logoDir, 'niskbuild-lockup-brand.png'), join(logoDir, 'niskbuild-lockup.png'));
 copyFileSync(join(logoDir, 'niskbuild-icon-brand.png'), join(__dirname, '..', 'public', 'logo-icon.png'));
+copyFileSync(join(logoDir, 'icon-512.png'), join(__dirname, '..', 'public', 'logo.png'));
+execSync('node scripts/generate-favicon.mjs', { stdio: 'inherit', cwd: join(__dirname, '..') });
 console.log('Brand logo export complete.');

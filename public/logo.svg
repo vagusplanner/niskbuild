@@ -1,29 +1,29 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" aria-hidden="true">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" aria-label="NiskBuild" role="img">
   <defs>
-    <linearGradient id="favGlacialMist" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#D9E2EC"/>
-      <stop offset="100%" stop-color="#BCCCDC"/>
+    <linearGradient id="iconForgePlate" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2a2622"/>
+      <stop offset="100%" stop-color="#1a1612"/>
     </linearGradient>
-    <linearGradient id="favObsidianPillars" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1E293B"/>
-      <stop offset="100%" stop-color="#0F172A"/>
+    <linearGradient id="iconIronPillars" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3d3530"/>
+      <stop offset="100%" stop-color="#12100e"/>
     </linearGradient>
-    <linearGradient id="favCoreFrostL" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FFFFFF"/>
-      <stop offset="100%" stop-color="#BAE6FD"/>
+    <linearGradient id="iconCopperL" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#d49a5c"/>
+      <stop offset="100%" stop-color="#d4a574"/>
     </linearGradient>
-    <linearGradient id="favCoreFrostR" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#064E3B"/>
-      <stop offset="100%" stop-color="#38BDF8"/>
+    <linearGradient id="iconCopperR" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8f5a28"/>
+      <stop offset="100%" stop-color="#b87333"/>
     </linearGradient>
   </defs>
-  <rect width="240" height="240" fill="url(#favGlacialMist)" rx="48"/>
+  <rect width="100%" height="100%" fill="url(#iconForgePlate)" rx="12"/>
   <g transform="translate(52, 40)">
-    <path d="M 0,0 L 45,0 L 45,150 L 0,150 Z" fill="url(#favObsidianPillars)"/>
-    <path d="M 90,0 L 135,0 L 135,150 L 90,150 Z" fill="url(#favObsidianPillars)"/>
-    <path d="M 45,0 L 68,75 L 45,115 L 45,45 Z" fill="url(#favCoreFrostL)"/>
-    <path d="M 90,150 L 68,75 L 90,35 L 90,105 Z" fill="url(#favCoreFrostR)"/>
-    <polygon points="45,115 68,75 90,150" fill="#0F172A" opacity="0.25"/>
-    <polygon points="90,35 68,75 45,0" fill="#FFFFFF" opacity="0.4"/>
+    <path d="M 0,0 L 45,0 L 45,150 L 0,150 Z" fill="url(#iconIronPillars)"/>
+    <path d="M 90,0 L 135,0 L 135,150 L 90,150 Z" fill="url(#iconIronPillars)"/>
+    <path d="M 45,0 L 68,75 L 45,115 L 45,45 Z" fill="url(#iconCopperL)"/>
+    <path d="M 90,150 L 68,75 L 90,35 L 90,105 Z" fill="url(#iconCopperR)"/>
+    <polygon points="45,115 68,75 90,150" fill="#12100e" opacity="0.35"/>
+    <polygon points="90,35 68,75 45,0" fill="#d49a5c" opacity="0.35"/>
   </g>
 </svg>

@@ -1,10 +1,29 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 48" fill="none" aria-labelledby="niskbuild-logo-title">
-  <title id="niskbuild-logo-title">NiskBuild</title>
-  <g transform="translate(0,4)">
-    <polygon points="20,6 34,14 20,22 6,14" fill="#C8D4F5"/>
-    <polygon points="6,14 20,22 20,36 6,28" fill="#7C3AED"/>
-    <polygon points="20,22 34,14 34,28 20,36" fill="#4F6EF7"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 72" fill="none" aria-label="NiskBuild" role="img">
+  <defs>
+    <linearGradient id="iconCopperL" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#d49a5c"/>
+      <stop offset="100%" stop-color="#d4a574"/>
+    </linearGradient>
+    <linearGradient id="iconCopperR" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8f5a28"/>
+      <stop offset="100%" stop-color="#b87333"/>
+    </linearGradient>
+    <linearGradient id="ironPillars" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3d3530"/>
+      <stop offset="100%" stop-color="#12100e"/>
+    </linearGradient>
+    <linearGradient id="buildCopperHoriz" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#b87333"/>
+      <stop offset="100%" stop-color="#d49a5c"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(4,8) scale(0.36)">
+    <path d="M 0,0 L 45,0 L 45,150 L 0,150 Z" fill="url(#ironPillars)"/>
+    <path d="M 90,0 L 135,0 L 135,150 L 90,150 Z" fill="url(#ironPillars)"/>
+    <path d="M 45,0 L 68,75 L 45,115 L 45,45 Z" fill="url(#iconCopperL)"/>
+    <path d="M 90,150 L 68,75 L 90,35 L 90,105 Z" fill="url(#iconCopperR)"/>
   </g>
-  <text x="48" y="22" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="18" font-weight="800" letter-spacing="0.08em" fill="#FFFFFF">NISK</text>
-  <text x="108" y="22" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="18" font-weight="800" letter-spacing="0.08em" fill="#4F6EF7">BUILD</text>
+  <text x="58" y="30" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="22" font-weight="800" letter-spacing="0.08em" fill="#f5ebe0">NISK</text>
+  <text x="134" y="30" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="22" font-weight="800" letter-spacing="0.08em" fill="url(#buildCopperHoriz)">BUILD</text>
+  <text x="58" y="52" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="10" font-weight="600" letter-spacing="0.16em" fill="#d49a5c">BUILD ANYTHING. OWN EVERYTHING.</text>
 </svg>

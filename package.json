@@ -9,6 +9,7 @@
     "build": "next build",
     "generate:logo-pdf": "node scripts/generate-logo-pdf.mjs",
     "export:brand-logos": "node scripts/export-brand-logos.mjs",
+    "generate:favicon": "node scripts/generate-favicon.mjs",
     "start": "next start",
     "lint": "eslint"
   },

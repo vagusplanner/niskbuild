@@ -18,6 +18,7 @@ export const OVERFLOW_NAV: NavItem[] = [
   { href: '/deployments', label: 'Deployments', icon: '🚀', description: 'Live previews' },
   { href: '/templates/games', label: 'Templates', icon: '📋', description: 'Starter kits' },
   { href: '/docs', label: 'Docs', icon: '📖', description: 'Guides & walkthroughs' },
+  { href: '/brand', label: 'Brand kit', icon: '🎨', description: 'Download logos' },
   { href: '/dashboard/support', label: 'Support', icon: '💬', description: 'Help & tickets' },
   { href: '/dashboard/settings', label: 'Settings', icon: '⚙️', description: 'Billing & keys' },
   { href: '/pricing', label: 'Pricing', icon: '💳', description: 'Plans' },

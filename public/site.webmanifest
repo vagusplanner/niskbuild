@@ -1,0 +1,23 @@
+{
+  "name": "NiskBuild",
+  "short_name": "NiskBuild",
+  "description": "Build apps with AI. Own the code forever.",
+  "start_url": "/landing",
+  "display": "standalone",
+  "background_color": "#1a1612",
+  "theme_color": "#1a1612",
+  "icons": [
+    {
+      "src": "/logo/icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

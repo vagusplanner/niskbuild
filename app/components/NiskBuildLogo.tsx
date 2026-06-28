@@ -1,22 +1,13 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { BRAND_LOGO } from '@/lib/brand-assets';
 
 type LogoSize = 'micro' | 'sm' | 'md' | 'lg' | 'xl' | 'hero';
-/** @deprecated use lockup — all main placements use the Sovereign Integrated lockup */
-type LogoVariant = 'full' | 'icon' | 'lockup' | 'text' | 'image';
-
-const LOCKUP_SRC = '/logo/niskbuild-lockup.svg';
-const ICON_SRC = '/logo/niskbuild-icon.svg';
-
-/** Sovereign Integrated lockup viewBox 750×200 */
-const LOCKUP_RATIO = 750 / 200;
-const ICON_RATIO = 1;
+type LogoVariant = 'icon' | 'lockup';
 
 interface NiskBuildLogoProps {
   variant?: LogoVariant;
   size?: LogoSize;
-  /** @deprecated lockup always includes tagline */
-  showTagline?: boolean;
   href?: string;
   className?: string;
 }
@@ -69,7 +60,7 @@ export default function NiskBuildLogo({
   className = '',
 }: NiskBuildLogoProps) {
   const h = HEIGHT_PX[size];
-  const alt = 'NiskBuild — Build anything. Own everything.';
+  const asset = variant === 'icon' ? BRAND_LOGO.icon : BRAND_LOGO.lockup;
 
   const frameClass =
     variant === 'icon'
@@ -88,13 +79,13 @@ export default function NiskBuildLogo({
       <span className={`inline-flex shrink-0 ${frameClass} ${className}`}>{node}</span>
     );
 
-  if (variant === 'icon') {
-    return wrap(
-      <LogoImg src={ICON_SRC} alt="NiskBuild" heightPx={h} aspectRatio={ICON_RATIO} priority />
-    );
-  }
-
   return wrap(
-    <LogoImg src={LOCKUP_SRC} alt={alt} heightPx={h} aspectRatio={LOCKUP_RATIO} priority />
+    <LogoImg
+      src={asset.src}
+      alt={asset.alt}
+      heightPx={h}
+      aspectRatio={asset.aspectRatio}
+      priority
+    />
   );
 }

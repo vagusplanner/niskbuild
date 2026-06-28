@@ -9,11 +9,11 @@
       <stop offset="100%" stop-color="#12100e"/>
     </linearGradient>
     <linearGradient id="iconCopperL" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#e8b87a"/>
+      <stop offset="0%" stop-color="#d49a5c"/>
       <stop offset="100%" stop-color="#d4a574"/>
     </linearGradient>
     <linearGradient id="iconCopperR" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#8b5a2b"/>
+      <stop offset="0%" stop-color="#8f5a28"/>
       <stop offset="100%" stop-color="#b87333"/>
     </linearGradient>
   </defs>
@@ -24,6 +24,6 @@
     <path d="M 45,0 L 68,75 L 45,115 L 45,45 Z" fill="url(#iconCopperL)"/>
     <path d="M 90,150 L 68,75 L 90,35 L 90,105 Z" fill="url(#iconCopperR)"/>
     <polygon points="45,115 68,75 90,150" fill="#12100e" opacity="0.35"/>
-    <polygon points="90,35 68,75 45,0" fill="#e8b87a" opacity="0.35"/>
+    <polygon points="90,35 68,75 45,0" fill="#d49a5c" opacity="0.35"/>
   </g>
 </svg>

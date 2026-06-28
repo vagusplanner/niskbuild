@@ -1,14 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 72" width="420" height="72" aria-label="NiskBuild" role="img">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 72" width="420" height="72" aria-label="NiskBuild wordmark" role="img">
   <defs>
-    <linearGradient id="claraTypoGradCompact" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#046A38"/>
-      <stop offset="35%" stop-color="#0284C7"/>
-      <stop offset="70%" stop-color="#0369A1"/>
-      <stop offset="100%" stop-color="#0F172A"/>
+    <linearGradient id="buildCopperCompact" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8f5a28"/>
+      <stop offset="50%" stop-color="#b87333"/>
+      <stop offset="100%" stop-color="#d49a5c"/>
     </linearGradient>
   </defs>
   <text x="0" y="58" font-family="system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" font-size="56" font-weight="900" letter-spacing="-1.5">
-    <tspan fill="#0F172A">NISK</tspan>
-    <tspan fill="url(#claraTypoGradCompact)" dx="12">BUILD</tspan>
+    <tspan fill="#f5ebe0">NISK</tspan>
+    <tspan fill="url(#buildCopperCompact)" dx="12">BUILD</tspan>
   </text>
 </svg>

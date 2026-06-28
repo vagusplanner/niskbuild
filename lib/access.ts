@@ -30,6 +30,7 @@ export const PUBLIC_PATHS = [
   '/privacy',
   '/terms',
   '/games',
+  '/brand',
 ];
 
 /** Public shareable preview pages (no auth) */
@@ -51,6 +52,7 @@ export const PHONE_VERIFY_EXEMPT_PATHS = [
   '/dashboard/settings',
   '/settings',
   '/docs',
+  '/brand',
   '/pricing',
   '/login',
   '/auth/callback',
