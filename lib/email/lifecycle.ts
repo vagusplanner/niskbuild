@@ -8,7 +8,7 @@ import {
   tierDisplayName,
 } from '@/lib/tier-config';
 import { EMAIL_TEMPLATE } from '@/lib/email/constants';
-import { sendLifecycleEmail } from '@/lib/email/send-log';
+import { sendLifecycleEmail, type LifecycleSendResult } from '@/lib/email/send-log';
 import { createWinbackPromoCode } from '@/lib/email/stripe-promo';
 import * as T from '@/lib/email/templates';
 
@@ -97,8 +97,13 @@ export async function maybeSendUsageAlert(
   await admin.from('profiles').update({ credit_alert_80_sent: true }).eq('id', userId);
 }
 
+async function sendLifecycle(params: Parameters<typeof sendLifecycleEmail>[0]): Promise<boolean> {
+  const result = await sendLifecycleEmail(params);
+  return result.ok;
+}
+
 export async function sendWelcomeEmail(userId: string, email: string): Promise<boolean> {
-  return sendLifecycleEmail({
+  return sendLifecycle({
     userId,
     to: email,
     templateKey: EMAIL_TEMPLATE.WELCOME,
@@ -108,7 +113,7 @@ export async function sendWelcomeEmail(userId: string, email: string): Promise<b
 }
 
 export async function sendDay1NoBuildEmail(userId: string, email: string): Promise<boolean> {
-  return sendLifecycleEmail({
+  return sendLifecycle({
     userId,
     to: email,
     templateKey: EMAIL_TEMPLATE.DAY_1_NO_BUILD,
@@ -118,7 +123,7 @@ export async function sendDay1NoBuildEmail(userId: string, email: string): Promi
 }
 
 export async function sendDay3FeatureTipEmail(userId: string, email: string): Promise<boolean> {
-  return sendLifecycleEmail({
+  return sendLifecycle({
     userId,
     to: email,
     templateKey: EMAIL_TEMPLATE.DAY_3_FEATURE_TIP,
@@ -128,7 +133,7 @@ export async function sendDay3FeatureTipEmail(userId: string, email: string): Pr
 }
 
 export async function sendDay7SocialProofEmail(userId: string, email: string): Promise<boolean> {
-  return sendLifecycleEmail({
+  return sendLifecycle({
     userId,
     to: email,
     templateKey: EMAIL_TEMPLATE.DAY_7_SOCIAL_PROOF,
@@ -138,7 +143,7 @@ export async function sendDay7SocialProofEmail(userId: string, email: string): P
 }
 
 export async function sendDay14NpsEmail(userId: string, email: string): Promise<boolean> {
-  return sendLifecycleEmail({
+  return sendLifecycle({
     userId,
     to: email,
     templateKey: EMAIL_TEMPLATE.DAY_14_NPS,
@@ -148,7 +153,7 @@ export async function sendDay14NpsEmail(userId: string, email: string): Promise<
 }
 
 export async function sendInactive14dEmail(userId: string, email: string): Promise<boolean> {
-  return sendLifecycleEmail({
+  return sendLifecycle({
     userId,
     to: email,
     templateKey: EMAIL_TEMPLATE.INACTIVE_14D,
@@ -157,12 +162,15 @@ export async function sendInactive14dEmail(userId: string, email: string): Promi
   });
 }
 
-/** Admin manual re-engagement — always sends (force), logs under reengagement_manual */
-export async function sendManualReengagementEmail(userId: string, email: string): Promise<boolean> {
+/** Admin manual re-engagement — always sends (force), unique log row per send */
+export async function sendManualReengagementEmail(
+  userId: string,
+  email: string
+): Promise<LifecycleSendResult> {
   return sendLifecycleEmail({
     userId,
     to: email,
-    templateKey: EMAIL_TEMPLATE.REENGAGEMENT_MANUAL,
+    templateKey: `${EMAIL_TEMPLATE.REENGAGEMENT_MANUAL}_${Date.now()}`,
     subject: 'We miss you at NiskBuild',
     html: T.reengagementManualHtml(),
     force: true,
@@ -171,7 +179,7 @@ export async function sendManualReengagementEmail(userId: string, email: string)
 }
 
 export async function sendCancelWarningEmail(userId: string, email: string): Promise<boolean> {
-  return sendLifecycleEmail({
+  return sendLifecycle({
     userId,
     to: email,
     templateKey: EMAIL_TEMPLATE.CANCEL_WARNING,
@@ -181,7 +189,7 @@ export async function sendCancelWarningEmail(userId: string, email: string): Pro
 }
 
 export async function sendWinback7dEmail(userId: string, email: string): Promise<boolean> {
-  return sendLifecycleEmail({
+  return sendLifecycle({
     userId,
     to: email,
     templateKey: EMAIL_TEMPLATE.WINBACK_7D,
@@ -197,7 +205,7 @@ export async function sendWinback30dEmail(userId: string, email: string): Promis
     ? 'Come back to NiskBuild — 20% off inside'
     : 'Come back to NiskBuild';
 
-  return sendLifecycleEmail({
+  return sendLifecycle({
     userId,
     to: email,
     templateKey: EMAIL_TEMPLATE.WINBACK_30D,
@@ -208,7 +216,7 @@ export async function sendWinback30dEmail(userId: string, email: string): Promis
 }
 
 export async function sendPaymentFailedEmail(userId: string, email: string): Promise<boolean> {
-  return sendLifecycleEmail({
+  return sendLifecycle({
     userId,
     to: email,
     templateKey: EMAIL_TEMPLATE.PAYMENT_FAILED,
@@ -223,7 +231,7 @@ export async function sendUpgradeConfirmedEmail(
   email: string,
   tier: string
 ): Promise<boolean> {
-  return sendLifecycleEmail({
+  return sendLifecycle({
     userId,
     to: email,
     templateKey: `${EMAIL_TEMPLATE.UPGRADE_CONFIRMED}_${tier}`,
@@ -238,7 +246,7 @@ export async function sendMonthlyReportEmail(
   params: { builds: number; projects: number; creditsRemaining: number; monthLabel: string },
   templateKey: string
 ): Promise<boolean> {
-  return sendLifecycleEmail({
+  return sendLifecycle({
     userId,
     to: email,
     templateKey,

@@ -1,8 +1,13 @@
 import 'server-only';
 
 import { createAdminClient } from '@/lib/supabase/admin';
-import { isPaidAndActive } from '@/lib/tier-config';
 import { maybeSendUsageAlert } from '@/lib/usage-alerts';
+import {
+  canSpendCloudCredits,
+  loadCreditProfile,
+  outOfCreditsMessage,
+} from '@/lib/credits-init';
+import { isPaidAndActive } from '@/lib/tier-config';
 
 export async function deductCloudCredit(
   userId: string | undefined
@@ -11,41 +16,40 @@ export async function deductCloudCredit(
     return { ok: false, error: 'Unauthorized' };
   }
 
-  const supabase = createAdminClient();
-  const { data: profile, error } = await supabase
-    .from('profiles')
-    .select('cloud_credits_remaining, subscription_tier, subscription_status, email')
-    .eq('id', userId)
-    .single();
-
-  if (error || !profile) {
+  const profile = await loadCreditProfile(userId);
+  if (!profile) {
     return { ok: false, error: 'Profile not found' };
   }
 
-  if (!isPaidAndActive(profile.subscription_tier, profile.subscription_status)) {
-    return { ok: false, error: 'Active paid subscription required for cloud generation' };
+  const tier = profile.subscription_tier;
+  const status = profile.subscription_status;
+
+  if (!canSpendCloudCredits(tier, status)) {
+    return { ok: false, error: outOfCreditsMessage(tier, status) };
   }
 
   const remaining = profile.cloud_credits_remaining ?? 0;
   if (remaining <= 0) {
-    maybeSendUsageAlert(
-      userId,
-      profile.email ?? undefined,
-      profile.subscription_tier,
-      0
-    ).catch(() => {});
-    return { ok: false, error: 'Insufficient cloud credits. Upgrade or purchase a reload pack.' };
+    if (isPaidAndActive(tier, status)) {
+      maybeSendUsageAlert(userId, profile.email ?? undefined, tier ?? 'free', 0).catch(
+        () => {}
+      );
+    }
+    return { ok: false, error: outOfCreditsMessage(tier, status) };
   }
 
   const next = remaining - 1;
+  const supabase = createAdminClient();
   await supabase
     .from('profiles')
     .update({ cloud_credits_remaining: next })
     .eq('id', userId);
 
-  maybeSendUsageAlert(userId, profile.email ?? undefined, profile.subscription_tier, next).catch(
-    () => {}
-  );
+  if (isPaidAndActive(tier, status)) {
+    maybeSendUsageAlert(userId, profile.email ?? undefined, tier ?? 'free', next).catch(
+      () => {}
+    );
+  }
 
   return { ok: true, remaining: next };
 }
@@ -62,40 +66,39 @@ export async function deductCloudCredits(
     return { ok: false, error: 'Invalid credit amount' };
   }
 
-  const supabase = createAdminClient();
-  const { data: profile, error } = await supabase
-    .from('profiles')
-    .select(
-      'cloud_credits_remaining, credit_fraction_debt, subscription_tier, subscription_status, email'
-    )
-    .eq('id', userId)
-    .single();
-
-  if (error || !profile) {
+  const profile = await loadCreditProfile(userId);
+  if (!profile) {
     return { ok: false, error: 'Profile not found' };
   }
 
-  if (!isPaidAndActive(profile.subscription_tier, profile.subscription_status)) {
+  const tier = profile.subscription_tier;
+  const status = profile.subscription_status;
+
+  if (!isPaidAndActive(tier, status)) {
     return {
       ok: false,
       error: 'Active paid subscription required for cloud visual edits. Upgrade to Pro.',
     };
   }
 
+  const supabase = createAdminClient();
+  const { data: debtRow } = await supabase
+    .from('profiles')
+    .select('credit_fraction_debt')
+    .eq('id', userId)
+    .single();
+
   const remaining = profile.cloud_credits_remaining ?? 0;
-  const debt = Number(profile.credit_fraction_debt ?? 0);
+  const debt = Number(debtRow?.credit_fraction_debt ?? 0);
   const nextDebt = debt + amount;
   const wholeCredits = Math.floor(nextDebt);
   const leftoverDebt = Math.round((nextDebt - wholeCredits) * 100) / 100;
 
   if (remaining < wholeCredits) {
-    maybeSendUsageAlert(
-      userId,
-      profile.email ?? undefined,
-      profile.subscription_tier,
-      remaining
-    ).catch(() => {});
-    return { ok: false, error: 'Insufficient cloud credits. Upgrade or purchase a reload pack.' };
+    maybeSendUsageAlert(userId, profile.email ?? undefined, tier ?? 'free', remaining).catch(
+      () => {}
+    );
+    return { ok: false, error: outOfCreditsMessage(tier, status) };
   }
 
   const nextRemaining = remaining - wholeCredits;
@@ -108,12 +111,9 @@ export async function deductCloudCredits(
     })
     .eq('id', userId);
 
-  maybeSendUsageAlert(
-    userId,
-    profile.email ?? undefined,
-    profile.subscription_tier,
-    nextRemaining
-  ).catch(() => {});
+  maybeSendUsageAlert(userId, profile.email ?? undefined, tier ?? 'free', nextRemaining).catch(
+    () => {}
+  );
 
   return { ok: true, remaining: nextRemaining };
 }
@@ -139,3 +139,5 @@ export async function addCloudCredits(
 
   return { ok: true, remaining: next };
 }
+
+export { ensureCloudCreditsInitialized } from '@/lib/credits-init';

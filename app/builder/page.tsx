@@ -703,8 +703,12 @@ function BuilderContent() {
 
     const session = await getSafeSession();
     const sandbox = isSandboxTier(subscriptionTier);
+    const onProductionHost =
+      typeof window !== 'undefined' &&
+      !['localhost', '127.0.0.1'].includes(window.location.hostname);
     const useLocalPath =
-      sandbox || (useLocalOllama && canUseLocalOllama(subscriptionTier));
+      !onProductionHost &&
+      (sandbox || (useLocalOllama && canUseLocalOllama(subscriptionTier)));
 
     if (useLocalPath) {
       setStatusMessage('🖥️ Generating via local Ollama...');
@@ -755,18 +759,11 @@ function BuilderContent() {
       return;
     }
 
-    if (sandbox) {
-      setGeneratedCode('// Cloud AI requires a paid plan.');
-      setPreviewHtml(
-        '<div style="padding:2rem;color:#94A3B8;background:#0B0F19;height:100%;text-align:center"><h3>Upgrade for cloud AI</h3><p>Sandbox includes local preview + 1 saved project. Pro unlocks cloud credits.</p></div>'
-      );
-      setStatusMessage('☁️ Cloud AI requires Pro or higher');
-      setIsGenerating(false);
-      setTimeout(() => setStatusMessage(''), 8000);
-      return;
-    }
-
-    setStatusMessage('🔄 Starting generation with self-correction...');
+    setStatusMessage(
+      sandbox
+        ? '☁️ Generating with your free trial cloud credits...'
+        : '🔄 Starting generation with self-correction...'
+    );
 
     try {
       // 1. Try self-heal loop first (fixes code errors automatically)
@@ -778,6 +775,16 @@ function BuilderContent() {
         credentials: 'include',
       });
       const selfHealData = await selfHealRes.json();
+
+      if (selfHealRes.status === 402 || selfHealRes.status === 403) {
+        const errMsg = selfHealData.error || 'Cloud generation unavailable';
+        setGeneratedCode(`// Error: ${errMsg}`);
+        setPreviewHtml(
+          `<div style="padding:2rem;color:#EF4444;background:#1a0a0a;height:100%;text-align:center"><h3>❌ Generation Failed</h3><p>${errMsg}</p><p style="margin-top:1rem"><a href="/pricing" style="color:#7C3AED">View plans</a></p></div>`
+        );
+        setStatusMessage(`❌ ${errMsg}`);
+        return;
+      }
 
       const historyEntry: NiskBuildPromptEntry = { prompt: effectivePrompt, timestamp: new Date().toISOString() };
 

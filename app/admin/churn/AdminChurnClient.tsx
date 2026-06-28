@@ -44,7 +44,11 @@ export default function AdminChurnClient() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Send failed');
-      setMessage('Re-engagement email sent.');
+      setMessage(
+        data.warning
+          ? `Re-engagement email sent. Note: ${data.warning}`
+          : 'Re-engagement email sent.'
+      );
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Send failed');
     } finally {

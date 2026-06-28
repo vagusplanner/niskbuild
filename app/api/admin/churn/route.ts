@@ -40,12 +40,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const sent = await sendManualReengagementEmail(userId, profile.email);
-    if (!sent) {
-      return NextResponse.json({ error: 'Email could not be sent' }, { status: 502 });
+    const result = await sendManualReengagementEmail(userId, profile.email);
+    if (!result.ok) {
+      return NextResponse.json(
+        { error: result.error ?? 'Email could not be sent' },
+        { status: 502 }
+      );
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      warning: result.logWarning ?? null,
+    });
   } catch (error) {
     return apiErrorResponse(error, 'Failed to send re-engagement email');
   }

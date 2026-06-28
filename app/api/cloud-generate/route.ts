@@ -4,11 +4,12 @@ import { guardApiRequest } from '@/lib/api-auth';
 import { generateCode } from '@/lib/ai-providers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { deductCloudCredit } from '@/lib/credits';
+import { canSpendCloudCredits, outOfCreditsMessage } from '@/lib/credits-init';
 import { recordAnonymousTelemetry } from '@/lib/record-telemetry';
 import { recordUsageEvent } from '@/lib/usage-events';
 import { touchLastBuildAt } from '@/lib/build-activity';
 import { clientIpFromHeaders } from '@/lib/coarse-town';
-import { canUseOwnApiKeys, isPaidAndActive } from '@/lib/tier-config';
+import { canUseOwnApiKeys } from '@/lib/tier-config';
 
 async function getUserProfile(userId: string) {
   const supabase = createAdminClient();
@@ -35,14 +36,16 @@ export async function POST(request: NextRequest) {
     }
 
     const profile = await getUserProfile(userId);
-    if (!isPaidAndActive(profile?.subscription_tier, profile?.subscription_status)) {
+    const tier = profile?.subscription_tier || 'free';
+    const status = profile?.subscription_status || 'inactive';
+
+    if (!canSpendCloudCredits(tier, status)) {
       return NextResponse.json(
-        { error: 'Active paid subscription required for cloud generation' },
+        { error: outOfCreditsMessage(tier, status) },
         { status: 403 }
       );
     }
 
-    const tier = profile?.subscription_tier || 'free';
     const byocAllowed = canUseOwnApiKeys(tier);
     const useOwnKeys = byocAllowed && !!profile?.use_own_api_keys;
     const hasUserKeys = !!(profile?.openai_api_key || profile?.anthropic_api_key);

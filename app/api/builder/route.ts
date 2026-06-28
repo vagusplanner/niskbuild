@@ -8,6 +8,7 @@ import { getAuthenticatedProfile } from '@/lib/server-profile';
 import { getProjectLimit } from '@/lib/project-limits';
 import { getCloudCreditsForTier, isPaidAndActive } from '@/lib/tier-config';
 import { generateArchitecturePlan } from '@/lib/plan-mode';
+import { ensureCloudCreditsInitialized } from '@/lib/credits';
 
 /**
  * POST /api/builder
@@ -132,6 +133,17 @@ async function handleBootGuard() {
   const status = profile?.subscription_status ?? 'inactive';
   const paidActive = isPaidAndActive(tier, status);
 
+  await ensureCloudCreditsInitialized(user.id);
+
+  const { data: refreshed } = await supabase
+    .from('profiles')
+    .select('cloud_credits_remaining')
+    .eq('id', user.id)
+    .single();
+
+  const cloudCreditsRemaining =
+    refreshed?.cloud_credits_remaining ?? profile?.cloud_credits_remaining ?? 0;
+
   const { count, error } = await supabase
     .from('projects')
     .select('*', { count: 'exact', head: true })
@@ -156,7 +168,7 @@ async function handleBootGuard() {
     projectLimit: limit,
     tier,
     status,
-    cloudCreditsRemaining: profile?.cloud_credits_remaining ?? 0,
+    cloudCreditsRemaining,
     cloudCreditsAllowance: getCloudCreditsForTier(tier),
   });
 }

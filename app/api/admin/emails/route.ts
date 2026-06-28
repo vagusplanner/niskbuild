@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
     const entry = catalogEntryForKey(templateKey);
     const logKey = templateKey || `admin_custom_${Date.now()}`;
 
-    const sent = await sendLifecycleEmail({
+    const result = await sendLifecycleEmail({
       userId,
       to,
       templateKey: logKey,
@@ -141,10 +141,10 @@ export async function POST(request: NextRequest) {
       htmlSnapshot: html,
     });
 
-    if (!sent) {
+    if (!result.ok) {
       return NextResponse.json(
-        { error: force ? 'Send failed — check Resend logs' : 'Already sent (use force to resend)' },
-        { status: 409 }
+        { error: result.error ?? 'Send failed — check Resend configuration' },
+        { status: result.error?.includes('already sent') ? 409 : 502 }
       );
     }
 
@@ -153,6 +153,7 @@ export async function POST(request: NextRequest) {
       templateKey: logKey,
       subject,
       label: entry?.label ?? 'Custom email',
+      warning: result.logWarning ?? null,
     });
   } catch (error) {
     return apiErrorResponse(error, 'Failed to send email');

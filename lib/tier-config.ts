@@ -5,7 +5,7 @@ export { PAID_TIERS, TIER_ORDER, tierAtLeast };
 
 /** Monthly cloud credit allowance per tier (reset on checkout / renewal webhook) */
 export const CLOUD_CREDITS_BY_TIER: Record<string, number> = {
-  free: 0,
+  free: 5,
   basic: 150,
   pro: 600,
   agency: 2500,
