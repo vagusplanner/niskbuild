@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 750 200" width="750" height="200" aria-label="NiskBuild Forged Iron and Copper Logo" role="img">
   <defs>
     <linearGradient id="forgePlateBg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#8a7d6e"/>
-      <stop offset="100%" stop-color="#6b6258"/>
+      <stop offset="0%" stop-color="#5c5248"/>
+      <stop offset="100%" stop-color="#3a3530"/>
     </linearGradient>
     <linearGradient id="ironPillars" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#7a6f63"/>
-      <stop offset="100%" stop-color="#5c5248"/>
+      <stop offset="0%" stop-color="#4a433c"/>
+      <stop offset="100%" stop-color="#2e2a26"/>
     </linearGradient>
     <linearGradient id="copperFacetL" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#d49a5c"/>

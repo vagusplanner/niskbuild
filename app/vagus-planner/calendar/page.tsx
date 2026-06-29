@@ -53,7 +53,7 @@ export default function CalendarPage() {
         <div className="flex items-center justify-center min-h-[400px] pt-24">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto" />
-            <p className="mt-4 text-gray-600">Loading calendar...</p>
+            <p className="mt-4 text-nisk-muted text-sm">Loading calendar…</p>
           </div>
         </div>
       </Layout>

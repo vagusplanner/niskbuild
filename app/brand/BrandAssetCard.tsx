@@ -68,7 +68,7 @@ function PreviewBox({
         alt={alt}
         className={
           iconSquare
-            ? 'w-full h-full object-cover rounded-lg'
+            ? 'w-full h-full min-h-[140px] object-cover'
             : 'max-h-28 max-w-full object-contain'
         }
         style={iconSquare && sizePx ? { maxWidth: Math.min(sizePx, 160) } : undefined}

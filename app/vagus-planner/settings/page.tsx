@@ -116,7 +116,6 @@ export default function SettingsPage() {
 
   return (
     <Layout>
-      <CapacitorPushRegistration />
       <div className="p-8 max-w-4xl mx-auto pt-24">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold">⚙️ Vagus Planner Settings</h1>
@@ -124,6 +123,12 @@ export default function SettingsPage() {
             <span className="text-sm text-gray-500">{saving ? 'Saving…' : saveMessage}</span>
           )}
         </div>
+
+        <p className="text-xs text-nisk-muted mb-6 p-3 rounded-lg border border-nisk bg-[var(--surface)]/50">
+          <strong className="text-[var(--copper-melt)]">Before App Store:</strong> confirm email
+          (Resend), push (Capacitor + APNs keys), and{' '}
+          <code className="text-[10px]">/api/vagus-planner/reminders</code> cron on a physical device.
+        </p>
 
         <div className="space-y-6">
           <section className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -172,6 +177,8 @@ export default function SettingsPage() {
               onChange={(v) => void updatePref('eventRemindersEnabled', v)}
             />
           </section>
+
+          <CapacitorPushRegistration />
 
           <section className="bg-amber-50 rounded-xl border border-amber-200 p-5 text-sm text-amber-900">
             <p className="font-medium mb-1">Before App Store export</p>

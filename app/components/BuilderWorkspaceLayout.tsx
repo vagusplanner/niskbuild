@@ -53,6 +53,7 @@ export type BuilderWorkspaceLayoutProps = {
   onGenerate: () => void;
   isGenerating: boolean;
   statusMessage: string;
+  activityLog?: string[];
   planMode: boolean;
   onPlanModeChange: (v: boolean) => void;
   previewHtml: string;
@@ -472,6 +473,7 @@ function ChatPanelContent({
   onGenerate,
   isGenerating,
   statusMessage,
+  activityLog = [],
   planMode,
   onPlanModeChange,
   canImportGooglePlaces,
@@ -504,6 +506,7 @@ function ChatPanelContent({
   onGenerate: () => void;
   isGenerating: boolean;
   statusMessage: string;
+  activityLog?: string[];
   planMode: boolean;
   onPlanModeChange: (v: boolean) => void;
   canImportGooglePlaces: boolean;
@@ -582,6 +585,8 @@ function ChatPanelContent({
           projectId={activeProjectId}
           isGenerating={isGenerating}
           statusMessage={statusMessage}
+          activityLog={activityLog}
+          streamingLine={isGenerating ? statusMessage : undefined}
           planMode={planMode}
           onPlanModeChange={onPlanModeChange}
           subscriptionTier={subscriptionTier}
@@ -638,6 +643,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
     onGenerate,
     isGenerating,
     statusMessage,
+    activityLog = [],
     planMode,
     onPlanModeChange,
     previewHtml,
@@ -763,6 +769,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
       onGenerate={onGenerate}
       isGenerating={isGenerating}
       statusMessage={statusMessage}
+      activityLog={activityLog}
       planMode={planMode}
       onPlanModeChange={onPlanModeChange}
       canImportGooglePlaces={canImportGooglePlaces}

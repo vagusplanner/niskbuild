@@ -25,6 +25,9 @@ interface PromptBarProps {
   useLocalOllama?: boolean;
   onUseLocalOllamaChange?: (enabled: boolean) => void;
   onProviderUpgrade?: () => void;
+  /** Scrollable generation log (Cursor-style) */
+  activityLog?: string[];
+  streamingLine?: string;
 }
 
 function SuggestionChips({ onPick }: { onPick: (s: string) => void }) {
@@ -63,6 +66,8 @@ export default function PromptBar({
   useLocalOllama = false,
   onUseLocalOllamaChange,
   onProviderUpgrade,
+  activityLog = [],
+  streamingLine,
 }: PromptBarProps) {
   const isCursor = variant === 'cursor' || variant === 'dock';
   const isSidebar = variant === 'sidebar';
@@ -71,7 +76,7 @@ export default function PromptBar({
   const figmaTriggerRef = useRef<HTMLDivElement>(null);
 
   const attachMenu =
-    isCursor && (onUploadZip || onBuildFromFigmaScreenshot || onOpenGooglePlaces) ? (
+    isCursor ? (
       <PromptAttachMenu
         disabled={isGenerating}
         onUploadZip={onUploadZip}
@@ -141,6 +146,21 @@ export default function PromptBar({
       <div className="flex flex-col gap-0 px-3 py-3">
         {figmaHidden}
         <div className="rounded-xl border border-[var(--border)] bg-[var(--code-bg)] shadow-[0_4px_24px_rgba(0,0,0,0.25)] focus-within:border-[var(--copper-primary)]/40 focus-within:ring-1 focus-within:ring-[var(--copper-primary)]/20 transition-all">
+          {(activityLog.length > 0 || streamingLine || isGenerating) && (
+            <div className="max-h-36 overflow-y-auto border-b border-[var(--border)]/60 px-3 py-2 space-y-1 font-mono text-[11px]">
+              {activityLog.map((line, i) => (
+                <p key={`${i}-${line.slice(0, 24)}`} className="text-[var(--code-comment)] leading-relaxed">
+                  {line}
+                </p>
+              ))}
+              {(streamingLine || (isGenerating && !streamingLine)) && (
+                <p className="text-[var(--copper-melt)] leading-relaxed flex items-start gap-0.5">
+                  <span>{streamingLine || (planMode ? 'Planning…' : 'Building…')}</span>
+                  <span className="inline-block w-2.5 h-4 bg-[var(--copper-melt)] animate-pulse ml-0.5 shrink-0" aria-hidden />
+                </p>
+              )}
+            </div>
+          )}
           <SuggestionChips onPick={onChange} />
           <textarea
             value={prompt}

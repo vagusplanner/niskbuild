@@ -1,4 +1,6 @@
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import { createClient } from '@/lib/supabase/server';
 import Layout from '@/app/components/Layout';
 import NiskBuildLogo from '@/app/components/NiskBuildLogo';
 import BrandAssetCard from '@/app/brand/BrandAssetCard';
@@ -9,30 +11,47 @@ import {
   DOCS_UI_COLORS,
 } from '@/lib/brand-assets';
 
-export default function BrandPage() {
+export default async function BrandPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect('/login?next=/brand');
+  }
+
   return (
     <Layout variant="marketing" showFooter={false}>
-      <div className="max-w-5xl mx-auto py-10">
-        <div className="text-center mb-10">
-          <NiskBuildLogo variant="lockup" size="xl" className="mx-auto mb-6" />
-          <p className="inline-block mb-4 rounded-full border border-[var(--copper-primary)]/30 bg-[var(--copper-primary)]/10 px-3 py-1 text-xs font-medium text-[var(--copper-melt)]">
-            Public page — no login required
+      <div className="max-w-5xl mx-auto py-10 px-4">
+        <header className="text-center mb-10">
+          <NiskBuildLogo variant="lockup" size="lg" className="mx-auto mb-5" />
+          <p className="inline-block mb-3 rounded-full border border-[var(--copper-primary)]/30 bg-[var(--copper-primary)]/10 px-3 py-1 text-xs font-medium text-[var(--copper-melt)]">
+            Logged-in brand kit — official downloads
           </p>
-          <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">Brand kit</h1>
-          <p className="text-nisk-muted max-w-xl mx-auto">
-            Official NiskBuild logos and colors. App icons use the same cream background as the
-            light lockup. Matte iron lockup is lighter so the mark reads on dark UI.
+          <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">Brand kit</h1>
+          <p className="text-nisk-muted max-w-xl mx-auto text-sm">
+            Cream icons are full-bleed for favicons. Matte iron icons match the lockup — darker iron
+            on a balanced site palette.
           </p>
           <p className="mt-2 text-sm text-[var(--copper-melt)]">{BRAND_TAGLINE}</p>
-        </div>
+        </header>
 
-        <div className="space-y-12">
+        <div className="space-y-14">
           {BRAND_ASSET_GROUPS.map((group) => (
-            <section key={group.id}>
-              <h2 className="text-xl font-semibold text-white mb-1">{group.title}</h2>
-              <p className="text-sm text-nisk-muted mb-5">{group.blurb}</p>
+            <section key={group.id} aria-labelledby={`brand-${group.id}`}>
+              <h2 id={`brand-${group.id}`} className="text-xl font-semibold text-white mb-1">
+                {group.title}
+              </h2>
+              <p className="text-sm text-nisk-muted mb-5 max-w-2xl">{group.blurb}</p>
 
-              <div className={group.paired ? 'grid gap-4 sm:grid-cols-2 items-stretch' : 'grid gap-4 sm:grid-cols-2'}>
+              <div
+                className={
+                  group.paired
+                    ? 'grid gap-4 sm:grid-cols-2 items-stretch'
+                    : 'grid gap-4 sm:grid-cols-2 lg:grid-cols-2'
+                }
+              >
                 {group.assets.map((asset) => (
                   <BrandAssetCard key={asset.id} asset={asset} />
                 ))}
@@ -44,58 +63,36 @@ export default function BrandPage() {
         <section className="mt-14 glass-panel rounded-2xl border border-nisk p-6">
           <h2 className="text-lg font-semibold text-white mb-2">Brand colors</h2>
           <p className="text-sm text-nisk-muted mb-5">
-            These match the <Link href="/docs" className="text-[var(--copper-melt)] hover:underline">Docs</Link>{' '}
-            page and the rest of the app — defined in{' '}
-            <code className="text-[var(--copper-light)] text-xs">app/globals.css</code> as CSS
-            variables (Forged Iron &amp; Melted Copper).
+            Synced with{' '}
+            <Link href="/docs" className="text-[var(--copper-melt)] hover:underline">
+              Docs
+            </Link>{' '}
+            and <code className="text-[var(--copper-light)] text-xs">app/globals.css</code>.
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {BRAND_PALETTE_SWATCHES.map((swatch) => (
               <div key={swatch.hex + swatch.name} className="rounded-lg border border-nisk overflow-hidden">
                 <div className="h-14" style={{ backgroundColor: swatch.hex }} />
                 <div className="px-3 py-2 text-xs">
                   <p className="text-white font-medium">{swatch.name}</p>
                   <p className="text-nisk-muted font-mono mt-0.5">{swatch.hex}</p>
-                  <p className="text-nisk-muted mt-1">{swatch.token}</p>
-                  <p className="text-[var(--copper-melt)]/70 mt-1">{swatch.usage}</p>
                 </div>
               </div>
             ))}
           </div>
 
-          <div className="rounded-xl border border-nisk bg-[var(--surface)]/50 p-4 mb-6">
-            <h3 className="text-sm font-semibold text-white mb-2">Docs page uses</h3>
-            <ul className="text-xs text-nisk-muted space-y-1 font-mono">
-              <li>
-                Step text →{' '}
-                <span style={{ color: DOCS_UI_COLORS.stepText }}>{DOCS_UI_COLORS.stepText}</span>
-              </li>
-              <li>Links → <span style={{ color: DOCS_UI_COLORS.link }}>{DOCS_UI_COLORS.link}</span></li>
-              <li>Background → {DOCS_UI_COLORS.background}</li>
-            </ul>
+          <div className="rounded-xl border border-nisk bg-[var(--surface)]/50 p-4 mt-6">
+            <h3 className="text-sm font-semibold text-white mb-2">Docs step text</h3>
+            <p className="text-xs font-mono" style={{ color: DOCS_UI_COLORS.stepText }}>
+              {DOCS_UI_COLORS.stepText} — muted parchment on lighter iron shell
+            </p>
           </div>
-
-          <h3 className="text-sm font-semibold text-white mb-3">Quick picks for social</h3>
-          <ul className="text-sm text-nisk-muted space-y-2 list-disc pl-5">
-            <li>
-              <strong className="text-white font-medium">Profile / favicon:</strong>{' '}
-              <Link href="/logo/icon-512.png" download="niskbuild-icon-512.png" className="text-[var(--accent-cyan)] hover:underline">
-                512×512 PNG (cream, full bleed)
-              </Link>
-            </li>
-            <li>
-              <strong className="text-white font-medium">Light lockup:</strong>{' '}
-              <Link href="/logo/niskbuild-lockup-light-raster.png" download="niskbuild-lockup-light.png" className="text-[var(--accent-cyan)] hover:underline">
-                Lockup PNG
-              </Link>
-            </li>
-          </ul>
         </section>
 
         <p className="mt-10 text-center text-sm text-nisk-muted">
-          <Link href="/landing" className="text-[var(--accent-cyan)] hover:underline">
-            ← Back to home
+          <Link href="/dashboard" className="text-[var(--accent-cyan)] hover:underline">
+            ← Back to dashboard
           </Link>
         </p>
       </div>

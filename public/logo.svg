@@ -14,7 +14,7 @@
     </linearGradient>
   </defs>
   <rect width="240" height="240" fill="#f5ebe0"/>
-  <g transform="translate(18, 6) scale(1.52)">
+  <g transform="translate(12, 0) scale(1.58)">
     <path d="M 0,0 L 45,0 L 45,150 L 0,150 Z" fill="url(#ironPillarsLight)"/>
     <path d="M 90,0 L 135,0 L 135,150 L 90,150 Z" fill="url(#ironPillarsLight)"/>
     <path d="M 45,0 L 68,75 L 45,115 L 45,45 Z" fill="url(#copperFacetLLight)"/>

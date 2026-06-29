@@ -175,6 +175,30 @@ function MarketplaceContent() {
     return true;
   });
 
+  const tierCounts = (() => {
+    const base = templates.filter((t) => {
+      if (catalogFilter === 'all') return true;
+      if (catalogFilter === 'originals') return t.sourceLayer === 'firstparty';
+      if (catalogFilter === 'community') return t.sourceLayer === 'subscriber';
+      if (catalogFilter === 'templates') return t.listingType === 'template' || !t.listingType;
+      return true;
+    });
+    const counts: Record<PriceTierId, number> = {
+      all: base.length,
+      free: 0,
+      essential: 0,
+      pro: 0,
+      advanced: 0,
+      enterprise: 0,
+    };
+    for (const t of base) {
+      for (const bucket of PRICE_TIER_BUCKETS) {
+        if (matchesPriceTier(t.price, bucket.id)) counts[bucket.id]++;
+      }
+    }
+    return counts;
+  })();
+
   const renderTemplateCard = (template: Template, showOwnedBadge = true) => {
     const owned = template.owned || template.price === 0;
     return (
@@ -295,25 +319,42 @@ function MarketplaceContent() {
           </button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-8">
+          <button
+            type="button"
+            onClick={() => setPriceTier('all')}
+            className={`text-center py-3 px-2 rounded-xl border bg-nisk-card transition-all ${
+              priceTier === 'all'
+                ? 'border-[var(--copper-primary)] bg-[var(--copper-primary)]/15 ring-1 ring-[var(--copper-primary)]/25'
+                : 'border-nisk text-nisk-muted hover:border-[var(--copper-primary)]/40'
+            }`}
+          >
+            <p className={`text-sm font-bold ${priceTier === 'all' ? 'text-[var(--copper-melt)]' : 'text-white'}`}>
+              All
+            </p>
+            <p className={`text-[10px] mt-0.5 tabular-nums ${priceTier === 'all' ? 'text-[var(--copper-melt)]/80' : 'text-nisk-muted'}`}>
+              {tierCounts.all} templates
+            </p>
+          </button>
           {PRICE_TIER_BUCKETS.map((tier) => {
             const selected = priceTier === tier.id;
+            const count = tierCounts[tier.id];
             return (
               <button
                 key={tier.id}
                 type="button"
-                onClick={() => setPriceTier((current) => (current === tier.id ? 'all' : tier.id))}
+                onClick={() => setPriceTier(tier.id)}
                 className={`text-center py-3 px-2 rounded-xl border bg-nisk-card transition-all ${
                   selected
                     ? 'border-[var(--copper-primary)] bg-[var(--copper-primary)]/15 shadow-[3px_3px_0_var(--copper-glow)] ring-1 ring-[var(--copper-primary)]/25'
                     : tier.color
                 }`}
               >
-                <p className={`text-sm font-bold ${selected ? 'text-[var(--copper-melt)]' : ''}`}>
+                <p className={`text-sm font-bold tabular-nums ${selected ? 'text-[var(--copper-melt)]' : 'text-white'}`}>
                   {tier.label}
                 </p>
-                <p className={`text-[10px] mt-0.5 ${selected ? 'text-[var(--copper-melt)]/80' : 'text-nisk-muted'}`}>
-                  {tier.range}
+                <p className={`text-[10px] mt-0.5 tabular-nums ${selected ? 'text-[var(--copper-melt)]/80' : 'text-nisk-muted'}`}>
+                  {count} · {tier.range}
                 </p>
               </button>
             );

@@ -1,14 +1,14 @@
 @import "tailwindcss";
 
-/* NiskBuild — Forged Iron & Melted Copper */
+/* NiskBuild — Forged Iron & Melted Copper (balanced: lighter shell, readable copper) */
 :root,
 [data-theme="light"],
 [data-theme="dark"] {
-  --bg-base: #1a1612;
-  --iron-dark: #1a1612;
-  --iron-mid: #171411;
-  --iron-light: #1e1a16;
-  --iron-surface: #262018;
+  --bg-base: #242018;
+  --iron-dark: #1e1a16;
+  --iron-mid: #2a2420;
+  --iron-light: #322c26;
+  --iron-surface: #3a332c;
   --copper-primary: #b87333;
   --copper-dark: #8f5a28;
   --copper-light: #d49a5c;
@@ -17,7 +17,7 @@
   --ember: #a84a20;
 
   --background: var(--bg-base);
-  --background-gradient: linear-gradient(145deg, #151210 0%, #1a1612 42%, #1e1a16 100%);
+  --background-gradient: linear-gradient(145deg, #1e1a16 0%, #242018 42%, #2a2420 100%);
   --foreground: #e8dcc8;
   --primary: var(--copper-primary);
   --primary-hover: var(--copper-dark);
@@ -36,15 +36,15 @@
   --success: #8a6a3a;
   --error: #c45a28;
   --border: rgba(184, 115, 51, 0.18);
-  --card-bg: rgba(30, 26, 22, 0.97);
-  --surface: #1e1a16;
-  --surface-elevated: rgba(38, 32, 24, 0.98);
-  --glass-bg: rgba(30, 26, 22, 0.94);
-  --nav-bg: rgba(26, 22, 18, 0.98);
-  --overlay: rgba(21, 18, 16, 0.82);
+  --card-bg: rgba(42, 36, 32, 0.97);
+  --surface: #2a2420;
+  --surface-elevated: rgba(50, 44, 38, 0.98);
+  --glass-bg: rgba(42, 36, 32, 0.94);
+  --nav-bg: rgba(36, 32, 24, 0.98);
+  --overlay: rgba(30, 26, 22, 0.82);
   --muted: #8a7d6e;
   --tagline: var(--copper-melt);
-  --code-bg: #1e1a16;
+  --code-bg: #2a2420;
   --code-keyword: #d49a5c;
   --code-string: #a89070;
   --code-comment: #6e6256;

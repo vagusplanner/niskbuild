@@ -123,6 +123,7 @@ function BuilderContent() {
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>('code');
   const [blueprintData, setBlueprintData] = useState<ComponentBlueprint | null>(null);
   const [statusMessage, setStatusMessage] = useState('');
+  const [activityLog, setActivityLog] = useState<string[]>([]);
   const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [showProjects, setShowProjects] = useState(false);
@@ -162,6 +163,14 @@ function BuilderContent() {
   const visualEditDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const aiOriginalCodeRef = useRef<string | null>(null);
   const lastCodeLenRef = useRef(0);
+
+  useEffect(() => {
+    if (!statusMessage.trim()) return;
+    setActivityLog((prev) => {
+      if (prev[prev.length - 1] === statusMessage) return prev;
+      return [...prev.slice(-48), statusMessage];
+    });
+  }, [statusMessage]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -1447,6 +1456,7 @@ function BuilderContent() {
           onGenerate={() => handleGenerate()}
           isGenerating={isGenerating}
           statusMessage={statusMessage}
+          activityLog={activityLog}
           planMode={planMode}
           onPlanModeChange={setPlanMode}
           previewHtml={previewHtml}

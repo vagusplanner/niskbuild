@@ -182,10 +182,24 @@ const GooglePlacesImport = forwardRef<GooglePlacesImportHandle, GooglePlacesImpo
 
             <div className="p-5">
               <p className="text-xs text-nisk-muted mb-3">
-                Search for your client&apos;s business name and city.
+                Search for your client&apos;s business name and city, then import to pre-fill the builder prompt.
               </p>
 
-              <div className="flex items-center justify-between mb-3 p-3 rounded-xl border border-nisk bg-nisk-surface">
+              <input
+                type="text"
+                placeholder="e.g. Pizza Roma London"
+                value={searchQuery}
+                onChange={handleSearchChange}
+                className="w-full p-3 mb-4 bg-nisk border border-[var(--copper-primary)]/30 rounded-xl text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[var(--copper-primary)]"
+                autoFocus
+              />
+
+              <details className="mb-4 rounded-xl border border-nisk bg-nisk-surface/80">
+                <summary className="cursor-pointer px-3 py-2.5 text-xs font-medium text-[var(--copper-melt)]">
+                  Advanced: AI Enrichment · Competitor Intel · Social Proof
+                </summary>
+                <div className="px-3 pb-3 space-y-3 border-t border-nisk">
+              <div className="flex items-center justify-between pt-3 p-3 rounded-xl border border-nisk bg-nisk-surface">
                 <div>
                   <p className="text-sm text-white font-medium">AI Enrichment</p>
                   <p className="text-[10px] text-nisk-muted">Predict website, SEO keywords & review insights</p>
@@ -264,15 +278,8 @@ const GooglePlacesImport = forwardRef<GooglePlacesImportHandle, GooglePlacesImpo
                   {showSocialProof && canUseSocialProof ? '✓ Social ON' : 'Social OFF'}
                 </button>
               </div>
-
-              <input
-                type="text"
-                placeholder="e.g. Pizza Roma London"
-                value={searchQuery}
-                onChange={handleSearchChange}
-                className="w-full p-3 bg-nisk border border-nisk rounded-xl text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[var(--accent-cyan)]"
-                autoFocus
-              />
+                </div>
+              </details>
 
               {error && (
                 <p className="text-xs text-[var(--error)] mt-2">{error}</p>

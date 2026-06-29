@@ -1,18 +1,28 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { notFound, useRouter } from 'next/navigation';
 import BuilderSidebar from '@/app/components/BuilderSidebar';
 import HelpAssistant from '@/app/components/HelpAssistant';
 import PromptBar from '@/app/components/PromptBar';
+import GooglePlacesImport, {
+  type GooglePlacesImportHandle,
+} from '@/app/components/GooglePlacesImport';
 import AppBuilderPreview from '@/app/builder/[id]/preview';
 import { getClientBuilderApp } from '@/lib/builder-apps/client-registry';
 import type { BuilderAppTarget } from '@/lib/builder-apps/types';
+import type {
+  GooglePlacesBusiness,
+  GooglePlacesProjectContext,
+} from '@/lib/google-places-types';
 import { getSafeSession } from '@/lib/supabaseSession';
 import {
   canExportNative,
+  canImportGooglePlaces,
+  canUseCompetitorIntel,
+  canUseSocialProofAggregator,
   canUseLocalOllama,
   getCloudCreditsForTier,
   isPaidAndActive,
@@ -45,6 +55,8 @@ function AppBuilderWorkspaceInner({ appId, loginNextPath }: AppBuilderWorkspaceP
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
+  const [activityLog, setActivityLog] = useState<string[]>([]);
+  const googlePlacesRef = useRef<GooglePlacesImportHandle>(null);
   const [previewKey, setPreviewKey] = useState(0);
   const [previewUrlBase, setPreviewUrlBase] = useState(appConfig?.previewUrl ?? '');
   const [subscriptionTier, setSubscriptionTier] = useState('free');
@@ -62,6 +74,24 @@ function AppBuilderWorkspaceInner({ appId, loginNextPath }: AppBuilderWorkspaceP
     () => targets.find((t) => t.id === targetId) ?? targets[0],
     [targets, targetId]
   );
+
+  useEffect(() => {
+    if (!statusMessage.trim()) return;
+    setActivityLog((prev) => {
+      if (prev[prev.length - 1] === statusMessage) return prev;
+      return [...prev.slice(-48), statusMessage];
+    });
+  }, [statusMessage]);
+
+  const handleGooglePlacesImport = (
+    business: GooglePlacesBusiness,
+    _context: GooglePlacesProjectContext
+  ) => {
+    setPrompt(
+      `Update this Vagus Planner page for ${business.name} at ${business.address}. Match their brand and services.`
+    );
+    setStatusMessage(`📍 Imported ${business.name} — hit Generate`);
+  };
 
   const loadTarget = useCallback(
     async (nextTargetId: string) => {
@@ -192,6 +222,9 @@ function AppBuilderWorkspaceInner({ appId, loginNextPath }: AppBuilderWorkspaceP
     isPaidAndActive(subscriptionTier, subscriptionStatus) || isSandboxTier(subscriptionTier);
   const canExportXcode = canExportNative(subscriptionTier, subscriptionStatus);
   const canDeploy = isPaidAndActive(subscriptionTier, subscriptionStatus);
+  const canGooglePlaces = canImportGooglePlaces(subscriptionTier, subscriptionStatus);
+  const canCompetitor = canUseCompetitorIntel(subscriptionTier, subscriptionStatus);
+  const canSocialProof = canUseSocialProofAggregator(subscriptionTier, subscriptionStatus);
 
   const handleDeploy = async () => {
     if (deploying || isGenerating) return;
@@ -382,12 +415,15 @@ function AppBuilderWorkspaceInner({ appId, loginNextPath }: AppBuilderWorkspaceP
                 </p>
               )}
               <PromptBar
-                variant="sidebar"
+                variant="cursor"
                 prompt={prompt}
                 onChange={setPrompt}
                 onGenerate={() => void handleGenerate()}
                 isGenerating={isGenerating}
                 statusMessage={statusMessage}
+                activityLog={activityLog}
+                streamingLine={isGenerating ? statusMessage : undefined}
+                onOpenGooglePlaces={() => googlePlacesRef.current?.open()}
                 subscriptionTier={subscriptionTier}
                 subscriptionStatus={subscriptionStatus}
                 useLocalOllama={useLocalOllama}
@@ -442,6 +478,14 @@ function AppBuilderWorkspaceInner({ appId, loginNextPath }: AppBuilderWorkspaceP
           )}
         </div>
       </div>
+
+      <GooglePlacesImport
+        ref={googlePlacesRef}
+        canImport={canGooglePlaces}
+        canUseCompetitorIntel={canCompetitor}
+        canUseSocialProof={canSocialProof}
+        onImport={handleGooglePlacesImport}
+      />
 
       <HelpAssistant mode="user" projectId={appId} />
     </div>

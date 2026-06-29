@@ -31,7 +31,6 @@ export const PUBLIC_PATHS = [
   '/privacy',
   '/terms',
   '/games',
-  '/brand',
 ];
 
 /** Public shareable preview pages (no auth) */

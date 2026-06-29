@@ -90,17 +90,19 @@ export default function PromptAttachMenu({
               Upload from computer
             </button>
           )}
-          {onOpenGooglePlaces && (
-            <button
-              type="button"
-              role="menuitem"
-              className="w-full text-left px-3 py-2 text-xs text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
-              onClick={() => pick(onOpenGooglePlaces)}
-            >
-              <span className="mr-2" aria-hidden>📍</span>
-              Google Business import
-            </button>
-          )}
+          <button
+            type="button"
+            role="menuitem"
+            className="w-full text-left px-3 py-2 text-xs text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+            onClick={() =>
+              pick(() => {
+                if (onOpenGooglePlaces) onOpenGooglePlaces();
+              })
+            }
+          >
+            <span className="mr-2" aria-hidden>📍</span>
+            Google Business import
+          </button>
           <Link
             href="/marketplace"
             role="menuitem"

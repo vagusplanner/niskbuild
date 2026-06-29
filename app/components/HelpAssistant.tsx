@@ -39,15 +39,17 @@ interface HelpAssistantProps {
 
 const STARTERS_USER = [
   'How do I build a todo app?',
-  'What can I build with NiskBuild?',
-  'How do I export my code?',
-  "What's the difference between Pro and Agency?",
-  'Help me debug my app',
+  'Import a Google Business listing into the builder',
+  'Connect Buffer and schedule social posts',
+  'Download logos from the Brand kit',
+  'How do I export my code to GitHub or ZIP?',
+  'What can Agency vs Pro do?',
 ];
 
 const STARTERS_ADMIN = [
+  'Social Hub: Buffer OAuth and UGC ramp',
   'Summarize open support tickets workflow',
-  'How do I apply a user discount?',
+  'Run buffer-social-hub migration checklist',
   'Stripe webhook checklist',
   'Which SQL migrations are required?',
 ];
