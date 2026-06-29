@@ -3,11 +3,12 @@ import { BRAND_COLORS } from '@/lib/brand-colors';
 export { BRAND_COLORS };
 export const BRAND_TAGLINE = 'Build anything. Own everything.';
 
-/** Same CSS tokens as Docs (`app/globals.css` + DocsMarkdown) */
+/** Cream preview box — matches Lockup light background */
+export const BRAND_LIGHT_BG = BRAND_COLORS.creamLight;
+
 export const DOCS_UI_COLORS = {
   background: BRAND_COLORS.bgBase,
   foreground: BRAND_COLORS.parchment,
-  /** Step body text in "Your first 15 minutes" numbered list */
   stepText: BRAND_COLORS.parchmentMuted,
   muted: BRAND_COLORS.parchmentMuted,
   link: BRAND_COLORS.copperMelt,
@@ -17,7 +18,6 @@ export const DOCS_UI_COLORS = {
   blockquoteBorder: BRAND_COLORS.copperPrimary,
 } as const;
 
-/** Copper SVG sources — single source for in-app + brand kit previews */
 export const BRAND_LOGO = {
   lockup: {
     src: '/logo/niskbuild-lockup.svg',
@@ -29,17 +29,37 @@ export const BRAND_LOGO = {
     aspectRatio: 750 / 200,
     alt: `NiskBuild — ${BRAND_TAGLINE}`,
   },
+  iconLight: {
+    src: '/logo/niskbuild-icon-light.svg',
+    aspectRatio: 1,
+    alt: 'NiskBuild',
+  },
   icon: {
     src: '/logo/niskbuild-icon.svg',
     aspectRatio: 1,
     alt: 'NiskBuild',
   },
+  wordmarkLight: {
+    src: '/logo/niskbuild-wordmark-light.svg',
+    aspectRatio: 600 / 160,
+    alt: 'NiskBuild wordmark',
+  },
   wordmark: {
-    src: '/logo/niskbuild-wordmark.svg',
+    src: '/logo/niskbuild-wordmark-light.svg',
     aspectRatio: 600 / 160,
     alt: 'NiskBuild wordmark',
   },
 } as const;
+
+export type IconSizeOption = {
+  id: string;
+  label: string;
+  previewSrc: string;
+  pngHref: string;
+  pngFilename: string;
+  width: number;
+  height: number;
+};
 
 export type BrandAsset = {
   id: string;
@@ -54,6 +74,9 @@ export type BrandAsset = {
   pngFilename: string;
   pngWidth?: number;
   pngHeight?: number;
+  /** App / profile icons — pick size before download */
+  iconSizes?: IconSizeOption[];
+  defaultIconSize?: string;
 };
 
 export type BrandAssetGroup = {
@@ -65,14 +88,15 @@ export type BrandAssetGroup = {
 
 export const BRAND_PALETTE_SWATCHES = [
   { name: 'Forge dark (background)', token: '--bg-base', hex: BRAND_COLORS.bgBase, usage: 'App shell, Docs, Google theme-color' },
+  { name: 'Cream light (icon box)', token: 'creamLight', hex: BRAND_COLORS.creamLight, usage: 'App icon · wordmark · lockup light' },
+  { name: 'Matte iron', token: 'ironMatte', hex: BRAND_COLORS.ironMatte, usage: 'Logo forge plate (lighter, visible on dark UI)' },
   { name: 'Copper primary', token: '--copper-primary', hex: BRAND_COLORS.copperPrimary, usage: 'Buttons, borders, logo facets' },
   { name: 'Copper light / melt', token: '--copper-melt', hex: BRAND_COLORS.copperMelt, usage: 'Links on Docs, taglines, highlights' },
   { name: 'Cream / parchment', token: '--foreground', hex: BRAND_COLORS.parchment, usage: 'Body text on dark UI' },
-  { name: 'Muted parchment', token: '--muted', hex: BRAND_COLORS.parchmentMuted, usage: 'Docs step text (#8a7d6e)' },
-  { name: 'Iron surface', token: '--surface', hex: BRAND_COLORS.ironLight, usage: 'Cards, panels' },
 ] as const;
 
-/** Official downloads — PDF + PNG (PNG regenerated from copper SVGs) */
+const ICON_PREVIEW = BRAND_LOGO.iconLight.src;
+
 export const BRAND_ASSET_GROUPS: BrandAssetGroup[] = [
   {
     id: 'social-profile',
@@ -82,30 +106,81 @@ export const BRAND_ASSET_GROUPS: BrandAssetGroup[] = [
       {
         id: 'icon',
         label: 'App icon',
-        description: 'Official copper forge mark — square format.',
+        description: 'Official copper forge mark on cream — full-bleed for favicons and app stores.',
         useCase: 'Profile picture · App stores · Google search favicon',
-        previewSrc: BRAND_LOGO.icon.src,
-        previewBg: 'dark',
+        previewSrc: ICON_PREVIEW,
+        previewBg: 'light',
         pdfHref: '/logo/niskbuild-icon.pdf',
         pdfFilename: 'niskbuild-icon.pdf',
         pngHref: '/logo/icon-512.png',
         pngFilename: 'niskbuild-icon-512.png',
         pngWidth: 512,
         pngHeight: 512,
+        defaultIconSize: '512',
+        iconSizes: [
+          {
+            id: '512',
+            label: '512×512',
+            previewSrc: ICON_PREVIEW,
+            pngHref: '/logo/icon-512.png',
+            pngFilename: 'niskbuild-icon-512.png',
+            width: 512,
+            height: 512,
+          },
+          {
+            id: '180',
+            label: '180×180',
+            previewSrc: ICON_PREVIEW,
+            pngHref: '/logo/icon-180.png',
+            pngFilename: 'niskbuild-icon-180.png',
+            width: 180,
+            height: 180,
+          },
+          {
+            id: '32',
+            label: '32×32',
+            previewSrc: ICON_PREVIEW,
+            pngHref: '/logo/icon-32.png',
+            pngFilename: 'niskbuild-icon-32.png',
+            width: 32,
+            height: 32,
+          },
+        ],
       },
       {
         id: 'icon-small',
         label: 'Small profile icon',
-        description: '180×180 — Twitter/X, Slack, Apple touch icon.',
-        useCase: 'Smaller avatar slots · link previews',
-        previewSrc: BRAND_LOGO.icon.src,
-        previewBg: 'dark',
+        description: '180×180 — Twitter/X, Slack, Apple touch icon. Same cream full-bleed mark.',
+        useCase: 'Smaller avatar slots · link previews · Firefox tab',
+        previewSrc: ICON_PREVIEW,
+        previewBg: 'light',
         pdfHref: '/logo/niskbuild-icon.pdf',
         pdfFilename: 'niskbuild-icon.pdf',
         pngHref: '/logo/icon-180.png',
         pngFilename: 'niskbuild-icon-180.png',
         pngWidth: 180,
         pngHeight: 180,
+        defaultIconSize: '180',
+        iconSizes: [
+          {
+            id: '180',
+            label: '180×180',
+            previewSrc: ICON_PREVIEW,
+            pngHref: '/logo/icon-180.png',
+            pngFilename: 'niskbuild-icon-180.png',
+            width: 180,
+            height: 180,
+          },
+          {
+            id: '512',
+            label: '512×512',
+            previewSrc: ICON_PREVIEW,
+            pngHref: '/logo/icon-512.png',
+            pngFilename: 'niskbuild-icon-512.png',
+            width: 512,
+            height: 512,
+          },
+        ],
       },
     ],
   },
@@ -116,9 +191,9 @@ export const BRAND_ASSET_GROUPS: BrandAssetGroup[] = [
     assets: [
       {
         id: 'lockup',
-        label: 'Full lockup (dark)',
-        description: 'Icon + NiskBuild + tagline on forge dark background.',
-        useCase: 'Instagram posts · LinkedIn banner · presentations',
+        label: 'Full lockup (matte iron)',
+        description: 'Icon + NiskBuild + tagline on lighter matte iron (readable on dark UI).',
+        useCase: 'Instagram posts · LinkedIn banner · in-app navbar',
         previewSrc: BRAND_LOGO.lockup.src,
         previewBg: 'dark',
         pdfHref: '/logo/niskbuild-lockup-full.pdf',
@@ -148,10 +223,10 @@ export const BRAND_ASSET_GROUPS: BrandAssetGroup[] = [
       {
         id: 'wordmark',
         label: 'Wordmark',
-        description: 'NiskBuild typography in official copper palette.',
+        description: 'NiskBuild typography on cream — official copper palette.',
         useCase: 'Watermarks · footers · co-branding',
-        previewSrc: BRAND_LOGO.wordmark.src,
-        previewBg: 'dark',
+        previewSrc: BRAND_LOGO.wordmarkLight.src,
+        previewBg: 'light',
         pdfHref: '/logo/niskbuild-wordmark.pdf',
         pdfFilename: 'niskbuild-wordmark.pdf',
         pngHref: '/logo/niskbuild-wordmark-raster.png',

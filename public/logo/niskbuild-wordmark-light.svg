@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 160" width="600" height="160" aria-label="NiskBuild wordmark on cream" role="img">
+  <defs>
+    <linearGradient id="buildCopperLight" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8f5a28"/>
+      <stop offset="50%" stop-color="#b87333"/>
+      <stop offset="100%" stop-color="#d49a5c"/>
+    </linearGradient>
+    <linearGradient id="taglineCopperLight" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#d49a5c"/>
+      <stop offset="55%" stop-color="#b87333"/>
+      <stop offset="100%" stop-color="#8f5a28"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="160" fill="#f5ebe0" rx="12"/>
+  <g transform="translate(35, 90)">
+    <text font-family="system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" font-size="68" font-weight="900" letter-spacing="-1.5">
+      <tspan fill="#1a1612">NISK</tspan>
+      <tspan fill="url(#buildCopperLight)" dx="16">BUILD</tspan>
+    </text>
+  </g>
+  <g transform="translate(38, 130)">
+    <text font-family="system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,monospace" font-size="15" font-weight="800" fill="url(#taglineCopperLight)">BUILD ANYTHING. OWN EVERYTHING.</text>
+  </g>
+</svg>

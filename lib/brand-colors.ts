@@ -13,6 +13,12 @@ export const BRAND_COLORS = {
   ember: '#a84a20',
   parchment: '#e8dcc8',
   parchmentMuted: '#8a7d6e',
+  /** Lockup light / icon preview background */
+  creamLight: '#f5ebe0',
+  /** Lighter matte iron — visible on dark UI, still forged */
+  ironMatte: '#5c5248',
+  ironMatteMid: '#4a433c',
+  ironMatteLight: '#6b6258',
   codeBg: '#1e1a16',
   bgGradient:
     'linear-gradient(145deg, #151210 0%, #1a1612 42%, #1e1a16 100%)',

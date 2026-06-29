@@ -1,29 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" aria-label="NiskBuild" role="img">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" aria-label="NiskBuild app icon" role="img">
   <defs>
-    <linearGradient id="iconForgePlate" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#2a2622"/>
+    <linearGradient id="ironPillarsLight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4a433c"/>
       <stop offset="100%" stop-color="#1a1612"/>
     </linearGradient>
-    <linearGradient id="iconIronPillars" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#3d3530"/>
-      <stop offset="100%" stop-color="#12100e"/>
-    </linearGradient>
-    <linearGradient id="iconCopperL" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="copperFacetLLight" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#d49a5c"/>
       <stop offset="100%" stop-color="#d4a574"/>
     </linearGradient>
-    <linearGradient id="iconCopperR" x1="0%" y1="100%" x2="100%" y2="0%">
+    <linearGradient id="copperFacetRLight" x1="0%" y1="100%" x2="100%" y2="0%">
       <stop offset="0%" stop-color="#8f5a28"/>
       <stop offset="100%" stop-color="#b87333"/>
     </linearGradient>
   </defs>
-  <rect width="100%" height="100%" fill="url(#iconForgePlate)" rx="12"/>
-  <g transform="translate(52, 40)">
-    <path d="M 0,0 L 45,0 L 45,150 L 0,150 Z" fill="url(#iconIronPillars)"/>
-    <path d="M 90,0 L 135,0 L 135,150 L 90,150 Z" fill="url(#iconIronPillars)"/>
-    <path d="M 45,0 L 68,75 L 45,115 L 45,45 Z" fill="url(#iconCopperL)"/>
-    <path d="M 90,150 L 68,75 L 90,35 L 90,105 Z" fill="url(#iconCopperR)"/>
-    <polygon points="45,115 68,75 90,150" fill="#12100e" opacity="0.35"/>
+  <rect width="240" height="240" fill="#f5ebe0"/>
+  <g transform="translate(18, 6) scale(1.52)">
+    <path d="M 0,0 L 45,0 L 45,150 L 0,150 Z" fill="url(#ironPillarsLight)"/>
+    <path d="M 90,0 L 135,0 L 135,150 L 90,150 Z" fill="url(#ironPillarsLight)"/>
+    <path d="M 45,0 L 68,75 L 45,115 L 45,45 Z" fill="url(#copperFacetLLight)"/>
+    <path d="M 90,150 L 68,75 L 90,35 L 90,105 Z" fill="url(#copperFacetRLight)"/>
+    <polygon points="45,115 68,75 90,150" fill="#1a1612" opacity="0.22"/>
     <polygon points="90,35 68,75 45,0" fill="#d49a5c" opacity="0.35"/>
   </g>
 </svg>
