@@ -1,12 +1,15 @@
 "use client";
 
-import { useState, useCallback, useRef } from 'react';
-import Link from 'next/link';
+import { useState, useCallback, useRef, forwardRef, useImperativeHandle } from 'react';
 import type {
   GooglePlacesBusiness,
   GooglePlacesProjectContext,
   GooglePlacesSearchResult,
 } from '@/lib/google-places-types';
+
+export type GooglePlacesImportHandle = {
+  open: () => void;
+};
 
 type GooglePlacesImportProps = {
   canImport: boolean;
@@ -15,12 +18,16 @@ type GooglePlacesImportProps = {
   onImport: (business: GooglePlacesBusiness, context: GooglePlacesProjectContext) => void;
 };
 
-export default function GooglePlacesImport({
-  canImport,
-  canUseCompetitorIntel = false,
-  canUseSocialProof = false,
-  onImport,
-}: GooglePlacesImportProps) {
+const GooglePlacesImport = forwardRef<GooglePlacesImportHandle, GooglePlacesImportProps>(
+  function GooglePlacesImport(
+    {
+      canImport,
+      canUseCompetitorIntel = false,
+      canUseSocialProof = false,
+      onImport,
+    },
+    ref
+  ) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<GooglePlacesSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -143,7 +150,7 @@ export default function GooglePlacesImport({
     setError(null);
   };
 
-  const openModal = () => {
+  const openModal = useCallback(() => {
     if (!canImport) {
       const go = confirm(
         'Google Places import requires an active Pro plan or above.\n\nOpen Pricing?'
@@ -152,32 +159,12 @@ export default function GooglePlacesImport({
       return;
     }
     setShowModal(true);
-  };
+  }, [canImport]);
+
+  useImperativeHandle(ref, () => ({ open: openModal }), [openModal]);
 
   return (
     <>
-      <div className="shrink-0 px-0 pb-0">
-        <p className="text-[10px] text-nisk-muted mb-2">
-          Import a local business with AI enrichment — not just data, real insight.
-        </p>
-        <button
-          type="button"
-          onClick={openModal}
-          className="w-full py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 bg-gradient-brand text-white hover:opacity-90"
-        >
-          <span>📍</span>
-          Import Business from Google
-        </button>
-        <p className="text-[10px] text-nisk-muted text-center mt-1.5">
-          <Link href="/docs/google-import" className="text-[var(--accent-cyan)] hover:underline">
-            How it works
-          </Link>
-          {!canImport && (
-            <span className="text-nisk-muted"> · Pro plan required</span>
-          )}
-        </p>
-      </div>
-
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
           <div className="w-full max-w-lg rounded-2xl border border-nisk bg-nisk-card shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -620,4 +607,6 @@ export default function GooglePlacesImport({
       )}
     </>
   );
-}
+});
+
+export default GooglePlacesImport;

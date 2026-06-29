@@ -149,6 +149,11 @@ export default function BrandPage() {
           <div className="rounded-xl border border-nisk bg-[var(--surface)]/50 p-4 mb-6">
             <h3 className="text-sm font-semibold text-white mb-2">Docs page uses</h3>
             <ul className="text-xs text-nisk-muted space-y-1 font-mono">
+              <li>
+                Step text (e.g. &quot;Your first 15 minutes&quot;) →{' '}
+                <span style={{ color: DOCS_UI_COLORS.stepText }}>{DOCS_UI_COLORS.stepText}</span>{' '}
+                (muted parchment)
+              </li>
               <li>Links → <span style={{ color: DOCS_UI_COLORS.link }}>{DOCS_UI_COLORS.link}</span> (copper melt)</li>
               <li>Body text → {DOCS_UI_COLORS.muted} (muted parchment)</li>
               <li>Headings → {DOCS_UI_COLORS.foreground} (parchment)</li>
@@ -175,7 +180,7 @@ export default function BrandPage() {
                 Lockup PDF
               </Link>
               {' · '}
-              <Link href="/logo/niskbuild-lockup-brand.png" download="niskbuild-lockup.png" className="text-[var(--accent-cyan)] hover:underline">
+              <Link href="/logo/niskbuild-lockup-raster.png" download="niskbuild-lockup.png" className="text-[var(--accent-cyan)] hover:underline">
                 Lockup PNG
               </Link>
             </li>

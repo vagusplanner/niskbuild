@@ -41,7 +41,7 @@ export default function DocsMarkdown({ content }: DocsMarkdownProps) {
             <ul className="list-disc list-outside ml-5 space-y-2 text-nisk-muted mb-4">{children}</ul>
           ),
           ol: ({ children }) => (
-            <ol className="docs-numbered-steps space-y-3 mb-6 list-none pl-0">{children}</ol>
+            <ol className="docs-numbered-steps space-y-3 mb-6 list-none pl-0 text-[var(--muted)]">{children}</ol>
           ),
           li: ({ children }) => <li className="leading-relaxed">{children}</li>,
           blockquote: ({ children }) => (
@@ -106,7 +106,10 @@ export default function DocsMarkdown({ content }: DocsMarkdownProps) {
           border-radius: 0.75rem;
           border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
           background: color-mix(in srgb, var(--surface) 60%, transparent);
-          color: var(--muted-foreground, #9ca3af);
+          color: var(--muted, #8a7d6e);
+        }
+        .docs-numbered-steps > li strong {
+          color: var(--foreground, #e8dcc8);
         }
         .docs-numbered-steps > li::before {
           content: counter(docs-step);

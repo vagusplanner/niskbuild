@@ -1,13 +1,15 @@
 "use client";
 
-import { useRef, useState, useEffect, type ReactNode } from 'react';
+import { useRef, useState, useEffect, type ReactNode, type RefObject } from 'react';
 import Link from 'next/link';
 import InspectPicker, { type InspectTarget } from '@/app/components/InspectPicker';
 import ProjectLimitBadge from '@/app/components/ProjectLimitBadge';
 import BuilderActionsMenu from '@/app/components/BuilderActionsMenu';
 import BuilderInspectorPanel, { type InspectorTab } from '@/app/components/BuilderInspectorPanel';
 import VisualEditorToolbar from '@/app/components/VisualEditorToolbar';
-import GooglePlacesImport from '@/app/components/GooglePlacesImport';
+import GooglePlacesImport, {
+  type GooglePlacesImportHandle,
+} from '@/app/components/GooglePlacesImport';
 import CollapsibleSection from '@/app/components/CollapsibleSection';
 import PromptBar from '@/app/components/PromptBar';
 import PreviewDeviceSwitcher, {
@@ -231,7 +233,7 @@ function CanvasHeader({
   const codeViewActive = inspectorOpen && inspectorTab === 'code';
 
   return (
-    <div className="shrink-0 flex items-center justify-between gap-2 px-3 py-2 border-b border-nisk builder-canvas-header">
+    <div className="shrink-0 flex items-center justify-between gap-2 px-3 py-1.5 border-b border-nisk builder-canvas-header">
       <div className="flex items-center gap-2 min-w-0">
         {showViewToggle && onFocusPreview && onOpenCodeView && (
           <div className="flex gap-0.5 p-0.5 rounded-lg bg-[var(--surface)] border border-nisk">
@@ -483,6 +485,7 @@ function ChatPanelContent({
   onUseLocalOllamaChange,
   onOllamaUpgrade,
   onRestoreZip,
+  googlePlacesRef,
 }: {
   userId?: string;
   savedProjectsCount: number;
@@ -517,6 +520,7 @@ function ChatPanelContent({
   onUseLocalOllamaChange: (enabled: boolean) => void;
   onOllamaUpgrade: () => void;
   onRestoreZip: (file: File) => Promise<void>;
+  googlePlacesRef: RefObject<GooglePlacesImportHandle | null>;
 }) {
   return (
     <>
@@ -547,21 +551,12 @@ function ChatPanelContent({
 
       <div className="builder-chat-scroll">
         {importedBusinessName && (
-          <div className="mx-3 mt-2 px-3 py-2 rounded-lg border border-[var(--accent-cyan)]/30 bg-[var(--accent-cyan)]/10">
-            <p className="text-[10px] text-[var(--accent-cyan)] font-medium">
+          <div className="mx-3 mt-2 px-3 py-2 rounded-lg border border-[var(--copper-primary)]/30 bg-[var(--copper-primary)]/10">
+            <p className="text-[10px] text-[var(--copper-melt)] font-medium">
               📍 {importedBusinessName}
             </p>
           </div>
         )}
-
-        <CollapsibleSection title="Import tools" defaultOpen={false} id="builder-import-tools">
-          <GooglePlacesImport
-            canImport={canImportGooglePlaces}
-            canUseCompetitorIntel={canUseCompetitorIntel}
-            canUseSocialProof={canUseSocialProof}
-            onImport={onGooglePlacesImport}
-          />
-        </CollapsibleSection>
 
         {recentProjects.length > 0 && (
           <CollapsibleSection title="Recent" badge={String(recentProjects.length)}>
@@ -583,9 +578,7 @@ function ChatPanelContent({
           onGenerate={onGenerate}
           onBuildFromFigmaScreenshot={onBuildFromFigmaScreenshot}
           onUploadZip={(file) => void onRestoreZip(file)}
-          onOpenGooglePlaces={() => {
-            document.getElementById('builder-import-tools')?.scrollIntoView({ behavior: 'smooth' });
-          }}
+          onOpenGooglePlaces={() => googlePlacesRef.current?.open()}
           projectId={activeProjectId}
           isGenerating={isGenerating}
           statusMessage={statusMessage}
@@ -610,6 +603,14 @@ function ChatPanelContent({
           )}
         </div>
       </div>
+
+      <GooglePlacesImport
+        ref={googlePlacesRef}
+        canImport={canImportGooglePlaces}
+        canUseCompetitorIntel={canUseCompetitorIntel}
+        canUseSocialProof={canUseSocialProof}
+        onImport={onGooglePlacesImport}
+      />
     </>
   );
 }
@@ -729,6 +730,11 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
 
   const showStylesTab = visualEditMode && !!selectedVisualElement;
 
+  const previewFullscreenRef = useRef<HTMLDivElement>(null);
+  const mobilePreviewFullscreenRef = useRef<HTMLDivElement>(null);
+  const googlePlacesRef = useRef<GooglePlacesImportHandle>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
   const handleFocusPreview = () => {
     onInspectorOpenChange(false);
   };
@@ -770,6 +776,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
       onUseLocalOllamaChange={onUseLocalOllamaChange}
       onOllamaUpgrade={onOllamaUpgrade}
       onRestoreZip={props.onRestoreZip}
+      googlePlacesRef={googlePlacesRef}
     />
   );
 
@@ -790,10 +797,6 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
       hideEditToggle
     />
   );
-
-  const previewFullscreenRef = useRef<HTMLDivElement>(null);
-  const mobilePreviewFullscreenRef = useRef<HTMLDivElement>(null);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const togglePreviewFullscreen = () => {
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;

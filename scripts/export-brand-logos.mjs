@@ -1,66 +1,63 @@
 #!/usr/bin/env node
 /**
- * Exports attached brand PDFs to web-ready PNG assets.
- * Source PDFs (place in public/logo/):
- *   - icon logo niskbuild.pdf
- *   - logo typo only niskbuild.pdf
- *   - logo+typo niskbuild.pdf
- *
+ * Export copper brand assets from SVG (source of truth) + PDF aliases.
  * Run: npm run export:brand-logos
  */
-import { copyFileSync, existsSync } from 'fs';
+import { copyFileSync, existsSync, unlinkSync } from 'fs';
 import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { dirname, join, basename } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const logoDir = join(__dirname, '..', 'public', 'logo');
+const publicDir = join(__dirname, '..', 'public');
 
-const sources = [
-  { pdf: 'icon logo niskbuild.pdf', png: 'niskbuild-icon-brand.png' },
-  { pdf: 'logo+typo niskbuild.pdf', png: 'niskbuild-lockup-brand.png' },
-  { pdf: 'logo typo only niskbuild.pdf', png: 'niskbuild-wordmark-brand.png' },
-];
+function rasterizeSvg(svgName, outName, size) {
+  const svgPath = join(logoDir, svgName);
+  const outPath = join(logoDir, outName);
+  const thumbPath = join(logoDir, `${basename(svgPath)}.png`);
 
-for (const { pdf, png } of sources) {
-  const pdfPath = join(logoDir, pdf);
-  const thumbPath = join(logoDir, `${pdf}.png`);
-  const outPath = join(logoDir, png);
-  if (!existsSync(pdfPath)) {
-    console.warn(`Skip (missing): ${pdfPath}`);
-    continue;
+  if (!existsSync(svgPath)) {
+    console.warn(`Skip raster (missing SVG): ${svgPath}`);
+    return;
   }
+
+  if (existsSync(thumbPath)) unlinkSync(thumbPath);
+  execSync(`qlmanage -t -s ${size} -o "${logoDir}" "${svgPath}"`, { stdio: 'pipe' });
+
   if (!existsSync(thumbPath)) {
-    execSync(`qlmanage -t -s 2048 -o "${logoDir}" "${pdfPath}"`, { stdio: 'inherit' });
+    console.warn(`Skip raster (qlmanage failed): ${svgName}`);
+    return;
   }
-  if (existsSync(thumbPath)) {
-    copyFileSync(thumbPath, outPath);
-    console.log(`Wrote ${outPath}`);
-  }
+
+  copyFileSync(thumbPath, outPath);
+  unlinkSync(thumbPath);
+  console.log(`Raster ${outName} (${size}px) from ${svgName}`);
 }
 
-const pdfAliases = [
-  { src: 'icon logo niskbuild.pdf', dest: 'niskbuild-icon.pdf' },
-  { src: 'logo+typo niskbuild.pdf', dest: 'niskbuild-lockup-full.pdf' },
-  { src: 'logo typo only niskbuild.pdf', dest: 'niskbuild-wordmark.pdf' },
-];
-for (const { src, dest } of pdfAliases) {
-  const from = join(logoDir, src);
-  const to = join(logoDir, dest);
-  if (existsSync(from)) {
-    copyFileSync(from, to);
-    console.log(`PDF alias: ${dest}`);
-  }
-}
+/** Copper SVG → PNG (correct colors for social + favicon) */
+rasterizeSvg('niskbuild-icon.svg', 'icon-512.png', 512);
+rasterizeSvg('niskbuild-lockup.svg', 'niskbuild-lockup-raster.png', 1500);
+rasterizeSvg('niskbuild-lockup-light.svg', 'niskbuild-lockup-light-raster.png', 1500);
+rasterizeSvg('niskbuild-wordmark.svg', 'niskbuild-wordmark-raster.png', 1200);
 
-for (const size of [32, 180, 512]) {
-  const icon = join(logoDir, 'niskbuild-icon-brand.png');
+for (const size of [32, 180]) {
+  const src = join(logoDir, 'icon-512.png');
   const out = join(logoDir, `icon-${size}.png`);
-  execSync(`sips -z ${size} ${size} "${icon}" --out "${out}"`, { stdio: 'inherit' });
+  if (existsSync(src)) {
+    execSync(`sips -z ${size} ${size} "${src}" --out "${out}"`, { stdio: 'pipe' });
+    console.log(`Icon ${size}px`);
+  }
 }
 
-copyFileSync(join(logoDir, 'niskbuild-lockup-brand.png'), join(logoDir, 'niskbuild-lockup.png'));
-copyFileSync(join(logoDir, 'niskbuild-icon-brand.png'), join(__dirname, '..', 'public', 'logo-icon.png'));
-copyFileSync(join(logoDir, 'icon-512.png'), join(__dirname, '..', 'public', 'logo.png'));
+if (existsSync(join(logoDir, 'icon-512.png'))) {
+  copyFileSync(join(logoDir, 'icon-512.png'), join(publicDir, 'logo.png'));
+  copyFileSync(join(logoDir, 'icon-512.png'), join(publicDir, 'logo-icon.png'));
+}
+if (existsSync(join(logoDir, 'niskbuild-lockup-raster.png'))) {
+  copyFileSync(join(logoDir, 'niskbuild-lockup-raster.png'), join(logoDir, 'niskbuild-lockup.png'));
+}
+
+execSync('node scripts/generate-brand-pdfs.mjs', { stdio: 'inherit', cwd: join(__dirname, '..') });
 execSync('node scripts/generate-favicon.mjs', { stdio: 'inherit', cwd: join(__dirname, '..') });
-console.log('Brand logo export complete.');
+console.log('Brand logo export complete (copper SVG raster).');

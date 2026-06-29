@@ -162,7 +162,11 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
   const isBuilder = variant === 'builder';
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-16 glass-nav forge-plate brick-header-strip">
+    <header
+      className={`z-50 shrink-0 glass-nav forge-plate brick-header-strip ${
+        isBuilder ? 'relative h-12' : 'fixed top-0 left-0 right-0 h-16'
+      }`}
+    >
       <div className="h-full max-w-[1800px] mx-auto px-4 flex items-center justify-between gap-4">
         {user ? (
           <LogoNavMenu

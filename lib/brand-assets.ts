@@ -7,6 +7,8 @@ export const BRAND_TAGLINE = 'Build anything. Own everything.';
 export const DOCS_UI_COLORS = {
   background: BRAND_COLORS.bgBase,
   foreground: BRAND_COLORS.parchment,
+  /** Step body text in "Your first 15 minutes" numbered list */
+  stepText: BRAND_COLORS.parchmentMuted,
   muted: BRAND_COLORS.parchmentMuted,
   link: BRAND_COLORS.copperMelt,
   linkHover: BRAND_COLORS.copperPrimary,
@@ -15,17 +17,27 @@ export const DOCS_UI_COLORS = {
   blockquoteBorder: BRAND_COLORS.copperPrimary,
 } as const;
 
-/** In-app display — copper lockup SVG + square icon PNG from brand PDF export */
+/** Copper SVG sources — single source for in-app + brand kit previews */
 export const BRAND_LOGO = {
   lockup: {
     src: '/logo/niskbuild-lockup.svg',
     aspectRatio: 750 / 200,
     alt: `NiskBuild — ${BRAND_TAGLINE}`,
   },
+  lockupLight: {
+    src: '/logo/niskbuild-lockup-light.svg',
+    aspectRatio: 750 / 200,
+    alt: `NiskBuild — ${BRAND_TAGLINE}`,
+  },
   icon: {
-    src: '/logo/icon-512.png',
+    src: '/logo/niskbuild-icon.svg',
     aspectRatio: 1,
     alt: 'NiskBuild',
+  },
+  wordmark: {
+    src: '/logo/niskbuild-wordmark.svg',
+    aspectRatio: 600 / 160,
+    alt: 'NiskBuild wordmark',
   },
 } as const;
 
@@ -56,11 +68,11 @@ export const BRAND_PALETTE_SWATCHES = [
   { name: 'Copper primary', token: '--copper-primary', hex: BRAND_COLORS.copperPrimary, usage: 'Buttons, borders, logo facets' },
   { name: 'Copper light / melt', token: '--copper-melt', hex: BRAND_COLORS.copperMelt, usage: 'Links on Docs, taglines, highlights' },
   { name: 'Cream / parchment', token: '--foreground', hex: BRAND_COLORS.parchment, usage: 'Body text on dark UI' },
-  { name: 'Copper dark', token: '--copper-dark', hex: BRAND_COLORS.copperDark, usage: 'Hover states, depth' },
+  { name: 'Muted parchment', token: '--muted', hex: BRAND_COLORS.parchmentMuted, usage: 'Docs step text (#8a7d6e)' },
   { name: 'Iron surface', token: '--surface', hex: BRAND_COLORS.ironLight, usage: 'Cards, panels' },
 ] as const;
 
-/** Official downloads — PDF source files + PNG exports for social */
+/** Official downloads — PDF + PNG (PNG regenerated from copper SVGs) */
 export const BRAND_ASSET_GROUPS: BrandAssetGroup[] = [
   {
     id: 'social-profile',
@@ -72,7 +84,7 @@ export const BRAND_ASSET_GROUPS: BrandAssetGroup[] = [
         label: 'App icon',
         description: 'Official copper forge mark — square format.',
         useCase: 'Profile picture · App stores · Google search favicon',
-        previewSrc: '/logo/icon-512.png',
+        previewSrc: BRAND_LOGO.icon.src,
         previewBg: 'dark',
         pdfHref: '/logo/niskbuild-icon.pdf',
         pdfFilename: 'niskbuild-icon.pdf',
@@ -86,7 +98,7 @@ export const BRAND_ASSET_GROUPS: BrandAssetGroup[] = [
         label: 'Small profile icon',
         description: '180×180 — Twitter/X, Slack, Apple touch icon.',
         useCase: 'Smaller avatar slots · link previews',
-        previewSrc: '/logo/icon-180.png',
+        previewSrc: BRAND_LOGO.icon.src,
         previewBg: 'dark',
         pdfHref: '/logo/niskbuild-icon.pdf',
         pdfFilename: 'niskbuild-icon.pdf',
@@ -104,14 +116,14 @@ export const BRAND_ASSET_GROUPS: BrandAssetGroup[] = [
     assets: [
       {
         id: 'lockup',
-        label: 'Full lockup',
-        description: 'Icon + NiskBuild + tagline on brand forge background.',
+        label: 'Full lockup (dark)',
+        description: 'Icon + NiskBuild + tagline on forge dark background.',
         useCase: 'Instagram posts · LinkedIn banner · presentations',
-        previewSrc: '/logo/niskbuild-lockup-brand.png',
+        previewSrc: BRAND_LOGO.lockup.src,
         previewBg: 'dark',
         pdfHref: '/logo/niskbuild-lockup-full.pdf',
         pdfFilename: 'niskbuild-lockup.pdf',
-        pngHref: '/logo/niskbuild-lockup-brand.png',
+        pngHref: '/logo/niskbuild-lockup-raster.png',
         pngFilename: 'niskbuild-lockup.png',
       },
       {
@@ -119,12 +131,12 @@ export const BRAND_ASSET_GROUPS: BrandAssetGroup[] = [
         label: 'Lockup — light background',
         description: 'Copper mark on cream — for white/light social posts.',
         useCase: 'Light Instagram stories · print on white',
-        previewSrc: '/logo/niskbuild-lockup-light.svg',
+        previewSrc: BRAND_LOGO.lockupLight.src,
         previewBg: 'light',
         pdfHref: '/logo/niskbuild-lockup-full.pdf',
         pdfFilename: 'niskbuild-lockup.pdf',
-        pngHref: '/logo/niskbuild-lockup-brand.png',
-        pngFilename: 'niskbuild-lockup.png',
+        pngHref: '/logo/niskbuild-lockup-light-raster.png',
+        pngFilename: 'niskbuild-lockup-light.png',
       },
     ],
   },
@@ -138,11 +150,11 @@ export const BRAND_ASSET_GROUPS: BrandAssetGroup[] = [
         label: 'Wordmark',
         description: 'NiskBuild typography in official copper palette.',
         useCase: 'Watermarks · footers · co-branding',
-        previewSrc: '/logo/niskbuild-wordmark-brand.png',
+        previewSrc: BRAND_LOGO.wordmark.src,
         previewBg: 'dark',
         pdfHref: '/logo/niskbuild-wordmark.pdf',
         pdfFilename: 'niskbuild-wordmark.pdf',
-        pngHref: '/logo/niskbuild-wordmark-brand.png',
+        pngHref: '/logo/niskbuild-wordmark-raster.png',
         pngFilename: 'niskbuild-wordmark.png',
       },
     ],

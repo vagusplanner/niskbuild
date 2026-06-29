@@ -98,7 +98,7 @@ export default function PromptAttachMenu({
               onClick={() => pick(onOpenGooglePlaces)}
             >
               <span className="mr-2" aria-hidden>📍</span>
-              Google Places import
+              Google Business import
             </button>
           )}
           <Link

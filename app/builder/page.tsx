@@ -93,7 +93,7 @@ const CodeEditor = dynamic(() => import('@/app/components/CodeEditor'), {
 const EDITOR_PLACEHOLDER = `// Your generated code will appear here...
 // Describe your app below and press Generate`;
 
-const PLACEHOLDER_PREVIEW = `<div style="display:flex;align-items:center;justify-content:center;height:100%;background:linear-gradient(160deg,#f8fafc 0%,#e2e8f0 100%);color:#64748b;font-family:system-ui,sans-serif;font-size:14px;text-align:center;padding:2rem;"><div style="max-width:320px;padding:2rem;background:#fff;border-radius:16px;box-shadow:0 8px 32px rgba(15,23,42,0.08);border:1px solid #e2e8f0;"><div style="font-size:36px;margin-bottom:12px">✨</div><p style="margin:0 0 8px;font-weight:600;color:#0f172a;">Your preview appears here</p><p style="margin:0;font-size:13px;">Describe your app in the chat and hit <strong style="color:#3B5BD9">Generate</strong></p></div></div>`;
+const PLACEHOLDER_PREVIEW = `<div style="display:flex;align-items:center;justify-content:center;height:100%;background:linear-gradient(160deg,#1e1a16 0%,#1a1612 100%);color:#8a7d6e;font-family:system-ui,sans-serif;font-size:14px;text-align:center;padding:2rem;"><div style="max-width:320px;padding:2rem;background:#241f1a;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.35);border:1px solid rgba(184,115,51,0.2);"><div style="font-size:36px;margin-bottom:12px">✨</div><p style="margin:0 0 8px;font-weight:600;color:#e8dcc8;">Your preview appears here</p><p style="margin:0;font-size:13px;">Describe your app in the chat and hit <strong style="color:#d49a5c">Generate</strong></p></div></div>`;
 
 interface SavedProject {
   id: string;
@@ -740,7 +740,7 @@ function BuilderContent() {
         );
         if (sandbox) {
           setPreviewHtml(
-            `<div style="padding:2rem;color:#94A3B8;background:#0B0F19;height:100%;text-align:center"><h3>Sandbox — Local AI</h3><p>Run Ollama locally, or <a href="/pricing" style="color:#7C3AED">upgrade to Pro</a> for cloud AI.</p></div>`
+            `<div style="padding:2rem;color:#94A3B8;background:#1a1612;height:100%;text-align:center"><h3>Sandbox — Local AI</h3><p>Run Ollama locally, or <a href="/pricing" style="color:#d49a5c">upgrade to Pro</a> for cloud AI.</p></div>`
           );
         }
         setStatusMessage(`❌ ${localData.error || 'Local generation failed'}`);
@@ -780,7 +780,7 @@ function BuilderContent() {
         const errMsg = selfHealData.error || 'Cloud generation unavailable';
         setGeneratedCode(`// Error: ${errMsg}`);
         setPreviewHtml(
-          `<div style="padding:2rem;color:#EF4444;background:#1a0a0a;height:100%;text-align:center"><h3>❌ Generation Failed</h3><p>${errMsg}</p><p style="margin-top:1rem"><a href="/pricing" style="color:#7C3AED">View plans</a></p></div>`
+          `<div style="padding:2rem;color:#EF4444;background:#1a0a0a;height:100%;text-align:center"><h3>❌ Generation Failed</h3><p>${errMsg}</p><p style="margin-top:1rem"><a href="/pricing" style="color:#d49a5c">View plans</a></p></div>`
         );
         setStatusMessage(`❌ ${errMsg}`);
         return;
