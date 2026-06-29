@@ -77,6 +77,8 @@ body {
     var(--background-gradient);
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  font-size: 1rem;
+  line-height: 1.55;
   min-height: 100%;
 }
 
@@ -429,8 +431,9 @@ pre, code {
 }
 
 .builder-chat-panel {
-  width: min(24%, 280px);
+  width: var(--builder-chat-width, min(28%, 340px));
   min-width: 240px;
+  max-width: 480px;
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;

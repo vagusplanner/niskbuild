@@ -9,6 +9,9 @@ export type PromptAttachMenuProps = {
   onOpenFigma?: () => void;
   onOpenGooglePlaces?: () => void;
   figmaPanelRef?: RefObject<HTMLDivElement | null>;
+  /** Override file picker accept (default: .zip) */
+  uploadAccept?: string;
+  uploadLabel?: string;
 };
 
 export default function PromptAttachMenu({
@@ -16,6 +19,8 @@ export default function PromptAttachMenu({
   onUploadZip,
   onOpenFigma,
   onOpenGooglePlaces,
+  uploadAccept = '.zip,application/zip',
+  uploadLabel = 'Upload from computer',
 }: PromptAttachMenuProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -71,7 +76,7 @@ export default function PromptAttachMenu({
           <input
             ref={fileRef}
             type="file"
-            accept=".zip,application/zip"
+            accept={uploadAccept}
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0];
@@ -87,7 +92,7 @@ export default function PromptAttachMenu({
               onClick={() => pick(() => fileRef.current?.click())}
             >
               <span className="mr-2" aria-hidden>💻</span>
-              Upload from computer
+              {uploadLabel}
             </button>
           )}
           <button

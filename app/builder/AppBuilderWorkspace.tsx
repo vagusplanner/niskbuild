@@ -171,8 +171,33 @@ function AppBuilderWorkspaceInner({ appId, loginNextPath }: AppBuilderWorkspaceP
     setPreviewKey((k) => k + 1);
   };
 
-  const handleGenerate = async () => {
-    const trimmed = prompt.trim();
+  const handleFigmaBuild = (combinedPrompt: string) => {
+    setPrompt(combinedPrompt);
+    void handleGenerate(combinedPrompt);
+  };
+
+  const handleUploadSourceFile = (file: File) => {
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!ext || !['jsx', 'js', 'tsx', 'ts'].includes(ext)) {
+      setStatusMessage('❌ Upload a .jsx, .js, or .tsx source file');
+      setTimeout(() => setStatusMessage(''), 5000);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = String(reader.result ?? '');
+      if (text.trim()) {
+        setSource(text);
+        setShowSource(true);
+        setStatusMessage(`📂 Loaded ${file.name} — review source, then Generate`);
+        setTimeout(() => setStatusMessage(''), 6000);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleGenerate = async (promptOverride?: string) => {
+    const trimmed = (promptOverride ?? prompt).trim();
     if (!trimmed || isGenerating) return;
 
     setIsGenerating(true);
@@ -419,11 +444,15 @@ function AppBuilderWorkspaceInner({ appId, loginNextPath }: AppBuilderWorkspaceP
                 prompt={prompt}
                 onChange={setPrompt}
                 onGenerate={() => void handleGenerate()}
+                onBuildFromFigmaScreenshot={handleFigmaBuild}
+                onUploadZip={handleUploadSourceFile}
+                uploadAccept=".jsx,.js,.tsx,.ts"
+                uploadLabel="Upload source file"
+                onOpenGooglePlaces={() => googlePlacesRef.current?.open()}
                 isGenerating={isGenerating}
                 statusMessage={statusMessage}
                 activityLog={activityLog}
                 streamingLine={isGenerating ? statusMessage : undefined}
-                onOpenGooglePlaces={() => googlePlacesRef.current?.open()}
                 subscriptionTier={subscriptionTier}
                 subscriptionStatus={subscriptionStatus}
                 useLocalOllama={useLocalOllama}

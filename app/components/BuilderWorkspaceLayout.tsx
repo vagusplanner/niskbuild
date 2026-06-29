@@ -10,11 +10,13 @@ import VisualEditorToolbar from '@/app/components/VisualEditorToolbar';
 import GooglePlacesImport, {
   type GooglePlacesImportHandle,
 } from '@/app/components/GooglePlacesImport';
-import CollapsibleSection from '@/app/components/CollapsibleSection';
+import BuilderHeaderMenu from '@/app/components/BuilderHeaderMenu';
+import { ChatPanelDragHandle, PromptHeightDragHandle } from '@/app/components/BuilderResizeHandles';
 import PromptBar from '@/app/components/PromptBar';
 import PreviewDeviceSwitcher, {
   type PreviewDevice,
 } from '@/app/components/PreviewDeviceSwitcher';
+import BuilderPreviewPageNav from '@/app/components/BuilderPreviewPageNav';
 import type {
   GooglePlacesBusiness,
   GooglePlacesProjectContext,
@@ -22,6 +24,16 @@ import type {
 import type { ComponentBlueprint } from '@/lib/blueprint-schema';
 import type { ProjectFile } from '@/lib/project-files';
 import type { SelectedVisualElement, StyleChanges } from '@/lib/visual-editor-types';
+import {
+  CHAT_WIDTH_MAX,
+  CHAT_WIDTH_MIN,
+  PROMPT_HEIGHT_MAX,
+  PROMPT_HEIGHT_MIN,
+  getBuilderChatWidthPx,
+  getBuilderPromptHeightPx,
+  setBuilderChatWidthPx,
+  setBuilderPromptHeightPx,
+} from '@/lib/builder-layout-prefs';
 
 type MobileTab = 'chat' | 'preview' | 'inspector';
 
@@ -54,6 +66,7 @@ export type BuilderWorkspaceLayoutProps = {
   isGenerating: boolean;
   statusMessage: string;
   activityLog?: string[];
+  streamingCode?: string;
   planMode: boolean;
   onPlanModeChange: (v: boolean) => void;
   previewHtml: string;
@@ -128,6 +141,12 @@ export type BuilderWorkspaceLayoutProps = {
   onIntegrationStatus?: (message: string) => void;
   onOpenHistory?: () => void;
   versionHistoryOpen?: boolean;
+  promptSuggestions?: string[];
+  editingPageLabel?: string;
+  onAddPage?: (name: string) => void;
+  onRenamePage?: (path: string, newName: string) => void;
+  onDeletePage?: (path: string) => void;
+  canAddPage?: boolean;
 };
 
 function ProjectPageTabs({
@@ -474,8 +493,13 @@ function ChatPanelContent({
   isGenerating,
   statusMessage,
   activityLog = [],
+  streamingCode,
   planMode,
   onPlanModeChange,
+  promptSuggestions = [],
+  editingPageLabel,
+  promptHeightPx,
+  onPromptHeightChange,
   canImportGooglePlaces,
   canUseCompetitorIntel,
   canUseSocialProof,
@@ -507,8 +531,13 @@ function ChatPanelContent({
   isGenerating: boolean;
   statusMessage: string;
   activityLog?: string[];
+  streamingCode?: string;
   planMode: boolean;
   onPlanModeChange: (v: boolean) => void;
+  promptSuggestions?: string[];
+  editingPageLabel?: string;
+  promptHeightPx: number;
+  onPromptHeightChange: (px: number) => void;
   canImportGooglePlaces: boolean;
   canUseCompetitorIntel: boolean;
   canUseSocialProof: boolean;
@@ -529,14 +558,12 @@ function ChatPanelContent({
     <>
       <div className="shrink-0 px-3 py-2.5 border-b border-nisk">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-xs font-semibold text-[var(--foreground)]">AI Builder</p>
-          <button
-            type="button"
-            onClick={onNewProject}
-            className="px-2.5 py-1 text-[10px] font-semibold rounded-md border border-[var(--border)] hover:border-[var(--copper-primary)]/50 text-nisk-muted hover:text-[var(--copper-melt)] transition-colors"
-          >
-            + New
-          </button>
+          <p className="text-sm font-semibold text-[var(--foreground)]">AI Builder</p>
+          <BuilderHeaderMenu
+            onNewProject={onNewProject}
+            onOpenProjects={onOpenAllProjects}
+            projectCount={recentProjects.length}
+          />
         </div>
         {userId && (
           <div className="mt-1.5">
@@ -552,7 +579,7 @@ function ChatPanelContent({
         </p>
       )}
 
-      <div className="builder-chat-scroll">
+      <div className="builder-chat-scroll flex-1 min-h-0">
         {importedBusinessName && (
           <div className="mx-3 mt-2 px-3 py-2 rounded-lg border border-[var(--copper-primary)]/30 bg-[var(--copper-primary)]/10">
             <p className="text-[10px] text-[var(--copper-melt)] font-medium">
@@ -561,19 +588,21 @@ function ChatPanelContent({
           </div>
         )}
 
-        {recentProjects.length > 0 && (
-          <CollapsibleSection title="Recent" badge={String(recentProjects.length)}>
-            <RecentProjectsList
-              projects={recentProjects}
-              onLoad={onLoadRecentProject}
-              onOpenAll={onOpenAllProjects}
-              compact
-            />
-          </CollapsibleSection>
-        )}
       </div>
 
       <div className="builder-prompt-dock">
+        <PromptHeightDragHandle
+          onResize={(delta) => {
+            const next = Math.min(
+              PROMPT_HEIGHT_MAX,
+              Math.max(PROMPT_HEIGHT_MIN, promptHeightPx + delta)
+            );
+            if (next !== promptHeightPx) {
+              setBuilderPromptHeightPx(next);
+              onPromptHeightChange(next);
+            }
+          }}
+        />
         <PromptBar
           variant="cursor"
           prompt={prompt}
@@ -586,7 +615,12 @@ function ChatPanelContent({
           isGenerating={isGenerating}
           statusMessage={statusMessage}
           activityLog={activityLog}
+          streamingCode={streamingCode}
           streamingLine={isGenerating ? statusMessage : undefined}
+          promptRows={Math.max(3, Math.round(promptHeightPx / 28))}
+          promptMinHeight={promptHeightPx}
+          suggestions={promptSuggestions}
+          editingPageLabel={editingPageLabel}
           planMode={planMode}
           onPlanModeChange={onPlanModeChange}
           subscriptionTier={subscriptionTier}
@@ -644,6 +678,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
     isGenerating,
     statusMessage,
     activityLog = [],
+    streamingCode,
     planMode,
     onPlanModeChange,
     previewHtml,
@@ -714,6 +749,12 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
     onIntegrationStatus,
     onOpenHistory,
     versionHistoryOpen,
+    promptSuggestions = [],
+    editingPageLabel,
+    onAddPage,
+    onRenamePage,
+    onDeletePage,
+    canAddPage = true,
   } = props;
 
   const seoInspectorProps = {
@@ -740,6 +781,25 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
   const mobilePreviewFullscreenRef = useRef<HTMLDivElement>(null);
   const googlePlacesRef = useRef<GooglePlacesImportHandle>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [chatWidthPxState, setChatWidthPxState] = useState(340);
+  const [promptHeightPx, setPromptHeightPx] = useState(140);
+
+  useEffect(() => {
+    setChatWidthPxState(getBuilderChatWidthPx());
+    setPromptHeightPx(getBuilderPromptHeightPx());
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--builder-chat-width', `${chatWidthPxState}px`);
+  }, [chatWidthPxState]);
+
+  const handleChatWidthResize = (delta: number) => {
+    setChatWidthPxState((current) => {
+      const next = Math.min(CHAT_WIDTH_MAX, Math.max(CHAT_WIDTH_MIN, current + delta));
+      setBuilderChatWidthPx(next);
+      return next;
+    });
+  };
 
   const handleFocusPreview = () => {
     onInspectorOpenChange(false);
@@ -770,8 +830,13 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
       isGenerating={isGenerating}
       statusMessage={statusMessage}
       activityLog={activityLog}
+      streamingCode={streamingCode}
       planMode={planMode}
       onPlanModeChange={onPlanModeChange}
+      promptSuggestions={promptSuggestions}
+      editingPageLabel={editingPageLabel}
+      promptHeightPx={promptHeightPx}
+      onPromptHeightChange={setPromptHeightPx}
       canImportGooglePlaces={canImportGooglePlaces}
       canUseCompetitorIntel={canUseCompetitorIntel}
       canUseSocialProof={canUseSocialProof}
@@ -958,6 +1023,15 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
               activeFile={activeFile}
               onSelectFile={onSelectFile}
             />
+            <BuilderPreviewPageNav
+              projectFiles={projectFiles}
+              activeFile={activeFile}
+              onSelectPage={onSelectFile}
+              onAddPage={onAddPage}
+              onRenamePage={onRenamePage}
+              onDeletePage={onDeletePage}
+              canAddPage={canAddPage}
+            />
             {visualToolbar}
             <div
               ref={mobilePreviewFullscreenRef}
@@ -1017,6 +1091,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
             sidebarCollapsed ? 'builder-chat-panel--collapsed' : ''
           }`}
         >
+          {!sidebarCollapsed && <ChatPanelDragHandle onResize={handleChatWidthResize} />}
           <button
             type="button"
             className="absolute -right-3 top-14 z-20 w-6 h-6 rounded-full border border-nisk bg-[var(--card-bg)] text-[10px] text-nisk-muted hover:text-[var(--copper-melt)] hover:border-[var(--copper-primary)]/50 flex items-center justify-center shadow-md"
@@ -1074,6 +1149,15 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
             projectFiles={projectFiles}
             activeFile={activeFile}
             onSelectFile={onSelectFile}
+          />
+          <BuilderPreviewPageNav
+            projectFiles={projectFiles}
+            activeFile={activeFile}
+            onSelectPage={onSelectFile}
+            onAddPage={onAddPage}
+            onRenamePage={onRenamePage}
+            onDeletePage={onDeletePage}
+            canAddPage={canAddPage}
           />
           {visualToolbar}
           <div

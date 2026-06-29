@@ -344,7 +344,7 @@ export default function HelpAssistant({
         : 'Cloud mode';
 
   const bottom = 16 + bottomOffset;
-  const positionClass = isAdmin ? 'right-4 items-end' : 'left-4 items-start';
+  const positionClass = 'right-4 items-end';
 
   return (
     <>

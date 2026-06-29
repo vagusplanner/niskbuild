@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 160" width="600" height="160" aria-label="NiskBuild wordmark on matte iron" role="img">
+  <defs>
+    <linearGradient id="wmMattePlate" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#5c5248"/>
+      <stop offset="100%" stop-color="#3a3530"/>
+    </linearGradient>
+    <linearGradient id="wmMatteNisk" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f5ebe0"/>
+      <stop offset="100%" stop-color="#d49a5c"/>
+    </linearGradient>
+    <linearGradient id="wmMatteBuild" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#b87333"/>
+      <stop offset="50%" stop-color="#d49a5c"/>
+      <stop offset="100%" stop-color="#d4a574"/>
+    </linearGradient>
+    <linearGradient id="wmMatteTagline" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#d49a5c"/>
+      <stop offset="55%" stop-color="#b87333"/>
+      <stop offset="100%" stop-color="#8f5a28"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="160" fill="url(#wmMattePlate)"/>
+  <g transform="translate(35, 90)">
+    <text font-family="system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" font-size="68" font-weight="900" letter-spacing="-1.5">
+      <tspan fill="url(#wmMatteNisk)">NISK</tspan>
+      <tspan fill="url(#wmMatteBuild)" dx="16">BUILD</tspan>
+    </text>
+  </g>
+  <g transform="translate(38, 130)">
+    <text font-family="system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,monospace" font-size="15" font-weight="800" fill="url(#wmMatteTagline)">BUILD ANYTHING. OWN EVERYTHING.</text>
+  </g>
+</svg>

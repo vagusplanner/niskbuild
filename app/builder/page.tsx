@@ -5,10 +5,26 @@ import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { hasCompletedOnboarding, markOnboardingComplete } from '@/lib/auth';
 import { getSafeSession } from '@/lib/supabaseSession';
+import { readCloudGenerateStream } from '@/lib/cloud-generate-stream';
 import { cleanGeneratedCode, isExportableCode } from '@/lib/cleanGeneratedCode';
 import { getDeployablePreviewHtml } from '@/lib/deploy-preview';
 import { injectSeoIntoHtml } from '@/lib/seo-inject';
 import { buildProjectFiles, filesToMap, type ProjectFile } from '@/lib/project-files';
+import {
+  buildPageScopedPrompt,
+  createPageScaffold,
+  getPreviewHtmlForPage,
+  inferProjectContext,
+  isHtmlPage,
+  mergeGeneratedIntoFiles,
+  pageDisplayLabel,
+  slugifyPageFilename,
+  listHtmlPages,
+  renameProjectPage,
+  deleteProjectPage,
+} from '@/lib/project-pages';
+import { buildContextualSuggestions } from '@/lib/project-suggestions';
+import { injectPreviewPageNavScript } from '@/lib/preview-page-nav-inject';
 import type { NiskBuildPromptEntry } from '@/lib/niskbuild-config';
 import { parseNiskBuildConfig } from '@/lib/niskbuild-config';
 import Layout from '@/app/components/Layout';
@@ -58,7 +74,6 @@ import {
 import { slugifyProjectName } from '@/lib/version-limits';
 import {
   estimateTokens,
-  isLocalProvider,
   recordCloudGeneration,
   recordLocalGeneration,
   recordLocalWork,
@@ -124,6 +139,7 @@ function BuilderContent() {
   const [blueprintData, setBlueprintData] = useState<ComponentBlueprint | null>(null);
   const [statusMessage, setStatusMessage] = useState('');
   const [activityLog, setActivityLog] = useState<string[]>([]);
+  const [streamingCode, setStreamingCode] = useState('');
   const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [showProjects, setShowProjects] = useState(false);
@@ -335,10 +351,16 @@ function BuilderContent() {
     }
   };
 
-  const syncFilesFromCode = (rawCode: string, fileMap?: Record<string, string>) => {
+  const syncFilesFromCode = (
+    rawCode: string,
+    fileMap?: Record<string, string>,
+    opts?: { preserveActive?: boolean; activePage?: string }
+  ) => {
     const files = buildProjectFiles(rawCode, fileMap);
     setProjectFiles(files);
-    setActiveFile(files[0]?.path || 'index.html');
+    if (!opts?.preserveActive) {
+      setActiveFile(opts?.activePage || files[0]?.path || 'index.html');
+    }
     return files;
   };
 
@@ -360,24 +382,41 @@ function BuilderContent() {
   };
 
   const wrapPreviewHtml = (cleaned: string) => {
-    if (visualEditMode) return injectVisualEditorScript(cleaned);
-    if (inspectMode) return injectInspectScript(cleaned);
-    return cleaned;
+    const pagePaths = listHtmlPages(projectFiles).map((f) => f.path);
+    let html =
+      pagePaths.length > 1 ? injectPreviewPageNavScript(cleaned, pagePaths) : cleaned;
+    if (visualEditMode) return injectVisualEditorScript(html);
+    if (inspectMode) return injectInspectScript(html);
+    return html;
   };
 
   const applyGeneratedCode = (rawCode: string, status: string, entry?: NiskBuildPromptEntry) => {
-    const cleaned = cleanGeneratedCode(rawCode);
-    syncFilesFromCode(rawCode);
-    lastCodeLenRef.current = rawCode.length;
-    setGeneratedCode(rawCode);
-    setPreviewHtml(wrapPreviewHtml(cleaned));
+    const hasExistingProject = isExportableCode(generatedCode);
+
+    if (hasExistingProject && isHtmlPage(activeFile)) {
+      const merged = mergeGeneratedIntoFiles(projectFiles, activeFile, rawCode);
+      setProjectFiles(merged);
+      if (activeFile === 'index.html') {
+        lastCodeLenRef.current = rawCode.length;
+        setGeneratedCode(rawCode);
+      }
+      const preview = getPreviewHtmlForPage(activeFile, merged, generatedCode);
+      setPreviewHtml(wrapPreviewHtml(preview));
+    } else {
+      const cleaned = cleanGeneratedCode(rawCode);
+      syncFilesFromCode(rawCode, undefined, { activePage: activeFile });
+      lastCodeLenRef.current = rawCode.length;
+      setGeneratedCode(rawCode);
+      setPreviewHtml(wrapPreviewHtml(cleaned));
+    }
+
     if (!aiOriginalCodeRef.current && isExportableCode(rawCode)) {
       aiOriginalCodeRef.current = rawCode;
     }
     setStatusMessage(status);
     setActiveEditorTab('preview');
     if (entry) {
-      setPromptHistory((prev) => [...prev, entry]);
+      setPromptHistory((prev) => [...prev, { ...entry, target: activeFile }]);
       fetchBlueprint(entry.prompt);
     }
   };
@@ -487,8 +526,93 @@ function BuilderContent() {
     if (activeFile === 'index.html') {
       if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current);
       previewDebounceRef.current = setTimeout(() => syncPreviewFromHtml(content), 350);
+    } else if (isHtmlPage(activeFile)) {
+      if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current);
+      previewDebounceRef.current = setTimeout(() => {
+        const cleaned = cleanGeneratedCode(content);
+        setPreviewHtml(wrapPreviewHtml(cleaned));
+      }, 350);
     }
   };
+
+  const handleSelectFile = (path: string) => {
+    setActiveFile(path);
+    if (isHtmlPage(path) && isExportableCode(generatedCode)) {
+      const html = getPreviewHtmlForPage(path, projectFiles, generatedCode);
+      setPreviewHtml(wrapPreviewHtml(html));
+    }
+  };
+
+  const handleAddPage = (name: string) => {
+    if (!name?.trim()) return;
+
+    const path = slugifyPageFilename(name);
+    if (projectFiles.some((f) => f.path === path)) {
+      setStatusMessage('❌ That page already exists');
+      setTimeout(() => setStatusMessage(''), 4000);
+      return;
+    }
+
+    const indexHtml =
+      projectFiles.find((f) => f.path === 'index.html')?.content?.trim() || generatedCode;
+    const scaffold = createPageScaffold(path, indexHtml || '');
+
+    setProjectFiles((prev) => [
+      ...prev,
+      {
+        path,
+        name: path.split('/').pop() || path,
+        content: scaffold,
+        icon: '📄',
+      },
+    ]);
+    handleSelectFile(path);
+    setStatusMessage(`📄 Added ${pageDisplayLabel(path)} — prompt to fill it in for your app`);
+    setTimeout(() => setStatusMessage(''), 6000);
+  };
+
+  const handleRenamePage = (path: string, newName: string) => {
+    const result = renameProjectPage(projectFiles, path, newName);
+    if (!result) {
+      setStatusMessage('❌ Could not rename page');
+      setTimeout(() => setStatusMessage(''), 4000);
+      return;
+    }
+    setProjectFiles(result.files);
+    if (activeFile === path) {
+      handleSelectFile(result.newPath);
+    }
+    setStatusMessage(`✏️ Renamed to ${pageDisplayLabel(result.newPath)}`);
+    setTimeout(() => setStatusMessage(''), 5000);
+  };
+
+  const handleDeletePage = (path: string) => {
+    const next = deleteProjectPage(projectFiles, path);
+    if (!next) return;
+    setProjectFiles(next);
+    if (activeFile === path) {
+      handleSelectFile('index.html');
+    }
+    setStatusMessage(`🗑️ Deleted ${pageDisplayLabel(path)}`);
+    setTimeout(() => setStatusMessage(''), 5000);
+  };
+
+  const pageContext = useMemo(
+    () =>
+      inferProjectContext({
+        files: projectFiles,
+        activePage: activeFile,
+        generatedCode,
+        businessName: projectContext?.business?.name ?? null,
+        lastPrompt: promptHistory[promptHistory.length - 1]?.prompt,
+      }),
+    [projectFiles, activeFile, generatedCode, projectContext, promptHistory]
+  );
+
+  const promptSuggestions = useMemo(
+    () => buildContextualSuggestions(pageContext),
+    [pageContext]
+  );
 
   useEffect(() => {
     return () => {
@@ -496,6 +620,19 @@ function BuilderContent() {
       if (visualEditDebounceRef.current) clearTimeout(visualEditDebounceRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    const onMessage = (e: MessageEvent) => {
+      if (e.data?.type === 'niskbuild-preview-nav' && typeof e.data.path === 'string') {
+        const path = e.data.path as string;
+        if (projectFiles.some((f) => f.path === path)) {
+          handleSelectFile(path);
+        }
+      }
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [projectFiles, generatedCode, visualEditMode, inspectMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (selectedVisualElement) {
@@ -693,9 +830,18 @@ function BuilderContent() {
     if (!basePrompt) return;
 
     const placesContext = buildGooglePlacesPrompt(projectContext?.business);
-    const effectivePrompt = placesContext
+    const withPlaces = placesContext
       ? `${basePrompt}\n\n${placesContext}`
       : basePrompt;
+
+    const ctx = inferProjectContext({
+      files: projectFiles,
+      activePage: activeFile,
+      generatedCode,
+      businessName: projectContext?.business?.name ?? null,
+      lastPrompt: promptHistory[promptHistory.length - 1]?.prompt,
+    });
+    const effectivePrompt = buildPageScopedPrompt(withPlaces, ctx);
 
     if (planMode && !promptOverride?.includes('TARGETED EDIT')) {
       await handlePlan(effectivePrompt);
@@ -703,6 +849,7 @@ function BuilderContent() {
     }
 
     setIsGenerating(true);
+    setStreamingCode('');
     setActiveProjectId(null);
     setVisualEditHistory([]);
     setSelectedVisualElement(null);
@@ -771,116 +918,63 @@ function BuilderContent() {
     setStatusMessage(
       sandbox
         ? '☁️ Generating with your free trial cloud credits...'
-        : '🔄 Starting generation with self-correction...'
+        : '☁️ Generating with cloud AI (live)...'
     );
 
+    const historyEntry: NiskBuildPromptEntry = { prompt: effectivePrompt, timestamp: new Date().toISOString() };
+
     try {
-      // 1. Try self-heal loop first (fixes code errors automatically)
-      setStatusMessage('🔄 Attempt 1/5: Self-correction loop...');
-      const selfHealRes = await fetch('/api/self-heal', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: effectivePrompt, projectId: activeProjectId }),
-        credentials: 'include',
-      });
-      const selfHealData = await selfHealRes.json();
-
-      if (selfHealRes.status === 402 || selfHealRes.status === 403) {
-        const errMsg = selfHealData.error || 'Cloud generation unavailable';
-        setGeneratedCode(`// Error: ${errMsg}`);
-        setPreviewHtml(
-          `<div style="padding:2rem;color:#EF4444;background:#1a0a0a;height:100%;text-align:center"><h3>❌ Generation Failed</h3><p>${errMsg}</p><p style="margin-top:1rem"><a href="/pricing" style="color:#d49a5c">View plans</a></p></div>`
-        );
-        setStatusMessage(`❌ ${errMsg}`);
-        return;
-      }
-
-      const historyEntry: NiskBuildPromptEntry = { prompt: effectivePrompt, timestamp: new Date().toISOString() };
-
-      if (selfHealData.success && selfHealData.code) {
-        if (session?.user?.id) {
-          recordCloudGeneration(
-            session.user.id,
-            effectivePrompt,
-            selfHealData.code,
-            1
-          );
-        }
-        applyGeneratedCode(
-          selfHealData.code,
-          `✅ Generated in ${selfHealData.attempts ?? 1} attempt(s) with self-correction`,
-          historyEntry
-        );
-        void saveProjectVersionSilent(
-          selfHealData.code,
-          effectivePrompt,
-          Number(selfHealData.creditsUsed) || 1
-        );
-        return;
-      }
-
-      if (selfHealData.code) {
-        if (session?.user?.id) {
-          recordCloudGeneration(session.user.id, effectivePrompt, selfHealData.code, 1);
-        }
-        applyGeneratedCode(
-          selfHealData.code,
-          `⚠️ Best attempt (${selfHealData.errors?.length ?? 0} issues remain)`,
-          historyEntry
-        );
-        void saveProjectVersionSilent(
-          selfHealData.code,
-          effectivePrompt,
-          Number(selfHealData.creditsUsed) || 1
-        );
-        return;
-      }
-
-      // 2. Fallback to cloud AI
-      setStatusMessage('☁️ Falling back to cloud AI...');
-      const response = await fetch('/api/cloud-generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: effectivePrompt, projectId: activeProjectId }),
-        credentials: 'include',
-      });
-
-      const data = await response.json();
-
-      if (data.success && data.code) {
-        if (session?.user?.id) {
-          if (isLocalProvider(data.source)) {
-            recordLocalGeneration(session.user.id, effectivePrompt, data.code);
-          } else {
-            recordCloudGeneration(
-              session.user.id,
-              effectivePrompt,
-              data.code,
-              1
-            );
+      const { code, error } = await readCloudGenerateStream(
+        effectivePrompt,
+        activeProjectId,
+        (accumulated) => {
+          setStreamingCode(accumulated);
+          if (!(ctx.isExistingProject && isHtmlPage(activeFile) && activeFile !== 'index.html')) {
+            setGeneratedCode(accumulated);
           }
+          if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current);
+          previewDebounceRef.current = setTimeout(() => {
+            const cleaned = cleanGeneratedCode(accumulated);
+            if (cleaned.length > 80) {
+              setPreviewHtml(wrapPreviewHtml(cleaned));
+            }
+          }, 400);
         }
-        applyGeneratedCode(
-          data.code,
-          `✅ Generated via ${data.source === 'local' ? 'Local AI' : 'Cloud AI'}`,
-          { prompt: effectivePrompt, timestamp: new Date().toISOString() }
+      );
+
+      setStreamingCode('');
+
+      if (error && !code.trim()) {
+        setGeneratedCode(`// Error: ${error}`);
+        setPreviewHtml(
+          `<div style="padding:2rem;color:#EF4444;background:#1a0a0a;height:100%;text-align:center"><h3>❌ Generation Failed</h3><p>${error}</p><p style="margin-top:1rem"><a href="/pricing" style="color:#d49a5c">View plans</a></p></div>`
         );
-        void saveProjectVersionSilent(
-          data.code,
-          effectivePrompt,
-          Number(data.creditsUsed) || 1
-        );
-      } else {
-        setGeneratedCode(`// Error: ${data.error || 'Generation failed'}`);
-        setPreviewHtml(`<div style="padding:2rem;color:#EF4444;background:#1a0a0a;height:100%;text-align:center"><h3>❌ Generation Failed</h3><p>${data.error || 'Unknown error'}</p></div>`);
-        setStatusMessage(`❌ ${data.error || 'Generation failed'}`);
+        setStatusMessage(`❌ ${error}`);
+        return;
       }
+
+      if (!code.trim()) {
+        setGeneratedCode('// Error: Generation returned empty code');
+        setPreviewHtml(
+          '<div style="padding:2rem;color:#EF4444;background:#1a0a0a;height:100%;text-align:center"><h3>❌ Generation Failed</h3><p>Empty response from cloud AI</p></div>'
+        );
+        setStatusMessage('❌ Generation failed');
+        return;
+      }
+
+      if (session?.user?.id) {
+        recordCloudGeneration(session.user.id, effectivePrompt, code, 1);
+      }
+      applyGeneratedCode(code, '✅ Generated via Cloud AI (live)', historyEntry);
+      void saveProjectVersionSilent(code, effectivePrompt, 1);
     } catch {
+      setStreamingCode('');
       setGeneratedCode('// Failed to generate. Please try again.');
       setPreviewHtml('<div style="padding:2rem;color:#EF4444;text-align:center">❌ Network error — please try again</div>');
       setStatusMessage('❌ Network error');
     } finally {
       setIsGenerating(false);
+      setStreamingCode('');
       setTimeout(() => setStatusMessage(''), 8000);
     }
   };
@@ -1457,6 +1551,7 @@ function BuilderContent() {
           isGenerating={isGenerating}
           statusMessage={statusMessage}
           activityLog={activityLog}
+          streamingCode={streamingCode}
           planMode={planMode}
           onPlanModeChange={setPlanMode}
           previewHtml={previewHtml}
@@ -1510,7 +1605,17 @@ function BuilderContent() {
           onInspectorTabChange={setInspectorTab}
           projectFiles={projectFiles}
           activeFile={activeFile}
-          onSelectFile={setActiveFile}
+          onSelectFile={handleSelectFile}
+          promptSuggestions={promptSuggestions}
+          editingPageLabel={
+            isExportableCode(generatedCode) && isHtmlPage(activeFile)
+              ? pageContext.pageLabel
+              : undefined
+          }
+          onAddPage={handleAddPage}
+          onRenamePage={handleRenamePage}
+          onDeletePage={handleDeletePage}
+          canAddPage={canAct || !isExportableCode(generatedCode)}
           codeEditor={
             <CodeEditor
               path={activeFile}

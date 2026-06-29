@@ -30,9 +30,25 @@ async function pngToPdf(pngPath, pdfPath, maxWidth = 612) {
 }
 
 await pngToPdf(join(logoDir, 'icon-512.png'), join(logoDir, 'niskbuild-icon.pdf'), 400);
+await pngToPdf(join(logoDir, 'icon-matte-512.png'), join(logoDir, 'niskbuild-icon-matte.pdf'), 400);
 await pngToPdf(
-  join(logoDir, 'niskbuild-lockup-raster.png'),
-  join(logoDir, 'niskbuild-lockup-full.pdf'),
+  join(logoDir, 'niskbuild-wordmark-matte-raster.png'),
+  join(logoDir, 'niskbuild-wordmark-matte.pdf'),
+  600
+);
+await pngToPdf(
+  join(logoDir, 'niskbuild-wordmark-matte-wide-raster.png'),
+  join(logoDir, 'niskbuild-wordmark-matte-wide.pdf'),
+  750
+);
+await pngToPdf(
+  join(logoDir, 'niskbuild-lockup-matte-wide-raster.png'),
+  join(logoDir, 'niskbuild-lockup-matte-wide.pdf'),
+  750
+);
+await pngToPdf(
+  join(logoDir, 'niskbuild-lockup-light-raster.png'),
+  join(logoDir, 'niskbuild-lockup-light.pdf'),
   750
 );
 await pngToPdf(

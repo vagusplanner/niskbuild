@@ -18,7 +18,7 @@ function rasterizeSvg(svgName, outName, size) {
   const thumbPath = join(logoDir, `${basename(svgPath)}.png`);
 
   if (!existsSync(svgPath)) {
-    console.warn(`Skip raster (missing SVG): ${svgPath}`);
+    console.warn(`Skip raster (missing SVG): ${svgName}`);
     return;
   }
 
@@ -35,15 +35,25 @@ function rasterizeSvg(svgName, outName, size) {
   console.log(`Raster ${outName} (${size}px) from ${svgName}`);
 }
 
-/** Copper SVG → PNG (correct colors for social + favicon) */
+function downscaleIcon(masterName, outName, size) {
+  const src = join(logoDir, masterName);
+  const out = join(logoDir, outName);
+  if (!existsSync(src)) return;
+  execSync(`sips -z ${size} ${size} "${src}" --out "${out}"`, { stdio: 'pipe' });
+  console.log(`Downscale ${outName} (${size}px) from ${masterName}`);
+}
+
+/** Master rasters at 512 — small sizes derived for full bleed (qlmanage pads at 32px) */
 rasterizeSvg('niskbuild-icon-light.svg', 'icon-512.png', 512);
-rasterizeSvg('niskbuild-icon-light.svg', 'icon-180.png', 180);
-rasterizeSvg('niskbuild-icon-light.svg', 'icon-32.png', 32);
 rasterizeSvg('niskbuild-icon.svg', 'icon-matte-512.png', 512);
-rasterizeSvg('niskbuild-icon.svg', 'icon-matte-180.png', 180);
-rasterizeSvg('niskbuild-icon.svg', 'icon-matte-32.png', 32);
-rasterizeSvg('niskbuild-lockup.svg', 'niskbuild-lockup-raster.png', 1500);
-rasterizeSvg('niskbuild-lockup-compact.svg', 'niskbuild-lockup-compact-raster.png', 1200);
+downscaleIcon('icon-512.png', 'icon-180.png', 180);
+downscaleIcon('icon-512.png', 'icon-32.png', 32);
+downscaleIcon('icon-matte-512.png', 'icon-matte-180.png', 180);
+downscaleIcon('icon-matte-512.png', 'icon-matte-32.png', 32);
+
+rasterizeSvg('niskbuild-wordmark-matte.svg', 'niskbuild-wordmark-matte-raster.png', 1200);
+rasterizeSvg('niskbuild-wordmark-matte-wide.svg', 'niskbuild-wordmark-matte-wide-raster.png', 1500);
+rasterizeSvg('niskbuild-lockup-matte-wide.svg', 'niskbuild-lockup-matte-wide-raster.png', 1500);
 rasterizeSvg('niskbuild-lockup-light.svg', 'niskbuild-lockup-light-raster.png', 1500);
 rasterizeSvg('niskbuild-wordmark-light.svg', 'niskbuild-wordmark-raster.png', 1200);
 
@@ -56,9 +66,6 @@ if (existsSync(iconLightSvg)) {
   copyFileSync(iconLightSvg, join(publicDir, 'logo.svg'));
   copyFileSync(iconLightSvg, join(publicDir, 'favicon-source.svg'));
   console.log('Synced logo.svg + favicon-source.svg from icon-light');
-}
-if (existsSync(join(logoDir, 'niskbuild-lockup-raster.png'))) {
-  copyFileSync(join(logoDir, 'niskbuild-lockup-raster.png'), join(logoDir, 'niskbuild-lockup.png'));
 }
 
 execSync('node scripts/generate-brand-pdfs.mjs', { stdio: 'inherit', cwd: join(__dirname, '..') });

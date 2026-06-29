@@ -28,17 +28,33 @@ interface PromptBarProps {
   /** Scrollable generation log (Cursor-style) */
   activityLog?: string[];
   streamingLine?: string;
+  /** Live code tokens while streaming */
+  streamingCode?: string;
+  promptRows?: number;
+  promptMinHeight?: number;
+  /** Project-aware suggestion chips (falls back to defaults) */
+  suggestions?: string[];
+  /** Current page being edited in multi-page projects */
+  editingPageLabel?: string;
+  uploadAccept?: string;
+  uploadLabel?: string;
 }
 
-function SuggestionChips({ onPick }: { onPick: (s: string) => void }) {
+function SuggestionChips({
+  onPick,
+  suggestions,
+}: {
+  onPick: (s: string) => void;
+  suggestions: string[];
+}) {
   return (
     <div className="flex flex-wrap gap-1.5 px-3 pt-2.5 pb-1">
-      {PROMPT_SUGGESTIONS.slice(0, PROMPT_SUGGESTION_COUNT).map((s) => (
+      {suggestions.map((s) => (
         <button
           key={s}
           type="button"
           onClick={() => onPick(s)}
-          className="text-left px-2.5 py-1 rounded-lg border border-[var(--border)] bg-[var(--code-bg)] text-[10px] text-[var(--code-comment)] hover:text-[var(--code-keyword)] hover:border-[var(--copper-primary)]/40 transition-colors line-clamp-1 max-w-full"
+          className="text-left px-2.5 py-1 rounded-lg border border-[var(--border)] bg-[var(--code-bg)] text-xs text-[var(--code-comment)] hover:text-[var(--code-keyword)] hover:border-[var(--copper-primary)]/40 transition-colors line-clamp-1 max-w-full"
           title={s}
         >
           {s}
@@ -68,7 +84,18 @@ export default function PromptBar({
   onProviderUpgrade,
   activityLog = [],
   streamingLine,
+  streamingCode,
+  promptRows = 5,
+  promptMinHeight,
+  suggestions,
+  editingPageLabel,
+  uploadAccept,
+  uploadLabel,
 }: PromptBarProps) {
+  const chipSuggestions =
+    suggestions && suggestions.length > 0
+      ? suggestions.slice(0, PROMPT_SUGGESTION_COUNT)
+      : PROMPT_SUGGESTIONS.slice(0, PROMPT_SUGGESTION_COUNT);
   const isCursor = variant === 'cursor' || variant === 'dock';
   const isSidebar = variant === 'sidebar';
   const mod = modKey();
@@ -82,6 +109,8 @@ export default function PromptBar({
         onUploadZip={onUploadZip}
         onOpenGooglePlaces={onOpenGooglePlaces}
         onOpenFigma={onBuildFromFigmaScreenshot ? () => setFigmaOpen(true) : undefined}
+        uploadAccept={uploadAccept}
+        uploadLabel={uploadLabel}
       />
     ) : null;
 
@@ -121,7 +150,7 @@ export default function PromptBar({
             onChange={(e) => onPlanModeChange(e.target.checked)}
             className="rounded border-nisk scale-90 accent-[var(--copper-primary)]"
           />
-          <span className="text-[10px] text-nisk-muted">Plan</span>
+          <span className="text-xs text-nisk-muted">Plan</span>
         </label>
       )}
       <button
@@ -146,28 +175,44 @@ export default function PromptBar({
       <div className="flex flex-col gap-0 px-3 py-3">
         {figmaHidden}
         <div className="rounded-xl border border-[var(--border)] bg-[var(--code-bg)] shadow-[0_4px_24px_rgba(0,0,0,0.25)] focus-within:border-[var(--copper-primary)]/40 focus-within:ring-1 focus-within:ring-[var(--copper-primary)]/20 transition-all">
-          {(activityLog.length > 0 || streamingLine || isGenerating) && (
-            <div className="max-h-36 overflow-y-auto border-b border-[var(--border)]/60 px-3 py-2 space-y-1 font-mono text-[11px]">
+          {editingPageLabel && (
+            <p className="text-[11px] font-medium text-[var(--copper-melt)] px-3 pt-2.5 pb-0">
+              Editing page: {editingPageLabel}
+            </p>
+          )}
+          {(activityLog.length > 0 || streamingLine || streamingCode || isGenerating) && (
+            <div className="max-h-48 overflow-y-auto border-b border-[var(--border)]/60 px-3 py-2 space-y-2 font-mono text-xs">
               {activityLog.map((line, i) => (
                 <p key={`${i}-${line.slice(0, 24)}`} className="text-[var(--code-comment)] leading-relaxed">
                   {line}
                 </p>
               ))}
-              {(streamingLine || (isGenerating && !streamingLine)) && (
-                <p className="text-[var(--copper-melt)] leading-relaxed flex items-start gap-0.5">
+              {streamingCode && (
+                <pre className="text-[var(--code-tag)] whitespace-pre-wrap break-all leading-relaxed max-h-32 overflow-y-auto">
+                  {streamingCode.slice(-1200)}
+                  <span className="inline-block w-2 h-[1.1em] bg-[var(--copper-melt)] animate-pulse align-middle ml-0.5" aria-hidden />
+                </pre>
+              )}
+              {!streamingCode && (streamingLine || isGenerating) && (
+                <p className="text-[var(--copper-melt)] leading-relaxed flex items-start gap-1">
                   <span>{streamingLine || (planMode ? 'Planning…' : 'Building…')}</span>
-                  <span className="inline-block w-2.5 h-4 bg-[var(--copper-melt)] animate-pulse ml-0.5 shrink-0" aria-hidden />
+                  <span className="inline-block w-2.5 h-[1.1em] bg-[var(--copper-melt)] animate-pulse shrink-0" aria-hidden />
                 </p>
               )}
             </div>
           )}
-          <SuggestionChips onPick={onChange} />
+          <SuggestionChips onPick={onChange} suggestions={chipSuggestions} />
           <textarea
             value={prompt}
             onChange={(e) => onChange(e.target.value)}
-            placeholder="Describe what you want to build…"
-            rows={4}
-            className="w-full bg-transparent px-3 py-2 text-sm text-[var(--foreground)] placeholder-[var(--placeholder)] resize-none focus:outline-none min-h-[96px] font-mono"
+            placeholder={
+              editingPageLabel
+                ? `Describe changes for the ${editingPageLabel} page…`
+                : 'Describe what you want to build…'
+            }
+            rows={promptRows}
+            style={promptMinHeight ? { minHeight: promptMinHeight } : undefined}
+            className="w-full bg-transparent px-3 py-2 text-[15px] leading-relaxed text-[var(--foreground)] placeholder-[var(--placeholder)] resize-y focus:outline-none min-h-[96px] font-mono"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) onGenerate();
             }}
@@ -187,7 +232,7 @@ export default function PromptBar({
             {statusMessage}
           </p>
         )}
-        <p className="text-[10px] text-nisk-muted mt-1 px-1">{mod} + Enter to generate</p>
+        <p className="text-xs text-nisk-muted mt-1 px-1">{mod} + Enter to generate</p>
       </div>
     );
   }
@@ -201,7 +246,7 @@ export default function PromptBar({
       }
     >
       <div className="rounded-xl border border-[var(--border)] bg-[var(--code-bg)] overflow-hidden">
-        <SuggestionChips onPick={onChange} />
+        <SuggestionChips onPick={onChange} suggestions={chipSuggestions} />
         <textarea
           value={prompt}
           onChange={(e) => onChange(e.target.value)}
