@@ -1,12 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" aria-label="NiskBuild" role="img">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" aria-label="NiskBuild matte iron icon" role="img">
   <defs>
     <linearGradient id="iconForgePlate" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#6b6258"/>
-      <stop offset="100%" stop-color="#4a433c"/>
+      <stop offset="0%" stop-color="#8a7d6e"/>
+      <stop offset="100%" stop-color="#6b6258"/>
     </linearGradient>
     <linearGradient id="iconIronPillars" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#5c5248"/>
-      <stop offset="100%" stop-color="#3d3830"/>
+      <stop offset="0%" stop-color="#7a6f63"/>
+      <stop offset="100%" stop-color="#5c5248"/>
     </linearGradient>
     <linearGradient id="iconCopperL" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#d49a5c"/>
@@ -17,13 +17,13 @@
       <stop offset="100%" stop-color="#b87333"/>
     </linearGradient>
   </defs>
-  <rect width="240" height="240" fill="url(#iconForgePlate)" rx="12"/>
-  <g transform="translate(52, 40)">
+  <rect width="240" height="240" fill="url(#iconForgePlate)"/>
+  <g transform="translate(19, 7) scale(1.52)">
     <path d="M 0,0 L 45,0 L 45,150 L 0,150 Z" fill="url(#iconIronPillars)"/>
     <path d="M 90,0 L 135,0 L 135,150 L 90,150 Z" fill="url(#iconIronPillars)"/>
     <path d="M 45,0 L 68,75 L 45,115 L 45,45 Z" fill="url(#iconCopperL)"/>
     <path d="M 90,150 L 68,75 L 90,35 L 90,105 Z" fill="url(#iconCopperR)"/>
-    <polygon points="45,115 68,75 90,150" fill="#3d3830" opacity="0.35"/>
+    <polygon points="45,115 68,75 90,150" fill="#5c5248" opacity="0.3"/>
     <polygon points="90,35 68,75 45,0" fill="#d49a5c" opacity="0.35"/>
   </g>
 </svg>

@@ -37,18 +37,15 @@ function rasterizeSvg(svgName, outName, size) {
 
 /** Copper SVG → PNG (correct colors for social + favicon) */
 rasterizeSvg('niskbuild-icon-light.svg', 'icon-512.png', 512);
+rasterizeSvg('niskbuild-icon-light.svg', 'icon-180.png', 180);
+rasterizeSvg('niskbuild-icon-light.svg', 'icon-32.png', 32);
+rasterizeSvg('niskbuild-icon.svg', 'icon-matte-512.png', 512);
+rasterizeSvg('niskbuild-icon.svg', 'icon-matte-180.png', 180);
+rasterizeSvg('niskbuild-icon.svg', 'icon-matte-32.png', 32);
 rasterizeSvg('niskbuild-lockup.svg', 'niskbuild-lockup-raster.png', 1500);
+rasterizeSvg('niskbuild-lockup-compact.svg', 'niskbuild-lockup-compact-raster.png', 1200);
 rasterizeSvg('niskbuild-lockup-light.svg', 'niskbuild-lockup-light-raster.png', 1500);
 rasterizeSvg('niskbuild-wordmark-light.svg', 'niskbuild-wordmark-raster.png', 1200);
-
-for (const size of [32, 180]) {
-  const src = join(logoDir, 'icon-512.png');
-  const out = join(logoDir, `icon-${size}.png`);
-  if (existsSync(src)) {
-    execSync(`sips -z ${size} ${size} "${src}" --out "${out}"`, { stdio: 'pipe' });
-    console.log(`Icon ${size}px`);
-  }
-}
 
 if (existsSync(join(logoDir, 'icon-512.png'))) {
   copyFileSync(join(logoDir, 'icon-512.png'), join(publicDir, 'logo.png'));

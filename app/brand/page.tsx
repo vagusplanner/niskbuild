@@ -32,7 +32,7 @@ export default function BrandPage() {
               <h2 className="text-xl font-semibold text-white mb-1">{group.title}</h2>
               <p className="text-sm text-nisk-muted mb-5">{group.blurb}</p>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className={group.paired ? 'grid gap-4 sm:grid-cols-2 items-stretch' : 'grid gap-4 sm:grid-cols-2'}>
                 {group.assets.map((asset) => (
                   <BrandAssetCard key={asset.id} asset={asset} />
                 ))}

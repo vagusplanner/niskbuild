@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 160" width="600" height="160" aria-label="NiskBuild compact matte iron lockup" role="img">
+  <defs>
+    <linearGradient id="compactForgePlate" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8a7d6e"/>
+      <stop offset="100%" stop-color="#6b6258"/>
+    </linearGradient>
+    <linearGradient id="compactIronPillars" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7a6f63"/>
+      <stop offset="100%" stop-color="#5c5248"/>
+    </linearGradient>
+    <linearGradient id="compactCopperL" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#d49a5c"/>
+      <stop offset="100%" stop-color="#d4a574"/>
+    </linearGradient>
+    <linearGradient id="compactCopperR" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8f5a28"/>
+      <stop offset="100%" stop-color="#b87333"/>
+    </linearGradient>
+    <linearGradient id="compactNiskIron" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f5ebe0"/>
+      <stop offset="100%" stop-color="#d49a5c"/>
+    </linearGradient>
+    <linearGradient id="compactBuildCopper" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#b87333"/>
+      <stop offset="50%" stop-color="#d49a5c"/>
+      <stop offset="100%" stop-color="#d4a574"/>
+    </linearGradient>
+    <linearGradient id="compactTaglineCopper" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#d49a5c"/>
+      <stop offset="55%" stop-color="#b87333"/>
+      <stop offset="100%" stop-color="#8f5a28"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="160" fill="url(#compactForgePlate)" rx="12"/>
+  <g transform="translate(22, 22) scale(0.76)">
+    <path d="M 0,0 L 45,0 L 45,150 L 0,150 Z" fill="url(#compactIronPillars)"/>
+    <path d="M 90,0 L 135,0 L 135,150 L 90,150 Z" fill="url(#compactIronPillars)"/>
+    <path d="M 45,0 L 68,75 L 45,115 L 45,45 Z" fill="url(#compactCopperL)"/>
+    <path d="M 90,150 L 68,75 L 90,35 L 90,105 Z" fill="url(#compactCopperR)"/>
+    <polygon points="45,115 68,75 90,150" fill="#5c5248" opacity="0.3"/>
+    <polygon points="90,35 68,75 45,0" fill="#d49a5c" opacity="0.35"/>
+  </g>
+  <g transform="translate(148, 90)">
+    <text font-family="system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" font-size="68" font-weight="900" letter-spacing="-1.5">
+      <tspan fill="url(#compactNiskIron)">NISK</tspan>
+      <tspan fill="url(#compactBuildCopper)" dx="16">BUILD</tspan>
+    </text>
+  </g>
+  <g transform="translate(151, 130)">
+    <text font-family="system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,monospace" font-size="15" font-weight="800" fill="url(#compactTaglineCopper)">BUILD ANYTHING. OWN EVERYTHING.</text>
+  </g>
+</svg>

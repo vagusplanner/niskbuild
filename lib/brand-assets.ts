@@ -24,6 +24,11 @@ export const BRAND_LOGO = {
     aspectRatio: 750 / 200,
     alt: `NiskBuild — ${BRAND_TAGLINE}`,
   },
+  lockupCompact: {
+    src: '/logo/niskbuild-lockup-compact.svg',
+    aspectRatio: 600 / 160,
+    alt: `NiskBuild — ${BRAND_TAGLINE}`,
+  },
   lockupLight: {
     src: '/logo/niskbuild-lockup-light.svg',
     aspectRatio: 750 / 200,
@@ -34,17 +39,18 @@ export const BRAND_LOGO = {
     aspectRatio: 1,
     alt: 'NiskBuild',
   },
+  iconMatte: {
+    src: '/logo/niskbuild-icon.svg',
+    aspectRatio: 1,
+    alt: 'NiskBuild matte iron icon',
+  },
+  /** Dark UI default — matte iron square icon */
   icon: {
     src: '/logo/niskbuild-icon.svg',
     aspectRatio: 1,
     alt: 'NiskBuild',
   },
   wordmarkLight: {
-    src: '/logo/niskbuild-wordmark-light.svg',
-    aspectRatio: 600 / 160,
-    alt: 'NiskBuild wordmark',
-  },
-  wordmark: {
     src: '/logo/niskbuild-wordmark-light.svg',
     aspectRatio: 600 / 160,
     alt: 'NiskBuild wordmark',
@@ -74,7 +80,6 @@ export type BrandAsset = {
   pngFilename: string;
   pngWidth?: number;
   pngHeight?: number;
-  /** App / profile icons — pick size before download */
   iconSizes?: IconSizeOption[];
   defaultIconSize?: string;
 };
@@ -84,6 +89,8 @@ export type BrandAssetGroup = {
   title: string;
   blurb: string;
   assets: BrandAsset[];
+  /** Render assets side-by-side (e.g. lockup + wordmark) */
+  paired?: boolean;
 };
 
 export const BRAND_PALETTE_SWATCHES = [
@@ -95,20 +102,78 @@ export const BRAND_PALETTE_SWATCHES = [
   { name: 'Cream / parchment', token: '--foreground', hex: BRAND_COLORS.parchment, usage: 'Body text on dark UI' },
 ] as const;
 
-const ICON_PREVIEW = BRAND_LOGO.iconLight.src;
+const CREAM_ICON_SIZES: IconSizeOption[] = [
+  {
+    id: '512',
+    label: '512×512',
+    previewSrc: BRAND_LOGO.iconLight.src,
+    pngHref: '/logo/icon-512.png',
+    pngFilename: 'niskbuild-icon-512.png',
+    width: 512,
+    height: 512,
+  },
+  {
+    id: '180',
+    label: '180×180',
+    previewSrc: BRAND_LOGO.iconLight.src,
+    pngHref: '/logo/icon-180.png',
+    pngFilename: 'niskbuild-icon-180.png',
+    width: 180,
+    height: 180,
+  },
+  {
+    id: '32',
+    label: '32×32',
+    previewSrc: BRAND_LOGO.iconLight.src,
+    pngHref: '/logo/icon-32.png',
+    pngFilename: 'niskbuild-icon-32.png',
+    width: 32,
+    height: 32,
+  },
+];
+
+const MATTE_ICON_SIZES: IconSizeOption[] = [
+  {
+    id: '512',
+    label: '512×512',
+    previewSrc: BRAND_LOGO.iconMatte.src,
+    pngHref: '/logo/icon-matte-512.png',
+    pngFilename: 'niskbuild-icon-matte-512.png',
+    width: 512,
+    height: 512,
+  },
+  {
+    id: '180',
+    label: '180×180',
+    previewSrc: BRAND_LOGO.iconMatte.src,
+    pngHref: '/logo/icon-matte-180.png',
+    pngFilename: 'niskbuild-icon-matte-180.png',
+    width: 180,
+    height: 180,
+  },
+  {
+    id: '32',
+    label: '32×32',
+    previewSrc: BRAND_LOGO.iconMatte.src,
+    pngHref: '/logo/icon-matte-32.png',
+    pngFilename: 'niskbuild-icon-matte-32.png',
+    width: 32,
+    height: 32,
+  },
+];
 
 export const BRAND_ASSET_GROUPS: BrandAssetGroup[] = [
   {
     id: 'social-profile',
     title: 'Profile & avatar',
-    blurb: 'Square icon for Instagram, X, LinkedIn, Facebook, TikTok, and Discord profile photos.',
+    blurb: 'Square icons for social profiles, app stores, and favicons. Pick a size to preview before download.',
     assets: [
       {
         id: 'icon',
-        label: 'App icon',
-        description: 'Official copper forge mark on cream — full-bleed for favicons and app stores.',
-        useCase: 'Profile picture · App stores · Google search favicon',
-        previewSrc: ICON_PREVIEW,
+        label: 'App icon (cream)',
+        description: 'Copper forge mark on cream — full-bleed for favicons and light backgrounds.',
+        useCase: 'Profile picture · App stores · Firefox tab favicon',
+        previewSrc: BRAND_LOGO.iconLight.src,
         previewBg: 'light',
         pdfHref: '/logo/niskbuild-icon.pdf',
         pdfFilename: 'niskbuild-icon.pdf',
@@ -117,83 +182,68 @@ export const BRAND_ASSET_GROUPS: BrandAssetGroup[] = [
         pngWidth: 512,
         pngHeight: 512,
         defaultIconSize: '512',
-        iconSizes: [
-          {
-            id: '512',
-            label: '512×512',
-            previewSrc: ICON_PREVIEW,
-            pngHref: '/logo/icon-512.png',
-            pngFilename: 'niskbuild-icon-512.png',
-            width: 512,
-            height: 512,
-          },
-          {
-            id: '180',
-            label: '180×180',
-            previewSrc: ICON_PREVIEW,
-            pngHref: '/logo/icon-180.png',
-            pngFilename: 'niskbuild-icon-180.png',
-            width: 180,
-            height: 180,
-          },
-          {
-            id: '32',
-            label: '32×32',
-            previewSrc: ICON_PREVIEW,
-            pngHref: '/logo/icon-32.png',
-            pngFilename: 'niskbuild-icon-32.png',
-            width: 32,
-            height: 32,
-          },
-        ],
+        iconSizes: CREAM_ICON_SIZES,
       },
       {
-        id: 'icon-small',
-        label: 'Small profile icon',
-        description: '180×180 — Twitter/X, Slack, Apple touch icon. Same cream full-bleed mark.',
-        useCase: 'Smaller avatar slots · link previews · Firefox tab',
-        previewSrc: ICON_PREVIEW,
-        previewBg: 'light',
+        id: 'icon-matte',
+        label: 'Profile icon (matte iron)',
+        description: 'Same mark as the full lockup — lighter matte iron plate, readable on dark UI.',
+        useCase: 'Discord · dark-mode profiles · in-app avatar',
+        previewSrc: BRAND_LOGO.iconMatte.src,
+        previewBg: 'dark',
         pdfHref: '/logo/niskbuild-icon.pdf',
-        pdfFilename: 'niskbuild-icon.pdf',
-        pngHref: '/logo/icon-180.png',
-        pngFilename: 'niskbuild-icon-180.png',
-        pngWidth: 180,
-        pngHeight: 180,
-        defaultIconSize: '180',
-        iconSizes: [
-          {
-            id: '180',
-            label: '180×180',
-            previewSrc: ICON_PREVIEW,
-            pngHref: '/logo/icon-180.png',
-            pngFilename: 'niskbuild-icon-180.png',
-            width: 180,
-            height: 180,
-          },
-          {
-            id: '512',
-            label: '512×512',
-            previewSrc: ICON_PREVIEW,
-            pngHref: '/logo/icon-512.png',
-            pngFilename: 'niskbuild-icon-512.png',
-            width: 512,
-            height: 512,
-          },
-        ],
+        pdfFilename: 'niskbuild-icon-matte.pdf',
+        pngHref: '/logo/icon-matte-512.png',
+        pngFilename: 'niskbuild-icon-matte-512.png',
+        pngWidth: 512,
+        pngHeight: 512,
+        defaultIconSize: '512',
+        iconSizes: MATTE_ICON_SIZES,
+      },
+    ],
+  },
+  {
+    id: 'brand-lockups',
+    title: 'Lockup & wordmark',
+    blurb: 'Full lockup and wordmark at matching 600×160 proportions — pair for banners and co-branding.',
+    paired: true,
+    assets: [
+      {
+        id: 'lockup-compact',
+        label: 'Full lockup (matte iron)',
+        description: 'Icon + NiskBuild + tagline on lighter matte iron — matches wordmark height.',
+        useCase: 'LinkedIn banner · dark social posts · navbar',
+        previewSrc: BRAND_LOGO.lockupCompact.src,
+        previewBg: 'dark',
+        pdfHref: '/logo/niskbuild-lockup-full.pdf',
+        pdfFilename: 'niskbuild-lockup-compact.pdf',
+        pngHref: '/logo/niskbuild-lockup-compact-raster.png',
+        pngFilename: 'niskbuild-lockup-compact.png',
+      },
+      {
+        id: 'wordmark',
+        label: 'Wordmark',
+        description: 'Typography on cream — same copper palette as the lockup.',
+        useCase: 'Watermarks · footers · light co-branding',
+        previewSrc: BRAND_LOGO.wordmarkLight.src,
+        previewBg: 'light',
+        pdfHref: '/logo/niskbuild-wordmark.pdf',
+        pdfFilename: 'niskbuild-wordmark.pdf',
+        pngHref: '/logo/niskbuild-wordmark-raster.png',
+        pngFilename: 'niskbuild-wordmark.png',
       },
     ],
   },
   {
     id: 'social-posts',
     title: 'Posts & banners',
-    blurb: 'Full lockup with NiskBuild wordmark and tagline — for posts, covers, and press.',
+    blurb: 'Wide lockups for posts, covers, and press kits.',
     assets: [
       {
         id: 'lockup',
-        label: 'Full lockup (matte iron)',
-        description: 'Icon + NiskBuild + tagline on lighter matte iron (readable on dark UI).',
-        useCase: 'Instagram posts · LinkedIn banner · in-app navbar',
+        label: 'Wide lockup (matte iron)',
+        description: '750×200 full lockup on lighter matte iron.',
+        useCase: 'Instagram posts · press headers',
         previewSrc: BRAND_LOGO.lockup.src,
         previewBg: 'dark',
         pdfHref: '/logo/niskbuild-lockup-full.pdf',
@@ -209,28 +259,9 @@ export const BRAND_ASSET_GROUPS: BrandAssetGroup[] = [
         previewSrc: BRAND_LOGO.lockupLight.src,
         previewBg: 'light',
         pdfHref: '/logo/niskbuild-lockup-full.pdf',
-        pdfFilename: 'niskbuild-lockup.pdf',
+        pdfFilename: 'niskbuild-lockup-light.pdf',
         pngHref: '/logo/niskbuild-lockup-light-raster.png',
         pngFilename: 'niskbuild-lockup-light.png',
-      },
-    ],
-  },
-  {
-    id: 'wordmark',
-    title: 'Wordmark only',
-    blurb: 'Typography without the icon — for tight spaces and watermarks.',
-    assets: [
-      {
-        id: 'wordmark',
-        label: 'Wordmark',
-        description: 'NiskBuild typography on cream — official copper palette.',
-        useCase: 'Watermarks · footers · co-branding',
-        previewSrc: BRAND_LOGO.wordmarkLight.src,
-        previewBg: 'light',
-        pdfHref: '/logo/niskbuild-wordmark.pdf',
-        pdfFilename: 'niskbuild-wordmark.pdf',
-        pngHref: '/logo/niskbuild-wordmark-raster.png',
-        pngFilename: 'niskbuild-wordmark.png',
       },
     ],
   },
@@ -238,6 +269,8 @@ export const BRAND_ASSET_GROUPS: BrandAssetGroup[] = [
 
 export const BRAND_PDF_FILES: Record<string, { path: string; filename: string }> = {
   icon: { path: 'niskbuild-icon.pdf', filename: 'niskbuild-icon.pdf' },
+  'icon-matte': { path: 'niskbuild-icon.pdf', filename: 'niskbuild-icon-matte.pdf' },
   lockup: { path: 'niskbuild-lockup-full.pdf', filename: 'niskbuild-lockup.pdf' },
+  'lockup-compact': { path: 'niskbuild-lockup-full.pdf', filename: 'niskbuild-lockup-compact.pdf' },
   wordmark: { path: 'niskbuild-wordmark.pdf', filename: 'niskbuild-wordmark.pdf' },
 };

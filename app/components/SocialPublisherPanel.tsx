@@ -45,9 +45,22 @@ export default function SocialPublisherPanel({
   const [copiedKey, setCopiedKey] = useState<SocialPostKey | null>(null);
   const [scheduleDate, setScheduleDate] = useState('');
 
+  const [bufferConnected, setBufferConnected] = useState(false);
+
   const socialPro = hasSocialProAddon(purchasedTemplates);
   const canPublish = canDirectPublishSocial(subscriptionTier, subscriptionStatus, socialPro);
   const canSchedule = canScheduleSocialPosts(subscriptionTier, subscriptionStatus, socialPro);
+
+  useEffect(() => {
+    if (!open || !canPublish) return;
+    fetch('/api/social/buffer/status', { credentials: 'include' })
+      .then(async (r) => {
+        if (!r.ok) return;
+        const data = await r.json();
+        setBufferConnected(Boolean(data.connected));
+      })
+      .catch(() => {});
+  }, [open, canPublish]);
 
   useEffect(() => {
     if (!open) return;
@@ -106,19 +119,17 @@ export default function SocialPublisherPanel({
 
         {canPublish && (
           <div className="shrink-0 px-4 py-3 border-b border-[var(--border)] bg-[var(--surface)]/50">
-            <p className="text-[10px] uppercase tracking-wider text-nisk-muted mb-2">Connect accounts</p>
-            <div className="flex flex-wrap gap-2">
-              {(['Instagram', 'LinkedIn', 'X', 'Facebook'] as const).map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  className="px-2.5 py-1 rounded-lg border border-[var(--border)] text-[10px] text-nisk-muted hover:border-[var(--copper-primary)]/40"
-                  onClick={() => setError(`${p} OAuth coming soon — copy posts for now`)}
-                >
-                  Connect {p}
-                </button>
-              ))}
-            </div>
+            <p className="text-[10px] uppercase tracking-wider text-nisk-muted mb-2">Buffer</p>
+            {bufferConnected ? (
+              <p className="text-xs text-[var(--copper-melt)]">Buffer connected — schedule from Agency+ / Social Pro.</p>
+            ) : (
+              <a
+                href="/api/social/buffer/auth"
+                className="inline-flex items-center gap-2 rounded-lg border border-[var(--copper-primary)]/40 bg-[var(--copper-primary)]/10 px-3 py-1.5 text-xs font-semibold text-[var(--copper-melt)] hover:bg-[var(--copper-primary)]/20"
+              >
+                Connect Buffer
+              </a>
+            )}
           </div>
         )}
 

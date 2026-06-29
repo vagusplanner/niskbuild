@@ -124,8 +124,8 @@ function IconSizePicker({
 }
 
 function pdfApiId(assetId: string): string {
-  if (assetId === 'icon-small') return 'icon';
-  if (assetId === 'lockup-light') return 'lockup';
+  if (assetId === 'lockup-light' || assetId === 'lockup-compact') return 'lockup';
+  if (assetId === 'icon-matte') return 'icon';
   return assetId;
 }
 

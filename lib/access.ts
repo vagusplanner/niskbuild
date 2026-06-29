@@ -9,6 +9,7 @@ export const PLATFORM_OWNER_PATH_PREFIXES = [
   '/admin/support',
   '/admin/insights',
   '/admin/analytics',
+  '/admin/social',
   '/builder/vagus-planner',
   '/vagus-planner',
 ] as const;

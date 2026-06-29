@@ -39,6 +39,7 @@ const ADMIN_NAV = [
   { href: '/admin/analytics', label: 'Analytics' },
   { href: '/admin/revenue', label: 'Revenue' },
   { href: '/admin/emails', label: 'Email hub' },
+  { href: '/admin/social', label: 'Social Hub' },
   { href: '/admin/churn', label: 'Churn risk' },
   { href: '/builder/vagus-planner', label: 'VP Studio' },
   { href: '/admin', label: 'Analytics' },
