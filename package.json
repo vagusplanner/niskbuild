@@ -43,6 +43,7 @@
     "@capacitor/push-notifications": "^7.0.6"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "@tailwindcss/postcss": "^4",
     "@types/archiver": "^6.0.4",
     "@types/node": "^20",

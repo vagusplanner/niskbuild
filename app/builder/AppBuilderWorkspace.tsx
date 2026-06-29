@@ -7,6 +7,18 @@ import { notFound, useRouter } from 'next/navigation';
 import BuilderSidebar from '@/app/components/BuilderSidebar';
 import HelpAssistant from '@/app/components/HelpAssistant';
 import PromptBar from '@/app/components/PromptBar';
+import SocialPublisherPanel from '@/app/components/SocialPublisherPanel';
+import { ChatPanelDragHandle, PromptHeightDragHandle } from '@/app/components/BuilderResizeHandles';
+import {
+  getBuilderChatWidthPx,
+  getBuilderPromptHeightPx,
+  setBuilderChatWidthPx,
+  setBuilderPromptHeightPx,
+  CHAT_WIDTH_MIN,
+  CHAT_WIDTH_MAX,
+  PROMPT_HEIGHT_MIN,
+  PROMPT_HEIGHT_MAX,
+} from '@/lib/builder-layout-prefs';
 import GooglePlacesImport, {
   type GooglePlacesImportHandle,
 } from '@/app/components/GooglePlacesImport';
@@ -69,6 +81,9 @@ function AppBuilderWorkspaceInner({ appId, loginNextPath }: AppBuilderWorkspaceP
   const [supportsDeploy, setSupportsDeploy] = useState(false);
   const [supportsXcodeExport, setSupportsXcodeExport] = useState(false);
   const [showSource, setShowSource] = useState(false);
+  const [showSocialPublisher, setShowSocialPublisher] = useState(false);
+  const [chatWidthPx, setChatWidthPxState] = useState(340);
+  const [promptHeightPx, setPromptHeightPxState] = useState(140);
 
   const activeTarget = useMemo(
     () => targets.find((t) => t.id === targetId) ?? targets[0],
@@ -82,6 +97,11 @@ function AppBuilderWorkspaceInner({ appId, loginNextPath }: AppBuilderWorkspaceP
       return [...prev.slice(-48), statusMessage];
     });
   }, [statusMessage]);
+
+  useEffect(() => {
+    setChatWidthPxState(getBuilderChatWidthPx());
+    setPromptHeightPxState(getBuilderPromptHeightPx());
+  }, []);
 
   const handleGooglePlacesImport = (
     business: GooglePlacesBusiness,
@@ -394,6 +414,13 @@ function AppBuilderWorkspaceInner({ appId, loginNextPath }: AppBuilderWorkspaceP
             >
               HTML Builder
             </Link>
+            <button
+              type="button"
+              onClick={() => setShowSocialPublisher(true)}
+              className="px-3 py-1.5 text-xs font-semibold border-2 border-[var(--border)] hover:border-[var(--primary)] transition-colors"
+            >
+              Social
+            </button>
             <Link
               href={appConfig.openAppHref}
               className="px-3 py-1.5 text-xs font-semibold border-2 border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--accent-teal-bright)]"
@@ -405,7 +432,10 @@ function AppBuilderWorkspaceInner({ appId, loginNextPath }: AppBuilderWorkspaceP
 
         <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
           {/* Left: prompt + controls */}
-          <aside className="w-full lg:w-[400px] shrink-0 flex flex-col border-b-2 lg:border-b-0 lg:border-r-2 border-[var(--border)] bg-[var(--card-bg)]">
+          <aside
+            className="relative w-full lg:w-[var(--vp-chat-width)] lg:shrink-0 flex flex-col border-b-2 lg:border-b-0 lg:border-r-2 border-[var(--border)] bg-[var(--card-bg)]"
+            style={{ ['--vp-chat-width' as string]: `${chatWidthPx}px` }}
+          >
             <div className="shrink-0 p-4 space-y-3 border-b border-[var(--border)]">
               <label className="block text-xs uppercase tracking-wider text-[var(--foreground)]/60 font-semibold">
                 Page to edit
@@ -460,6 +490,20 @@ function AppBuilderWorkspaceInner({ appId, loginNextPath }: AppBuilderWorkspaceP
                   setUseLocalOllama(enabled);
                   localStorage.setItem('niskbuild_use_local_ollama', enabled ? 'true' : 'false');
                 }}
+                promptMinHeight={promptHeightPx}
+                promptRows={Math.max(3, Math.round(promptHeightPx / 28))}
+              />
+              <PromptHeightDragHandle
+                onResize={(delta) => {
+                  const next = Math.min(
+                    PROMPT_HEIGHT_MAX,
+                    Math.max(PROMPT_HEIGHT_MIN, promptHeightPx + delta)
+                  );
+                  if (next !== promptHeightPx) {
+                    setPromptHeightPxState(next);
+                    setBuilderPromptHeightPx(next);
+                  }
+                }}
               />
               <p className="px-4 pb-2 text-[10px] text-[var(--foreground)]/40">
                 {cloudCreditsRemaining > 0
@@ -492,6 +536,18 @@ function AppBuilderWorkspaceInner({ appId, loginNextPath }: AppBuilderWorkspaceP
                 </div>
               )}
             </div>
+            <ChatPanelDragHandle
+              onResize={(delta) => {
+                const next = Math.min(
+                  CHAT_WIDTH_MAX,
+                  Math.max(CHAT_WIDTH_MIN, chatWidthPx + delta)
+                );
+                if (next !== chatWidthPx) {
+                  setChatWidthPxState(next);
+                  setBuilderChatWidthPx(next);
+                }
+              }}
+            />
           </aside>
 
           {/* Right: live preview iframe */}
@@ -517,6 +573,15 @@ function AppBuilderWorkspaceInner({ appId, loginNextPath }: AppBuilderWorkspaceP
       />
 
       <HelpAssistant mode="user" projectId={appId} />
+
+      <SocialPublisherPanel
+        open={showSocialPublisher}
+        onClose={() => setShowSocialPublisher(false)}
+        prompt={prompt}
+        blueprint={null}
+        subscriptionTier={subscriptionTier}
+        subscriptionStatus={subscriptionStatus}
+      />
     </div>
   );
 }

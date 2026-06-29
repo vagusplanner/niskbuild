@@ -360,6 +360,98 @@ You already have top-tier access. Focus on operational excellence: SLAs for clie
 ', '{sovereign}'::text[], 106);
 
 insert into public.doc_articles (slug, title, category, content, plan_visibility, order_index)
+values ('what-is-niskbuild', 'What is NiskBuild?', 'Getting Started', '# What is NiskBuild?
+
+NiskBuild is an **AI-powered app builder** for freelancers, agencies, and product teams who need to ship client-ready web apps without starting from a blank repo.
+
+Describe what you want in plain language — pages, branding, flows — and NiskBuild generates a working project you can preview, refine, and export.
+
+## Who NiskBuild is for
+
+| Client type | How NiskBuild helps |
+|-------------|---------------------|
+| **Freelancers** | Deliver landing pages, PWAs, and small apps faster; one prompt to a preview clients can approve |
+| **Agencies & studios** | Standardize delivery: HTML builder, branded exports, optional App Store packaging on higher plans |
+| **In-house product teams** | Prototype internal tools and customer portals; upgrade when you need team seats or white-label |
+| **Local businesses** | Import Google Business listings (Pro+) to auto-fill brand, services, and social proof |
+| **Game & interactive studios** | Phaser game templates and AI-assisted logic on Pro Worker and above |
+
+Every company — from solo founders to enterprise — gets the same core workflow: **prompt → preview → export**. Plans unlock credits, exports, integrations, and support depth.
+
+## What you can build
+
+- **Marketing & brochure sites** — multi-page HTML with live preview
+- **Client dashboards & tools** — React/Vite apps (e.g. Vagus Planner) with page-level AI edits
+- **PWAs** — installable mobile web apps without an app store
+- **Native iOS (Agency+)** — Capacitor/Xcode export for App Store submission
+- **2D games (Pro+)** — Phaser.js templates with AI-generated game logic
+
+## Services by plan
+
+### Sandbox (Free)
+
+- 1 project, browser preview
+- Optional local Ollama on your machine
+- Watermarked / locked export
+- Contact form support
+
+**Best for:** Trying NiskBuild before you commit.
+
+### Basic ($69/mo)
+
+- 5 projects
+- Clean ZIP + **PWA export**
+- 150 cloud AI credits / month
+- Docs hub + brand kit downloads
+
+**Best for:** Freelancers shipping PWAs and static sites for clients.
+
+### Pro Worker ($129/mo)
+
+- Everything in Basic, plus:
+- **600 credits** / month
+- **BYOC** — bring your own API keys
+- **Google Places** import + competitor intel
+- **Phaser game builder**
+- **Support tickets** with priority replies
+- Local Ollama in the cloud builder
+
+**Best for:** Power users and small agencies who need integrations and human support.
+
+### Agency Studio ($299/mo+)
+
+- **2,500+ credits**, team seats
+- **Live preview links** for client review
+- **App Store / Xcode export** (Capacitor)
+- Social publishing (Buffer), SEO schema tools
+- Higher session limits
+
+**Best for:** Agencies delivering multiple client apps per month.
+
+### Scale, White Label, Team Enterprise, Sovereign
+
+- 10,000–50,000+ credits
+- White-label branding, unlimited seats (tier-dependent)
+- Dedicated ops patterns for multi-brand and enterprise isolation
+
+**Best for:** Platforms, resellers, and large teams standardizing on NiskBuild.
+
+## How NiskBuild helps every company
+
+1. **Speed to first preview** — minutes, not weeks, from idea to something stakeholders can click through
+2. **Consistent exports** — ZIP, PWA, or native packaging depending on plan
+3. **Tiered cost** — start free, upgrade only when credits, exports, or support matter
+4. **Human + AI support** — in-app help, support agent, and Pro+ tickets with admin-backed confirmations
+5. **Docs & brand kit** — self-serve assets so your team stays on-brand
+
+## Next steps
+
+- **Welcome to NiskBuild** — your first 15 minutes in the builder
+- **Your Plan** — step-by-step path for your subscription tier
+- **Progressive Web Apps (PWA)** — fastest mobile delivery without the App Store
+', '{all}'::text[], 12);
+
+insert into public.doc_articles (slug, title, category, content, plan_visibility, order_index)
 values ('progressive-web-apps-pwa', 'Progressive Web Apps (PWA)', 'Using NiskBuild', '# Progressive Web Apps (PWA)
 
 A **PWA** (Progressive Web App) lets your NiskBuild app install on iPhone and Android like a native app — without the App Store. Host once, share a link, and clients tap **Add to Home Screen**.
@@ -400,7 +492,3 @@ Send clients your live HTTPS URL. They install once from Safari or Chrome — no
 
 See **Exporting to App Store** in the sidebar when you are ready for native packaging.
 ', '{all}'::text[], 15);
-
--- Verification (expect 11 rows including progressive-web-apps-pwa)
--- select count(*) as article_count from public.doc_articles;
--- select slug, title, category, order_index from public.doc_articles order by order_index;

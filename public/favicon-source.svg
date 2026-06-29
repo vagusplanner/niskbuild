@@ -1,5 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" aria-label="NiskBuild app icon" role="img">
   <defs>
+    <clipPath id="iconClipLight">
+      <rect width="240" height="240"/>
+    </clipPath>
     <linearGradient id="ironPillarsLight" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#4a433c"/>
       <stop offset="100%" stop-color="#1a1612"/>
@@ -13,13 +16,15 @@
       <stop offset="100%" stop-color="#b87333"/>
     </linearGradient>
   </defs>
-  <rect width="240" height="240" fill="#f5ebe0"/>
-  <g transform="translate(120 120) scale(1.778) translate(-67.5 -75)">
-    <path d="M 0,0 L 45,0 L 45,150 L 0,150 Z" fill="url(#ironPillarsLight)"/>
-    <path d="M 90,0 L 135,0 L 135,150 L 90,150 Z" fill="url(#ironPillarsLight)"/>
-    <path d="M 45,0 L 68,75 L 45,115 L 45,45 Z" fill="url(#copperFacetLLight)"/>
-    <path d="M 90,150 L 68,75 L 90,35 L 90,105 Z" fill="url(#copperFacetRLight)"/>
-    <polygon points="45,115 68,75 90,150" fill="#1a1612" opacity="0.22"/>
-    <polygon points="90,35 68,75 45,0" fill="#d49a5c" opacity="0.35"/>
+  <g clip-path="url(#iconClipLight)">
+    <rect width="240" height="240" fill="#f5ebe0"/>
+    <g transform="translate(120 120) scale(1.778) translate(-67.5 -75)">
+      <path d="M 0,0 L 45,0 L 45,150 L 0,150 Z" fill="url(#ironPillarsLight)"/>
+      <path d="M 90,0 L 135,0 L 135,150 L 90,150 Z" fill="url(#ironPillarsLight)"/>
+      <path d="M 45,0 L 68,75 L 45,115 L 45,45 Z" fill="url(#copperFacetLLight)"/>
+      <path d="M 90,150 L 68,75 L 90,35 L 90,105 Z" fill="url(#copperFacetRLight)"/>
+      <polygon points="45,115 68,75 90,150" fill="#1a1612" opacity="0.22"/>
+      <polygon points="90,35 68,75 45,0" fill="#d49a5c" opacity="0.35"/>
+    </g>
   </g>
 </svg>

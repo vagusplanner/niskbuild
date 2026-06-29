@@ -147,8 +147,8 @@ export async function sendDay14NpsEmail(userId: string, email: string): Promise<
     userId,
     to: email,
     templateKey: EMAIL_TEMPLATE.DAY_14_NPS,
-    subject: 'How likely are you to recommend NiskBuild?',
-    html: T.day14NpsHtml(),
+    subject: 'Quick question about NiskBuild (30 seconds)',
+    html: T.day14NpsHtml(userId),
   });
 }
 

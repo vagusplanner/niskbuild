@@ -1,4 +1,5 @@
 import { appUrl } from '@/lib/email/app-url';
+import { npsScoreUrl } from '@/lib/nps-link';
 
 function shell(title: string, body: string): string {
   return `
@@ -48,11 +49,19 @@ export function day7SocialProofHtml(): string {
   );
 }
 
-export function day14NpsHtml(): string {
+export function day14NpsHtml(userId: string): string {
+  const buttons = Array.from({ length: 10 }, (_, i) => {
+    const score = i + 1;
+    const href = npsScoreUrl(userId, score);
+    return `<a href="${href}" style="display:inline-block;width:36px;height:36px;line-height:36px;text-align:center;margin:4px;background:#1e293b;color:#e2e8f0;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;">${score}</a>`;
+  }).join('');
+
   return shell(
-    'How likely are you to recommend NiskBuild?',
-    `<p style="color:#94a3b8;line-height:1.6;">Tap a score from 0 (not likely) to 10 (very likely). It takes five seconds.</p>
-     <p style="margin:24px 0;">${cta(appUrl('/nps'), 'Rate 1–10')}</p>`
+    'Quick question about NiskBuild (30 seconds)',
+    `<p style="color:#94a3b8;line-height:1.6;">How likely are you to recommend NiskBuild to a freelancer or agency?</p>
+     <p style="color:#64748b;font-size:13px;margin:16px 0 8px;">Tap a number from 1 (not likely) to 10 (very likely):</p>
+     <div style="margin:8px 0 24px;">${buttons}</div>
+     <p style="color:#64748b;font-size:12px;">Or open the <a href="${appUrl('/nps')}" style="color:#818cf8;">survey page</a>.</p>`
   );
 }
 

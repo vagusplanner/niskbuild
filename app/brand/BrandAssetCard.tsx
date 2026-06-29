@@ -47,32 +47,33 @@ function PreviewBox({
   alt,
   light,
   iconSquare,
-  sizePx,
 }: {
   src: string;
   alt: string;
   light: boolean;
   iconSquare?: boolean;
-  sizePx?: number;
 }) {
+  const bg = light ? BRAND_LIGHT_BG : '#3a3530';
+
+  if (iconSquare) {
+    return (
+      <div
+        className="relative aspect-square w-full max-w-[200px] mx-auto overflow-hidden rounded-xl"
+        style={{ backgroundColor: bg }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={src} alt={alt} className="absolute inset-0 w-full h-full object-fill block" />
+      </div>
+    );
+  }
+
   return (
     <div
-      className={`flex items-center justify-center rounded-xl border border-nisk min-h-[140px] p-4 ${
-        iconSquare ? 'aspect-square max-w-[200px] mx-auto w-full' : ''
-      }`}
+      className="flex items-center justify-center rounded-xl border border-nisk min-h-[140px] p-4"
       style={{ backgroundColor: light ? BRAND_LIGHT_BG : 'var(--bg-base, #1a1612)' }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={src}
-        alt={alt}
-        className={
-          iconSquare
-            ? 'w-full h-full min-h-[140px] object-cover'
-            : 'max-h-28 max-w-full object-contain'
-        }
-        style={iconSquare && sizePx ? { maxWidth: Math.min(sizePx, 160) } : undefined}
-      />
+      <img src={src} alt={alt} className="max-h-28 max-w-full object-contain" />
     </div>
   );
 }
@@ -157,13 +158,7 @@ export default function BrandAssetCard({ asset }: { asset: BrandAsset }) {
         />
       )}
 
-      <PreviewBox
-        src={previewSrc}
-        alt={asset.label}
-        light={light}
-        iconSquare={isIconCard}
-        sizePx={selectedIcon?.width}
-      />
+      <PreviewBox src={previewSrc} alt={asset.label} light={light} iconSquare={isIconCard} />
 
       <div className="flex-1">
         <h3 className="font-semibold text-white mb-1">{asset.label}</h3>

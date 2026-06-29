@@ -44,8 +44,8 @@ export const EMAIL_TEMPLATE_CATALOG: EmailTemplateCatalogEntry[] = [
   {
     key: EMAIL_TEMPLATE.DAY_14_NPS,
     label: 'Day 14 — NPS survey',
-    subject: 'How likely are you to recommend NiskBuild?',
-    description: 'Links to /nps for satisfaction score.',
+    subject: 'Quick question about NiskBuild (30 seconds)',
+    description: '10 clickable score buttons linking to /api/nps for day-14 users.',
     category: 'onboarding',
   },
   {
@@ -142,7 +142,7 @@ export function renderTemplateHtml(
     case EMAIL_TEMPLATE.DAY_7_SOCIAL_PROOF:
       return { subject: entry!.subject, html: T.day7SocialProofHtml() };
     case EMAIL_TEMPLATE.DAY_14_NPS:
-      return { subject: entry!.subject, html: T.day14NpsHtml() };
+      return { subject: entry!.subject, html: T.day14NpsHtml('00000000-0000-0000-0000-000000000000') };
     case EMAIL_TEMPLATE.CREDIT_80:
       return { subject: entry!.subject, html: T.credit80Html(SAMPLE_CREDIT) };
     case EMAIL_TEMPLATE.CREDIT_0:

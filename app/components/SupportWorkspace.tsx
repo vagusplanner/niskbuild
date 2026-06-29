@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getSafeSession } from '@/lib/supabaseSession';
 import ContactForm from '@/app/components/ContactForm';
+import SupportAgentPanel from '@/app/components/SupportAgentPanel';
 import { canUseSupportTickets } from '@/lib/support-access';
 import { statusLabel, type SupportTicketStatus } from '@/lib/support-access';
 
@@ -99,11 +100,15 @@ export default function SupportWorkspace() {
   return (
     <div className="max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold mb-1">Support</h1>
-      <p className="text-nisk-muted text-sm mb-8">
+      <p className="text-nisk-muted text-sm mb-6">
         {hasTickets
           ? 'Priority support for Pro Worker plans and above — track replies here and by email.'
           : 'Free, Sandbox & Basic plans can use the contact form below. Upgrade to Pro Worker for ticket tracking.'}
       </p>
+
+      <div className="mb-8">
+        <SupportAgentPanel />
+      </div>
 
       <div className="grid lg:grid-cols-5 gap-6">
         {hasTickets && (
