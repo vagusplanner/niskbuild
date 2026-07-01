@@ -8,6 +8,7 @@ import {
   subjectIcon,
   type ShiftSubjectRow,
 } from '@/lib/shift-ai/subjects';
+import { needsSubjectOnboarding } from '@/lib/shift-ai/onboarding';
 import { SHIFT_CURRICULUM_LABELS, type ShiftCurriculum } from '@/lib/shift-ai/constants';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getSafeSession } from '@/lib/supabaseSession.server';
@@ -32,7 +33,7 @@ export default async function ShiftAiSubjectPage({ params }: PageProps) {
     .eq('user_id', session.user.id)
     .maybeSingle();
 
-  if (!student) {
+  if (!student || needsSubjectOnboarding(student)) {
     redirect('/builder/shift-ai/onboarding');
   }
 

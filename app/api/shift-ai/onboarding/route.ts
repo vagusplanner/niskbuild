@@ -5,15 +5,8 @@ import {
   isShiftAgeRange,
   isShiftCurriculum,
 } from '@/lib/shift-ai/constants';
+import { getFavouriteSubjects, parseFavouriteSubjects } from '@/lib/shift-ai/onboarding';
 import { deriveKeyStage } from '@/lib/shift-ai/year-group';
-
-function parseFavouriteSubjects(raw: unknown): string[] {
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .map((item) => (typeof item === 'string' ? item.trim() : ''))
-    .filter(Boolean)
-    .slice(0, 3);
-}
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -56,12 +49,31 @@ export async function POST(request: NextRequest) {
   const { data: existing } = await admin
     .schema('firstparty')
     .from('shift_students')
-    .select('id')
+    .select('id, favourite_subjects, account_type')
     .eq('user_id', user.id)
     .maybeSingle();
 
   if (existing) {
-    return NextResponse.json({ error: 'Student profile already exists' }, { status: 409 });
+    if (getFavouriteSubjects(existing).length > 0) {
+      return NextResponse.json({ error: 'Student profile already exists' }, { status: 409 });
+    }
+
+    if (favouriteSubjects.length === 0) {
+      return NextResponse.json({ error: 'At least one favourite subject is required' }, { status: 400 });
+    }
+
+    const { error } = await admin
+      .schema('firstparty')
+      .from('shift_students')
+      .update({ favourite_subjects: favouriteSubjects })
+      .eq('id', existing.id);
+
+    if (error) {
+      console.error('Shift AI onboarding update failed:', error.message);
+      return NextResponse.json({ error: 'Could not save your subjects' }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true });
   }
 
   const { error } = await admin.schema('firstparty').from('shift_students').insert({

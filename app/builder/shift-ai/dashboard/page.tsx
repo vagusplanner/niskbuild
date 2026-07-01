@@ -13,6 +13,7 @@ import {
   type ShiftSubjectRow,
 } from '@/lib/shift-ai/subjects';
 import { getSafeSession } from '@/lib/supabaseSession.server';
+import { needsSubjectOnboarding } from '@/lib/shift-ai/onboarding';
 
 type PlannerItem = {
   id: string;
@@ -96,7 +97,7 @@ export default async function ShiftAiDashboardPage() {
     .eq('user_id', session.user.id)
     .maybeSingle();
 
-  if (!student) {
+  if (!student || needsSubjectOnboarding(student)) {
     redirect('/builder/shift-ai/onboarding');
   }
 

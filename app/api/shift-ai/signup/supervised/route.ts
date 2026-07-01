@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isShiftCurriculum, normalizeEmail } from '@/lib/shift-ai/constants';
+import { parseFavouriteSubjects } from '@/lib/shift-ai/onboarding';
 import { defaultAgeRangeForAccount, deriveKeyStage } from '@/lib/shift-ai/year-group';
 import { sendParentalConsentRequestEmail } from '@/lib/shift-ai/emails';
 
@@ -20,6 +21,7 @@ export async function POST(request: NextRequest) {
   const parentEmailRaw =
     typeof payload.parentEmail === 'string' ? payload.parentEmail.trim() : '';
   const accountType = payload.accountType === 'family' ? 'family' : 'supervised';
+  const favouriteSubjects = parseFavouriteSubjects(payload.favouriteSubjects);
 
   if (!childFirstName || !yearGroup || !parentEmailRaw) {
     return NextResponse.json(
@@ -54,6 +56,7 @@ export async function POST(request: NextRequest) {
       account_type: accountType,
       is_active: false,
       parent_consent_given: false,
+      favourite_subjects: favouriteSubjects,
     })
     .select('id')
     .single();

@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import ShiftAiAssistantClient from '@/app/builder/shift-ai/assistant/ShiftAiAssistantClient';
 import type { ShiftChatMessage } from '@/lib/shift-ai/assistant';
+import { needsSubjectOnboarding } from '@/lib/shift-ai/onboarding';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getSafeSession } from '@/lib/supabaseSession.server';
 
@@ -19,7 +20,7 @@ export default async function ShiftAiAssistantPage() {
     .eq('user_id', session.user.id)
     .maybeSingle();
 
-  if (!student) {
+  if (!student || needsSubjectOnboarding(student)) {
     redirect('/builder/shift-ai/onboarding');
   }
 

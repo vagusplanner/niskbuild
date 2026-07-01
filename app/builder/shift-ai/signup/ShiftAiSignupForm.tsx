@@ -92,6 +92,7 @@ export default function ShiftAiSignupForm() {
           curriculum,
           parentEmail,
           accountType,
+          favouriteSubjects,
         }),
       });
 
@@ -211,6 +212,9 @@ export default function ShiftAiSignupForm() {
             ))}
           </select>
           <input className={inputClass} type="text" placeholder="Year group (e.g. Year 5)" value={yearGroup} onChange={(e) => setYearGroup(e.target.value)} required />
+          <input className={inputClass} type="text" placeholder="Favourite subject 1 (optional)" value={subjectOne} onChange={(e) => setSubjectOne(e.target.value)} />
+          <input className={inputClass} type="text" placeholder="Favourite subject 2 (optional)" value={subjectTwo} onChange={(e) => setSubjectTwo(e.target.value)} />
+          <input className={inputClass} type="text" placeholder="Favourite subject 3 (optional)" value={subjectThree} onChange={(e) => setSubjectThree(e.target.value)} />
           <input className={inputClass} type="email" placeholder="Parent or guardian email" value={parentEmail} onChange={(e) => setParentEmail(e.target.value)} required />
           <button type="submit" disabled={loading} className="w-full rounded-lg bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">
             {loading ? 'Sending consent email…' : 'Send consent request to parent'}

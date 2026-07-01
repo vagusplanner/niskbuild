@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import ShiftAiPlannerClient from '@/app/builder/shift-ai/planner/ShiftAiPlannerClient';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { ShiftPlannerItem } from '@/lib/shift-ai/planner';
+import { needsSubjectOnboarding } from '@/lib/shift-ai/onboarding';
 import { getSafeSession } from '@/lib/supabaseSession.server';
 
 export default async function ShiftAiPlannerPage() {
@@ -19,7 +20,7 @@ export default async function ShiftAiPlannerPage() {
     .eq('user_id', session.user.id)
     .maybeSingle();
 
-  if (!student) {
+  if (!student || needsSubjectOnboarding(student)) {
     redirect('/builder/shift-ai/onboarding');
   }
 
