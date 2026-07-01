@@ -11,6 +11,12 @@ import {
 import { generateVpSourceEdit } from '@/lib/vp-builder-ai';
 import { getBuilderApp } from '@/lib/builder-apps/registry';
 import type { BuilderAppDefinition } from '@/lib/builder-apps/types';
+import { readVpSourceForUser, writeVpSourceForUser } from '@/lib/vp-builder-source-store';
+import {
+  formatVpAuditReport,
+  isFullAppAuditPrompt,
+  runVpAppStoreAudit,
+} from '@/lib/vp-app-store-audit';
 
 async function getUserProfile(userId: string) {
   const supabase = createAdminClient();
@@ -30,10 +36,14 @@ export function resolveBuilderApp(appId: string): BuilderAppDefinition | null {
 
 export async function loadBuilderAppState(
   app: BuilderAppDefinition,
-  targetId: string
+  targetId: string,
+  userId?: string
 ) {
   const target = app.getTargetById(targetId) ?? app.targets[0];
-  const source = await app.readSource(target.file);
+  const source =
+    userId && app.id === 'vagus-planner'
+      ? await readVpSourceForUser(userId, target.file)
+      : await app.readSource(target.file);
 
   return {
     targets: app.targets,
@@ -58,6 +68,23 @@ export async function applyBuilderAppEdit(params: {
   useLocal: boolean;
 }) {
   const { app, userId, prompt, targetId, useLocal } = params;
+
+  if (app.id === 'vagus-planner' && isFullAppAuditPrompt(prompt)) {
+    const audit = await runVpAppStoreAudit(userId);
+    return {
+      success: true as const,
+      audit: true as const,
+      report: formatVpAuditReport(audit),
+      auditResult: audit,
+      target: app.getTargetById(targetId) ?? app.targets[0],
+      source: await readVpSourceForUser(
+        userId,
+        (app.getTargetById(targetId) ?? app.targets[0]).file
+      ),
+      previewUrl: app.previewUrl,
+      savedPath: null,
+    };
+  }
 
   const target = app.getTargetById(targetId);
   if (!target) {
@@ -101,7 +128,10 @@ export async function applyBuilderAppEdit(params: {
     creditsRemaining = creditResult.remaining;
   }
 
-  const currentSource = await app.readSource(target.file);
+  const currentSource =
+    app.id === 'vagus-planner'
+      ? await readVpSourceForUser(userId, target.file)
+      : await app.readSource(target.file);
   const editPrompt = app.buildEditPrompt({
     userPrompt: prompt,
     relativePath: target.file,
@@ -127,7 +157,11 @@ export async function applyBuilderAppEdit(params: {
     };
   }
 
-  await app.writeSource(target.file, updatedSource);
+  if (app.id === 'vagus-planner') {
+    await writeVpSourceForUser(userId, target.file, updatedSource);
+  } else {
+    await app.writeSource(target.file, updatedSource);
+  }
 
   return {
     success: true as const,

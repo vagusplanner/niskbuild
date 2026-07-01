@@ -28,8 +28,11 @@ interface PromptBarProps {
   /** Scrollable generation log (Cursor-style) */
   activityLog?: string[];
   streamingLine?: string;
-  /** Live code tokens while streaming */
+  /** Live plain-English explanation (Cursor-style) — preferred over code stream in UI */
+  streamingNarration?: string;
+  /** Raw code tokens — hidden in UI unless showCodeStream */
   streamingCode?: string;
+  showCodeStream?: boolean;
   promptRows?: number;
   promptMinHeight?: number;
   /** Project-aware suggestion chips (falls back to defaults) */
@@ -84,7 +87,9 @@ export default function PromptBar({
   onProviderUpgrade,
   activityLog = [],
   streamingLine,
+  streamingNarration,
   streamingCode,
+  showCodeStream = false,
   promptRows = 5,
   promptMinHeight,
   suggestions,
@@ -180,21 +185,36 @@ export default function PromptBar({
               Editing page: {editingPageLabel}
             </p>
           )}
-          {(activityLog.length > 0 || streamingLine || streamingCode || isGenerating) && (
-            <div className="max-h-48 overflow-y-auto border-b border-[var(--border)]/60 px-3 py-2 space-y-2 font-mono text-xs">
+          {(activityLog.length > 0 ||
+            streamingNarration ||
+            streamingLine ||
+            (showCodeStream && streamingCode) ||
+            isGenerating) && (
+            <div className="max-h-52 overflow-y-auto border-b border-[var(--border)]/60 px-3 py-2.5 space-y-2">
               {activityLog.map((line, i) => (
-                <p key={`${i}-${line.slice(0, 24)}`} className="text-[var(--code-comment)] leading-relaxed">
+                <p
+                  key={`${i}-${line.slice(0, 24)}`}
+                  className="text-[11px] text-[var(--code-comment)] leading-relaxed font-mono"
+                >
                   {line}
                 </p>
               ))}
-              {streamingCode && (
-                <pre className="text-[var(--code-tag)] whitespace-pre-wrap break-all leading-relaxed max-h-32 overflow-y-auto">
+              {streamingNarration && (
+                <div className="text-[13px] text-[var(--foreground)] leading-relaxed whitespace-pre-wrap">
+                  {streamingNarration}
+                  {isGenerating && (
+                    <span className="inline-block w-2 h-[1em] bg-[var(--copper-melt)] animate-pulse align-middle ml-0.5" aria-hidden />
+                  )}
+                </div>
+              )}
+              {showCodeStream && streamingCode && (
+                <pre className="font-mono text-xs text-[var(--code-tag)] whitespace-pre-wrap break-all leading-relaxed max-h-32 overflow-y-auto">
                   {streamingCode.slice(-1200)}
                   <span className="inline-block w-2 h-[1.1em] bg-[var(--copper-melt)] animate-pulse align-middle ml-0.5" aria-hidden />
                 </pre>
               )}
-              {!streamingCode && (streamingLine || isGenerating) && (
-                <p className="text-[var(--copper-melt)] leading-relaxed flex items-start gap-1">
+              {!streamingNarration && !streamingCode && (streamingLine || isGenerating) && (
+                <p className="text-[13px] text-[var(--copper-melt)] leading-relaxed flex items-start gap-1">
                   <span>{streamingLine || (planMode ? 'Planning…' : 'Building…')}</span>
                   <span className="inline-block w-2.5 h-[1.1em] bg-[var(--copper-melt)] animate-pulse shrink-0" aria-hidden />
                 </p>

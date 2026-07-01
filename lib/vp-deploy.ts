@@ -8,6 +8,7 @@ import {
   previewPublicUrl,
   upsertPreview,
 } from '@/lib/preview-links';
+import { applyVpSourcesToDirectory } from '@/lib/vp-builder-source-store';
 
 const ROOT = process.cwd();
 const VP_APP = path.join(ROOT, 'apps/vagus-planner');
@@ -80,9 +81,9 @@ async function copyDir(src: string, dest: string): Promise<void> {
   }
 }
 
-export function buildVagusPlannerDist(): void {
+export function buildVagusPlannerDist(appDir = VP_APP): void {
   execSync('npm run build', {
-    cwd: VP_APP,
+    cwd: appDir,
     stdio: 'inherit',
     env: { ...process.env, CAPACITOR_BUILD: '1' },
   });
@@ -142,19 +143,27 @@ async function updatePreviewHtml(
   return !error;
 }
 
-async function publishDistToPublic(token: string, requestOrigin: string): Promise<string> {
+async function publishDistToPublicFromDir(
+  token: string,
+  requestOrigin: string,
+  distDir: string
+): Promise<string> {
   const targetDir = path.join(ROOT, 'public', 'vp-live', token);
   await fs.rm(targetDir, { recursive: true, force: true });
-  await copyDir(VP_DIST, targetDir);
+  await copyDir(distDir, targetDir);
 
   const origin = requestOrigin.replace(/\/$/, '');
   return `${origin}/vp-live/${token}/index.html`;
 }
 
-async function publishDistToStorage(userId: string, token: string): Promise<string> {
+async function publishDistToStorageFromDir(
+  userId: string,
+  token: string,
+  distDir: string
+): Promise<string> {
   const supabase = createAdminClient();
   const prefix = `${userId}/${token}`;
-  const files = await collectFiles(VP_DIST);
+  const files = await collectFiles(distDir);
 
   for (const file of files) {
     const storagePath = `${prefix}/${file.relativePath}`.replace(/\\/g, '/');
@@ -175,21 +184,64 @@ async function publishDistToStorage(userId: string, token: string): Promise<stri
   return data.publicUrl;
 }
 
+async function publishDistFromDir(
+  userId: string,
+  token: string,
+  requestOrigin: string,
+  distDir: string
+): Promise<string> {
+  if (process.env.NODE_ENV === 'development') {
+    return publishDistToPublicFromDir(token, requestOrigin, distDir);
+  }
+
+  try {
+    return await publishDistToStorageFromDir(userId, token, distDir);
+  } catch (storageError) {
+    console.warn('Supabase storage deploy failed, falling back to local public path:', storageError);
+    return publishDistToPublicFromDir(token, requestOrigin, distDir);
+  }
+}
+
+async function publishDistToPublic(token: string, requestOrigin: string): Promise<string> {
+  return publishDistToPublicFromDir(token, requestOrigin, VP_DIST);
+}
+
+async function publishDistToStorage(userId: string, token: string): Promise<string> {
+  return publishDistToStorageFromDir(userId, token, VP_DIST);
+}
+
 async function publishDist(
   userId: string,
   token: string,
   requestOrigin: string
 ): Promise<string> {
+  return publishDistFromDir(userId, token, requestOrigin, VP_DIST);
+}
+
+async function prepareVpBuildWorkspace(userId: string): Promise<{
+  appDir: string;
+  distDir: string;
+  cleanup: () => Promise<void>;
+}> {
   if (process.env.NODE_ENV === 'development') {
-    return publishDistToPublic(token, requestOrigin);
+    await applyVpSourcesToDirectory(userId, path.join(VP_APP, 'src'));
+    return {
+      appDir: VP_APP,
+      distDir: VP_DIST,
+      cleanup: async () => {},
+    };
   }
 
-  try {
-    return await publishDistToStorage(userId, token);
-  } catch (storageError) {
-    console.warn('Supabase storage deploy failed, falling back to local public path:', storageError);
-    return publishDistToPublic(token, requestOrigin);
-  }
+  const tmpRoot = path.join('/tmp', `vp-build-${userId.slice(0, 8)}-${Date.now()}`);
+  await copyDir(VP_APP, tmpRoot);
+  await applyVpSourcesToDirectory(userId, path.join(tmpRoot, 'src'));
+  return {
+    appDir: tmpRoot,
+    distDir: path.join(tmpRoot, 'dist'),
+    cleanup: async () => {
+      await fs.rm(tmpRoot, { recursive: true, force: true });
+    },
+  };
 }
 
 export async function deployVagusPlanner(params: {
@@ -203,36 +255,47 @@ export async function deployVagusPlanner(params: {
     'http://localhost:3000';
   const title = params.title || 'Vagus Planner';
 
-  buildNiskBuildShell();
-  buildVagusPlannerDist();
+  const workspace = await prepareVpBuildWorkspace(params.userId);
 
-  const indexPath = path.join(VP_DIST, 'index.html');
   try {
-    await fs.access(indexPath);
-  } catch {
-    throw new Error('Vagus Planner build did not produce dist/index.html');
+    buildNiskBuildShell();
+    buildVagusPlannerDist(workspace.appDir);
+
+    const indexPath = path.join(workspace.distDir, 'index.html');
+    try {
+      await fs.access(indexPath);
+    } catch {
+      throw new Error('Vagus Planner build did not produce dist/index.html');
+    }
+
+    const placeholder = await upsertPreview(
+      params.userId,
+      '<!DOCTYPE html><html><body style="margin:0;background:#060f1e;color:#94a3b8;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh">Deploying Vagus Planner…</body></html>',
+      title,
+      requestOrigin
+    );
+
+    if (!placeholder) return null;
+
+    const bundleUrl = await publishDistFromDir(
+      params.userId,
+      placeholder.token,
+      requestOrigin,
+      workspace.distDir
+    );
+    const html = buildDeployPreviewShell(bundleUrl);
+    const updated = await updatePreviewHtml(params.userId, html, title);
+
+    if (!updated) return null;
+
+    return {
+      url: previewPublicUrl(placeholder.token, requestOrigin),
+      token: placeholder.token,
+      bundleUrl,
+    };
+  } finally {
+    await workspace.cleanup();
   }
-
-  const placeholder = await upsertPreview(
-    params.userId,
-    '<!DOCTYPE html><html><body style="margin:0;background:#060f1e;color:#94a3b8;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh">Deploying Vagus Planner…</body></html>',
-    title,
-    requestOrigin
-  );
-
-  if (!placeholder) return null;
-
-  const bundleUrl = await publishDist(params.userId, placeholder.token, requestOrigin);
-  const html = buildDeployPreviewShell(bundleUrl);
-  const updated = await updatePreviewHtml(params.userId, html, title);
-
-  if (!updated) return null;
-
-  return {
-    url: previewPublicUrl(placeholder.token, requestOrigin),
-    token: placeholder.token,
-    bundleUrl,
-  };
 }
 
 export function previewUrlForToken(token: string, requestOrigin?: string): string {

@@ -30,6 +30,7 @@ type BuilderActionsMenuProps = {
   onPreviewDeviceChange?: (device: PreviewDevice) => void;
   canShareSocial?: boolean;
   onOpenSocialPublisher?: () => void;
+  onRunExportAudit?: () => void;
 };
 
 export default function BuilderActionsMenu({
@@ -56,6 +57,7 @@ export default function BuilderActionsMenu({
   onPreviewDeviceChange,
   canShareSocial,
   onOpenSocialPublisher,
+  onRunExportAudit,
 }: BuilderActionsMenuProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -159,6 +161,19 @@ export default function BuilderActionsMenu({
           )}
           {(onOpenInspector || onOpenHistory || onToggleFullscreen) && (
             <div className="border-t border-nisk my-1" />
+          )}
+          {onRunExportAudit && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                onRunExportAudit();
+                close();
+              }}
+              className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-[var(--surface-elevated)]"
+            >
+              Export audit
+            </button>
           )}
           <button
             type="button"

@@ -12,6 +12,8 @@ export const BUILDER_SHARED_FEATURES = [
   'resize_prompt_height',
   'social_publisher_panel',
   'builder_header_menu',
+  'export_audit_button',
+  'full_app_audit_prompt',
 ] as const;
 
 export type BuilderSharedFeature = (typeof BUILDER_SHARED_FEATURES)[number];

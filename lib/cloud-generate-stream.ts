@@ -1,10 +1,19 @@
-/** Client helper — read SSE code stream from /api/cloud-generate/stream */
+/** Client helper — read SSE from /api/cloud-generate/stream (narration + code) */
+
+export type CloudGenerateStreamCallbacks = {
+  onNarration?: (accumulated: string, delta: string) => void;
+  onStatus?: (message: string) => void;
+  onCodeChunk?: (accumulated: string, delta: string) => void;
+};
 
 export async function readCloudGenerateStream(
   prompt: string,
   projectId: string | null,
-  onChunk: (accumulated: string, delta: string) => void
-): Promise<{ code: string; error?: string }> {
+  callbacks: CloudGenerateStreamCallbacks | ((accumulated: string, delta: string) => void)
+): Promise<{ code: string; narration: string; error?: string }> {
+  const normalized: CloudGenerateStreamCallbacks =
+    typeof callbacks === 'function' ? { onCodeChunk: callbacks } : callbacks;
+
   const res = await fetch('/api/cloud-generate/stream', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -14,17 +23,18 @@ export async function readCloudGenerateStream(
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    return { code: '', error: (data as { error?: string }).error || 'Stream failed' };
+    return { code: '', narration: '', error: (data as { error?: string }).error || 'Stream failed' };
   }
 
   if (!res.body) {
-    return { code: '', error: 'No stream body' };
+    return { code: '', narration: '', error: 'No stream body' };
   }
 
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
   let code = '';
+  let narration = '';
 
   while (true) {
     const { done, value } = await reader.read();
@@ -40,11 +50,25 @@ export async function readCloudGenerateStream(
       if (payload === '[DONE]') continue;
 
       try {
-        const parsed = JSON.parse(payload) as { text?: string; error?: string };
-        if (parsed.error) return { code, error: parsed.error };
-        if (parsed.text) {
-          code += parsed.text;
-          onChunk(code, parsed.text);
+        const parsed = JSON.parse(payload) as {
+          kind?: string;
+          text?: string;
+          error?: string;
+        };
+        if (parsed.error) return { code, narration, error: parsed.error };
+
+        const kind = parsed.kind || 'code';
+        const text = parsed.text ?? '';
+        if (!text) continue;
+
+        if (kind === 'narration') {
+          narration = text;
+          normalized.onNarration?.(narration, text);
+        } else if (kind === 'status') {
+          normalized.onStatus?.(text);
+        } else {
+          code += text;
+          normalized.onCodeChunk?.(code, text);
         }
       } catch {
         /* ignore partial JSON */
@@ -52,5 +76,5 @@ export async function readCloudGenerateStream(
     }
   }
 
-  return { code };
+  return { code, narration };
 }

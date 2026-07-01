@@ -23,6 +23,7 @@ import GooglePlacesImport, {
   type GooglePlacesImportHandle,
 } from '@/app/components/GooglePlacesImport';
 import AppBuilderPreview from '@/app/builder/[id]/preview';
+import { readBuilderEditStream } from '@/lib/builder-edit-stream';
 import { getClientBuilderApp } from '@/lib/builder-apps/client-registry';
 import type { BuilderAppTarget } from '@/lib/builder-apps/types';
 import type {
@@ -68,6 +69,7 @@ function AppBuilderWorkspaceInner({ appId, loginNextPath }: AppBuilderWorkspaceP
   const [isGenerating, setIsGenerating] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
   const [activityLog, setActivityLog] = useState<string[]>([]);
+  const [streamingNarration, setStreamingNarration] = useState('');
   const googlePlacesRef = useRef<GooglePlacesImportHandle>(null);
   const [previewKey, setPreviewKey] = useState(0);
   const [previewUrlBase, setPreviewUrlBase] = useState(appConfig?.previewUrl ?? '');
@@ -221,23 +223,20 @@ function AppBuilderWorkspaceInner({ appId, loginNextPath }: AppBuilderWorkspaceP
     if (!trimmed || isGenerating) return;
 
     setIsGenerating(true);
+    setStreamingNarration('');
     setStatusMessage(`🔄 AI is editing ${appConfig?.name ?? 'app'} source…`);
 
     try {
-      const res = await fetch(`/api/builder/${encodeURIComponent(appId)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          prompt: trimmed,
-          targetId,
-          useLocal: useLocalOllama,
-        }),
-      });
+      const data = await readBuilderEditStream(
+        appId,
+        { prompt: trimmed, targetId, useLocal: useLocalOllama },
+        {
+          onNarration: (accumulated) => setStreamingNarration(accumulated),
+          onStatus: (message) => setStatusMessage(message),
+        }
+      );
 
-      const data = await res.json();
-
-      if (!res.ok) {
+      if (data.error) {
         if (data.upgrade) {
           const go = confirm(`${data.error || 'Upgrade required'}\n\nOpen Pricing?`);
           if (go) window.location.href = '/pricing';
@@ -247,21 +246,63 @@ function AppBuilderWorkspaceInner({ appId, loginNextPath }: AppBuilderWorkspaceP
         return;
       }
 
+      if (data.audit && data.report) {
+        const lines = String(data.report).split('\n').filter(Boolean);
+        setActivityLog((prev) => [...prev.slice(-12), ...lines]);
+        setStatusMessage(
+          `📋 App Store audit — ${(data.auditResult as { summary?: { fail?: number; warn?: number } })?.summary?.fail ?? 0} blocking issue(s), ${(data.auditResult as { summary?: { fail?: number; warn?: number } })?.summary?.warn ?? 0} warning(s)`
+        );
+        setTimeout(() => setStatusMessage(''), 15000);
+        return;
+      }
+
       setSource(data.source ?? '');
       setPreviewKey((k) => k + 1);
       if (typeof data.creditsRemaining === 'number') {
         setCloudCreditsRemaining(data.creditsRemaining);
       }
       setStatusMessage(
-        `✅ Saved to ${data.savedPath ?? appConfig?.srcRoot} — preview updating`
+        data.savedPath
+          ? `✅ Saved — deploy to refresh live preview with your edits`
+          : `✅ Updated ${activeTarget?.label ?? 'page'}`
       );
     } catch {
-      setStatusMessage('❌ Network error during edit');
+      setStatusMessage('❌ Network error — check VP preview URL and try again');
     } finally {
       setIsGenerating(false);
-      setTimeout(() => setStatusMessage(''), 8000);
+      setStreamingNarration('');
+      setTimeout(() => setStatusMessage(''), 10000);
     }
   };
+
+  const runAppStoreAudit = async () => {
+    if (isGenerating) return;
+    setIsGenerating(true);
+    setStatusMessage('📋 Running full App Store audit…');
+    try {
+      const res = await fetch(`/api/builder/${encodeURIComponent(appId)}/audit`, {
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setStatusMessage(`❌ ${data.error || 'Audit failed'}`);
+        return;
+      }
+      const lines = String(data.report ?? '').split('\n').filter(Boolean);
+      setActivityLog((prev) => [...prev.slice(-12), ...lines]);
+      setStatusMessage(
+        `📋 Audit done — ${data.audit?.summary?.fail ?? 0} fail · ${data.audit?.summary?.warn ?? 0} warn`
+      );
+    } catch {
+      setStatusMessage('❌ Audit request failed');
+    } finally {
+      setIsGenerating(false);
+      setTimeout(() => setStatusMessage(''), 15000);
+    }
+  };
+
+  const vpPreviewOffline =
+    previewUrlBase.includes('localhost') || previewUrlBase.includes('127.0.0.1');
 
   const canUseCloud =
     isPaidAndActive(subscriptionTier, subscriptionStatus) || isSandboxTier(subscriptionTier);
@@ -416,6 +457,14 @@ function AppBuilderWorkspaceInner({ appId, loginNextPath }: AppBuilderWorkspaceP
             </Link>
             <button
               type="button"
+              onClick={() => void runAppStoreAudit()}
+              disabled={isGenerating}
+              className="px-3 py-1.5 text-xs font-semibold border-2 border-[var(--border)] hover:border-[var(--primary)] transition-colors disabled:opacity-50"
+            >
+              App Store audit
+            </button>
+            <button
+              type="button"
               onClick={() => setShowSocialPublisher(true)}
               className="px-3 py-1.5 text-xs font-semibold border-2 border-[var(--border)] hover:border-[var(--primary)] transition-colors"
             >
@@ -482,7 +531,8 @@ function AppBuilderWorkspaceInner({ appId, loginNextPath }: AppBuilderWorkspaceP
                 isGenerating={isGenerating}
                 statusMessage={statusMessage}
                 activityLog={activityLog}
-                streamingLine={isGenerating ? statusMessage : undefined}
+                streamingNarration={streamingNarration}
+                streamingLine={isGenerating && !streamingNarration ? statusMessage : undefined}
                 subscriptionTier={subscriptionTier}
                 subscriptionStatus={subscriptionStatus}
                 useLocalOllama={useLocalOllama}
@@ -492,6 +542,13 @@ function AppBuilderWorkspaceInner({ appId, loginNextPath }: AppBuilderWorkspaceP
                 }}
                 promptMinHeight={promptHeightPx}
                 promptRows={Math.max(3, Math.round(promptHeightPx / 28))}
+                suggestions={[
+                  'Run a full App Store audit before export',
+                  'Check Calendar AI and notification buttons',
+                  'Verify all pages load without broken links',
+                  'Add missing privacy policy link in Settings',
+                ]}
+                editingPageLabel={activeTarget?.label}
               />
               <PromptHeightDragHandle
                 onResize={(delta) => {
@@ -552,7 +609,15 @@ function AppBuilderWorkspaceInner({ appId, loginNextPath }: AppBuilderWorkspaceP
 
           {/* Right: live preview iframe */}
           {previewReady && (
-            <AppBuilderPreview
+            <>
+              {vpPreviewOffline && (
+                <div className="shrink-0 px-4 py-2 bg-amber-500/15 border-b border-amber-500/30 text-xs text-amber-200">
+                  Preview iframe points to <code className="font-mono">{previewUrlBase}</code> — not
+                  reachable in production. Set <code className="font-mono">NEXT_PUBLIC_VAGUS_PLANNER_URL</code>{' '}
+                  or use <strong>Deploy</strong> to publish your customized build.
+                </div>
+              )}
+              <AppBuilderPreview
               embedPath={appConfig.previewEmbedPath}
               previewUrl={previewUrlBase}
               route={activeTarget?.route}
@@ -560,6 +625,7 @@ function AppBuilderWorkspaceInner({ appId, loginNextPath }: AppBuilderWorkspaceP
               appName={appConfig.name}
               onReload={() => setPreviewKey((k) => k + 1)}
             />
+            </>
           )}
         </div>
       </div>

@@ -21,7 +21,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
 
     const targetId = request.nextUrl.searchParams.get('target') || app.defaultTargetId;
-    const state = await loadBuilderAppState(app, targetId);
+    const state = await loadBuilderAppState(app, targetId, guard.user!.id);
 
     return NextResponse.json({ success: true, ...state });
   } catch (error) {
@@ -69,6 +69,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json(result);
   } catch (error) {
-    return apiErrorResponse(error, 'Builder app edit failed');
+    const detail = error instanceof Error ? error.message : String(error);
+    console.error('[builder app edit]', detail);
+    const hint = detail.includes('vp_builder_sources')
+      ? detail
+      : detail.includes('EROFS') || detail.includes('read-only')
+        ? 'VP edits must be saved to Supabase — run supabase/vp-builder-sources-migration.sql in production.'
+        : detail;
+    return NextResponse.json({ error: `Builder app edit failed: ${hint}` }, { status: 500 });
   }
 }

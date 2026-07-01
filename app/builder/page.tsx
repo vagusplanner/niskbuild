@@ -24,6 +24,7 @@ import {
   deleteProjectPage,
 } from '@/lib/project-pages';
 import { buildContextualSuggestions } from '@/lib/project-suggestions';
+import { isFullAppAuditPrompt } from '@/lib/builder-audit-shared';
 import { injectPreviewPageNavScript } from '@/lib/preview-page-nav-inject';
 import type { NiskBuildPromptEntry } from '@/lib/niskbuild-config';
 import { parseNiskBuildConfig } from '@/lib/niskbuild-config';
@@ -140,6 +141,7 @@ function BuilderContent() {
   const [statusMessage, setStatusMessage] = useState('');
   const [activityLog, setActivityLog] = useState<string[]>([]);
   const [streamingCode, setStreamingCode] = useState('');
+  const [streamingNarration, setStreamingNarration] = useState('');
   const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [showProjects, setShowProjects] = useState(false);
@@ -609,10 +611,58 @@ function BuilderContent() {
     [projectFiles, activeFile, generatedCode, projectContext, promptHistory]
   );
 
-  const promptSuggestions = useMemo(
-    () => buildContextualSuggestions(pageContext),
-    [pageContext]
-  );
+  const promptSuggestions = useMemo(() => {
+    const base = buildContextualSuggestions(pageContext);
+    return [
+      'Run a full export audit before shipping to clients',
+      'Check all pages, buttons, and links work on mobile',
+      ...base,
+    ].slice(0, 6);
+  }, [pageContext]);
+
+  const applyAuditReport = (
+    report: string,
+    summary?: { fail?: number; warn?: number }
+  ) => {
+    const lines = report.split('\n').filter(Boolean);
+    setActivityLog((prev) => [...prev.slice(-12), ...lines]);
+    setStatusMessage(
+      `📋 Export audit — ${summary?.fail ?? 0} blocking · ${summary?.warn ?? 0} warning(s)`
+    );
+    setTimeout(() => setStatusMessage(''), 15000);
+  };
+
+  const runExportAudit = async () => {
+    if (isGenerating) return;
+    setIsGenerating(true);
+    setStatusMessage('📋 Running full export audit…');
+    try {
+      const res = await fetch('/api/projects/audit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          files: filesToMap(projectFiles),
+          generatedCode,
+          activeFile,
+          seo: seoSettings,
+          subscriptionTier,
+          subscriptionStatus,
+          projectId: activeProjectId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setStatusMessage(`❌ ${data.error || 'Audit failed'}`);
+        return;
+      }
+      applyAuditReport(data.report, data.audit?.summary);
+    } catch {
+      setStatusMessage('❌ Audit request failed — try again');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   useEffect(() => {
     return () => {
@@ -829,6 +879,11 @@ function BuilderContent() {
     const basePrompt = (promptOverride ?? prompt).trim();
     if (!basePrompt) return;
 
+    if (isFullAppAuditPrompt(basePrompt)) {
+      await runExportAudit();
+      return;
+    }
+
     const placesContext = buildGooglePlacesPrompt(projectContext?.business);
     const withPlaces = placesContext
       ? `${basePrompt}\n\n${placesContext}`
@@ -850,6 +905,7 @@ function BuilderContent() {
 
     setIsGenerating(true);
     setStreamingCode('');
+    setStreamingNarration('');
     setActiveProjectId(null);
     setVisualEditHistory([]);
     setSelectedVisualElement(null);
@@ -868,6 +924,9 @@ function BuilderContent() {
 
     if (useLocalPath) {
       setStatusMessage('🖥️ Generating via local Ollama...');
+      setStreamingNarration(
+        'Understanding your request…\nPlanning the page layout…\nGenerating HTML, styles, and interactions…'
+      );
       try {
         const localRes = await fetch('/api/generate', {
           method: 'POST',
@@ -910,6 +969,7 @@ function BuilderContent() {
         setStatusMessage('❌ Network error');
       } finally {
         setIsGenerating(false);
+        setStreamingNarration('');
         setTimeout(() => setStatusMessage(''), 8000);
       }
       return;
@@ -924,10 +984,10 @@ function BuilderContent() {
     const historyEntry: NiskBuildPromptEntry = { prompt: effectivePrompt, timestamp: new Date().toISOString() };
 
     try {
-      const { code, error } = await readCloudGenerateStream(
-        effectivePrompt,
-        activeProjectId,
-        (accumulated) => {
+      const { code, error } = await readCloudGenerateStream(effectivePrompt, activeProjectId, {
+        onNarration: (accumulated) => setStreamingNarration(accumulated),
+        onStatus: (message) => setStatusMessage(message),
+        onCodeChunk: (accumulated) => {
           setStreamingCode(accumulated);
           if (!(ctx.isExistingProject && isHtmlPage(activeFile) && activeFile !== 'index.html')) {
             setGeneratedCode(accumulated);
@@ -939,10 +999,11 @@ function BuilderContent() {
               setPreviewHtml(wrapPreviewHtml(cleaned));
             }
           }, 400);
-        }
-      );
+        },
+      });
 
       setStreamingCode('');
+      setStreamingNarration('');
 
       if (error && !code.trim()) {
         setGeneratedCode(`// Error: ${error}`);
@@ -969,12 +1030,14 @@ function BuilderContent() {
       void saveProjectVersionSilent(code, effectivePrompt, 1);
     } catch {
       setStreamingCode('');
+      setStreamingNarration('');
       setGeneratedCode('// Failed to generate. Please try again.');
       setPreviewHtml('<div style="padding:2rem;color:#EF4444;text-align:center">❌ Network error — please try again</div>');
       setStatusMessage('❌ Network error');
     } finally {
       setIsGenerating(false);
       setStreamingCode('');
+      setStreamingNarration('');
       setTimeout(() => setStatusMessage(''), 8000);
     }
   };
@@ -1552,6 +1615,7 @@ function BuilderContent() {
           statusMessage={statusMessage}
           activityLog={activityLog}
           streamingCode={streamingCode}
+          streamingNarration={streamingNarration}
           planMode={planMode}
           onPlanModeChange={setPlanMode}
           previewHtml={previewHtml}
@@ -1616,6 +1680,7 @@ function BuilderContent() {
           onRenamePage={handleRenamePage}
           onDeletePage={handleDeletePage}
           canAddPage={canAct || !isExportableCode(generatedCode)}
+          onRunExportAudit={() => void runExportAudit()}
           codeEditor={
             <CodeEditor
               path={activeFile}

@@ -67,6 +67,7 @@ export type BuilderWorkspaceLayoutProps = {
   statusMessage: string;
   activityLog?: string[];
   streamingCode?: string;
+  streamingNarration?: string;
   planMode: boolean;
   onPlanModeChange: (v: boolean) => void;
   previewHtml: string;
@@ -147,6 +148,7 @@ export type BuilderWorkspaceLayoutProps = {
   onRenamePage?: (path: string, newName: string) => void;
   onDeletePage?: (path: string) => void;
   canAddPage?: boolean;
+  onRunExportAudit?: () => void;
 };
 
 function ProjectPageTabs({
@@ -214,6 +216,7 @@ function CanvasHeader({
   onPreviewDeviceChange,
   canShareSocial = false,
   onOpenSocialPublisher,
+  onRunExportAudit,
   projectFiles = [],
   activeFile = '',
   onSelectFile,
@@ -246,6 +249,7 @@ function CanvasHeader({
   onPreviewDeviceChange?: (device: PreviewDevice) => void;
   canShareSocial?: boolean;
   onOpenSocialPublisher?: () => void;
+  onRunExportAudit?: () => void;
   projectFiles?: ProjectFile[];
   activeFile?: string;
   onSelectFile?: (path: string) => void;
@@ -297,6 +301,15 @@ function CanvasHeader({
         )}
       </div>
       <div className="flex items-center gap-1.5 shrink-0">
+        {onRunExportAudit && (
+          <button
+            type="button"
+            onClick={onRunExportAudit}
+            className="btn-secondary px-2.5 py-1.5 text-xs rounded-lg hidden sm:inline-flex"
+          >
+            Export audit
+          </button>
+        )}
         {canShareSocial && onOpenSocialPublisher && (
           <button
             type="button"
@@ -330,6 +343,7 @@ function CanvasHeader({
           onPreviewDeviceChange={onPreviewDeviceChange}
           canShareSocial={canShareSocial}
           onOpenSocialPublisher={onOpenSocialPublisher}
+          onRunExportAudit={onRunExportAudit}
         />
       </div>
     </div>
@@ -494,6 +508,7 @@ function ChatPanelContent({
   statusMessage,
   activityLog = [],
   streamingCode,
+  streamingNarration,
   planMode,
   onPlanModeChange,
   promptSuggestions = [],
@@ -532,6 +547,7 @@ function ChatPanelContent({
   statusMessage: string;
   activityLog?: string[];
   streamingCode?: string;
+  streamingNarration?: string;
   planMode: boolean;
   onPlanModeChange: (v: boolean) => void;
   promptSuggestions?: string[];
@@ -616,7 +632,8 @@ function ChatPanelContent({
           statusMessage={statusMessage}
           activityLog={activityLog}
           streamingCode={streamingCode}
-          streamingLine={isGenerating ? statusMessage : undefined}
+          streamingNarration={streamingNarration}
+          streamingLine={isGenerating && !streamingNarration ? statusMessage : undefined}
           promptRows={Math.max(3, Math.round(promptHeightPx / 28))}
           promptMinHeight={promptHeightPx}
           suggestions={promptSuggestions}
@@ -679,6 +696,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
     statusMessage,
     activityLog = [],
     streamingCode,
+    streamingNarration,
     planMode,
     onPlanModeChange,
     previewHtml,
@@ -688,6 +706,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
     onPreviewDeviceChange,
     canShareSocial = false,
     onOpenSocialPublisher,
+    onRunExportAudit,
     visualEditMode,
     visualMobilePreview,
     selectedVisualElement,
@@ -831,6 +850,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
       statusMessage={statusMessage}
       activityLog={activityLog}
       streamingCode={streamingCode}
+      streamingNarration={streamingNarration}
       planMode={planMode}
       onPlanModeChange={onPlanModeChange}
       promptSuggestions={promptSuggestions}
@@ -1019,6 +1039,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
               onPreviewDeviceChange={onPreviewDeviceChange}
               canShareSocial={canShareSocial}
               onOpenSocialPublisher={onOpenSocialPublisher}
+              onRunExportAudit={onRunExportAudit}
               projectFiles={projectFiles}
               activeFile={activeFile}
               onSelectFile={onSelectFile}
@@ -1146,6 +1167,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
             onPreviewDeviceChange={onPreviewDeviceChange}
             canShareSocial={canShareSocial}
             onOpenSocialPublisher={onOpenSocialPublisher}
+            onRunExportAudit={onRunExportAudit}
             projectFiles={projectFiles}
             activeFile={activeFile}
             onSelectFile={onSelectFile}

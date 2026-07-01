@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Layout from '@/app/components/Layout';
-import CapacitorPushRegistration from '@/app/vagus-planner/components/notifications/CapacitorPushRegistration';
+import CapacitorPushRegistration from '@/app/components/notifications/CapacitorPushRegistration';
 import type { VpNotificationPreferences } from '@/lib/vp-notifications/constants';
 
 const DEFAULT_PREFS: VpNotificationPreferences = {
