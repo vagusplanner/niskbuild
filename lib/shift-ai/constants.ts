@@ -7,6 +7,12 @@ export const SHIFT_CURRICULUM_LABELS: Record<ShiftCurriculum, string> = {
   usa: 'United States',
 };
 
+export const SHIFT_CURRICULUM_FLAGS: Record<ShiftCurriculum, string> = {
+  uk: '🇬🇧',
+  france: '🇫🇷',
+  usa: '🇺🇸',
+};
+
 export const SHIFT_AGE_RANGES = [
   '7_8',
   '9_10',
