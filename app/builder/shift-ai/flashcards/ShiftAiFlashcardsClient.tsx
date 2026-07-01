@@ -13,10 +13,11 @@ import {
   Trash2,
   TrendingUp,
 } from 'lucide-react';
-import type {
-  Flashcard,
-  FlashcardDeckWithCards,
-  SavedNotesOption,
+import {
+  FLASHCARDS_PER_GENERATION,
+  type Flashcard,
+  type FlashcardDeckWithCards,
+  type SavedNotesOption,
 } from '@/lib/shift-ai/flashcards-shared';
 import {
   SM2_RATINGS,
@@ -212,8 +213,8 @@ export default function ShiftAiFlashcardsClient({
   const [topicInput, setTopicInput] = useState('');
   const [notesText, setNotesText] = useState('');
   const [savedNoteId, setSavedNoteId] = useState(savedNotes[0]?.subjectId ?? '');
-  const [cardCount, setCardCount] = useState(12);
   const [generating, setGenerating] = useState(false);
+  const [appendingDeckId, setAppendingDeckId] = useState<string | null>(null);
 
   const allCards = useMemo(() => allReviewCards(decks), [decks]);
   const stats = useMemo(() => deckStats(allCards), [allCards]);
@@ -274,17 +275,24 @@ export default function ShiftAiFlashcardsClient({
     }
   };
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (appendToDeck?: FlashcardDeckWithCards) => {
     setError('');
-    setGenerating(true);
+    if (appendToDeck) {
+      setAppendingDeckId(appendToDeck.id);
+    } else {
+      setGenerating(true);
+    }
 
     try {
       const payload: Record<string, unknown> = {
-        subject: genSubject || 'General',
-        cardCount,
+        subject: appendToDeck?.subject || genSubject || 'General',
       };
 
-      if (genMode === 'topic') {
+      if (appendToDeck) {
+        payload.deckId = appendToDeck.id;
+        payload.mode = 'topic';
+        payload.content = appendToDeck.name;
+      } else if (genMode === 'topic') {
         if (!topicInput.trim()) return;
         payload.mode = 'topic';
         payload.content = topicInput.trim();
@@ -314,14 +322,24 @@ export default function ShiftAiFlashcardsClient({
         throw new Error(data.error || 'Could not generate deck');
       }
 
-      setDecks((current) => [data.deck!, ...current]);
-      setTopicInput('');
-      setNotesText('');
-      setTab('decks');
+      if (appendToDeck) {
+        setDecks((current) =>
+          current.map((d) => (d.id === data.deck!.id ? data.deck! : d))
+        );
+        setStudyingDeck((current) =>
+          current?.id === data.deck!.id ? data.deck! : current
+        );
+      } else {
+        setDecks((current) => [data.deck!, ...current]);
+        setTopicInput('');
+        setNotesText('');
+        setTab('decks');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not generate deck');
     } finally {
       setGenerating(false);
+      setAppendingDeckId(null);
     }
   };
 
@@ -386,7 +404,8 @@ export default function ShiftAiFlashcardsClient({
           Smart Flashcards
         </h1>
         <p className={`mt-1 text-sm ${SA.muted}`}>
-          Build decks from any topic or notes · SM-2 spaced repetition engine
+          Build decks from any topic or notes · {FLASHCARDS_PER_GENERATION} cards per generation ·
+          SM-2 spaced repetition
         </p>
       </div>
 
@@ -462,67 +481,87 @@ export default function ShiftAiFlashcardsClient({
                 : 0;
 
               return (
-                <div key={deck.id} className={`${SA.cardPadded} flex items-center gap-4`}>
-                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--sa-navy-50)] text-2xl">
-                    🃏
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className={`truncate font-bold ${SA.text}`}>{deck.name}</p>
-                    <div className={`mt-1 flex flex-wrap items-center gap-3 text-xs ${SA.muted}`}>
-                      <span className="flex items-center gap-1">
-                        <BookOpen className="h-3 w-3" /> {deck.card_count} cards
-                      </span>
-                      {due > 0 ? (
-                        <span className="flex items-center gap-1 font-semibold text-rose-600">
-                          <CalendarDays className="h-3 w-3" /> {due} due
+                <div key={deck.id} className={`${SA.cardPadded} space-y-3`}>
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--sa-navy-50)] text-2xl">
+                      🃏
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className={`truncate font-bold ${SA.text}`}>{deck.name}</p>
+                      <div className={`mt-1 flex flex-wrap items-center gap-3 text-xs ${SA.muted}`}>
+                        <span className="flex items-center gap-1">
+                          <BookOpen className="h-3 w-3" /> {deck.card_count} cards
                         </span>
-                      ) : null}
-                      <span
-                        className={`flex items-center gap-1 font-semibold ${
-                          ret >= 70 ? 'text-emerald-600' : ret >= 40 ? 'text-amber-600' : SA.muted
-                        }`}
-                      >
-                        <Brain className="h-3 w-3" /> {ret}% retention
-                      </span>
+                        {due > 0 ? (
+                          <span className="flex items-center gap-1 font-semibold text-rose-600">
+                            <CalendarDays className="h-3 w-3" /> {due} due
+                          </span>
+                        ) : null}
+                        <span
+                          className={`flex items-center gap-1 font-semibold ${
+                            ret >= 70 ? 'text-emerald-600' : ret >= 40 ? 'text-amber-600' : SA.muted
+                          }`}
+                        >
+                          <Brain className="h-3 w-3" /> {ret}% retention
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex flex-shrink-0 items-center gap-2">
+                      {confirmDelete === deck.id ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => void handleDeleteDeck(deck.id)}
+                            className="text-xs font-semibold text-red-600 hover:underline"
+                          >
+                            Confirm
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDelete(null)}
+                            className={`text-xs hover:underline ${SA.muted}`}
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDelete(deck.id)}
+                            className={`p-1.5 ${SA.muted} hover:text-red-600`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => startStudyDeck(deck)}
+                            className={`${SA.btnPrimary} gap-1.5 px-3 py-2`}
+                          >
+                            <Play className="h-3.5 w-3.5" /> Study
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
-                  <div className="flex flex-shrink-0 items-center gap-2">
-                    {confirmDelete === deck.id ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleGenerate(deck)}
+                    disabled={appendingDeckId === deck.id || generating}
+                    className={`${SA.btnSecondary} w-full gap-2 py-2 text-xs`}
+                  >
+                    {appendingDeckId === deck.id ? (
                       <>
-                        <button
-                          type="button"
-                          onClick={() => void handleDeleteDeck(deck.id)}
-                          className="text-xs font-semibold text-red-600 hover:underline"
-                        >
-                          Confirm
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setConfirmDelete(null)}
-                          className={`text-xs hover:underline ${SA.muted}`}
-                        >
-                          Cancel
-                        </button>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating{' '}
+                        {FLASHCARDS_PER_GENERATION} more cards…
                       </>
                     ) : (
                       <>
-                        <button
-                          type="button"
-                          onClick={() => setConfirmDelete(deck.id)}
-                          className={`p-1.5 ${SA.muted} hover:text-red-600`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => startStudyDeck(deck)}
-                          className={`${SA.btnPrimary} gap-1.5 px-3 py-2`}
-                        >
-                          <Play className="h-3.5 w-3.5" /> Study
-                        </button>
+                        <Sparkles className="h-3.5 w-3.5" /> Generate {FLASHCARDS_PER_GENERATION}{' '}
+                        more cards
                       </>
                     )}
-                  </div>
+                  </button>
                 </div>
               );
             })}
@@ -710,38 +749,28 @@ export default function ShiftAiFlashcardsClient({
             </div>
           ) : null}
 
-          <div>
-            <label className={`mb-1.5 block text-xs font-bold uppercase tracking-wide ${SA.muted}`}>
-              Cards to generate: <span className={SA.text}>{cardCount}</span>
-            </label>
-            <input
-              type="range"
-              min={5}
-              max={30}
-              step={1}
-              value={cardCount}
-              onChange={(e) => setCardCount(Number(e.target.value))}
-              className="w-full accent-[var(--sa-navy-800)]"
-            />
-            <div className={`mt-1 flex justify-between text-xs ${SA.muted}`}>
-              <span>5 (quick)</span>
-              <span>30 (comprehensive)</span>
-            </div>
-          </div>
+          <p className={`rounded-xl bg-[var(--sa-navy-50)] px-4 py-3 text-sm ${SA.muted}`}>
+            Each generation creates{' '}
+            <span className={`font-semibold ${SA.text}`}>
+              {FLASHCARDS_PER_GENERATION} cards per generation
+            </span>
+            . Need more? Generate again — new cards append to your deck from My Decks.
+          </p>
 
           <button
             type="button"
             onClick={() => void handleGenerate()}
-            disabled={generating || !canGenerate}
+            disabled={generating || appendingDeckId !== null || !canGenerate}
             className={`${SA.btnPrimary} h-11 w-full text-base`}
           >
             {generating ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Generating {cardCount} cards…
+                <Loader2 className="h-4 w-4 animate-spin" /> Generating{' '}
+                {FLASHCARDS_PER_GENERATION} cards…
               </>
             ) : (
               <>
-                <Sparkles className="h-4 w-4" /> Generate deck ({cardCount} cards)
+                <Sparkles className="h-4 w-4" /> Generate deck ({FLASHCARDS_PER_GENERATION} cards)
               </>
             )}
           </button>

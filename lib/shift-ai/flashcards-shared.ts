@@ -35,3 +35,6 @@ export type SavedNotesOption = {
   preview: string;
   updatedAt: string;
 };
+
+/** Fixed batch size for each Groq flashcard generation call. */
+export const FLASHCARDS_PER_GENERATION = 5;
