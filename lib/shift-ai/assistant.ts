@@ -25,16 +25,27 @@ export type ShiftStudentTutorContext = {
   key_stage: string;
   age_range: string;
   curriculum: string;
+  curriculumLabel?: string;
 };
 
-function buildSystemPrompt(ctx: ShiftStudentTutorContext, subject?: string | null): string {
-  const parts = [
-    SYSTEM_PROMPT_BASE,
-    `The student is in ${ctx.year_group} (${ctx.key_stage}), age range ${ctx.age_range}, following the ${ctx.curriculum} curriculum.`,
-  ];
+function buildSystemPrompt(
+  ctx: ShiftStudentTutorContext,
+  subject?: string | null,
+  aiPersona?: string | null
+): string {
+  const curriculumName = ctx.curriculumLabel || ctx.curriculum;
 
-  if (subject?.trim()) {
-    parts.push(`The student is currently asking about: ${subject.trim()}.`);
+  const parts = subject?.trim()
+    ? [
+        `You are a ${subject.trim()} tutor for a ${ctx.year_group} student studying ${curriculumName}. Adapt your language to be age-appropriate for ${ctx.key_stage} (age range ${ctx.age_range}). Be encouraging, clear, and educational. Never provide answers directly — guide the student to understand.`,
+      ]
+    : [
+        SYSTEM_PROMPT_BASE,
+        `The student is in ${ctx.year_group} (${ctx.key_stage}), age range ${ctx.age_range}, following the ${curriculumName} curriculum.`,
+      ];
+
+  if (aiPersona?.trim()) {
+    parts.push(`Teaching style for this subject: ${aiPersona.trim()}`);
   }
 
   return parts.join('\n\n');
@@ -44,7 +55,8 @@ export async function generateShiftAiTutorReply(
   message: string,
   history: ShiftChatHistoryMessage[],
   ctx: ShiftStudentTutorContext,
-  subject?: string | null
+  subject?: string | null,
+  aiPersona?: string | null
 ): Promise<{ ok: true; content: string } | { ok: false; error: string }> {
   const groq = getGroqClient();
   if (!groq) {
@@ -52,7 +64,7 @@ export async function generateShiftAiTutorReply(
   }
 
   const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
-    { role: 'system', content: buildSystemPrompt(ctx, subject) },
+    { role: 'system', content: buildSystemPrompt(ctx, subject, aiPersona) },
   ];
 
   for (const entry of history.slice(-18)) {

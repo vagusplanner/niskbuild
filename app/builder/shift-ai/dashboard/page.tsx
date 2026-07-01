@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
 import {
@@ -5,6 +6,12 @@ import {
   SHIFT_CURRICULUM_LABELS,
   type ShiftCurriculum,
 } from '@/lib/shift-ai/constants';
+import {
+  mergeStudentSubjects,
+  subjectIcon,
+  subjectPagePath,
+  type ShiftSubjectRow,
+} from '@/lib/shift-ai/subjects';
 import { getSafeSession } from '@/lib/supabaseSession.server';
 
 type PlannerItem = {
@@ -25,24 +32,6 @@ function getGreeting(): string {
 
 function firstName(fullName: string): string {
   return fullName.trim().split(/\s+/)[0] || fullName;
-}
-
-function subjectIcon(name: string): string {
-  const lower = name.toLowerCase();
-  if (lower.includes('math')) return '📐';
-  if (lower.includes('english') || lower.includes('français') || lower.includes('french')) {
-    return '📖';
-  }
-  if (lower.includes('science') || lower.includes('biology') || lower.includes('chemistry')) {
-    return '🔬';
-  }
-  if (lower.includes('history')) return '🏛️';
-  if (lower.includes('geograph')) return '🌍';
-  if (lower.includes('comput') || lower.includes('nsi')) return '💻';
-  if (lower.includes('art')) return '🎨';
-  if (lower.includes('music')) return '🎵';
-  if (lower.includes('pe') || lower.includes('sport') || lower.includes('eps')) return '⚽';
-  return '📚';
 }
 
 function itemTypeLabel(type: string): string {
@@ -132,6 +121,17 @@ export default async function ShiftAiDashboardPage() {
     Array.isArray(student.favourite_subjects) ? student.favourite_subjects : []
   ).filter((s: unknown): s is string => typeof s === 'string' && s.trim().length > 0);
 
+  const { data: subjectRows } = await admin
+    .schema('firstparty')
+    .from('shift_subjects')
+    .select('id, name, ai_persona, is_favourite')
+    .eq('student_id', student.id);
+
+  const subjects = mergeStudentSubjects(
+    favouriteSubjects,
+    (subjectRows || []) as ShiftSubjectRow[]
+  );
+
   return (
     <main className="min-h-screen bg-[#1a1612] text-[#e8dcc8]">
       <div className="mx-auto max-w-5xl p-6 md:p-10">
@@ -197,25 +197,28 @@ export default async function ShiftAiDashboardPage() {
         <section>
           <h2 className="mb-4 mt-6 text-lg font-semibold text-[#e8dcc8]">
             Your subjects
-            {favouriteSubjects.length > 0 ? (
+            {subjects.some((s) => s.isFavourite) ? (
               <span className="ml-2 text-sm font-normal text-[#857664]">· ⭐ your favourites</span>
             ) : null}
           </h2>
-          {favouriteSubjects.length === 0 ? (
+          {subjects.length === 0 ? (
             <div className="rounded-2xl border border-[#857664]/30 bg-[#1a1612] p-5 text-sm text-[#857664]">
               Add favourite subjects during onboarding to see them here.
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-              {favouriteSubjects.map((subject) => (
-                <div
-                  key={subject}
+              {subjects.map((subject) => (
+                <Link
+                  key={subject.name}
+                  href={subjectPagePath(subject)}
                   className="relative rounded-2xl border border-[#857664]/30 bg-[#1a1612] p-5 text-center transition-all hover:border-[#9a6530]/60 hover:shadow-md"
                 >
-                  <span className="absolute right-2 top-2 text-xs">⭐</span>
-                  <div className="mb-2 text-3xl">{subjectIcon(subject)}</div>
-                  <p className="text-sm font-semibold text-[#e8dcc8]">{subject}</p>
-                </div>
+                  {subject.isFavourite ? (
+                    <span className="absolute right-2 top-2 text-xs">⭐</span>
+                  ) : null}
+                  <div className="mb-2 text-3xl">{subjectIcon(subject.name)}</div>
+                  <p className="text-sm font-semibold text-[#e8dcc8]">{subject.name}</p>
+                </Link>
               ))}
             </div>
           )}

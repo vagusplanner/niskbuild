@@ -5,6 +5,7 @@ import {
   type ShiftChatHistoryMessage,
   type ShiftStudentTutorContext,
 } from '@/lib/shift-ai/assistant';
+import { curriculumLabel } from '@/lib/shift-ai/subjects';
 import { getShiftStudentForRequest } from '@/lib/shift-ai/student-auth';
 
 export async function POST(request: NextRequest) {
@@ -44,20 +45,40 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Student profile not found' }, { status: 404 });
   }
 
+  let aiPersona: string | null = null;
+  if (subject) {
+    const { data: subjectRow } = await admin
+      .schema('firstparty')
+      .from('shift_subjects')
+      .select('ai_persona')
+      .eq('student_id', auth.student.id)
+      .ilike('name', subject)
+      .maybeSingle();
+
+    aiPersona = subjectRow?.ai_persona ?? null;
+  }
+
   const tutorContext: ShiftStudentTutorContext = {
     year_group: profile.year_group,
     key_stage: profile.key_stage,
     age_range: String(profile.age_range),
     curriculum: String(profile.curriculum),
+    curriculumLabel: curriculumLabel(String(profile.curriculum)),
   };
 
-  const { data: priorRows, error: historyError } = await admin
+  let historyQuery = admin
     .schema('firstparty')
     .from('shift_chat_history')
     .select('role, content')
     .eq('student_id', auth.student.id)
     .order('created_at', { ascending: false })
     .limit(19);
+
+  if (subject) {
+    historyQuery = historyQuery.eq('subject', subject);
+  }
+
+  const { data: priorRows, error: historyError } = await historyQuery;
 
   if (historyError) {
     console.error('Shift AI chat history fetch failed:', historyError.message);
@@ -88,7 +109,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Could not save your message' }, { status: 500 });
   }
 
-  const aiResult = await generateShiftAiTutorReply(content, history, tutorContext, subject);
+  const aiResult = await generateShiftAiTutorReply(
+    content,
+    history,
+    tutorContext,
+    subject,
+    aiPersona
+  );
   if (!aiResult.ok) {
     return NextResponse.json({ error: aiResult.error }, { status: 503 });
   }
