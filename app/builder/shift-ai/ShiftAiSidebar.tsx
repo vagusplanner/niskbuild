@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChevronRight, GraduationCap, Gamepad2, Home, LogOut, MessageCircle, CalendarDays } from 'lucide-react';
+import { ChevronRight, GraduationCap, Gamepad2, Home, Layers, LogOut, MessageCircle, CalendarDays } from 'lucide-react';
 import { signOut } from '@/lib/auth';
 
 const NAV_GROUPS = [
@@ -21,6 +21,12 @@ const NAV_GROUPS = [
         icon: MessageCircle,
         label: 'AI Tutor Chat',
         emoji: '🤖',
+      },
+      {
+        href: '/builder/shift-ai/flashcards',
+        icon: Layers,
+        label: 'Smart Flashcards',
+        emoji: '🃏',
       },
     ],
   },
