@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import Link from 'next/link';
 import { CalendarDays, Check, Plus, Trash2 } from 'lucide-react';
 import {
   groupPlannerItems,
@@ -12,12 +11,13 @@ import {
   type ShiftPlannerItem,
   type ShiftPlannerItemType,
 } from '@/lib/shift-ai/planner';
+import { SA } from '@/lib/shift-ai/theme';
 
 const TYPE_BADGE_CLASS: Record<ShiftPlannerItemType, string> = {
-  class: 'border-[#9a6530]/40 bg-[#9a6530]/15 text-[#e8dcc8]',
-  homework: 'border-[#857664]/40 bg-[#857664]/15 text-[#e8dcc8]',
-  test: 'border-red-500/30 bg-red-500/10 text-[#e8dcc8]',
-  revision: 'border-[#9a6530]/30 bg-[#1a1612] text-[#e8dcc8]',
+  class: 'border-[var(--sa-navy-100)] bg-[var(--sa-navy-50)] text-[var(--sa-navy-800)]',
+  homework: 'border-[var(--sa-border)] bg-[var(--sa-secondary)] text-[var(--sa-fg)]',
+  test: 'border-red-200 bg-red-50 text-red-800',
+  revision: 'border-[var(--sa-navy-100)] bg-white text-[var(--sa-navy-800)]',
 };
 
 type PlannerFormState = {
@@ -143,46 +143,33 @@ export default function ShiftAiPlannerClient({
   };
 
   return (
-    <main className="min-h-screen bg-[#1a1612] text-[#e8dcc8]">
-      <div className="mx-auto max-w-3xl p-6 md:p-10">
+    <div className={`${SA.contentNarrow} flex flex-col`}>
         <div className="mb-6 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#9a6530]">
-              <CalendarDays className="h-5 w-5 text-[#1a1612]" />
+            <div className={SA.iconHeader}>
+              <CalendarDays className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-[#e8dcc8]">Planner</h1>
-              <p className="text-sm text-[#857664]">Classes, homework, tests & revision</p>
+              <h1 className={SA.headingMd}>Planner</h1>
+              <p className={`text-sm ${SA.muted}`}>Classes, homework, tests & revision</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/builder/shift-ai/dashboard"
-              className="hidden text-sm text-[#857664] hover:text-[#e8dcc8] sm:inline"
-            >
-              Dashboard
-            </Link>
-            <button
-              type="button"
-              onClick={() => setShowForm((open) => !open)}
-              className="inline-flex items-center gap-2 rounded-lg bg-[#9a6530] px-4 py-2 text-sm font-semibold text-[#1a1612] hover:opacity-90 disabled:opacity-60"
-              disabled={busy}
-            >
-              <Plus className="h-4 w-4" />
-              Add
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setShowForm((open) => !open)}
+            className={SA.btnPrimary}
+            disabled={busy}
+          >
+            <Plus className="h-4 w-4" />
+            Add
+          </button>
         </div>
 
-        {error ? (
-          <p className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-[#e8dcc8]">
-            {error}
-          </p>
-        ) : null}
+        {error ? <p className={`mb-4 ${SA.error}`}>{error}</p> : null}
 
         {showForm ? (
-          <div className="mb-6 space-y-3 rounded-2xl border border-[#857664]/30 bg-[#1a1612] p-5">
-            <h3 className="font-semibold text-[#e8dcc8]">New planner item</h3>
+          <div className={`mb-6 space-y-3 ${SA.cardPadded}`}>
+            <h3 className={`font-semibold ${SA.text}`}>New planner item</h3>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <select
                 value={form.itemType}
@@ -192,7 +179,7 @@ export default function ShiftAiPlannerClient({
                     itemType: e.target.value as ShiftPlannerItemType,
                   }))
                 }
-                className="rounded-lg border border-[#857664]/40 bg-[#1a1612] px-3 py-2 text-sm text-[#e8dcc8]"
+                className={SA.select}
               >
                 {SHIFT_PLANNER_ITEM_TYPES.map((type) => (
                   <option key={type} value={type}>
@@ -204,7 +191,7 @@ export default function ShiftAiPlannerClient({
               <select
                 value={form.subject}
                 onChange={(e) => setForm((current) => ({ ...current, subject: e.target.value }))}
-                className="rounded-lg border border-[#857664]/40 bg-[#1a1612] px-3 py-2 text-sm text-[#e8dcc8]"
+                className={SA.select}
               >
                 <option value="">Subject (optional)</option>
                 {subjectOptions.map((subject) => (
@@ -219,27 +206,27 @@ export default function ShiftAiPlannerClient({
               placeholder="Title, e.g. Algebra homework due"
               value={form.title}
               onChange={(e) => setForm((current) => ({ ...current, title: e.target.value }))}
-              className="w-full rounded-lg border border-[#857664]/40 bg-[#1a1612] px-3 py-2 text-sm text-[#e8dcc8] placeholder:text-[#857664]"
+              className={SA.input}
             />
             <input
               type="date"
               value={form.dueDate}
               onChange={(e) => setForm((current) => ({ ...current, dueDate: e.target.value }))}
-              className="w-full rounded-lg border border-[#857664]/40 bg-[#1a1612] px-3 py-2 text-sm text-[#e8dcc8]"
+              className={SA.input}
             />
             <input
               type="text"
               placeholder="Notes (optional)"
               value={form.notes}
               onChange={(e) => setForm((current) => ({ ...current, notes: e.target.value }))}
-              className="w-full rounded-lg border border-[#857664]/40 bg-[#1a1612] px-3 py-2 text-sm text-[#e8dcc8] placeholder:text-[#857664]"
+              className={SA.input}
             />
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={handleCreate}
                 disabled={busy || !form.title || !form.dueDate}
-                className="rounded-lg bg-[#9a6530] px-4 py-2 text-sm font-semibold text-[#1a1612] hover:opacity-90 disabled:opacity-60"
+                className={SA.btnPrimary}
               >
                 Save
               </button>
@@ -249,7 +236,7 @@ export default function ShiftAiPlannerClient({
                   setShowForm(false);
                   setForm(emptyForm());
                 }}
-                className="rounded-lg border border-[#857664]/40 px-4 py-2 text-sm text-[#e8dcc8] hover:border-[#9a6530]/50"
+                className={SA.btnSecondary}
               >
                 Cancel
               </button>
@@ -285,8 +272,7 @@ export default function ShiftAiPlannerClient({
             onDelete={handleDelete}
           />
         ) : null}
-      </div>
-    </main>
+    </div>
   );
 }
 
@@ -307,11 +293,9 @@ function PlannerSection({
 }) {
   return (
     <section className="mb-6">
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[#857664]">
-        {title}
-      </h2>
+      <h2 className={SA.sectionLabel}>{title}</h2>
       {items.length === 0 && emptyMsg ? (
-        <p className="py-4 text-sm text-[#857664]">{emptyMsg}</p>
+        <p className={`py-4 text-sm ${SA.muted}`}>{emptyMsg}</p>
       ) : (
         <div className="space-y-2">
           {items.map((item) => {
@@ -322,7 +306,7 @@ function PlannerSection({
             return (
               <div
                 key={item.id}
-                className={`flex items-start gap-3 rounded-xl border border-[#857664]/30 bg-[#1a1612] px-4 py-3 ${
+                className={`flex items-start gap-3 rounded-xl sa-card px-4 py-3 ${
                   item.completed ? 'opacity-60' : ''
                 }`}
               >
@@ -332,12 +316,12 @@ function PlannerSection({
                   disabled={busy}
                   className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 transition-all ${
                     item.completed
-                      ? 'border-[#9a6530] bg-[#9a6530]'
-                      : 'border-[#857664] hover:border-[#9a6530]'
+                      ? 'border-[var(--sa-navy-800)] bg-[var(--sa-navy-800)]'
+                      : 'border-[var(--sa-border)] hover:border-[var(--sa-navy-800)]'
                   }`}
                   aria-label={item.completed ? 'Mark incomplete' : 'Mark complete'}
                 >
-                  {item.completed ? <Check className="h-3 w-3 text-[#1a1612]" /> : null}
+                  {item.completed ? <Check className="h-3 w-3 text-white" /> : null}
                 </button>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
@@ -347,24 +331,24 @@ function PlannerSection({
                       {SHIFT_PLANNER_TYPE_ICONS[itemType]} {item.item_type}
                     </span>
                     {subject ? (
-                      <span className="text-xs text-[#857664]">{subject}</span>
+                      <span className={`text-xs ${SA.muted}`}>{subject}</span>
                     ) : null}
                   </div>
                   <p
                     className={`mt-1 text-sm font-medium ${
-                      item.completed ? 'line-through text-[#857664]' : 'text-[#e8dcc8]'
+                      item.completed ? `line-through ${SA.muted}` : SA.text
                     }`}
                   >
                     {item.title}
                   </p>
-                  {notes ? <p className="mt-0.5 text-xs text-[#857664]">{notes}</p> : null}
-                  <p className="mt-1 text-xs text-[#857664]">📅 {formatDueDate(item.due_date)}</p>
+                  {notes ? <p className={`mt-0.5 text-xs ${SA.muted}`}>{notes}</p> : null}
+                  <p className={`mt-1 text-xs ${SA.muted}`}>📅 {formatDueDate(item.due_date)}</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => onDelete(item.id)}
                   disabled={busy}
-                  className="p-1 text-[#857664] hover:text-red-400 disabled:opacity-60"
+                  className={`p-1 ${SA.muted} hover:text-red-500 disabled:opacity-60`}
                   aria-label="Delete planner item"
                 >
                   <Trash2 className="h-3.5 w-3.5" />

@@ -1,0 +1,216 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* Shift AI design system — scoped under .shift-ai-app, separate from NiskBuild globals */
+
+.shift-ai-app {
+  --sa-bg: hsl(214, 60%, 97%);
+  --sa-fg: hsl(214, 60%, 8%);
+  --sa-card: #ffffff;
+  --sa-muted: hsl(214, 20%, 46%);
+  --sa-border: hsl(214, 30%, 88%);
+  --sa-primary: hsl(214, 80%, 25%);
+  --sa-primary-fg: #ffffff;
+  --sa-primary-hover: hsl(214, 80%, 20%);
+  --sa-secondary: hsl(214, 40%, 90%);
+  --sa-accent: hsl(214, 60%, 35%);
+  --sa-sidebar: hsl(214, 80%, 18%);
+  --sa-navy-50: #eef3fb;
+  --sa-navy-100: #d5e3f4;
+  --sa-navy-400: #4d84c8;
+  --sa-navy-700: #163d78;
+  --sa-navy-800: #0f2a56;
+  --sa-navy-900: #071733;
+  --sa-radius: 0.75rem;
+
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--sa-bg);
+  color: var(--sa-fg);
+}
+
+.shift-ai-standalone {
+  min-height: 100vh;
+}
+
+/* Sidebar */
+.sa-sidebar {
+  background: var(--sa-sidebar);
+  color: #fff;
+}
+
+.sa-sidebar-item {
+  transition: background 0.15s ease, color 0.15s ease;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.sa-sidebar-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.sa-sidebar-item-active {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+/* Typography & surfaces */
+.sa-text {
+  color: var(--sa-fg);
+}
+
+.sa-muted {
+  color: var(--sa-muted);
+}
+
+.sa-card {
+  background: var(--sa-card);
+  border: 1px solid var(--sa-border);
+}
+
+.sa-card-hover:hover {
+  border-color: hsl(214, 60%, 70%);
+  box-shadow: 0 4px 14px rgba(15, 42, 86, 0.08);
+}
+
+.sa-tip {
+  background: var(--sa-navy-50);
+  border: 1px solid var(--sa-navy-100);
+  color: var(--sa-fg);
+}
+
+.sa-badge {
+  border: 1px solid hsl(214, 40%, 75%);
+  background: var(--sa-navy-50);
+  color: var(--sa-navy-800);
+}
+
+/* Forms */
+.sa-input,
+.sa-select,
+.sa-textarea {
+  background: var(--sa-card);
+  border: 1px solid var(--sa-border);
+  color: var(--sa-fg);
+}
+
+.sa-input::placeholder,
+.sa-textarea::placeholder {
+  color: var(--sa-muted);
+}
+
+.sa-input:focus,
+.sa-select:focus,
+.sa-textarea:focus {
+  outline: none;
+  border-color: var(--sa-navy-400);
+  box-shadow: 0 0 0 3px hsl(214 80% 35% / 0.15);
+}
+
+.sa-btn-primary {
+  background: var(--sa-navy-800);
+  color: #fff;
+  font-weight: 600;
+}
+
+.sa-btn-primary:hover:not(:disabled) {
+  background: var(--sa-navy-700);
+}
+
+.sa-btn-primary:disabled {
+  opacity: 0.6;
+}
+
+.sa-btn-secondary {
+  background: var(--sa-card);
+  border: 1px solid var(--sa-border);
+  color: var(--sa-fg);
+}
+
+.sa-btn-secondary:hover:not(:disabled) {
+  border-color: var(--sa-navy-400);
+}
+
+/* Tabs */
+.sa-tab {
+  color: var(--sa-muted);
+  border-bottom: 2px solid transparent;
+}
+
+.sa-tab:hover {
+  color: var(--sa-fg);
+}
+
+.sa-tab-active {
+  color: var(--sa-navy-800);
+  border-bottom: 2px solid var(--sa-navy-800);
+  font-weight: 600;
+}
+
+/* Chat bubbles */
+.sa-user-bubble {
+  background: var(--sa-navy-800);
+  color: #fff;
+}
+
+.sa-assist-bubble {
+  background: var(--sa-card);
+  border: 1px solid var(--sa-border);
+  color: var(--sa-fg);
+}
+
+.sa-avatar {
+  background: var(--sa-navy-100);
+  color: var(--sa-navy-800);
+}
+
+/* Auth / standalone pages */
+.sa-auth-page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, var(--sa-navy-50) 0%, var(--sa-bg) 40%, #fff 100%);
+}
+
+.sa-auth-kicker {
+  color: var(--sa-navy-700);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sa-auth-card {
+  background: var(--sa-card);
+  border: 1px solid var(--sa-border);
+  border-radius: 1rem;
+  box-shadow: 0 8px 30px rgba(15, 42, 86, 0.06);
+}
+
+.sa-auth-choice {
+  background: var(--sa-card);
+  border: 1px solid var(--sa-border);
+  border-radius: 0.75rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sa-auth-choice:hover {
+  border-color: var(--sa-navy-400);
+  box-shadow: 0 4px 14px rgba(15, 42, 86, 0.08);
+}
+
+.sa-link {
+  color: var(--sa-navy-700);
+}
+
+.sa-link:hover {
+  color: var(--sa-navy-800);
+  text-decoration: underline;
+}
+
+.sa-error {
+  background: hsl(0 84% 60% / 0.08);
+  border: 1px solid hsl(0 84% 60% / 0.25);
+  color: hsl(0 60% 35%);
+}
+
+.sa-success {
+  background: hsl(142 50% 45% / 0.08);
+  border: 1px solid hsl(142 50% 45% / 0.25);
+  color: hsl(142 45% 28%);
+}

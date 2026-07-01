@@ -8,6 +8,7 @@ import {
   type ShiftCurriculum,
 } from '@/lib/shift-ai/constants';
 import { needsSubjectOnboarding } from '@/lib/shift-ai/onboarding';
+import { SA } from '@/lib/shift-ai/theme';
 
 export default async function ShiftAiOnboardingPage() {
   const session = await getSafeSession();
@@ -31,14 +32,14 @@ export default async function ShiftAiOnboardingPage() {
   const completeMode = Boolean(student);
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-indigo-50 to-white px-6 py-16">
+    <main className={SA.authPage}>
       <div className="mx-auto max-w-lg">
         <header className="mb-10 text-center">
-          <p className="text-sm font-semibold uppercase tracking-wider text-indigo-600">Shift AI</p>
-          <h1 className="mt-2 text-3xl font-bold text-slate-900">
+          <p className={SA.authKicker}>Shift Learning</p>
+          <h1 className={`mt-2 text-3xl font-bold ${SA.text}`}>
             {completeMode ? 'Choose your subjects' : 'Set up your profile'}
           </h1>
-          <p className="mt-3 text-slate-600">
+          <p className={`mt-3 ${SA.muted}`}>
             {completeMode
               ? 'Pick up to three favourite subjects so we can personalise your tutors and dashboard.'
               : 'Tell us a little about you so we can personalise your tutors.'}

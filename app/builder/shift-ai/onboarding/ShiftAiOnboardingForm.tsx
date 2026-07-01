@@ -10,9 +10,7 @@ import {
   type ShiftAgeRange,
   type ShiftCurriculum,
 } from '@/lib/shift-ai/constants';
-
-const inputClass =
-  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20';
+import { SA } from '@/lib/shift-ai/theme';
 
 type OnboardingProfile = {
   fullName: string;
@@ -76,91 +74,36 @@ export default function ShiftAiOnboardingForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {error && (
-        <p className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-          {error}
-        </p>
-      )}
+      {error ? <p className={SA.error}>{error}</p> : null}
 
       {mode === 'complete' && initialProfile ? (
-        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-          <p className="font-medium text-slate-900">{initialProfile.fullName}</p>
+        <div className={`${SA.authCard} text-sm ${SA.muted}`}>
+          <p className={`font-medium ${SA.text}`}>{initialProfile.fullName}</p>
           <p className="mt-1">
             {initialProfile.yearGroup} · {initialProfile.curriculumLabel}
           </p>
         </div>
       ) : (
         <>
-          <input
-            className={inputClass}
-            type="text"
-            placeholder="Display name"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            required
-          />
-          <select
-            className={inputClass}
-            value={curriculum}
-            onChange={(e) => setCurriculum(e.target.value as ShiftCurriculum)}
-            required
-          >
+          <input className={SA.input} type="text" placeholder="Display name" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+          <select className={SA.select} value={curriculum} onChange={(e) => setCurriculum(e.target.value as ShiftCurriculum)} required>
             {SHIFT_CURRICULA.map((c) => (
-              <option key={c} value={c}>
-                {SHIFT_CURRICULUM_LABELS[c]}
-              </option>
+              <option key={c} value={c}>{SHIFT_CURRICULUM_LABELS[c]}</option>
             ))}
           </select>
-          <input
-            className={inputClass}
-            type="text"
-            placeholder="Year group (e.g. Year 9)"
-            value={yearGroup}
-            onChange={(e) => setYearGroup(e.target.value)}
-            required
-          />
-          <select
-            className={inputClass}
-            value={ageRange}
-            onChange={(e) => setAgeRange(e.target.value as ShiftAgeRange)}
-            required
-          >
+          <input className={SA.input} type="text" placeholder="Year group (e.g. Year 9)" value={yearGroup} onChange={(e) => setYearGroup(e.target.value)} required />
+          <select className={SA.select} value={ageRange} onChange={(e) => setAgeRange(e.target.value as ShiftAgeRange)} required>
             {SHIFT_AGE_RANGES.map((r) => (
-              <option key={r} value={r}>
-                {SHIFT_AGE_RANGE_LABELS[r]}
-              </option>
+              <option key={r} value={r}>{SHIFT_AGE_RANGE_LABELS[r]}</option>
             ))}
           </select>
         </>
       )}
 
-      <input
-        className={inputClass}
-        type="text"
-        placeholder="Favourite subject 1"
-        value={subjectOne}
-        onChange={(e) => setSubjectOne(e.target.value)}
-        required={mode === 'complete'}
-      />
-      <input
-        className={inputClass}
-        type="text"
-        placeholder="Favourite subject 2 (optional)"
-        value={subjectTwo}
-        onChange={(e) => setSubjectTwo(e.target.value)}
-      />
-      <input
-        className={inputClass}
-        type="text"
-        placeholder="Favourite subject 3 (optional)"
-        value={subjectThree}
-        onChange={(e) => setSubjectThree(e.target.value)}
-      />
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full rounded-lg bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
-      >
+      <input className={SA.input} type="text" placeholder="Favourite subject 1" value={subjectOne} onChange={(e) => setSubjectOne(e.target.value)} required={mode === 'complete'} />
+      <input className={SA.input} type="text" placeholder="Favourite subject 2 (optional)" value={subjectTwo} onChange={(e) => setSubjectTwo(e.target.value)} />
+      <input className={SA.input} type="text" placeholder="Favourite subject 3 (optional)" value={subjectThree} onChange={(e) => setSubjectThree(e.target.value)} />
+      <button type="submit" disabled={loading} className={`${SA.btnPrimary} w-full py-2.5`}>
         {loading ? 'Saving…' : 'Continue to Shift AI'}
       </button>
     </form>

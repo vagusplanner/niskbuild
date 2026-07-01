@@ -14,6 +14,7 @@ import {
 } from '@/lib/shift-ai/subjects';
 import { getSafeSession } from '@/lib/supabaseSession.server';
 import { needsSubjectOnboarding } from '@/lib/shift-ai/onboarding';
+import { SA } from '@/lib/shift-ai/theme';
 
 type PlannerItem = {
   id: string;
@@ -134,19 +135,18 @@ export default async function ShiftAiDashboardPage() {
   );
 
   return (
-    <main className="min-h-screen bg-[#1a1612] text-[#e8dcc8]">
-      <div className="mx-auto max-w-5xl p-6 md:p-10">
+    <div className={SA.content}>
         {/* Header — layout from reference Dashboard.jsx */}
         <header className="mb-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-[#e8dcc8] md:text-3xl">
+              <h1 className={SA.heading}>
                 {getGreeting()}, {displayName}! 👋
               </h1>
-              <p className="mt-1 flex flex-wrap items-center gap-2 text-[#857664]">
-                <span className="font-medium text-[#e8dcc8]">{student.year_group}</span>
+              <p className={`mt-1 flex flex-wrap items-center gap-2 ${SA.muted}`}>
+                <span className={`font-medium ${SA.text}`}>{student.year_group}</span>
                 <span>· {student.key_stage}</span>
-                <span className="inline-flex items-center gap-1 rounded-full border border-[#9a6530]/40 bg-[#9a6530]/10 px-2 py-0.5 text-xs font-medium text-[#e8dcc8]">
+                <span className={`inline-flex items-center gap-1 rounded-full border border-[var(--sa-navy-100)] bg-[var(--sa-navy-50)] px-2 py-0.5 text-xs font-medium ${SA.text}`}>
                   {SHIFT_CURRICULUM_FLAGS[curriculum]} {SHIFT_CURRICULUM_LABELS[curriculum]}
                 </span>
               </p>
@@ -155,15 +155,15 @@ export default async function ShiftAiDashboardPage() {
         </header>
 
         {/* Curriculum tip — adapted from reference tip banner */}
-        <section className="mb-6 rounded-xl border border-[#9a6530]/30 bg-[#9a6530]/10 p-4 text-sm text-[#e8dcc8]">
+        <section className={`mb-6 ${SA.tip}`}>
           💡 {keyStageTip(curriculum, student.key_stage, student.year_group)}
         </section>
 
         {/* Due today — planner items */}
         <section className="mb-6">
-          <h2 className="mb-4 text-lg font-semibold text-[#e8dcc8]">Due today</h2>
+          <h2 className={`mb-4 ${SA.subheading}`}>Due today</h2>
           {plannerItems.length === 0 ? (
-            <div className="rounded-2xl border border-[#857664]/30 bg-[#1a1612] p-5 text-sm text-[#857664]">
+            <div className={`${SA.cardPadded} text-sm ${SA.muted}`}>
               Nothing due today — you&apos;re all caught up.
             </div>
           ) : (
@@ -171,18 +171,18 @@ export default async function ShiftAiDashboardPage() {
               {plannerItems.map((item) => (
                 <li
                   key={item.id}
-                  className="rounded-2xl border border-[#857664]/30 bg-[#1a1612] p-4 hover:border-[#9a6530]/50 transition-colors"
+                  className={`${SA.cardHover} p-4`}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <p className="font-semibold text-[#e8dcc8]">{item.title}</p>
-                    <span className="shrink-0 rounded-full border border-[#9a6530]/40 bg-[#9a6530]/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[#e8dcc8]">
+                    <p className={`font-semibold ${SA.text}`}>{item.title}</p>
+                    <span className={`shrink-0 ${SA.badgeSm}`}>
                       {itemTypeLabel(item.item_type)}
                     </span>
                   </div>
                   {item.description ? (
-                    <p className="mt-1 text-sm text-[#857664]">{item.description}</p>
+                    <p className={`mt-1 text-sm ${SA.muted}`}>{item.description}</p>
                   ) : null}
-                  <p className="mt-2 text-xs text-[#857664]">
+                  <p className={`mt-2 text-xs ${SA.muted}`}>
                     {new Date(item.due_date).toLocaleTimeString(undefined, {
                       hour: '2-digit',
                       minute: '2-digit',
@@ -196,14 +196,14 @@ export default async function ShiftAiDashboardPage() {
 
         {/* Subject grid — layout from reference, data from favourite_subjects */}
         <section>
-          <h2 className="mb-4 mt-6 text-lg font-semibold text-[#e8dcc8]">
+          <h2 className={`mb-4 mt-6 ${SA.subheading}`}>
             Your subjects
             {subjects.some((s) => s.isFavourite) ? (
-              <span className="ml-2 text-sm font-normal text-[#857664]">· ⭐ your favourites</span>
+              <span className={`ml-2 text-sm font-normal ${SA.muted}`}>· ⭐ your favourites</span>
             ) : null}
           </h2>
           {subjects.length === 0 ? (
-            <div className="rounded-2xl border border-[#857664]/30 bg-[#1a1612] p-5 text-sm text-[#857664]">
+            <div className={`${SA.cardPadded} text-sm ${SA.muted}`}>
               Add favourite subjects during onboarding to see them here.
             </div>
           ) : (
@@ -212,20 +212,19 @@ export default async function ShiftAiDashboardPage() {
                 <Link
                   key={subject.name}
                   href={subjectPagePath(subject)}
-                  className="relative rounded-2xl border border-[#857664]/30 bg-[#1a1612] p-5 text-center transition-all hover:border-[#9a6530]/60 hover:shadow-md"
+                  className={`relative ${SA.cardHover} p-5 text-center`}
                 >
                   {subject.isFavourite ? (
                     <span className="absolute right-2 top-2 text-xs">⭐</span>
                   ) : null}
                   <div className="mb-2 text-3xl">{subjectIcon(subject.name)}</div>
-                  <p className="text-sm font-semibold text-[#e8dcc8]">{subject.name}</p>
+                  <p className={`text-sm font-semibold ${SA.text}`}>{subject.name}</p>
                 </Link>
               ))}
             </div>
           )}
         </section>
-      </div>
-    </main>
+    </div>
   );
 }
 
