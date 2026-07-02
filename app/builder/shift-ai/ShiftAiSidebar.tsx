@@ -3,9 +3,11 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
+  BarChart3,
   CalendarDays,
   Camera,
   ChevronRight,
+  Flame,
   Gamepad2,
   GraduationCap,
   Home,
@@ -16,6 +18,8 @@ import {
   Mic,
   PenLine,
   Sparkles,
+  Target,
+  TrendingUp,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth';
 
@@ -91,13 +95,37 @@ const NAV_GROUPS = [
     ],
   },
   {
-    label: 'Progress',
+    label: 'Progress & Insights',
     items: [
       {
         href: '/builder/shift-ai/mastery',
         icon: Map,
         label: 'Mastery Map',
         emoji: '🗺️',
+      },
+      {
+        href: '/builder/shift-ai/grade-predictor',
+        icon: TrendingUp,
+        label: 'Grade Predictor',
+        emoji: '🎯',
+      },
+      {
+        href: '/builder/shift-ai/analytics',
+        icon: BarChart3,
+        label: 'Analytics',
+        emoji: '📊',
+      },
+      {
+        href: '/builder/shift-ai/mastery-heatmap',
+        icon: Flame,
+        label: 'Mastery Heatmap',
+        emoji: '🔥',
+      },
+      {
+        href: '/builder/shift-ai/spec-tracker',
+        icon: Target,
+        label: 'Spec Tracker',
+        emoji: '📋',
       },
     ],
   },
