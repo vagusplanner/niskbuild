@@ -154,3 +154,51 @@ grant all on firstparty.shift_flashcard_decks to service_role;
 
 grant select, insert, update, delete on firstparty.shift_flashcards to authenticated;
 grant all on firstparty.shift_flashcards to service_role;
+
+-- ─── Mastery topics ──────────────────────────────────────────────────────
+
+create table if not exists firstparty.shift_mastery_topics (
+  id uuid primary key default gen_random_uuid(),
+  student_id uuid not null references firstparty.shift_students(id) on delete cascade,
+  subject text not null,
+  topic text not null,
+  status text not null default 'not_started',
+  updated_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  constraint shift_mastery_topics_status_check
+    check (status in ('not_started', 'learning', 'mastered')),
+  constraint shift_mastery_topics_student_subject_topic_unique
+    unique (student_id, subject, topic)
+);
+
+create index if not exists idx_shift_mastery_topics_student_subject
+  on firstparty.shift_mastery_topics (student_id, subject);
+
+comment on table firstparty.shift_mastery_topics is
+  'Per-student curriculum topic mastery map — tracks not_started, learning, mastered.';
+
+alter table firstparty.shift_mastery_topics enable row level security;
+
+drop policy if exists "Students manage own shift_mastery_topics" on firstparty.shift_mastery_topics;
+create policy "Students manage own shift_mastery_topics"
+  on firstparty.shift_mastery_topics for all
+  to authenticated
+  using (
+    exists (
+      select 1
+      from firstparty.shift_students s
+      where s.id = shift_mastery_topics.student_id
+        and s.user_id = auth.uid()
+    )
+  )
+  with check (
+    exists (
+      select 1
+      from firstparty.shift_students s
+      where s.id = shift_mastery_topics.student_id
+        and s.user_id = auth.uid()
+    )
+  );
+
+grant select, insert, update, delete on firstparty.shift_mastery_topics to authenticated;
+grant all on firstparty.shift_mastery_topics to service_role;

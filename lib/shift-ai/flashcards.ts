@@ -2,88 +2,17 @@ import 'server-only';
 
 import { getGroqClient } from '@/lib/groq-client';
 import type { GeneratedFlashcard } from '@/lib/shift-ai/flashcards-shared';
+import {
+  GROQ_JSON_ONLY_INSTRUCTION,
+  SHIFT_GROQ_MODEL,
+  logGroqParseFailure,
+  parseGroqJsonContent,
+  withGroqTimeout,
+} from '@/lib/shift-ai/groq-json';
 
 export type { Flashcard, FlashcardDeck, FlashcardDeckWithCards, GeneratedFlashcard, SavedNotesOption } from '@/lib/shift-ai/flashcards-shared';
 
-const GROQ_MODEL = process.env.GROQ_AGENT_MODEL?.trim() || 'llama-3.3-70b-versatile';
-const GROQ_TIMEOUT_MS = 25_000;
 const GENERATION_CARD_COUNT = 5;
-
-const FLASHCARD_JSON_ONLY_INSTRUCTION =
-  'Respond with ONLY the raw JSON object. No markdown, no code fences, no explanation text before or after.';
-
-function stripMarkdownFences(text: string): string {
-  let cleaned = text.trim();
-  cleaned = cleaned.replace(/^```(?:json)?\s*/i, '');
-  cleaned = cleaned.replace(/\s*```\s*$/i, '');
-  return cleaned.trim();
-}
-
-/** Extract the outermost JSON object or array from mixed model output. */
-function extractJsonSubstring(text: string): string {
-  const cleaned = stripMarkdownFences(text);
-  const objectStart = cleaned.indexOf('{');
-  const arrayStart = cleaned.indexOf('[');
-
-  if (objectStart >= 0 && (arrayStart < 0 || objectStart < arrayStart)) {
-    const objectEnd = cleaned.lastIndexOf('}');
-    if (objectEnd > objectStart) {
-      return cleaned.slice(objectStart, objectEnd + 1);
-    }
-  }
-
-  if (arrayStart >= 0) {
-    const arrayEnd = cleaned.lastIndexOf(']');
-    if (arrayEnd > arrayStart) {
-      return cleaned.slice(arrayStart, arrayEnd + 1);
-    }
-  }
-
-  return cleaned;
-}
-
-function parseGroqJsonContent(
-  content: string
-): { ok: true; json: unknown } | { ok: false; error: string } {
-  const candidates = [
-    content.trim(),
-    stripMarkdownFences(content),
-    extractJsonSubstring(content),
-  ];
-
-  for (const candidate of [...new Set(candidates)]) {
-    if (!candidate) continue;
-    try {
-      return { ok: true, json: JSON.parse(candidate) };
-    } catch {
-      // try next candidate
-    }
-  }
-
-  return { ok: false, error: 'Could not parse flashcard response' };
-}
-
-function logFlashcardParseFailure(rawContent: string, reason: string) {
-  console.error(
-    `Shift AI flashcard ${reason}. Raw Groq response (truncated):`,
-    rawContent.slice(0, 500)
-  );
-}
-
-function withGroqTimeout<T>(promise: Promise<T>): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => {
-      setTimeout(() => {
-        reject(
-          new Error(
-            'AI flashcard generation timed out — please try again with shorter notes or a narrower topic'
-          )
-        );
-      }, GROQ_TIMEOUT_MS);
-    }),
-  ]);
-}
 
 function parseGeneratedCards(
   raw: unknown
@@ -188,18 +117,19 @@ Return ONLY valid JSON in this shape:
         messages: [
           {
             role: 'system',
-            content: `You create educational flashcards for school students. ${FLASHCARD_JSON_ONLY_INSTRUCTION}`,
+            content: `You create educational flashcards for school students. ${GROQ_JSON_ONLY_INSTRUCTION}`,
           },
           {
             role: 'user',
-            content: `${prompt}\n\n${FLASHCARD_JSON_ONLY_INSTRUCTION}`,
+            content: `${prompt}\n\n${GROQ_JSON_ONLY_INSTRUCTION}`,
           },
         ],
-        model: GROQ_MODEL,
+        model: SHIFT_GROQ_MODEL,
         temperature: 0.7,
         max_tokens: 2048,
         response_format: { type: 'json_object' },
-      })
+      }),
+      'AI flashcard generation timed out — please try again with shorter notes or a narrower topic'
     );
 
     const rawContent = completion.choices[0]?.message?.content?.trim();
@@ -207,16 +137,16 @@ Return ONLY valid JSON in this shape:
       return { ok: false, error: 'Empty response from AI flashcard generator' };
     }
 
-    const jsonResult = parseGroqJsonContent(rawContent);
+    const jsonResult = parseGroqJsonContent(rawContent, 'Could not parse flashcard response');
     if (!jsonResult.ok) {
-      logFlashcardParseFailure(rawContent, 'JSON parse failed');
+      logGroqParseFailure('flashcard', rawContent, 'JSON parse failed');
       return { ok: false, error: jsonResult.error };
     }
 
     const json = jsonResult.json;
     const parsed = parseGeneratedCards(json);
     if (!parsed.ok) {
-      logFlashcardParseFailure(rawContent, 'response shape parse failed');
+      logGroqParseFailure('flashcard', rawContent, 'response shape parse failed');
       return { ok: false, error: parsed.error };
     }
 
@@ -235,10 +165,7 @@ Return ONLY valid JSON in this shape:
 
     return { ok: true, deckTitle, cards: cards.slice(0, count) };
   } catch (err) {
-    if (
-      err instanceof Error &&
-      err.message.includes('AI flashcard generation timed out')
-    ) {
+    if (err instanceof Error && err.message.includes('timed out')) {
       return { ok: false, error: err.message };
     }
     console.error('Shift AI flashcard generation failed:', err);
