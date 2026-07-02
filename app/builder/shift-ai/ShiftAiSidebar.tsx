@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   BarChart3,
+  BookOpen,
   CalendarDays,
   Camera,
   ChevronRight,
@@ -56,6 +57,12 @@ const NAV_GROUPS = [
         icon: Camera,
         label: 'Snap Homework',
         emoji: '📸',
+      },
+      {
+        href: '/builder/shift-ai/curriculum-packs',
+        icon: BookOpen,
+        label: 'Curriculum Packs',
+        emoji: '📚',
       },
       {
         href: '/builder/shift-ai/voice-buddy',
