@@ -50,6 +50,17 @@ export async function createStorageSignedUrl(
   return data.signedUrl;
 }
 
+export async function removeStorageObjects(bucket: string, objectPaths: string[]): Promise<void> {
+  if (objectPaths.length === 0) return;
+
+  const admin = createAdminClient();
+  const { error } = await admin.storage.from(bucket).remove(objectPaths);
+
+  if (error) {
+    throw new Error(`Storage remove failed (${bucket}): ${error.message}`);
+  }
+}
+
 export async function storageObjectExists(bucket: string, objectPath: string): Promise<boolean> {
   const admin = createAdminClient();
   const folder = objectPath.includes('/') ? objectPath.slice(0, objectPath.lastIndexOf('/')) : '';

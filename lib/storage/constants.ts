@@ -2,6 +2,7 @@
 
 export const STORAGE_BUCKET_IMPORTED_APPS = 'imported-apps' as const;
 export const STORAGE_BUCKET_PROJECT_EXPORTS = 'project-exports' as const;
+export const STORAGE_BUCKET_SHIFT_HOMEWORK_UPLOADS = 'shift-homework-uploads' as const;
 
 export function importedAppSourceObjectPath(slug: string): string {
   return `${slug}/source.zip`;
@@ -17,4 +18,8 @@ export function projectExportZipObjectPath(
   jobId: string
 ): string {
   return `${userId}/${projectId}/${jobId}/native-export.zip`;
+}
+
+export function shiftHomeworkUploadObjectPath(studentId: string, uploadId: string): string {
+  return `${studentId}/${uploadId}.jpg`;
 }
