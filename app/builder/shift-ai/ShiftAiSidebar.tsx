@@ -14,6 +14,8 @@ import {
   Map,
   MessageCircle,
   Mic,
+  PenLine,
+  Sparkles,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth';
 
@@ -62,6 +64,29 @@ const NAV_GROUPS = [
         icon: Mic,
         label: 'Voice Tutor',
         emoji: '🎙️',
+      },
+    ],
+  },
+  {
+    label: 'Writing Tools',
+    items: [
+      {
+        href: '/builder/shift-ai/essay-marker',
+        icon: PenLine,
+        label: 'Essay Marker',
+        emoji: '✍️',
+      },
+      {
+        href: '/builder/shift-ai/essay-workshop',
+        icon: PenLine,
+        label: 'Essay Workshop',
+        emoji: '📝',
+      },
+      {
+        href: '/builder/shift-ai/content-generator',
+        icon: Sparkles,
+        label: 'Content Generator',
+        emoji: '✨',
       },
     ],
   },

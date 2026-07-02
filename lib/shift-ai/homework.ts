@@ -17,6 +17,30 @@ export async function analyzeHomeworkPhoto(
   imageUrl: string,
   yearGroup: string
 ): Promise<string | null> {
+  return analyzeImageWithVision(buildHomeworkVisionPrompt(yearGroup), imageUrl, {
+    system:
+      'You are a patient, encouraging tutor helping a student learn from a homework photo. Be clear, age-appropriate, and pedagogical.',
+  });
+}
+
+export async function transcribeEssayPhoto(imageUrl: string): Promise<string | null> {
+  return analyzeImageWithVision(
+    `Transcribe all handwritten or printed essay text from this image. Preserve paragraph breaks with blank lines. Return only the essay text — no commentary. If you cannot read the image clearly, return a single sentence explaining what is unclear.`,
+    imageUrl,
+    {
+      system:
+        'You extract text from student essay photos accurately. Output plain text only.',
+      temperature: 0.2,
+      maxTokens: 4096,
+    }
+  );
+}
+
+async function analyzeImageWithVision(
+  prompt: string,
+  imageUrl: string,
+  options: { system: string; temperature?: number; maxTokens?: number }
+): Promise<string | null> {
   const groq = getGroqClient();
   if (!groq) return null;
 
@@ -24,7 +48,7 @@ export async function analyzeHomeworkPhoto(
     | { type: 'text'; text: string }
     | { type: 'image_url'; image_url: { url: string } }
   > = [
-    { type: 'text', text: buildHomeworkVisionPrompt(yearGroup) },
+    { type: 'text', text: prompt },
     { type: 'image_url', image_url: { url: imageUrl } },
   ];
 
@@ -32,20 +56,16 @@ export async function analyzeHomeworkPhoto(
     const completion = await groq.chat.completions.create({
       model: GROQ_VISION_MODEL,
       messages: [
-        {
-          role: 'system',
-          content:
-            'You are a patient, encouraging tutor helping a student learn from a homework photo. Be clear, age-appropriate, and pedagogical.',
-        },
+        { role: 'system', content: options.system },
         { role: 'user', content: userContent },
       ],
-      temperature: 0.4,
-      max_tokens: 4096,
+      temperature: options.temperature ?? 0.4,
+      max_tokens: options.maxTokens ?? 4096,
     });
 
     return completion.choices[0]?.message?.content?.trim() || null;
   } catch (error) {
-    console.error('Shift AI homework vision error:', error);
+    console.error('Shift AI vision error:', error);
     return null;
   }
 }
