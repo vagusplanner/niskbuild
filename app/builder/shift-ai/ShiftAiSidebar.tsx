@@ -13,6 +13,7 @@ import {
   LogOut,
   Map,
   MessageCircle,
+  Mic,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth';
 
@@ -49,6 +50,18 @@ const NAV_GROUPS = [
         icon: Camera,
         label: 'Snap Homework',
         emoji: '📸',
+      },
+      {
+        href: '/builder/shift-ai/voice-buddy',
+        icon: Mic,
+        label: 'Voice Buddy',
+        emoji: '🐥',
+      },
+      {
+        href: '/builder/shift-ai/voice-tutor',
+        icon: Mic,
+        label: 'Voice Tutor',
+        emoji: '🎙️',
       },
     ],
   },
