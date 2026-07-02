@@ -3,7 +3,7 @@ import ShiftAiContentGeneratorClient from '@/app/builder/shift-ai/content-genera
 import { normalizeCurriculum } from '@/lib/shift-ai/essay-curriculum';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { needsSubjectOnboarding } from '@/lib/shift-ai/onboarding';
-import { mergeStudentSubjects } from '@/lib/shift-ai/subjects';
+import { ensureSubjectRecord, mergeStudentSubjects } from '@/lib/shift-ai/subjects';
 import { getSafeSession } from '@/lib/supabaseSession.server';
 
 export default async function ShiftAiContentGeneratorPage() {
@@ -36,7 +36,12 @@ export default async function ShiftAiContentGeneratorPage() {
     .eq('student_id', student.id);
 
   const merged = mergeStudentSubjects(favouriteSubjects, subjectRows ?? []);
-  const subjectOptions = merged.map((s) => ({ name: s.name, dbId: s.dbId }));
+  const subjectOptions = await Promise.all(
+    merged.map(async (s) => ({
+      name: s.name,
+      dbId: await ensureSubjectRecord(student.id, s),
+    }))
+  );
 
   const { data: noteRows } = await admin
     .schema('firstparty')

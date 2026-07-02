@@ -277,7 +277,7 @@ export default function ShiftAiContentGeneratorClient({
             <button
               type="button"
               onClick={() => void saveToNotes()}
-              disabled={saving || !selectedSubject?.dbId}
+              disabled={saving}
               className={`${SA.btnSecondary} inline-flex items-center gap-2`}
             >
               {saving ? (
@@ -288,11 +288,6 @@ export default function ShiftAiContentGeneratorClient({
               {saveStatus === 'saved' ? 'Saved to Notes' : 'Save to Notes'}
             </button>
           </div>
-          {!selectedSubject?.dbId ? (
-            <p className={`text-xs ${SA.muted}`}>
-              Open this subject from your dashboard once to enable saving to notes.
-            </p>
-          ) : null}
           {renderContent(generated)}
         </div>
       ) : null}
