@@ -21,6 +21,7 @@ import {
   Sparkles,
   Target,
   TrendingUp,
+  Users,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth';
 
@@ -133,6 +134,17 @@ const NAV_GROUPS = [
         icon: Target,
         label: 'Spec Tracker',
         emoji: '📋',
+      },
+    ],
+  },
+  {
+    label: 'Collaborate',
+    items: [
+      {
+        href: '/builder/shift-ai/groups',
+        icon: Users,
+        label: 'Study Groups',
+        emoji: '👥',
       },
     ],
   },
