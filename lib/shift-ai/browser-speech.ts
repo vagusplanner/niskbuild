@@ -1,12 +1,13 @@
 'use client';
 
-export type SpeechSupportLevel = 'full' | 'synthesis-only' | 'none';
+export type SpeechSupportLevel = 'full' | 'partial-ios' | 'synthesis-only' | 'none';
 
 export type SpeechSupport = {
   level: SpeechSupportLevel;
   recognition: boolean;
   synthesis: boolean;
   browserLabel: string;
+  isIosSafari: boolean;
   message: string | null;
 };
 
@@ -17,6 +18,14 @@ export type SpeakOptions = {
   lang?: string;
   onEnd?: () => void;
 };
+
+export const LISTEN_NO_SPEECH_MESSAGE =
+  "I didn't hear anything — try speaking a bit louder!";
+export const LISTEN_TIMEOUT_MS = 8000;
+export const MIC_READY_DELAY_MS = 500;
+
+export const IOS_VOICE_FALLBACK_HINT =
+  'Voice input can be unreliable on iPhone. You can also type your answer below.';
 
 /** Warmer, slower delivery for ages 4–7. */
 export const VOICE_BUDDY_SPEAK_OPTIONS: SpeakOptions = {
@@ -42,6 +51,7 @@ type BrowserSpeechRecognition = {
   maxAlternatives: number;
   onresult: ((event: BrowserSpeechRecognitionEvent) => void) | null;
   onerror: ((event: BrowserSpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
   start: () => void;
   stop: () => void;
 };
@@ -56,8 +66,21 @@ type BrowserSpeechRecognitionErrorEvent = {
 
 type SpeechRecognitionCtor = new () => BrowserSpeechRecognition;
 
+/** True for Safari on iPhone/iPad — not Chrome/Firefox/Edge on iOS. */
+export function isIosSafari(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  const isIosDevice =
+    /iPad|iPhone|iPod/.test(ua) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (!isIosDevice) return false;
+  if (/crios|fxios|edgios|opios/i.test(ua)) return false;
+  return /safari/i.test(ua);
+}
+
 function detectBrowserLabel(): string {
   if (typeof navigator === 'undefined') return 'Unknown browser';
+  if (isIosSafari()) return 'iOS Safari';
   const ua = navigator.userAgent;
   if (/firefox/i.test(ua)) return 'Firefox';
   if (/edg/i.test(ua)) return 'Edge';
@@ -77,8 +100,10 @@ function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
 
 export function checkSpeechSupport(): SpeechSupport {
   const browserLabel = detectBrowserLabel();
+  const iosSafari = isIosSafari();
   const synthesis = typeof window !== 'undefined' && 'speechSynthesis' in window;
-  const recognition = Boolean(getSpeechRecognitionCtor());
+  const recognitionCtor = getSpeechRecognitionCtor();
+  const recognition = Boolean(recognitionCtor);
 
   if (!synthesis && !recognition) {
     return {
@@ -86,8 +111,9 @@ export function checkSpeechSupport(): SpeechSupport {
       recognition: false,
       synthesis: false,
       browserLabel,
+      isIosSafari: iosSafari,
       message:
-        'Voice features are not supported in this browser. Please use Chrome, Edge, or Safari on a desktop or mobile device.',
+        'Voice is not supported here. Ask a grown-up to help you type your answers below.',
     };
   }
 
@@ -97,10 +123,22 @@ export function checkSpeechSupport(): SpeechSupport {
       recognition: false,
       synthesis,
       browserLabel,
+      isIosSafari: iosSafari,
       message:
         browserLabel === 'Firefox'
-          ? 'Firefox does not support speech recognition. You can hear replies, but tap-to-talk input needs Chrome, Edge, or Safari.'
-          : 'Speech recognition is not available in this browser. Try Chrome, Edge, or Safari for tap-to-talk.',
+          ? 'Firefox cannot hear your voice yet. You can listen to your buddy and type your answers below.'
+          : 'This browser cannot hear your voice. You can listen and type your answers below.',
+    };
+  }
+
+  if (iosSafari) {
+    return {
+      level: 'partial-ios',
+      recognition: true,
+      synthesis,
+      browserLabel,
+      isIosSafari: true,
+      message: IOS_VOICE_FALLBACK_HINT,
     };
   }
 
@@ -110,8 +148,8 @@ export function checkSpeechSupport(): SpeechSupport {
       recognition: true,
       synthesis,
       browserLabel,
-      message:
-        'Safari supports voice on most devices. If the microphone does not work, check Settings → Safari → Microphone.',
+      isIosSafari: false,
+      message: null,
     };
   }
 
@@ -120,6 +158,7 @@ export function checkSpeechSupport(): SpeechSupport {
     recognition: true,
     synthesis,
     browserLabel,
+    isIosSafari: false,
     message: null,
   };
 }
@@ -163,7 +202,10 @@ export function stopSpeaking(): void {
 }
 
 export function speak(text: string, options: SpeakOptions = {}): void {
-  if (!text.trim() || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+  if (!text.trim() || typeof window === 'undefined' || !('speechSynthesis' in window)) {
+    options.onEnd?.();
+    return;
+  }
 
   ensureVoicesLoaded();
   stopSpeaking();
@@ -178,10 +220,8 @@ export function speak(text: string, options: SpeakOptions = {}): void {
   const voice = pickVoice(utterance.lang, warmer);
   if (voice) utterance.voice = voice;
 
-  if (options.onEnd) {
-    utterance.onend = () => options.onEnd?.();
-    utterance.onerror = () => options.onEnd?.();
-  }
+  utterance.onend = () => options.onEnd?.();
+  utterance.onerror = () => options.onEnd?.();
 
   window.speechSynthesis.speak(utterance);
 }
@@ -190,10 +230,16 @@ export type ListeningSession = {
   stop: () => void;
 };
 
+export type StartListeningOptions = {
+  lang?: string;
+  interimResults?: boolean;
+  timeoutMs?: number;
+};
+
 export function startListening(
   onResult: (transcript: string) => void,
   onError: (message: string) => void,
-  options?: { lang?: string; interimResults?: boolean }
+  options?: StartListeningOptions
 ): ListeningSession | null {
   const Ctor = getSpeechRecognitionCtor();
   if (!Ctor) {
@@ -207,6 +253,16 @@ export function startListening(
   recognition.interimResults = options?.interimResults ?? false;
   recognition.maxAlternatives = 3;
 
+  let settled = false;
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  const settle = (run: () => void) => {
+    if (settled) return;
+    settled = true;
+    if (timeoutId) clearTimeout(timeoutId);
+    run();
+  };
+
   recognition.onresult = (event: BrowserSpeechRecognitionEvent) => {
     const results = Array.from(event.results);
     const last = results[results.length - 1];
@@ -217,29 +273,56 @@ export function startListening(
       .join('')
       .trim();
 
-    if (transcript) onResult(transcript);
+    if (transcript) {
+      settle(() => onResult(transcript));
+    }
   };
 
   recognition.onerror = (event: BrowserSpeechRecognitionErrorEvent) => {
-    if (event.error === 'aborted') return;
+    if (event.error === 'aborted') {
+      settled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+      return;
+    }
+
     const friendly =
       event.error === 'not-allowed'
-        ? 'Microphone access was denied. Please allow the microphone in your browser settings.'
+        ? 'Microphone access was denied. Ask a grown-up to allow the microphone, or type your answer below.'
         : event.error === 'no-speech'
-          ? "I didn't hear anything — try speaking a bit louder!"
-          : 'Could not hear you — please try again.';
-    onError(friendly);
+          ? LISTEN_NO_SPEECH_MESSAGE
+          : 'Could not hear you — please try again or type your answer below.';
+
+    settle(() => onError(friendly));
   };
+
+  recognition.onend = () => {
+    if (!settled) {
+      settle(() => onError(LISTEN_NO_SPEECH_MESSAGE));
+    }
+  };
+
+  const timeoutMs = options?.timeoutMs ?? LISTEN_TIMEOUT_MS;
+  timeoutId = setTimeout(() => {
+    if (settled) return;
+    try {
+      recognition.stop();
+    } catch {
+      // already stopped
+    }
+    settle(() => onError(LISTEN_NO_SPEECH_MESSAGE));
+  }, timeoutMs);
 
   try {
     recognition.start();
   } catch {
-    onError('Could not start listening — please try again.');
+    settle(() => onError('Could not start listening — please try again or type your answer below.'));
     return null;
   }
 
   return {
     stop: () => {
+      settled = true;
+      if (timeoutId) clearTimeout(timeoutId);
       try {
         recognition.stop();
       } catch {

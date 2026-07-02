@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Loader2, Mic, MicOff, RotateCcw, Sparkles, Star, Volume2, VolumeX } from 'lucide-react';
+import { Loader2, Mic, MicOff, RotateCcw, Send, Sparkles, Star, Volume2, VolumeX } from 'lucide-react';
 import {
+  IOS_VOICE_FALLBACK_HINT,
+  MIC_READY_DELAY_MS,
   VOICE_BUDDY_SPEAK_OPTIONS,
   checkSpeechSupport,
   speak,
@@ -23,7 +25,14 @@ type BuddyEvaluation = {
   message: string;
 };
 
+type MicPhase = 'idle' | 'buddy-speaking' | 'get-ready' | 'ready' | 'listening';
+
 const MAX_ROUNDS = 5;
+
+function appendTypeHint(message: string, showTypeFallback: boolean): string {
+  if (!showTypeFallback || message.includes('type your answer')) return message;
+  return `${message} Or type your answer below.`;
+}
 
 export default function ShiftAiVoiceBuddyClient({
   games,
@@ -33,28 +42,66 @@ export default function ShiftAiVoiceBuddyClient({
   friendName: string;
 }) {
   const [speechSupport] = useState(() => checkSpeechSupport());
+  const showTypeFallback =
+    speechSupport.level === 'partial-ios' ||
+    speechSupport.level === 'synthesis-only' ||
+    speechSupport.level === 'none';
+
   const [game, setGame] = useState<BuddyGame | null>(null);
   const [round, setRound] = useState(0);
   const [stars, setStars] = useState(0);
   const [prompt, setPrompt] = useState('');
   const [expected, setExpected] = useState('');
   const [heard, setHeard] = useState('');
+  const [typedAnswer, setTypedAnswer] = useState('');
   const [feedback, setFeedback] = useState<BuddyEvaluation | null>(null);
   const [loading, setLoading] = useState(false);
-  const [listening, setListening] = useState(false);
+  const [micPhase, setMicPhase] = useState<MicPhase>('idle');
   const [muted, setMuted] = useState(false);
   const [error, setError] = useState('');
   const sessionRef = useRef<ReturnType<typeof startListening> | null>(null);
+  const readyDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearReadyDelay = () => {
+    if (readyDelayRef.current) {
+      clearTimeout(readyDelayRef.current);
+      readyDelayRef.current = null;
+    }
+  };
+
+  const beginMicReadyCountdown = () => {
+    clearReadyDelay();
+    setMicPhase('get-ready');
+    readyDelayRef.current = setTimeout(() => {
+      setMicPhase('ready');
+      readyDelayRef.current = null;
+    }, MIC_READY_DELAY_MS);
+  };
 
   useEffect(() => {
     return () => {
       sessionRef.current?.stop();
+      clearReadyDelay();
       stopSpeaking();
     };
   }, []);
 
   const speakBuddy = (text: string) => {
-    if (!muted && text) speak(text, VOICE_BUDDY_SPEAK_OPTIONS);
+    if (!text) {
+      beginMicReadyCountdown();
+      return;
+    }
+
+    if (muted) {
+      beginMicReadyCountdown();
+      return;
+    }
+
+    setMicPhase('buddy-speaking');
+    speak(text, {
+      ...VOICE_BUDDY_SPEAK_OPTIONS,
+      onEnd: beginMicReadyCountdown,
+    });
   };
 
   const loadRound = async (selectedGame: BuddyGame, roundIndex: number) => {
@@ -62,6 +109,10 @@ export default function ShiftAiVoiceBuddyClient({
     setError('');
     setFeedback(null);
     setHeard('');
+    setTypedAnswer('');
+    setMicPhase('idle');
+    clearReadyDelay();
+    sessionRef.current?.stop();
 
     try {
       const res = await fetch('/api/shift-ai/voice-buddy', {
@@ -86,6 +137,7 @@ export default function ShiftAiVoiceBuddyClient({
       speakBuddy(data.round.prompt);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not start round');
+      setMicPhase('ready');
     } finally {
       setLoading(false);
     }
@@ -104,6 +156,7 @@ export default function ShiftAiVoiceBuddyClient({
 
     setLoading(true);
     setError('');
+    setMicPhase('idle');
 
     try {
       const res = await fetch('/api/shift-ai/voice-buddy', {
@@ -128,7 +181,9 @@ export default function ShiftAiVoiceBuddyClient({
       if (data.evaluation.correct) {
         setStars((s) => s + 1);
       }
-      speakBuddy(data.evaluation.message);
+      if (!muted) {
+        speak(data.evaluation.message, VOICE_BUDDY_SPEAK_OPTIONS);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not check your answer');
     } finally {
@@ -136,14 +191,21 @@ export default function ShiftAiVoiceBuddyClient({
     }
   };
 
+  const handleListenError = (message: string) => {
+    setError(appendTypeHint(message, showTypeFallback));
+    setMicPhase('ready');
+    sessionRef.current = null;
+  };
+
   const handleListen = () => {
-    if (listening) {
+    if (micPhase === 'listening') {
       sessionRef.current?.stop();
-      setListening(false);
+      setMicPhase('ready');
+      sessionRef.current = null;
       return;
     }
 
-    if (!speechSupport.recognition) return;
+    if (!speechSupport.recognition || micPhase !== 'ready') return;
 
     setHeard('');
     setError('');
@@ -152,22 +214,27 @@ export default function ShiftAiVoiceBuddyClient({
     const session = startListening(
       (transcript) => {
         setHeard(transcript);
-        setListening(false);
+        setMicPhase('ready');
         sessionRef.current = null;
         void evaluateAnswer(transcript);
       },
-      (message) => {
-        setError(message);
-        setListening(false);
-        sessionRef.current = null;
-      },
+      handleListenError,
       { lang: 'en-GB' }
     );
 
     if (session) {
       sessionRef.current = session;
-      setListening(true);
+      setMicPhase('listening');
     }
+  };
+
+  const handleSubmitTyped = () => {
+    const text = typedAnswer.trim();
+    if (!text || loading || micPhase === 'listening') return;
+    sessionRef.current?.stop();
+    setTypedAnswer('');
+    setHeard(text);
+    void evaluateAnswer(text);
   };
 
   const handleContinue = async () => {
@@ -177,6 +244,7 @@ export default function ShiftAiVoiceBuddyClient({
       stopSpeaking();
       setGame(null);
       setFeedback(null);
+      setMicPhase('idle');
       return;
     }
 
@@ -188,10 +256,22 @@ export default function ShiftAiVoiceBuddyClient({
   const quitGame = () => {
     stopSpeaking();
     sessionRef.current?.stop();
+    clearReadyDelay();
     setGame(null);
     setFeedback(null);
-    setListening(false);
+    setMicPhase('idle');
+    setTypedAnswer('');
   };
+
+  const micStatusLabel = (() => {
+    if (micPhase === 'buddy-speaking') return `${friendName} is talking…`;
+    if (micPhase === 'get-ready') return 'Get ready…';
+    if (micPhase === 'listening') return 'Listening… talk to me!';
+    if (micPhase === 'ready') return 'Tap and say your answer';
+    return 'Waiting…';
+  })();
+
+  const micEnabled = speechSupport.recognition && micPhase === 'ready';
 
   if (!game) {
     return (
@@ -209,7 +289,7 @@ export default function ShiftAiVoiceBuddyClient({
         </div>
 
         {speechSupport.message ? (
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
             {speechSupport.message}
           </div>
         ) : null}
@@ -290,6 +370,12 @@ export default function ShiftAiVoiceBuddyClient({
         <p className="mt-2 text-sm text-[var(--sa-muted)]">{friendName} says…</p>
       </div>
 
+      {showTypeFallback ? (
+        <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+          {IOS_VOICE_FALLBACK_HINT}
+        </div>
+      ) : null}
+
       <div className="relative rounded-3xl border-2 border-pink-200 bg-white p-5">
         <div className="absolute -top-2 left-12 h-4 w-4 rotate-45 border-l-2 border-t-2 border-pink-200 bg-white" />
         {loading && !feedback ? (
@@ -331,29 +417,77 @@ export default function ShiftAiVoiceBuddyClient({
       ) : null}
 
       {!feedback && !loading ? (
-        <div className="flex flex-col items-center gap-3">
-          <button
-            type="button"
-            onClick={handleListen}
-            disabled={!speechSupport.recognition}
-            className={`flex h-24 w-24 items-center justify-center rounded-full shadow-xl transition-all ${
-              listening
-                ? 'bg-red-500 shadow-red-500/40'
-                : speechSupport.recognition
-                  ? 'bg-pink-500 shadow-pink-500/40'
-                  : 'cursor-not-allowed bg-gray-300 opacity-60'
-            }`}
-            aria-label={listening ? 'Stop listening' : 'Tap and say your answer'}
-          >
-            {listening ? (
-              <MicOff className="h-10 w-10 text-white" />
-            ) : (
-              <Mic className="h-10 w-10 text-white" />
-            )}
-          </button>
-          <p className="text-sm font-medium text-[var(--sa-muted)]">
-            {listening ? 'Listening… talk to me!' : 'Tap and say your answer'}
-          </p>
+        <div className="space-y-4">
+          {speechSupport.recognition ? (
+            <div className="flex flex-col items-center gap-3">
+              <button
+                type="button"
+                onClick={handleListen}
+                disabled={!micEnabled && micPhase !== 'listening'}
+                className={`flex h-24 w-24 items-center justify-center rounded-full shadow-xl transition-all ${
+                  micPhase === 'listening'
+                    ? 'bg-red-500 shadow-red-500/40'
+                    : micEnabled
+                      ? 'bg-pink-500 shadow-pink-500/40'
+                      : 'cursor-not-allowed bg-gray-300 opacity-60'
+                }`}
+                aria-label={micPhase === 'listening' ? 'Stop listening' : 'Tap and say your answer'}
+              >
+                {micPhase === 'listening' ? (
+                  <MicOff className="h-10 w-10 text-white" />
+                ) : micPhase === 'get-ready' ? (
+                  <Loader2 className="h-10 w-10 animate-spin text-white" />
+                ) : (
+                  <Mic className="h-10 w-10 text-white" />
+                )}
+              </button>
+              <p
+                className={`text-sm font-medium ${
+                  micPhase === 'get-ready' ? 'text-pink-600' : 'text-[var(--sa-muted)]'
+                }`}
+              >
+                {micStatusLabel}
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm text-amber-900">
+              Voice input is not available here. Type your answer below.
+            </div>
+          )}
+
+          {showTypeFallback || !speechSupport.recognition ? (
+            <div className="rounded-2xl border-2 border-[var(--sa-navy-100)] bg-white p-4">
+              <label
+                htmlFor="voice-buddy-answer"
+                className="mb-2 block text-sm font-bold text-[var(--sa-navy-900)]"
+              >
+                Type your answer
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id="voice-buddy-answer"
+                  type="text"
+                  value={typedAnswer}
+                  onChange={(e) => setTypedAnswer(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSubmitTyped();
+                  }}
+                  placeholder="e.g. A, 3, cat…"
+                  className="flex-1 rounded-xl border border-[var(--sa-navy-100)] px-4 py-3 text-lg text-[var(--sa-navy-900)]"
+                  disabled={loading || micPhase === 'listening'}
+                />
+                <button
+                  type="button"
+                  onClick={handleSubmitTyped}
+                  disabled={!typedAnswer.trim() || loading || micPhase === 'listening'}
+                  className="flex items-center justify-center rounded-xl bg-pink-500 px-4 py-3 text-white disabled:opacity-50"
+                  aria-label="Send typed answer"
+                >
+                  <Send className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
