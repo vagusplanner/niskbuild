@@ -2,7 +2,18 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChevronRight, GraduationCap, Gamepad2, Home, Layers, LogOut, Map, MessageCircle, CalendarDays } from 'lucide-react';
+import {
+  CalendarDays,
+  Camera,
+  ChevronRight,
+  Gamepad2,
+  GraduationCap,
+  Home,
+  Layers,
+  LogOut,
+  Map,
+  MessageCircle,
+} from 'lucide-react';
 import { signOut } from '@/lib/auth';
 
 const NAV_GROUPS = [
@@ -27,6 +38,17 @@ const NAV_GROUPS = [
         icon: Layers,
         label: 'Smart Flashcards',
         emoji: '🃏',
+      },
+    ],
+  },
+  {
+    label: 'Study Tools',
+    items: [
+      {
+        href: '/builder/shift-ai/homework',
+        icon: Camera,
+        label: 'Snap Homework',
+        emoji: '📸',
       },
     ],
   },
