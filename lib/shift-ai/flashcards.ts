@@ -9,6 +9,67 @@ const GROQ_MODEL = process.env.GROQ_AGENT_MODEL?.trim() || 'llama-3.3-70b-versat
 const GROQ_TIMEOUT_MS = 25_000;
 const GENERATION_CARD_COUNT = 5;
 
+const FLASHCARD_JSON_ONLY_INSTRUCTION =
+  'Respond with ONLY the raw JSON object. No markdown, no code fences, no explanation text before or after.';
+
+function stripMarkdownFences(text: string): string {
+  let cleaned = text.trim();
+  cleaned = cleaned.replace(/^```(?:json)?\s*/i, '');
+  cleaned = cleaned.replace(/\s*```\s*$/i, '');
+  return cleaned.trim();
+}
+
+/** Extract the outermost JSON object or array from mixed model output. */
+function extractJsonSubstring(text: string): string {
+  const cleaned = stripMarkdownFences(text);
+  const objectStart = cleaned.indexOf('{');
+  const arrayStart = cleaned.indexOf('[');
+
+  if (objectStart >= 0 && (arrayStart < 0 || objectStart < arrayStart)) {
+    const objectEnd = cleaned.lastIndexOf('}');
+    if (objectEnd > objectStart) {
+      return cleaned.slice(objectStart, objectEnd + 1);
+    }
+  }
+
+  if (arrayStart >= 0) {
+    const arrayEnd = cleaned.lastIndexOf(']');
+    if (arrayEnd > arrayStart) {
+      return cleaned.slice(arrayStart, arrayEnd + 1);
+    }
+  }
+
+  return cleaned;
+}
+
+function parseGroqJsonContent(
+  content: string
+): { ok: true; json: unknown } | { ok: false; error: string } {
+  const candidates = [
+    content.trim(),
+    stripMarkdownFences(content),
+    extractJsonSubstring(content),
+  ];
+
+  for (const candidate of [...new Set(candidates)]) {
+    if (!candidate) continue;
+    try {
+      return { ok: true, json: JSON.parse(candidate) };
+    } catch {
+      // try next candidate
+    }
+  }
+
+  return { ok: false, error: 'Could not parse flashcard response' };
+}
+
+function logFlashcardParseFailure(rawContent: string, reason: string) {
+  console.error(
+    `Shift AI flashcard ${reason}. Raw Groq response (truncated):`,
+    rawContent.slice(0, 500)
+  );
+}
+
 function withGroqTimeout<T>(promise: Promise<T>): Promise<T> {
   return Promise.race([
     promise,
@@ -35,6 +96,8 @@ function parseGeneratedCards(
     const obj = raw as Record<string, unknown>;
     if (Array.isArray(obj.cards)) {
       items = obj.cards;
+    } else if (Array.isArray(obj.flashcards)) {
+      items = obj.flashcards;
     } else {
       return { ok: false, error: 'Could not parse flashcard response' };
     }
@@ -93,7 +156,15 @@ export async function generateFlashcardDeck(
       ? `Create exactly ${count} high-quality flashcard pairs for a ${yearGroup} student studying the topic "${content}" in ${subject} (${curriculum} curriculum).
 Include a mix of key term definitions, conceptual questions, application prompts, and common misconception checks.
 Make questions specific, not generic. Vary difficulty from foundational to challenging.
-Return exactly ${count} cards — no more, no fewer.${avoidDupes}`
+Return exactly ${count} cards — no more, no fewer.${avoidDupes}
+
+Return ONLY valid JSON in this shape:
+{
+  "deck_title": "Short deck name",
+  "cards": [
+    { "front": "Question or term", "back": "Answer or definition" }
+  ]
+}`
       : `Create exactly ${count} high-quality flashcard pairs from the following ${subject} notes for a ${yearGroup} student (${curriculum} curriculum).
 Identify the most important concepts, facts, and relationships. Create Q&A pairs that test understanding.
 Return exactly ${count} cards — no more, no fewer.${avoidDupes}
@@ -101,7 +172,15 @@ Return exactly ${count} cards — no more, no fewer.${avoidDupes}
 Notes:
 """
 ${content.slice(0, 4000)}
-"""`;
+"""
+
+Return ONLY valid JSON in this shape:
+{
+  "deck_title": "Short deck name",
+  "cards": [
+    { "front": "Question or term", "back": "Answer or definition" }
+  ]
+}`;
 
   try {
     const completion = await withGroqTimeout(
@@ -109,10 +188,12 @@ ${content.slice(0, 4000)}
         messages: [
           {
             role: 'system',
-            content:
-              'You create educational flashcards for school students. Respond with valid JSON only.',
+            content: `You create educational flashcards for school students. ${FLASHCARD_JSON_ONLY_INSTRUCTION}`,
           },
-          { role: 'user', content: prompt },
+          {
+            role: 'user',
+            content: `${prompt}\n\n${FLASHCARD_JSON_ONLY_INSTRUCTION}`,
+          },
         ],
         model: GROQ_MODEL,
         temperature: 0.7,
@@ -126,15 +207,16 @@ ${content.slice(0, 4000)}
       return { ok: false, error: 'Empty response from AI flashcard generator' };
     }
 
-    let json: unknown;
-    try {
-      json = JSON.parse(rawContent);
-    } catch {
-      return { ok: false, error: 'Could not parse flashcard response' };
+    const jsonResult = parseGroqJsonContent(rawContent);
+    if (!jsonResult.ok) {
+      logFlashcardParseFailure(rawContent, 'JSON parse failed');
+      return { ok: false, error: jsonResult.error };
     }
 
+    const json = jsonResult.json;
     const parsed = parseGeneratedCards(json);
     if (!parsed.ok) {
+      logFlashcardParseFailure(rawContent, 'response shape parse failed');
       return { ok: false, error: parsed.error };
     }
 
