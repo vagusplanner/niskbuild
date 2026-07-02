@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
-import { createAdminClient } from '@/lib/supabase/admin';
+import ShiftAiTeacherClient from '@/app/builder/shift-ai/teacher/ShiftAiTeacherClient';
+import { getTeacherForUser, listTeacherStudents } from '@/lib/shift-ai/teacher';
 import { getSafeSession } from '@/lib/supabaseSession.server';
 
 export default async function ShiftAiTeacherPage() {
@@ -9,41 +10,25 @@ export default async function ShiftAiTeacherPage() {
     redirect('/login?next=/builder/shift-ai/teacher');
   }
 
-  const admin = createAdminClient();
-  const { data: teacher } = await admin
-    .schema('firstparty')
-    .from('shift_teachers')
-    .select('school_id')
-    .eq('user_id', session.user.id)
-    .maybeSingle();
+  const teacher = await getTeacherForUser(session.user.id);
 
   if (!teacher) {
     return (
-      <main className="min-h-screen flex items-center justify-center px-6">
-        <p className="text-lg text-neutral-700">You don&apos;t have teacher access</p>
+      <main className="flex min-h-screen items-center justify-center px-6">
+        <div className="max-w-md text-center">
+          <p className="mb-4 text-5xl">🔒</p>
+          <h2 className="mb-2 text-xl font-bold text-[var(--sa-navy-900)]">Teacher Dashboard</h2>
+          <p className="text-sm text-neutral-500">
+            This area is for teachers and school admins only.
+          </p>
+        </div>
       </main>
     );
   }
 
-  const { data: students } = await admin
-    .schema('firstparty')
-    .from('shift_students')
-    .select('full_name')
-    .eq('school_id', teacher.school_id)
-    .order('full_name');
+  const students = await listTeacherStudents(teacher.school_id);
 
-  const names =
-    students
-      ?.map((row) => row.full_name?.trim())
-      .filter((name): name is string => Boolean(name)) ?? [];
-
-  const listLabel = names.length > 0 ? names.join(', ') : 'none';
-
-  return (
-    <main className="min-h-screen flex items-center justify-center px-6">
-      <p className="text-lg text-neutral-900">Students in your school: {listLabel}</p>
-    </main>
-  );
+  return <ShiftAiTeacherClient students={students} />;
 }
 
 export async function generateMetadata() {

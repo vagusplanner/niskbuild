@@ -18,6 +18,7 @@ import {
   MessageCircle,
   Mic,
   PenLine,
+  Settings,
   Sparkles,
   Target,
   TrendingUp,
@@ -31,6 +32,7 @@ const NAV_GROUPS = [
     items: [
       { href: '/builder/shift-ai/dashboard', icon: Home, label: 'Dashboard', emoji: '🏠' },
       { href: '/builder/shift-ai/planner', icon: CalendarDays, label: 'Planner', emoji: '📅' },
+      { href: '/builder/shift-ai/settings', icon: Settings, label: 'Settings', emoji: '⚙️' },
     ],
   },
   {

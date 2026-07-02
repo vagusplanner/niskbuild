@@ -22,14 +22,25 @@ export async function validateParentToken(token: string): Promise<string | null>
 }
 
 export async function validateMentorToken(token: string): Promise<string | null> {
+  const resolved = await resolveMentorToken(token);
+  return resolved?.studentId ?? null;
+}
+
+export type ResolvedMentorToken = {
+  studentId: string;
+  tokenId: string;
+};
+
+export async function resolveMentorToken(token: string): Promise<ResolvedMentorToken | null> {
   const admin = createAdminClient();
   const { data } = await admin
     .schema('firstparty')
     .from('shift_mentor_tokens')
-    .select('student_id')
+    .select('id, student_id')
     .eq('token', token)
     .is('revoked_at', null)
     .maybeSingle();
 
-  return data?.student_id ?? null;
+  if (!data?.student_id) return null;
+  return { studentId: data.student_id, tokenId: data.id };
 }

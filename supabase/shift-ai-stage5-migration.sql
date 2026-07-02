@@ -228,3 +228,36 @@ grant all on firstparty.shift_group_notes to service_role;
 grant all on firstparty.shift_group_flashcard_sets to service_role;
 
 grant usage on schema firstparty to authenticated, service_role;
+
+-- ─── Mentor challenges + student voice preferences ───────────────────────
+
+alter table firstparty.shift_students
+  add column if not exists preferred_voice text,
+  add column if not exists voice_enabled boolean not null default false;
+
+create table if not exists firstparty.shift_mentor_challenges (
+  id uuid primary key default gen_random_uuid(),
+  student_id uuid not null references firstparty.shift_students(id) on delete cascade,
+  mentor_token_id uuid not null references firstparty.shift_mentor_tokens(id) on delete cascade,
+  title text not null,
+  description text,
+  reward_text text,
+  status text not null default 'active',
+  created_at timestamptz not null default now(),
+  constraint shift_mentor_challenges_title_not_blank check (char_length(trim(title)) > 0),
+  constraint shift_mentor_challenges_status_check
+    check (status in ('active', 'completed', 'cancelled'))
+);
+
+create index if not exists idx_shift_mentor_challenges_student
+  on firstparty.shift_mentor_challenges (student_id, created_at desc);
+
+create index if not exists idx_shift_mentor_challenges_token
+  on firstparty.shift_mentor_challenges (mentor_token_id);
+
+comment on table firstparty.shift_mentor_challenges is
+  'Study challenges assigned by mentors via token links — server-side writes only.';
+
+alter table firstparty.shift_mentor_challenges enable row level security;
+
+grant all on firstparty.shift_mentor_challenges to service_role;
