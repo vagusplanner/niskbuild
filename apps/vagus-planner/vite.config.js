@@ -6,6 +6,14 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   base: process.env.CAPACITOR_BUILD === '1' ? './' : '/',
   logLevel: 'error', // Suppress warnings, only show errors
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+    },
+  },
   plugins: [
     base44({
       // Support for legacy code that imports the base44 SDK with @/integrations, @/entities, etc.

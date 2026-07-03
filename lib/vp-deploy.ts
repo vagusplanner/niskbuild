@@ -9,6 +9,7 @@ import {
   upsertPreview,
 } from '@/lib/preview-links';
 import { applyVpSourcesToDirectory } from '@/lib/vp-builder-source-store';
+import { buildVpCapacitorBuildEnv } from '@/lib/vp-capacitor-build-env.js';
 
 const ROOT = process.cwd();
 const VP_APP = path.join(ROOT, 'apps/vagus-planner');
@@ -85,7 +86,10 @@ export function buildVagusPlannerDist(appDir = VP_APP): void {
   execSync('npm run build', {
     cwd: appDir,
     stdio: 'inherit',
-    env: { ...process.env, CAPACITOR_BUILD: '1' },
+    env: {
+      ...process.env,
+      ...buildVpCapacitorBuildEnv(true),
+    },
   });
 }
 

@@ -11,6 +11,7 @@
 const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const { buildVpCapacitorBuildEnv } = require('../lib/vp-capacitor-build-env.js');
 
 const ROOT = path.join(__dirname, '..');
 const VP_APP = path.join(ROOT, 'apps', 'vagus-planner');
@@ -221,7 +222,7 @@ function main() {
   run('npm run build', ROOT);
 
   log('2/5', 'Building Vagus Planner Vite app for Capacitor…');
-  run('npm run build', VP_APP, { CAPACITOR_BUILD: '1' });
+  run('npm run build', VP_APP, buildVpCapacitorBuildEnv(true));
 
   if (!fs.existsSync(path.join(VP_DIST, 'index.html'))) {
     throw new Error(`Vite build did not produce index.html at ${VP_DIST}`);

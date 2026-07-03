@@ -20,7 +20,7 @@ export default function AITaskPrioritizer({ isOpen, onClose, tasks, onApplyPrior
     try {
       const incompleteTasks = tasks.filter(t => t.status !== 'completed');
       
-      const { data: analysis } = await base44.integrations.Core.InvokeLLM({
+      const analysis = await base44.integrations.Core.InvokeLLM({
         prompt: `Analyze these tasks and provide smart prioritization recommendations:
 
 ${incompleteTasks.map((t, i) => `${i + 1}. "${t.title}" - Current: ${t.priority} priority, Due: ${t.due_date || 'no date'}, Category: ${t.category}`).join('\n')}

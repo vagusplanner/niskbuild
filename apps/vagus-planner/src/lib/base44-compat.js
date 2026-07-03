@@ -340,21 +340,61 @@ export const base44 = {
   
   integrations: {
     Core: {
-      InvokeLLM: async (prompt) => {
-        console.log('🤖 InvokeLLM:', prompt)
+      InvokeLLM: async (params) => {
+        const normalized =
+          typeof params === 'string'
+            ? { prompt: params }
+            : params && typeof params === 'object'
+              ? params
+              : { prompt: '' }
+
+        const requestBody = {
+          prompt: normalized.prompt,
+        }
+        if (normalized.response_json_schema) {
+          requestBody.response_json_schema = normalized.response_json_schema
+        }
+        if (normalized.add_context_from_internet !== undefined) {
+          requestBody.add_context_from_internet = normalized.add_context_from_internet
+        }
+        if (normalized.model) {
+          requestBody.model = normalized.model
+        }
+
+        console.log('🤖 InvokeLLM:', requestBody)
+
         try {
-          const response = await fetch('/api/ai-agent', {
+          const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
+          const response = await fetch(`${apiBase}/api/vagus-planner/llm`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              function: 'InvokeLLM', 
-              payload: { prompt } 
-            })
+            credentials: 'include',
+            body: JSON.stringify(requestBody),
           })
-          return await response.json()
+
+          const data = await response.json()
+
+          if (!response.ok) {
+            const message =
+              typeof data?.error === 'string' ? data.error : 'InvokeLLM request failed'
+            throw new Error(message)
+          }
+
+          // Plain-text callers (tafsir, chat bubbles) expect a string, not { text }.
+          if (
+            !requestBody.response_json_schema &&
+            data &&
+            typeof data === 'object' &&
+            typeof data.text === 'string' &&
+            Object.keys(data).length === 1
+          ) {
+            return data.text
+          }
+
+          return data
         } catch (error) {
           console.error('❌ Error in InvokeLLM:', error)
-          return { error: error.message }
+          throw error
         }
       },
       UploadFile: async (file) => {

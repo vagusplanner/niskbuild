@@ -20,6 +20,10 @@ Any change pushed to the repo will also be reflected in the Base44 Builder.
 ```
 VITE_BASE44_APP_ID=your_app_id
 VITE_BASE44_APP_BASE_URL=your_backend_url
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+# Leave empty locally (Vite proxies /api). Production: https://niskbuild.com
+VITE_API_BASE_URL=
 
 e.g.
 VITE_BASE44_APP_ID=cbef744a8545c389ef439ea6

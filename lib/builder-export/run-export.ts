@@ -10,6 +10,7 @@ import {
   getExportJob,
   updateExportJob,
 } from '@/lib/builder-export/jobs';
+import { buildVpCapacitorBuildEnv } from '@/lib/vp-capacitor-build-env.js';
 
 const ROOT = process.cwd();
 
@@ -129,11 +130,19 @@ export async function runBuilderExportPipeline(
 
     await logLine(jobId, `[${new Date().toISOString()}] Building web bundle in ${config.packageDir}…`);
 
+    const capacitorBuildEnv = buildVpCapacitorBuildEnv(true);
+    if (!capacitorBuildEnv.VITE_API_BASE_URL) {
+      await logLine(
+        jobId,
+        `[${new Date().toISOString()}] WARNING: No API base URL configured — InvokeLLM and other AI features will not work in this build.\n`
+      );
+    }
+
     await runCommand(
       'npm',
       ['run', 'build'],
       packageDir,
-      config.buildEnv ?? {},
+      capacitorBuildEnv,
       (chunk) => {
         void appendExportJobLog(jobId, chunk);
       }

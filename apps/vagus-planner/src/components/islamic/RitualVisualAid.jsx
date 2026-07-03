@@ -15,7 +15,7 @@ export default function RitualVisualAid({ ritualType }) {
   const fetchVisualAids = async () => {
     setLoading(true);
     try {
-      const { data } = await base44.integrations.Core.InvokeLLM({
+      const visualAids = await base44.integrations.Core.InvokeLLM({
         prompt: `Generate visual aids information for the Islamic ritual: ${ritualType}. Include recommended educational videos, diagrams, and step-by-step visual guides.
         
         Return JSON with:
@@ -86,7 +86,7 @@ export default function RitualVisualAid({ ritualType }) {
         },
         add_context_from_internet: true
       });
-      setVisualAids(data);
+      setVisualAids(visualAids);
     } catch (error) {
       toast.error('Failed to load visual aids');
     } finally {

@@ -13,7 +13,6 @@ const EXPORT_CONFIGS: Record<string, BuilderExportAppConfig> = {
     registryAppName: 'Vagus Planner',
     capacitorAppId: 'com.niskbuild.vagusplanner',
     capacitorAppName: 'Vagus Planner',
-    buildEnv: { CAPACITOR_BUILD: '1' },
   },
 };
 
@@ -34,7 +33,6 @@ export function getBuilderExportConfig(appSlug: string): BuilderExportAppConfig 
     registryAppName: app.name,
     capacitorAppId: `com.niskbuild.${appSlug.replace(/-/g, '')}`,
     capacitorAppName: app.name,
-    buildEnv: { CAPACITOR_BUILD: '1' },
   };
 }
 

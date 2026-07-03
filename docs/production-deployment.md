@@ -66,6 +66,7 @@ Vagus Planner **does** need these at **build time** on its own deployment:
 |----------|-------------|
 | `VITE_SUPABASE_URL` | Same as `NEXT_PUBLIC_SUPABASE_URL` |
 | `VITE_SUPABASE_ANON_KEY` | Same as `NEXT_PUBLIC_SUPABASE_ANON_KEY` |
+| `VITE_API_BASE_URL` | NiskBuild API origin for `/api/*` (e.g. `https://niskbuild.com`). Leave empty for local dev (Vite proxies `/api` → `:3000`). **Baked in at build time.** |
 
 ### Recommended — Billing & marketplace
 
@@ -286,6 +287,7 @@ NiskBuild (Next.js) and Vagus Planner (Vite) are **separate apps**.
 3. Set build env:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
+   - `VITE_API_BASE_URL=https://niskbuild.com` (same host as `NEXT_PUBLIC_APP_URL` on NiskBuild)
 4. Deploy to e.g. `vp.niskbuild.com`.
 5. Set on **NiskBuild** production:
    - `NEXT_PUBLIC_VAGUS_PLANNER_URL=https://vp.niskbuild.com`
@@ -328,6 +330,7 @@ NEXT_PUBLIC_APP_URL=https://niskbuild.com
 
 # Vagus Planner (if deployed separately)
 NEXT_PUBLIC_VAGUS_PLANNER_URL=https://vp.niskbuild.com
+VITE_API_BASE_URL=https://niskbuild.com
 ```
 
 After first deploy: run migrations → expose schemas → register platform owner → run post-deployment checks above.

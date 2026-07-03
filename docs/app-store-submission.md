@@ -13,6 +13,7 @@ Use this checklist to track progress across all phases.
 - [ ] **Apple Developer Program** membership ($99/year) — [developer.apple.com/programs](https://developer.apple.com/programs)
 - [ ] **Mac with Xcode** installed (latest stable from Mac App Store)
 - [ ] **NiskBuild account** with an **active Agency plan or above** (required for App Store export)
+- [ ] **`VITE_API_BASE_URL` or `NEXT_PUBLIC_APP_URL`** set before export (see §1.2) — required for InvokeLLM / AI features in the native build
 - [ ] **Privacy policy URL** hosted publicly (HTTPS)
 - [ ] **App screenshots** prepared:
   - [ ] 5.5" display (1242 × 2208 px) — e.g. iPhone 8 Plus
@@ -89,9 +90,34 @@ For submission, run export **locally on your Mac** with Xcode installed, either 
    cd apps/vagus-planner && npm install && cd ../..
    ```
 
-### 1.2 Optional — signing env vars (for automatic .ipa)
+### 1.2 Pre-export env vars (API + optional signing)
 
-Set these in your shell **before** export if you want the pipeline to produce a signed `.ipa`:
+Set these in your shell **before** export (or in `apps/vagus-planner/.env` for the Vite build).
+
+#### API base URL (required for AI features)
+
+Capacitor export bakes the NiskBuild API origin into the Vagus Planner bundle at build time. Export scripts resolve it automatically:
+
+1. `VITE_API_BASE_URL` if set, else
+2. `NEXT_PUBLIC_APP_URL` (same value you use for the NiskBuild Next.js app)
+
+```bash
+# Recommended — explicit API origin for the native bundle
+export VITE_API_BASE_URL=https://www.niskbuild.com
+
+# Or rely on the fallback (export reads NEXT_PUBLIC_APP_URL if VITE_API_BASE_URL is unset)
+export NEXT_PUBLIC_APP_URL=https://www.niskbuild.com
+```
+
+If **neither** is set, export still completes but logs:
+
+`WARNING: No API base URL configured — InvokeLLM and other AI features will not work in this build.`
+
+That produces a relative `/api/...` URL in the binary, which **does not work** on a physical device.
+
+#### Apple signing (optional — for automatic `.ipa`)
+
+Set these **before** export if you want the pipeline to produce a signed `.ipa`:
 
 ```bash
 export APPLE_TEAM_ID=XXXXXXXXXX          # 10-char Team ID from Apple Developer
@@ -100,6 +126,10 @@ export VP_EXPORT_METHOD=app-store      # Use "app-store" for App Store / TestFli
 ```
 
 Find your Team ID: [Apple Developer → Membership](https://developer.apple.com/account) → Team ID.
+
+#### Auth on device (separate risk — test before submission)
+
+Even with the correct API URL baked in, InvokeLLM uses `credentials: 'include'`. A Capacitor WebView calling `https://www.niskbuild.com` may not send a valid Supabase session cookie until you verify sign-in on a **physical device**. Plan a real-device test of at least one AI feature before App Store submission.
 
 ### 1.3 Export via NiskBuild UI (recommended)
 
@@ -111,7 +141,7 @@ Find your Team ID: [Apple Developer → Membership](https://developer.apple.com/
 3. Open **[http://localhost:3000/builder/vagus-planner/export](http://localhost:3000/builder/vagus-planner/export)**.
 4. Export starts automatically when eligible. It runs these steps:
    - Build Next.js (NiskBuild shell)
-   - Build Vagus Planner Vite app (`CAPACITOR_BUILD=1`)
+   - Build Vagus Planner Vite app (`CAPACITOR_BUILD=1`, `VITE_API_BASE_URL` from §1.2)
    - Create/sync Capacitor iOS project
    - Package **Xcode project zip**
    - Attempt **.ipa** build (if signing env vars are set)
