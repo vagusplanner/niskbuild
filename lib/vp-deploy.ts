@@ -93,13 +93,6 @@ export function buildVagusPlannerDist(appDir = VP_APP): void {
   });
 }
 
-export function buildNiskBuildShell(): void {
-  execSync('npm run build', {
-    cwd: ROOT,
-    stdio: 'inherit',
-  });
-}
-
 export function buildDeployPreviewShell(bundleUrl: string): string {
   const safeUrl = bundleUrl.replace(/"/g, '&quot;');
   return `<!DOCTYPE html>
@@ -262,7 +255,6 @@ export async function deployVagusPlanner(params: {
   const workspace = await prepareVpBuildWorkspace(params.userId);
 
   try {
-    buildNiskBuildShell();
     buildVagusPlannerDist(workspace.appDir);
 
     const indexPath = path.join(workspace.distDir, 'index.html');
