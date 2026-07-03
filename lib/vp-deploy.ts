@@ -14,7 +14,10 @@ import { buildVpCapacitorBuildEnv } from '@/lib/vp-capacitor-build-env.js';
 const ROOT = process.cwd();
 const VP_APP = path.join(ROOT, 'apps/vagus-planner');
 const VP_DIST = path.join(VP_APP, 'dist');
+const VP_NODE_MODULES = path.join(VP_APP, 'node_modules');
 const VP_DEPLOY_BUCKET = 'vp-deployments';
+
+const VP_SOURCE_COPY_SKIP = new Set(['node_modules', 'dist']);
 
 type DeployFile = {
   relativePath: string;
@@ -53,16 +56,22 @@ function contentTypeFor(relativePath: string): string {
   }
 }
 
-async function collectFiles(dir: string, prefix = ''): Promise<DeployFile[]> {
+async function collectFiles(
+  dir: string,
+  prefix = '',
+  skipDirNames?: ReadonlySet<string>
+): Promise<DeployFile[]> {
   const entries = await fs.readdir(dir, { withFileTypes: true });
   const files: DeployFile[] = [];
 
   for (const entry of entries) {
+    if (skipDirNames?.has(entry.name)) continue;
+
     const absolutePath = path.join(dir, entry.name);
     const relativePath = prefix ? path.posix.join(prefix, entry.name) : entry.name;
 
     if (entry.isDirectory()) {
-      files.push(...(await collectFiles(absolutePath, relativePath)));
+      files.push(...(await collectFiles(absolutePath, relativePath, skipDirNames)));
     } else {
       files.push({ relativePath, absolutePath });
     }
@@ -71,9 +80,13 @@ async function collectFiles(dir: string, prefix = ''): Promise<DeployFile[]> {
   return files;
 }
 
-async function copyDir(src: string, dest: string): Promise<void> {
+async function copyDir(
+  src: string,
+  dest: string,
+  skipDirNames?: ReadonlySet<string>
+): Promise<void> {
   await fs.mkdir(dest, { recursive: true });
-  const files = await collectFiles(src);
+  const files = await collectFiles(src, '', skipDirNames);
 
   for (const file of files) {
     const target = path.join(dest, file.relativePath);
@@ -215,6 +228,52 @@ async function publishDist(
   return publishDistFromDir(userId, token, requestOrigin, VP_DIST);
 }
 
+async function vpNodeModulesReady(modulesDir: string): Promise<boolean> {
+  try {
+    await fs.access(path.join(modulesDir, '.bin', 'vite'));
+    return true;
+  } catch {
+    try {
+      const stat = await fs.stat(modulesDir);
+      if (!stat.isDirectory()) return false;
+      const entries = await fs.readdir(modulesDir);
+      return entries.length > 0;
+    } catch {
+      return false;
+    }
+  }
+}
+
+/** Make Vite available in a /tmp VP workspace via symlink or npm ci fallback. */
+async function ensureVpWorkspaceNodeModules(appDir: string): Promise<'symlink' | 'fallback-ci'> {
+  const linkPath = path.join(appDir, 'node_modules');
+
+  await fs.rm(linkPath, { recursive: true, force: true }).catch(() => {});
+
+  if (await vpNodeModulesReady(VP_NODE_MODULES)) {
+    const linkType = process.platform === 'win32' ? 'junction' : 'dir';
+    await fs.symlink(VP_NODE_MODULES, linkPath, linkType);
+    console.log(
+      `[vp-deploy] VP build deps: symlinked ${linkPath} -> ${VP_NODE_MODULES}`
+    );
+    return 'symlink';
+  }
+
+  console.warn(
+    `[vp-deploy] VP build deps: ${VP_NODE_MODULES} missing or empty — running npm ci in workspace`
+  );
+  execSync('npm ci --include=dev', {
+    cwd: appDir,
+    stdio: 'inherit',
+    env: {
+      ...process.env,
+      NODE_ENV: 'development',
+    },
+  });
+  console.log(`[vp-deploy] VP build deps: fallback npm ci completed in ${appDir}`);
+  return 'fallback-ci';
+}
+
 async function prepareVpBuildWorkspace(userId: string): Promise<{
   appDir: string;
   distDir: string;
@@ -230,8 +289,9 @@ async function prepareVpBuildWorkspace(userId: string): Promise<{
   }
 
   const tmpRoot = path.join('/tmp', `vp-build-${userId.slice(0, 8)}-${Date.now()}`);
-  await copyDir(VP_APP, tmpRoot);
+  await copyDir(VP_APP, tmpRoot, VP_SOURCE_COPY_SKIP);
   await applyVpSourcesToDirectory(userId, path.join(tmpRoot, 'src'));
+  await ensureVpWorkspaceNodeModules(tmpRoot);
   return {
     appDir: tmpRoot,
     distDir: path.join(tmpRoot, 'dist'),

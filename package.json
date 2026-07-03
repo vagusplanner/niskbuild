@@ -12,7 +12,8 @@
     "generate:favicon": "node scripts/generate-favicon.mjs",
     "generate:brand-pdfs": "node scripts/generate-brand-pdfs.mjs",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "npm ci --prefix apps/vagus-planner --include=dev"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",
