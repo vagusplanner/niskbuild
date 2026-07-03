@@ -14,7 +14,6 @@ import { buildVpCapacitorBuildEnv } from '@/lib/vp-capacitor-build-env.js';
 const ROOT = process.cwd();
 const VP_APP = path.join(ROOT, 'apps/vagus-planner');
 const VP_DIST = path.join(VP_APP, 'dist');
-const VP_NODE_MODULES = path.join(VP_APP, 'node_modules');
 const VP_DEPLOY_BUCKET = 'vp-deployments';
 
 const VP_SOURCE_COPY_SKIP = new Set(['node_modules', 'dist']);
@@ -54,6 +53,15 @@ function contentTypeFor(relativePath: string): string {
     default:
       return 'application/octet-stream';
   }
+}
+
+function elapsedMs(startedAt: number): number {
+  return Date.now() - startedAt;
+}
+
+function logStage(stage: string, startedAt: number, extra = ''): void {
+  const suffix = extra ? ` ${extra}` : '';
+  console.log(`[vp-deploy] ${stage}: ${elapsedMs(startedAt)}ms${suffix}`);
 }
 
 async function collectFiles(
@@ -212,56 +220,13 @@ async function publishDistFromDir(
   }
 }
 
-async function publishDistToPublic(token: string, requestOrigin: string): Promise<string> {
-  return publishDistToPublicFromDir(token, requestOrigin, VP_DIST);
-}
-
-async function publishDistToStorage(userId: string, token: string): Promise<string> {
-  return publishDistToStorageFromDir(userId, token, VP_DIST);
-}
-
-async function publishDist(
-  userId: string,
-  token: string,
-  requestOrigin: string
-): Promise<string> {
-  return publishDistFromDir(userId, token, requestOrigin, VP_DIST);
-}
-
-async function vpNodeModulesReady(modulesDir: string): Promise<boolean> {
-  try {
-    await fs.access(path.join(modulesDir, '.bin', 'vite'));
-    return true;
-  } catch {
-    try {
-      const stat = await fs.stat(modulesDir);
-      if (!stat.isDirectory()) return false;
-      const entries = await fs.readdir(modulesDir);
-      return entries.length > 0;
-    } catch {
-      return false;
-    }
-  }
-}
-
-/** Make Vite available in a /tmp VP workspace via symlink or npm ci fallback. */
-async function ensureVpWorkspaceNodeModules(appDir: string): Promise<'symlink' | 'fallback-ci'> {
-  const linkPath = path.join(appDir, 'node_modules');
-
-  await fs.rm(linkPath, { recursive: true, force: true }).catch(() => {});
-
-  if (await vpNodeModulesReady(VP_NODE_MODULES)) {
-    const linkType = process.platform === 'win32' ? 'junction' : 'dir';
-    await fs.symlink(VP_NODE_MODULES, linkPath, linkType);
-    console.log(
-      `[vp-deploy] VP build deps: symlinked ${linkPath} -> ${VP_NODE_MODULES}`
-    );
-    return 'symlink';
-  }
-
-  console.warn(
-    `[vp-deploy] VP build deps: ${VP_NODE_MODULES} missing or empty — running npm ci in workspace`
-  );
+/**
+ * Install VP build deps into the /tmp workspace via npm ci.
+ * Intentionally does not symlink apps/vagus-planner/node_modules — that tree is
+ * not traced into the serverless function (too large for the 250MB limit).
+ */
+function installVpWorkspaceNodeModules(appDir: string): void {
+  console.log(`[vp-deploy] VP build deps: npm ci --include=dev in ${appDir}`);
   execSync('npm ci --include=dev', {
     cwd: appDir,
     stdio: 'inherit',
@@ -270,8 +235,6 @@ async function ensureVpWorkspaceNodeModules(appDir: string): Promise<'symlink' |
       NODE_ENV: 'development',
     },
   });
-  console.log(`[vp-deploy] VP build deps: fallback npm ci completed in ${appDir}`);
-  return 'fallback-ci';
 }
 
 async function prepareVpBuildWorkspace(userId: string): Promise<{
@@ -280,7 +243,9 @@ async function prepareVpBuildWorkspace(userId: string): Promise<{
   cleanup: () => Promise<void>;
 }> {
   if (process.env.NODE_ENV === 'development') {
+    const overlayStarted = Date.now();
     await applyVpSourcesToDirectory(userId, path.join(VP_APP, 'src'));
+    logStage('overlay (dev in-place)', overlayStarted);
     return {
       appDir: VP_APP,
       distDir: VP_DIST,
@@ -289,9 +254,19 @@ async function prepareVpBuildWorkspace(userId: string): Promise<{
   }
 
   const tmpRoot = path.join('/tmp', `vp-build-${userId.slice(0, 8)}-${Date.now()}`);
+
+  const copyStarted = Date.now();
   await copyDir(VP_APP, tmpRoot, VP_SOURCE_COPY_SKIP);
+  logStage('copy source to /tmp', copyStarted, `(${tmpRoot})`);
+
+  const overlayStarted = Date.now();
   await applyVpSourcesToDirectory(userId, path.join(tmpRoot, 'src'));
-  await ensureVpWorkspaceNodeModules(tmpRoot);
+  logStage('overlay user sources', overlayStarted);
+
+  const installStarted = Date.now();
+  installVpWorkspaceNodeModules(tmpRoot);
+  logStage('npm ci --include=dev', installStarted);
+
   return {
     appDir: tmpRoot,
     distDir: path.join(tmpRoot, 'dist'),
@@ -306,16 +281,23 @@ export async function deployVagusPlanner(params: {
   title?: string;
   requestOrigin?: string;
 }): Promise<{ url: string; token: string; bundleUrl: string } | null> {
+  const deployStarted = Date.now();
   const requestOrigin =
     params.requestOrigin ||
     process.env.NEXT_PUBLIC_APP_URL ||
     'http://localhost:3000';
   const title = params.title || 'Vagus Planner';
 
+  console.log('[vp-deploy] start');
+
+  const workspaceStarted = Date.now();
   const workspace = await prepareVpBuildWorkspace(params.userId);
+  logStage('prepare workspace (total)', workspaceStarted);
 
   try {
+    const buildStarted = Date.now();
     buildVagusPlannerDist(workspace.appDir);
+    logStage('vite build', buildStarted);
 
     const indexPath = path.join(workspace.distDir, 'index.html');
     try {
@@ -324,25 +306,34 @@ export async function deployVagusPlanner(params: {
       throw new Error('Vagus Planner build did not produce dist/index.html');
     }
 
+    const previewStarted = Date.now();
     const placeholder = await upsertPreview(
       params.userId,
       '<!DOCTYPE html><html><body style="margin:0;background:#060f1e;color:#94a3b8;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh">Deploying Vagus Planner…</body></html>',
       title,
       requestOrigin
     );
+    logStage('upsert preview row', previewStarted);
 
     if (!placeholder) return null;
 
+    const publishStarted = Date.now();
     const bundleUrl = await publishDistFromDir(
       params.userId,
       placeholder.token,
       requestOrigin,
       workspace.distDir
     );
+    logStage('publish dist', publishStarted);
+
+    const finalizeStarted = Date.now();
     const html = buildDeployPreviewShell(bundleUrl);
     const updated = await updatePreviewHtml(params.userId, html, title);
+    logStage('update preview html', finalizeStarted);
 
     if (!updated) return null;
+
+    logStage('deploy complete', deployStarted, `(token=${placeholder.token})`);
 
     return {
       url: previewPublicUrl(placeholder.token, requestOrigin),
@@ -350,7 +341,9 @@ export async function deployVagusPlanner(params: {
       bundleUrl,
     };
   } finally {
+    const cleanupStarted = Date.now();
     await workspace.cleanup();
+    logStage('cleanup /tmp workspace', cleanupStarted);
   }
 }
 
