@@ -26,6 +26,7 @@ export default function SupportPage() {
     try {
       await base44.integrations.Core.SendEmail({
         to: 'support@myassistant.com',
+        replyTo: formData.email,
         subject: `Support Request: ${formData.subject}`,
         body: `
 Name: ${formData.name}

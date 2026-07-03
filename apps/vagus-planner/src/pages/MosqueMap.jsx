@@ -321,18 +321,15 @@ function MosqueDetail({ mosque, user, onClose, directoryEntry }) {
           </a>
         </div>
 
-        {/* Claim CTA */}
+        {/* Claim listing — coming soon (MosaqueDirectory not persisted yet) */}
         {!isClaimed && !isMyListing && (
-          <div className="p-4 rounded-xl border-2 border-dashed border-teal-300 dark:border-teal-700 bg-teal-50 dark:bg-teal-950/20">
-            <p className="text-sm font-bold text-teal-800 dark:text-teal-200 mb-1 flex items-center gap-1.5">
-              <Building2 className="w-4 h-4" /> Is this your organisation?
+          <div className="p-4 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+            <p className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-1 flex items-center gap-1.5">
+              <Building2 className="w-4 h-4" /> Claim this listing
             </p>
-            <p className="text-xs text-teal-600 dark:text-teal-400 mb-3">
-              Claim this listing to add services, prayer times, and contact details.
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Coming soon — you&apos;ll be able to verify your organisation and add prayer times, services, and contact details. Map browsing works today.
             </p>
-            <Button onClick={() => setShowClaim(true)} size="sm" className="w-full bg-teal-600 hover:bg-teal-700 gap-1.5">
-              <BadgeCheck className="w-3.5 h-3.5" /> Claim This Listing
-            </Button>
           </div>
         )}
 

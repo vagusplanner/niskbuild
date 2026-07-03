@@ -19,6 +19,8 @@ export const RATE_LIMITS: Record<string, number> = {
   '/api/generate': 10,
   '/api/generate/game': 15,
   '/api/ai-agent': 24,
+  '/api/email': 12,
+  '/api/vagus-planner/llm': 24,
   '/api/agent-escalate': 6,
   '/api/figma/import': 10,
   '/api/figma/screenshot-import': 10,

@@ -31,11 +31,10 @@ export default function DataProtectionPage() {
     setExporting(true);
     try {
       // Fetch all user data
-      const [events, tasks, prayerLogs, routines, settings, goals] = await Promise.all([
+      const [events, tasks, prayerLogs, settings, goals] = await Promise.all([
         base44.entities.Event.list(),
         base44.entities.Task.list(),
         base44.entities.PrayerLog.list(),
-        base44.entities.DailyRoutine.list(),
         base44.entities.UserSettings.list(),
         base44.entities.Goal.list()
       ]);
@@ -49,7 +48,6 @@ export default function DataProtectionPage() {
         events: events,
         tasks: tasks,
         prayer_logs: prayerLogs,
-        daily_routines: routines,
         settings: settings,
         goals: goals,
         export_date: new Date().toISOString(),
@@ -80,11 +78,10 @@ export default function DataProtectionPage() {
     setDeleting(true);
     try {
       // Delete all user data
-      const [events, tasks, prayerLogs, routines, settings] = await Promise.all([
+      const [events, tasks, prayerLogs, settings] = await Promise.all([
         base44.entities.Event.list(),
         base44.entities.Task.list(),
         base44.entities.PrayerLog.list(),
-        base44.entities.DailyRoutine.list(),
         base44.entities.UserSettings.list()
       ]);
 
@@ -93,7 +90,6 @@ export default function DataProtectionPage() {
         ...events.map(e => base44.entities.Event.delete(e.id)),
         ...tasks.map(t => base44.entities.Task.delete(t.id)),
         ...prayerLogs.map(p => base44.entities.PrayerLog.delete(p.id)),
-        ...routines.map(r => base44.entities.DailyRoutine.delete(r.id)),
         ...settings.map(s => base44.entities.UserSettings.delete(s.id))
       ]);
 
@@ -171,8 +167,7 @@ export default function DataProtectionPage() {
                 <li>✓ Profile information</li>
                 <li>✓ Calendar events and tasks</li>
                 <li>✓ Prayer logs and spiritual tracking</li>
-                <li>✓ Daily routines and goals</li>
-                <li>✓ Settings and preferences</li>
+                <li>✓ Goals and settings</li>
                 <li>✓ All timestamps and metadata</li>
               </ul>
             </div>

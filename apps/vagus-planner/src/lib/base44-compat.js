@@ -406,18 +406,43 @@ export const base44 = {
         if (error) throw error
         return data
       },
-      SendEmail: async (to, subject, body) => {
+      SendEmail: async (params, subjectArg, bodyArg) => {
+        const normalized =
+          typeof params === 'string'
+            ? { to: params, subject: subjectArg, body: bodyArg }
+            : params && typeof params === 'object'
+              ? params
+              : {}
+
+        const to = typeof normalized.to === 'string' ? normalized.to.trim() : ''
+        const subject = typeof normalized.subject === 'string' ? normalized.subject.trim() : ''
+        const body = typeof normalized.body === 'string' ? normalized.body : ''
+        const replyTo =
+          typeof normalized.replyTo === 'string' ? normalized.replyTo.trim() : undefined
+
         console.log('📧 SendEmail:', { to, subject })
+
         try {
-          const response = await fetch('/api/email', {
+          const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
+          const response = await fetch(`${apiBase}/api/email`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ to, subject, body })
+            credentials: 'include',
+            body: JSON.stringify({ to, subject, body, replyTo }),
           })
-          return await response.json()
+
+          const data = await response.json()
+
+          if (!response.ok) {
+            const message =
+              typeof data?.error === 'string' ? data.error : 'SendEmail request failed'
+            throw new Error(message)
+          }
+
+          return data
         } catch (error) {
           console.error('❌ Error sending email:', error)
-          return { error: error.message }
+          throw error
         }
       }
     }
