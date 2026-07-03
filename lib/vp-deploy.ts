@@ -225,15 +225,13 @@ async function publishDistFromDir(
  * Intentionally does not symlink apps/vagus-planner/node_modules — that tree is
  * not traced into the serverless function (too large for the 250MB limit).
  *
- * Function memory is 3008MB (Pro). Still minimize peak install pressure:
+ * Function memory is 3008MB (Pro). Keep install lean without serializing downloads:
  * - --omit=dev (vite/postcss/tailwind live in dependencies; skip eslint/typescript)
- * - --maxsockets=1 (serialize downloads; default is 15 concurrent sockets)
  * - --no-audit --prefer-offline --no-fund (skip extra network/metadata work)
  */
 function installVpWorkspaceNodeModules(appDir: string): void {
   // Do not use --omit=optional: rollup's optional native bindings are required.
-  const cmd =
-    'npm ci --omit=dev --maxsockets=1 --no-audit --prefer-offline --no-fund';
+  const cmd = 'npm ci --omit=dev --no-audit --prefer-offline --no-fund';
   console.log(`[vp-deploy] VP build deps: ${cmd} in ${appDir}`);
   execSync(cmd, {
     cwd: appDir,
