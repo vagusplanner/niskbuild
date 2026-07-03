@@ -220,28 +220,92 @@ async function publishDistFromDir(
   }
 }
 
+function execOutputToString(value: unknown): string {
+  if (value == null) return '';
+  if (typeof value === 'string') return value;
+  if (Buffer.isBuffer(value)) return value.toString('utf8');
+  return String(value);
+}
+
 /**
  * Install VP production + build-tool deps into the /tmp workspace via npm ci.
  * Intentionally does not symlink apps/vagus-planner/node_modules — that tree is
  * not traced into the serverless function (too large for the 250MB limit).
  *
- * Function memory is 3008MB (Pro). Keep install lean without serializing downloads:
+ * Function memory is 3008MB (Pro). Keep install lean:
  * - --omit=dev (vite/postcss/tailwind live in dependencies; skip eslint/typescript)
  * - --no-audit --prefer-offline --no-fund (skip extra network/metadata work)
+ * - dedicated /tmp cache + higher fetch retries for serverless network flakiness
  */
 function installVpWorkspaceNodeModules(appDir: string): void {
   // Do not use --omit=optional: rollup's optional native bindings are required.
-  const cmd = 'npm ci --omit=dev --no-audit --prefer-offline --no-fund';
-  console.log(`[vp-deploy] VP build deps: ${cmd} in ${appDir}`);
-  execSync(cmd, {
-    cwd: appDir,
-    stdio: 'inherit',
-    env: {
-      ...process.env,
-      // Keep production so npm defaults stay lean; --omit=dev is explicit above.
-      NODE_ENV: 'production',
-    },
-  });
+  const buildId = path.basename(appDir);
+  const cacheDir = path.join('/tmp', `vp-npm-cache-${buildId}`);
+  const cmd = [
+    'npm ci',
+    '--omit=dev',
+    '--no-audit',
+    '--prefer-offline',
+    '--no-fund',
+    '--fetch-retries=5',
+    '--fetch-retry-mintimeout=5000',
+    '--fetch-retry-maxtimeout=30000',
+    `--cache=${cacheDir}`,
+  ].join(' ');
+
+  console.log('[vp-deploy] npm ci STARTING');
+  console.log(`[vp-deploy] npm ci command: ${cmd}`);
+  console.log(`[vp-deploy] npm ci cwd: ${appDir}`);
+  console.log(`[vp-deploy] npm ci cache: ${cacheDir}`);
+
+  const started = Date.now();
+  try {
+    const stdout = execSync(cmd, {
+      cwd: appDir,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      maxBuffer: 20 * 1024 * 1024,
+      env: {
+        ...process.env,
+        NODE_ENV: 'production',
+      },
+    });
+
+    const duration = Date.now() - started;
+    console.log(`[vp-deploy] npm ci completed successfully in ${duration}ms`);
+    if (stdout.trim()) {
+      console.log(`[vp-deploy] npm ci stdout:\n${stdout}`);
+    }
+  } catch (error: unknown) {
+    const duration = Date.now() - started;
+    const err = error as {
+      status?: number | null;
+      signal?: NodeJS.Signals | null;
+      stdout?: string | Buffer;
+      stderr?: string | Buffer;
+      message?: string;
+    };
+    const exitCode = err.status ?? 'unknown';
+    const stdout = execOutputToString(err.stdout);
+    const stderr = execOutputToString(err.stderr);
+
+    // Explicit failure markers — do not rely on a generic outer catch alone.
+    console.error(`[vp-deploy] npm ci FAILED — exit code: ${exitCode}`);
+    console.error(`[vp-deploy] npm ci failed after ${duration}ms`);
+    if (err.signal) {
+      console.error(`[vp-deploy] npm ci signal: ${err.signal}`);
+    }
+    console.error(`[vp-deploy] npm ci stderr (full):\n${stderr || '(empty)'}`);
+    console.error(`[vp-deploy] npm ci stdout (full):\n${stdout || '(empty)'}`);
+    console.error(
+      `[vp-deploy] npm ci error message: ${err.message ?? String(error)}`
+    );
+
+    throw new Error(
+      `npm ci FAILED — exit code: ${exitCode} after ${duration}ms` +
+        (stderr.trim() ? ` — ${stderr.trim().slice(-800)}` : '')
+    );
+  }
 }
 
 async function prepareVpBuildWorkspace(userId: string): Promise<{
@@ -274,11 +338,14 @@ async function prepareVpBuildWorkspace(userId: string): Promise<{
   installVpWorkspaceNodeModules(tmpRoot);
   logStage('npm ci --omit=dev', installStarted);
 
+  const npmCacheDir = path.join('/tmp', `vp-npm-cache-${path.basename(tmpRoot)}`);
+
   return {
     appDir: tmpRoot,
     distDir: path.join(tmpRoot, 'dist'),
     cleanup: async () => {
       await fs.rm(tmpRoot, { recursive: true, force: true });
+      await fs.rm(npmCacheDir, { recursive: true, force: true });
     },
   };
 }
