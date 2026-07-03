@@ -221,18 +221,27 @@ async function publishDistFromDir(
 }
 
 /**
- * Install VP build deps into the /tmp workspace via npm ci.
+ * Install VP production + build-tool deps into the /tmp workspace via npm ci.
  * Intentionally does not symlink apps/vagus-planner/node_modules — that tree is
  * not traced into the serverless function (too large for the 250MB limit).
+ *
+ * Function memory is 3008MB (Pro). Still minimize peak install pressure:
+ * - --omit=dev (vite/postcss/tailwind live in dependencies; skip eslint/typescript)
+ * - --maxsockets=1 (serialize downloads; default is 15 concurrent sockets)
+ * - --no-audit --prefer-offline --no-fund (skip extra network/metadata work)
  */
 function installVpWorkspaceNodeModules(appDir: string): void {
-  console.log(`[vp-deploy] VP build deps: npm ci --include=dev in ${appDir}`);
-  execSync('npm ci --include=dev', {
+  // Do not use --omit=optional: rollup's optional native bindings are required.
+  const cmd =
+    'npm ci --omit=dev --maxsockets=1 --no-audit --prefer-offline --no-fund';
+  console.log(`[vp-deploy] VP build deps: ${cmd} in ${appDir}`);
+  execSync(cmd, {
     cwd: appDir,
     stdio: 'inherit',
     env: {
       ...process.env,
-      NODE_ENV: 'development',
+      // Keep production so npm defaults stay lean; --omit=dev is explicit above.
+      NODE_ENV: 'production',
     },
   });
 }
@@ -265,7 +274,7 @@ async function prepareVpBuildWorkspace(userId: string): Promise<{
 
   const installStarted = Date.now();
   installVpWorkspaceNodeModules(tmpRoot);
-  logStage('npm ci --include=dev', installStarted);
+  logStage('npm ci --omit=dev', installStarted);
 
   return {
     appDir: tmpRoot,
