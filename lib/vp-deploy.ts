@@ -16,7 +16,19 @@ const VP_APP = path.join(ROOT, 'apps/vagus-planner');
 const VP_DIST = path.join(VP_APP, 'dist');
 const VP_DEPLOY_BUCKET = 'vp-deployments';
 
-const VP_SOURCE_COPY_SKIP = new Set(['node_modules', 'dist']);
+/** Only files/dirs required for `vite build` — keep /tmp footprint minimal. */
+const VP_BUILD_ROOT_FILES = [
+  'package.json',
+  'package-lock.json',
+  'vite.config.js',
+  'index.html',
+  'postcss.config.js',
+  'tailwind.config.js',
+  'jsconfig.json',
+  'components.json',
+] as const;
+
+const VP_BUILD_DIRS = ['src', 'public'] as const;
 
 type DeployFile = {
   relativePath: string;
@@ -232,31 +244,27 @@ function execOutputToString(value: unknown): string {
  * Intentionally does not symlink apps/vagus-planner/node_modules — that tree is
  * not traced into the serverless function (too large for the 250MB limit).
  *
- * Function memory is 3008MB (Pro). Keep install lean:
- * - --omit=dev (vite/postcss/tailwind live in dependencies; skip eslint/typescript)
- * - --no-audit --prefer-offline --no-fund (skip extra network/metadata work)
- * - dedicated /tmp cache + higher fetch retries for serverless network flakiness
+ * /tmp is ~500MB on Vercel. npm always writes tarballs to a cache before extract
+ * (no stream-only mode). We avoid a second dedicated cache dir and wipe npm's
+ * cache immediately after install so cache + node_modules do not coexist longer
+ * than necessary.
  */
 function installVpWorkspaceNodeModules(appDir: string): void {
   // Do not use --omit=optional: rollup's optional native bindings are required.
-  const buildId = path.basename(appDir);
-  const cacheDir = path.join('/tmp', `vp-npm-cache-${buildId}`);
+  // No --cache=… and no --prefer-offline: one-shot install; do not grow /tmp.
   const cmd = [
     'npm ci',
     '--omit=dev',
     '--no-audit',
-    '--prefer-offline',
     '--no-fund',
     '--fetch-retries=5',
     '--fetch-retry-mintimeout=5000',
     '--fetch-retry-maxtimeout=30000',
-    `--cache=${cacheDir}`,
   ].join(' ');
 
   console.log('[vp-deploy] npm ci STARTING');
   console.log(`[vp-deploy] npm ci command: ${cmd}`);
   console.log(`[vp-deploy] npm ci cwd: ${appDir}`);
-  console.log(`[vp-deploy] npm ci cache: ${cacheDir}`);
 
   const started = Date.now();
   try {
@@ -305,6 +313,59 @@ function installVpWorkspaceNodeModules(appDir: string): void {
       `npm ci FAILED — exit code: ${exitCode} after ${duration}ms` +
         (stderr.trim() ? ` — ${stderr.trim().slice(-800)}` : '')
     );
+  } finally {
+    // Free tarball cache as soon as install finishes (success or fail).
+    try {
+      execSync('npm cache clean --force', {
+        cwd: appDir,
+        stdio: 'pipe',
+        env: { ...process.env, NODE_ENV: 'production' },
+      });
+      console.log('[vp-deploy] npm cache cleaned after install');
+    } catch (cleanError) {
+      console.warn('[vp-deploy] npm cache clean failed:', cleanError);
+    }
+  }
+}
+
+/** After Vite, only dist/ is needed — drop node_modules + sources to free /tmp. */
+async function pruneWorkspaceKeepDistOnly(appDir: string, distDir: string): Promise<void> {
+  const entries = await fs.readdir(appDir);
+  for (const name of entries) {
+    if (name === 'dist') continue;
+    await fs.rm(path.join(appDir, name), { recursive: true, force: true });
+  }
+
+  try {
+    await fs.access(path.join(distDir, 'index.html'));
+  } catch {
+    throw new Error('pruneWorkspaceKeepDistOnly: dist/index.html missing after prune');
+  }
+
+  console.log('[vp-deploy] pruned workspace to dist/ only (freed node_modules + sources)');
+}
+
+async function copyVpBuildSources(destRoot: string): Promise<void> {
+  await fs.mkdir(destRoot, { recursive: true });
+
+  for (const file of VP_BUILD_ROOT_FILES) {
+    const from = path.join(VP_APP, file);
+    try {
+      await fs.access(from);
+    } catch {
+      continue;
+    }
+    await fs.copyFile(from, path.join(destRoot, file));
+  }
+
+  for (const dir of VP_BUILD_DIRS) {
+    const from = path.join(VP_APP, dir);
+    try {
+      await fs.access(from);
+    } catch {
+      continue;
+    }
+    await copyDir(from, path.join(destRoot, dir));
   }
 }
 
@@ -327,8 +388,8 @@ async function prepareVpBuildWorkspace(userId: string): Promise<{
   const tmpRoot = path.join('/tmp', `vp-build-${userId.slice(0, 8)}-${Date.now()}`);
 
   const copyStarted = Date.now();
-  await copyDir(VP_APP, tmpRoot, VP_SOURCE_COPY_SKIP);
-  logStage('copy source to /tmp', copyStarted, `(${tmpRoot})`);
+  await copyVpBuildSources(tmpRoot);
+  logStage('copy build sources to /tmp', copyStarted, `(${tmpRoot})`);
 
   const overlayStarted = Date.now();
   await applyVpSourcesToDirectory(userId, path.join(tmpRoot, 'src'));
@@ -338,14 +399,11 @@ async function prepareVpBuildWorkspace(userId: string): Promise<{
   installVpWorkspaceNodeModules(tmpRoot);
   logStage('npm ci --omit=dev', installStarted);
 
-  const npmCacheDir = path.join('/tmp', `vp-npm-cache-${path.basename(tmpRoot)}`);
-
   return {
     appDir: tmpRoot,
     distDir: path.join(tmpRoot, 'dist'),
     cleanup: async () => {
       await fs.rm(tmpRoot, { recursive: true, force: true });
-      await fs.rm(npmCacheDir, { recursive: true, force: true });
     },
   };
 }
@@ -379,6 +437,11 @@ export async function deployVagusPlanner(params: {
     } catch {
       throw new Error('Vagus Planner build did not produce dist/index.html');
     }
+
+    // Free ~300MB before storage upload — only dist/ is published.
+    const pruneStarted = Date.now();
+    await pruneWorkspaceKeepDistOnly(workspace.appDir, workspace.distDir);
+    logStage('prune to dist only', pruneStarted);
 
     const previewStarted = Date.now();
     const placeholder = await upsertPreview(
