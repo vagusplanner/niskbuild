@@ -393,49 +393,102 @@ function execOutputToString(value: unknown): string {
 
 const DIAGNOSTIC_TAIL_CHARS = 2000;
 
-/** Redact tokens/keys that might appear in build output before returning to the client. */
-function sanitizeDeployDiagnostic(text: string): string {
-  return text
-    .replace(/(Bearer\s+)[A-Za-z0-9._\-]+/gi, '$1[REDACTED]')
-    .replace(/(authorization["']?\s*[:=]\s*["']?)[^"'\s]+/gi, '$1[REDACTED]')
-    .replace(/\bsk-[A-Za-z0-9_-]{8,}/g, 'sk-[REDACTED]')
-    .replace(/\bsk_(?:live|test)_[A-Za-z0-9]+/g, 'sk_[REDACTED]')
-    .replace(/\bsbp_[A-Za-z0-9]+/g, 'sbp_[REDACTED]')
-    .replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '[REDACTED_JWT]')
-    .replace(
-      /((?:API[_-]?KEY|SECRET|TOKEN|PASSWORD|PRIVATE[_-]?KEY|SERVICE[_-]?ROLE)\s*[=:]\s*)\S+/gi,
-      '$1[REDACTED]'
-    );
+/**
+ * Coerce unknown build output to a plain string. Never throws.
+ * (execSync can theoretically yield Buffer/undefined depending on options.)
+ */
+function asDiagnosticText(value: unknown): string {
+  try {
+    if (value == null) return '';
+    if (typeof value === 'string') return value;
+    if (Buffer.isBuffer(value)) return value.toString('utf8');
+    return String(value);
+  } catch {
+    return '';
+  }
 }
 
-function diagnosticTail(text: string, maxChars = DIAGNOSTIC_TAIL_CHARS): string {
-  const trimmed = text.trim();
-  if (!trimmed) return '(empty)';
-  const sanitized = sanitizeDeployDiagnostic(trimmed);
-  if (sanitized.length <= maxChars) return sanitized;
-  return `…(truncated)…\n${sanitized.slice(-maxChars)}`;
+/**
+ * Redact tokens/keys that might appear in build output before returning to the client.
+ * Uses simple, non-backtracking patterns and never throws.
+ */
+export function sanitizeDeployDiagnostic(text: unknown): string {
+  try {
+    let out = asDiagnosticText(text);
+    // Apply each rule independently so one bad pattern cannot abort the rest.
+    const rules: Array<[RegExp, string]> = [
+      [/\bBearer\s+[A-Za-z0-9._-]+/gi, 'Bearer [REDACTED]'],
+      [/\bsk-[A-Za-z0-9_-]{8,}/g, 'sk-[REDACTED]'],
+      [/\bsk_(?:live|test)_[A-Za-z0-9]+/g, 'sk_[REDACTED]'],
+      [/\bsbp_[A-Za-z0-9]+/g, 'sbp_[REDACTED]'],
+      // JWT: three base64url segments (fixed structure, no nested quantifiers)
+      [/\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g, '[REDACTED_JWT]'],
+      // KEY=value / KEY: value — require a clear key token, avoid bare "TOKEN" alone
+      [
+        /\b(?:API[_-]?KEY|SECRET|PASSWORD|PRIVATE[_-]?KEY|SERVICE[_-]?ROLE|ACCESS[_-]?TOKEN|AUTH[_-]?TOKEN)\s*[=:]\s*\S+/gi,
+        '[REDACTED_SECRET]',
+      ],
+    ];
+    for (const [pattern, replacement] of rules) {
+      try {
+        out = out.replace(pattern, replacement);
+      } catch (ruleError) {
+        console.error('[vp-deploy] sanitize rule failed:', pattern, ruleError);
+      }
+    }
+    return out;
+  } catch (sanitizeError) {
+    console.error('[vp-deploy] sanitizeDeployDiagnostic failed:', sanitizeError);
+    return '(diagnostic unavailable)';
+  }
 }
 
-/** Client-safe multi-line diagnostic for deploy API responses / network tab. */
-function formatViteBuildClientError(params: {
+function diagnosticTail(text: unknown, maxChars = DIAGNOSTIC_TAIL_CHARS): string {
+  try {
+    const trimmed = asDiagnosticText(text).trim();
+    if (!trimmed) return '(empty)';
+    const sanitized = sanitizeDeployDiagnostic(trimmed);
+    if (sanitized.length <= maxChars) return sanitized;
+    return `…(truncated)…\n${sanitized.slice(-maxChars)}`;
+  } catch (tailError) {
+    console.error('[vp-deploy] diagnosticTail failed:', tailError);
+    return '(diagnostic unavailable)';
+  }
+}
+
+/** Client-safe multi-line diagnostic for deploy API responses / network tab. Never throws. */
+export function formatViteBuildClientError(params: {
   summary: string;
   exitCode: number | string;
   durationMs: number;
-  stdout: string;
-  stderr: string;
+  stdout: unknown;
+  stderr: unknown;
   signal?: NodeJS.Signals | null;
 }): string {
-  const lines = [
-    params.summary,
-    `exit code: ${params.exitCode}`,
-    `duration: ${params.durationMs}ms`,
-  ];
-  if (params.signal) {
-    lines.push(`signal: ${params.signal}`);
+  try {
+    const lines = [
+      asDiagnosticText(params.summary) || 'vite build failed',
+      `exit code: ${asDiagnosticText(params.exitCode) || 'unknown'}`,
+      `duration: ${Number(params.durationMs) || 0}ms`,
+    ];
+    if (params.signal) {
+      lines.push(`signal: ${asDiagnosticText(params.signal)}`);
+    }
+    lines.push(
+      '',
+      `stderr (last ${DIAGNOSTIC_TAIL_CHARS} chars):`,
+      diagnosticTail(params.stderr)
+    );
+    lines.push(
+      '',
+      `stdout (last ${DIAGNOSTIC_TAIL_CHARS} chars):`,
+      diagnosticTail(params.stdout)
+    );
+    return lines.join('\n');
+  } catch (formatError) {
+    console.error('[vp-deploy] formatViteBuildClientError failed:', formatError);
+    return asDiagnosticText(params?.summary) || 'vite build failed';
   }
-  lines.push('', `stderr (last ${DIAGNOSTIC_TAIL_CHARS} chars):`, diagnosticTail(params.stderr));
-  lines.push('', `stdout (last ${DIAGNOSTIC_TAIL_CHARS} chars):`, diagnosticTail(params.stdout));
-  return lines.join('\n');
 }
 
 /**

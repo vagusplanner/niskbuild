@@ -71,13 +71,41 @@ export async function POST(request: NextRequest, context: RouteContext) {
       message: `${app.name} deployed — share your live preview link.`,
     });
   } catch (error) {
-    // Return the real diagnostic message (stdout/stderr tails from Vite/npm)
-    // so it is visible in the browser network tab and UI — not only Vercel/Sentry.
-    captureApiException(error);
-    const message =
-      error instanceof Error && error.message.trim()
-        ? error.message.trim()
-        : 'Deploy failed';
-    return NextResponse.json({ error: message }, { status: 500 });
+    // Never let error-response construction itself crash into Next's HTML error page.
+    try {
+      try {
+        captureApiException(error);
+      } catch (sentryError) {
+        console.error('[vp-deploy] captureApiException failed:', sentryError);
+      }
+
+      let message = 'Deploy failed — see server logs for details';
+      try {
+        if (error instanceof Error && typeof error.message === 'string') {
+          const trimmed = error.message.trim();
+          if (trimmed) message = trimmed;
+        } else if (typeof error === 'string' && error.trim()) {
+          message = error.trim();
+        }
+      } catch (messageError) {
+        console.error('[vp-deploy] failed to read error.message:', messageError);
+      }
+
+      return NextResponse.json({ error: message }, { status: 500 });
+    } catch (responseError) {
+      console.error('[vp-deploy] failed to build error JSON response:', responseError);
+      // Guaranteed-safe fallback — static JSON body, no dynamic content from the failure path.
+      try {
+        return NextResponse.json(
+          { error: 'Deploy failed — see server logs for details' },
+          { status: 500 }
+        );
+      } catch {
+        return new Response(
+          '{"error":"Deploy failed — see server logs for details"}',
+          { status: 500, headers: { 'content-type': 'application/json; charset=utf-8' } }
+        );
+      }
+    }
   }
 }
