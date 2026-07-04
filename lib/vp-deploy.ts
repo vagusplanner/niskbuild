@@ -631,6 +631,94 @@ function isVpDeployTmpArtifactCacheEntry(name: string): boolean {
 
 const TMP_LISTING_CHUNK = 40;
 const TMP_FULL_LISTING_MAX = 120;
+/** Max wall time for warm-container sweep — deploy continues even if backlog remains. */
+const SWEEP_TIME_BUDGET_MS = 20_000;
+const SWEEP_DELETE_CONCURRENCY = 8;
+
+/** Sort key for sweep priority — oldest vp-build workspaces first (timestamp suffix or mtime). */
+async function leftoverSortKeyMs(name: string): Promise<number> {
+  if (name.startsWith('vp-build-')) {
+    const last = name.slice(name.lastIndexOf('-') + 1);
+    const parsed = Number(last);
+    if (Number.isFinite(parsed) && parsed > 1_000_000_000_000) return parsed;
+  }
+  try {
+    return (await fs.stat(path.join('/tmp', name))).mtimeMs;
+  } catch {
+    return Number.MAX_SAFE_INTEGER;
+  }
+}
+
+async function sortLeftoversOldestFirst(names: string[]): Promise<string[]> {
+  const keyed = await Promise.all(
+    names.map(async (name) => ({ name, sortKey: await leftoverSortKeyMs(name) }))
+  );
+  keyed.sort((a, b) => a.sortKey - b.sortKey || a.name.localeCompare(b.name));
+  return keyed.map((k) => k.name);
+}
+
+type ParallelSweepResult = {
+  removed: string[];
+  remaining: string[];
+  budgetExceeded: boolean;
+};
+
+/**
+ * Delete /tmp entries in parallel batches (oldest first) within a hard time budget.
+ */
+async function runParallelTimedTmpDeletions(params: {
+  names: string[];
+  startedAt: number;
+  budgetMs: number;
+  concurrency: number;
+  logPrefix: string;
+}): Promise<ParallelSweepResult> {
+  const sorted = await sortLeftoversOldestFirst(params.names);
+  const removed: string[] = [];
+  let i = 0;
+  let budgetExceeded = false;
+
+  while (i < sorted.length) {
+    if (Date.now() - params.startedAt >= params.budgetMs) {
+      budgetExceeded = true;
+      break;
+    }
+
+    const batch = sorted.slice(i, i + params.concurrency);
+    i += batch.length;
+
+    const batchResults = await Promise.all(
+      batch.map(async (name) => {
+        const target = path.join('/tmp', name);
+        try {
+          await fs.rm(target, { recursive: true, force: true });
+          console.log(`[vp-deploy] ${params.logPrefix}: removed ${target}`);
+          return { name, ok: true as const };
+        } catch (err) {
+          const code =
+            err && typeof err === 'object' && 'code' in err
+              ? String((err as NodeJS.ErrnoException).code)
+              : '';
+          if (code !== 'ENOENT') {
+            console.warn(`[vp-deploy] ${params.logPrefix}: failed to remove ${target}:`, err);
+          }
+          return { name, ok: false as const };
+        }
+      })
+    );
+
+    for (const r of batchResults) {
+      if (r.ok) removed.push(r.name);
+    }
+  }
+
+  const remaining = sorted.filter((n) => !removed.includes(n));
+  if (remaining.length > 0 && Date.now() - params.startedAt >= params.budgetMs) {
+    budgetExceeded = true;
+  }
+
+  return { removed, remaining, budgetExceeded };
+}
 
 async function logTmpDirectoryListing(label: string): Promise<void> {
   try {
@@ -705,25 +793,36 @@ async function sweepVpDeployTmpBeforeDeploy(): Promise<void> {
       return;
     }
 
-    const removed: string[] = [];
-    for (const name of tmpNames) {
-      if (!isVpDeployTmpLeftoverEntry(name)) continue;
-      try {
-        if (await removeTmpPath(path.join('/tmp', name), 'warm-container sweep')) {
-          removed.push(name);
-        }
-      } catch (removeErr) {
-        console.warn(`[vp-deploy] warm-container sweep: remove /tmp/${name} failed (non-fatal):`, removeErr);
-      }
-    }
+    const leftovers = tmpNames.filter(isVpDeployTmpLeftoverEntry);
+    const deleteStarted = Date.now();
+    const { removed, remaining, budgetExceeded } = await runParallelTimedTmpDeletions({
+      names: leftovers,
+      startedAt: deleteStarted,
+      budgetMs: SWEEP_TIME_BUDGET_MS,
+      concurrency: SWEEP_DELETE_CONCURRENCY,
+      logPrefix: 'warm-container sweep',
+    });
 
+    const sweepMs = Date.now() - sweepStarted;
     const removedSummary =
       removed.length <= 80
         ? removed.join(', ') || '(nothing to remove)'
         : `${removed.slice(0, 80).join(', ')} … and ${removed.length - 80} more`;
-    console.log(
-      `[vp-deploy] warm-container /tmp sweep: removed ${removed.length} entries in ${Date.now() - sweepStarted}ms: ${removedSummary}`
-    );
+    const remainingSummary =
+      remaining.length <= 40
+        ? remaining.join(', ') || '(none)'
+        : `${remaining.slice(0, 40).join(', ')} … and ${remaining.length - 40} more`;
+
+    if (budgetExceeded && remaining.length > 0) {
+      console.warn(
+        `[vp-deploy] warm-container /tmp sweep: time budget (${SWEEP_TIME_BUDGET_MS}ms) reached — ` +
+          `cleared ${removed.length}/${leftovers.length}, ${remaining.length} remain for a future deploy: ${remainingSummary}`
+      );
+    } else {
+      console.log(
+        `[vp-deploy] warm-container /tmp sweep: removed ${removed.length}/${leftovers.length} entries in ${sweepMs}ms: ${removedSummary}`
+      );
+    }
 
     await logTmpDiskSpace('deploy start after sweep');
     await logTmpDirectoryListing('deploy start after sweep');
