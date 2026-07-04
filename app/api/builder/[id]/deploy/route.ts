@@ -6,6 +6,12 @@ import { getAuthenticatedProfile } from '@/lib/server-profile';
 import { isPaidAndActive } from '@/lib/tier-config';
 import { deployVagusPlanner } from '@/lib/vp-deploy';
 
+/**
+ * Fluid Compute memory is NOT set here or in vercel.json (ignored with Active CPU billing).
+ * Pro/Enterprise: Vercel dashboard → Project → Settings → Functions → Advanced Settings
+ * → Function CPU → Performance (4 GB / 2 vCPUs). Applies project-wide to all functions.
+ * @see https://vercel.com/docs/functions/configuring-functions/memory
+ */
 export const maxDuration = 300;
 
 type RouteContext = { params: Promise<{ id: string }> };

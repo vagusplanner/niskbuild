@@ -7,6 +7,7 @@ import {
   hashLockfile,
 } from '@/lib/vp-deploy-artifact.js';
 
+/** Same Fluid Compute memory note as deploy route — set Performance (4 GB) in Vercel dashboard. */
 export const maxDuration = 300;
 
 export async function GET(request: NextRequest) {
