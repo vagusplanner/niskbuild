@@ -120,15 +120,146 @@ async function copyDir(
   }
 }
 
-export function buildVagusPlannerDist(appDir = VP_APP): void {
-  execSync('npm run build', {
-    cwd: appDir,
-    stdio: 'inherit',
-    env: {
-      ...process.env,
-      ...buildVpCapacitorBuildEnv(true),
-    },
-  });
+async function logViteBinaryPreflight(appDir: string): Promise<void> {
+  const candidates = [
+    path.join(appDir, 'node_modules', '.bin', 'vite'),
+    path.join(appDir, 'node_modules', 'vite', 'bin', 'vite.js'),
+    path.join(appDir, 'node_modules', 'vite', 'package.json'),
+  ];
+
+  for (const candidate of candidates) {
+    try {
+      const st = await fs.lstat(candidate);
+      const mode = (st.mode & 0o777).toString(8);
+      const executable = (st.mode & 0o111) !== 0;
+      let linkTarget = '';
+      if (st.isSymbolicLink()) {
+        try {
+          linkTarget = ` -> ${await fs.readlink(candidate)}`;
+        } catch {
+          linkTarget = ' -> (unreadable link)';
+        }
+      }
+      console.log(
+        `[vp-deploy] vite preflight: ${candidate} exists size=${st.size} mode=0o${mode} ` +
+          `executable=${executable} symlink=${st.isSymbolicLink()}${linkTarget}`
+      );
+    } catch (err) {
+      const code =
+        err && typeof err === 'object' && 'code' in err
+          ? String((err as NodeJS.ErrnoException).code)
+          : 'unknown';
+      console.error(
+        `[vp-deploy] vite preflight: ${candidate} MISSING (${code})`
+      );
+    }
+  }
+
+  try {
+    const binDir = await fs.readdir(path.join(appDir, 'node_modules', '.bin'));
+    console.log(
+      `[vp-deploy] vite preflight: node_modules/.bin entries (first 30): ${binDir.slice(0, 30).join(', ')}`
+    );
+  } catch (err) {
+    console.error('[vp-deploy] vite preflight: cannot read node_modules/.bin:', err);
+  }
+}
+
+/**
+ * Run Vite production build with full stdout/stderr capture on failure.
+ * A sub-second exit usually means command-not-found / permission errors, not compile.
+ */
+export async function buildVagusPlannerDist(appDir = VP_APP): Promise<void> {
+  const cmd = 'npm run build';
+  const env = {
+    ...process.env,
+    ...buildVpCapacitorBuildEnv(true),
+  };
+
+  console.log('[vp-deploy] vite build STARTING');
+  console.log(`[vp-deploy] vite build command: ${cmd}`);
+  console.log(`[vp-deploy] vite build cwd: ${appDir}`);
+  await logViteBinaryPreflight(appDir);
+
+  const started = Date.now();
+  let stdout = '';
+  let stderr = '';
+  let exitCode: number | string = 0;
+
+  try {
+    stdout = execSync(cmd, {
+      cwd: appDir,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      maxBuffer: 20 * 1024 * 1024,
+      env,
+    });
+  } catch (error: unknown) {
+    const duration = Date.now() - started;
+    const err = error as {
+      status?: number | null;
+      signal?: NodeJS.Signals | null;
+      stdout?: string | Buffer;
+      stderr?: string | Buffer;
+      message?: string;
+    };
+    exitCode = err.status ?? 'unknown';
+    stdout = execOutputToString(err.stdout);
+    stderr = execOutputToString(err.stderr);
+
+    console.error(`[vp-deploy] vite build FAILED — exit code: ${exitCode}`);
+    console.error(`[vp-deploy] vite build failed after ${duration}ms`);
+    console.error(`[vp-deploy] vite build command: ${cmd}`);
+    console.error(`[vp-deploy] vite build cwd: ${appDir}`);
+    if (err.signal) {
+      console.error(`[vp-deploy] vite build signal: ${err.signal}`);
+    }
+    console.error(`[vp-deploy] vite build stderr (full):\n${stderr || '(empty)'}`);
+    console.error(`[vp-deploy] vite build stdout (full):\n${stdout || '(empty)'}`);
+    console.error(
+      `[vp-deploy] vite build error message: ${err.message ?? String(error)}`
+    );
+    await logViteBinaryPreflight(appDir);
+
+    throw new Error(
+      `vite build FAILED — exit code: ${exitCode} after ${duration}ms` +
+        (stderr.trim() ? ` — ${stderr.trim().slice(-800)}` : '')
+    );
+  }
+
+  const duration = Date.now() - started;
+  console.log(`[vp-deploy] vite build process exited 0 in ${duration}ms`);
+  if (stdout.trim()) {
+    console.log(`[vp-deploy] vite build stdout:\n${stdout}`);
+  }
+  if (stderr.trim()) {
+    console.log(`[vp-deploy] vite build stderr:\n${stderr}`);
+  }
+
+  const indexPath = path.join(appDir, 'dist', 'index.html');
+  try {
+    await fs.access(indexPath);
+  } catch {
+    console.error(
+      `[vp-deploy] vite build produced no dist/index.html after ${duration}ms` +
+        (duration < 2000 ? ' (suspiciously fast — likely command/permission failure)' : '')
+    );
+    console.error(`[vp-deploy] vite build command: ${cmd}`);
+    console.error(`[vp-deploy] vite build cwd: ${appDir}`);
+    console.error(`[vp-deploy] vite build exit code: ${exitCode}`);
+    console.error(`[vp-deploy] vite build stderr (full):\n${stderr || '(empty)'}`);
+    console.error(`[vp-deploy] vite build stdout (full):\n${stdout || '(empty)'}`);
+    await logViteBinaryPreflight(appDir);
+    throw new Error(
+      `Vagus Planner build did not produce dist/index.html after ${duration}ms`
+    );
+  }
+
+  if (duration < 2000) {
+    console.warn(
+      `[vp-deploy] vite build completed unusually fast (${duration}ms) but dist/index.html exists`
+    );
+  }
 }
 
 export function buildDeployPreviewShell(bundleUrl: string): string {
@@ -601,9 +732,9 @@ export async function deployVagusPlanner(params: {
   try {
     const buildStarted = Date.now();
     try {
-      buildVagusPlannerDist(workspace.appDir);
+      await buildVagusPlannerDist(workspace.appDir);
     } catch (buildError) {
-      // Mac-built artifacts lack Linux native binaries (rollup/esbuild); recover via npm ci.
+      // Wrong-platform natives or missing vite binary; recover via npm ci.
       if (workspace.depsMode === 'artifact') {
         console.warn(
           '[vp-deploy] Vite failed with prebuilt artifact — falling back to live npm ci:',
@@ -612,19 +743,12 @@ export async function deployVagusPlanner(params: {
         const fallbackStarted = Date.now();
         await installVpWorkspaceNodeModulesViaNpmCi(workspace.appDir);
         logStage('deps install (npm-ci fallback after vite fail)', fallbackStarted);
-        buildVagusPlannerDist(workspace.appDir);
+        await buildVagusPlannerDist(workspace.appDir);
       } else {
         throw buildError;
       }
     }
     logStage('vite build', buildStarted);
-
-    const indexPath = path.join(workspace.distDir, 'index.html');
-    try {
-      await fs.access(indexPath);
-    } catch {
-      throw new Error('Vagus Planner build did not produce dist/index.html');
-    }
 
     // Free ~300MB before storage upload — only dist/ is published.
     const pruneStarted = Date.now();
