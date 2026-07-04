@@ -276,7 +276,7 @@ async function ensureVpWorkspaceNodeModules(
     console.warn(
       `No matching deploy artifact found for lockfile hash ${lockfileHash} — falling back to live npm ci. Consider running npm run build:vp-deploy-artifact to speed up future deploys.`
     );
-    installVpWorkspaceNodeModulesViaNpmCi(appDir);
+    await installVpWorkspaceNodeModulesViaNpmCi(appDir);
     return 'npm-ci';
   }
 
@@ -302,8 +302,7 @@ async function ensureVpWorkspaceNodeModules(
       `[vp-deploy] artifact install failed for hash ${lockfileHash} — falling back to live npm ci:`,
       artifactError
     );
-    await fs.rm(path.join(appDir, 'node_modules'), { recursive: true, force: true }).catch(() => {});
-    installVpWorkspaceNodeModulesViaNpmCi(appDir);
+    await installVpWorkspaceNodeModulesViaNpmCi(appDir);
     return 'npm-ci';
   }
 }
@@ -319,10 +318,110 @@ function npmCiEnv(): NodeJS.ProcessEnv {
   };
 }
 
+function artifactTarballPathForAppDir(appDir: string): string {
+  return path.join('/tmp', `vp-artifact-dl-${path.basename(appDir)}.tar.gz`);
+}
+
+async function logTmpDiskSpace(label: string): Promise<void> {
+  try {
+    // Node 18.15+ / Vercel runtimes support fs.statfs
+    const stats = await fs.statfs('/tmp');
+    const bavail = Number(stats.bavail);
+    const blocks = Number(stats.blocks);
+    const bsize = Number(stats.bsize);
+    const freeMb = (bavail * bsize) / (1024 * 1024);
+    const totalMb = (blocks * bsize) / (1024 * 1024);
+    console.log(
+      `[vp-deploy] /tmp disk (${label}): free=${freeMb.toFixed(1)}MB total=${totalMb.toFixed(1)}MB`
+    );
+  } catch (err) {
+    console.warn(`[vp-deploy] /tmp disk check failed (${label}):`, err);
+  }
+}
+
+/**
+ * Free /tmp before live npm ci: wipe extracted node_modules, download tarball,
+ * and npm cache so ENOSPC is less likely after an artifact attempt.
+ */
+async function prepareTmpForNpmCiFallback(appDir: string): Promise<void> {
+  const nodeModules = path.join(appDir, 'node_modules');
+  const tarballPath = artifactTarballPathForAppDir(appDir);
+  const npmCache = '/tmp/.npm-cache';
+
+  console.log('[vp-deploy] fallback cleanup: starting');
+  await logTmpDiskSpace('before cleanup');
+
+  const removeTarget = async (target: string, label: string) => {
+    try {
+      const st = await fs.stat(target);
+      const sizeHint = st.isFile()
+        ? ` (${(st.size / (1024 * 1024)).toFixed(1)}MB file)`
+        : ' (dir)';
+      await fs.rm(target, { recursive: true, force: true });
+      console.log(`[vp-deploy] fallback cleanup: removed ${label}${sizeHint}`);
+    } catch (err) {
+      const code =
+        err && typeof err === 'object' && 'code' in err
+          ? String((err as NodeJS.ErrnoException).code)
+          : '';
+      if (code === 'ENOENT') {
+        console.log(`[vp-deploy] fallback cleanup: ${label} already absent`);
+      } else {
+        console.warn(`[vp-deploy] fallback cleanup: failed to remove ${label}:`, err);
+      }
+    }
+  };
+
+  await removeTarget(nodeModules, nodeModules);
+  await removeTarget(tarballPath, tarballPath);
+
+  // Any leftover download/archive/cache names from prior attempts
+  const tmpNames = await fs.readdir('/tmp').catch(() => [] as string[]);
+  for (const name of tmpNames) {
+    if (
+      name.startsWith('vp-artifact-dl-') ||
+      (name.startsWith('vp-node-modules-') && name.endsWith('.tar.gz')) ||
+      name.startsWith('vp-npm-cache-') ||
+      name === '.npm-cache'
+    ) {
+      await removeTarget(path.join('/tmp', name), `/tmp/${name}`);
+    }
+  }
+
+  await removeTarget(npmCache, npmCache);
+
+  const nmGone = await fs.access(nodeModules).then(() => false).catch(() => true);
+  const tarGone = await fs.access(tarballPath).then(() => false).catch(() => true);
+  console.log(
+    `[vp-deploy] fallback cleanup: node_modules gone=${nmGone}, tarball gone=${tarGone}`
+  );
+
+  const remaining = (await fs.readdir('/tmp').catch(() => [] as string[])).filter(
+    (n) =>
+      n.startsWith('vp-artifact-dl-') ||
+      n.startsWith('vp-node-modules-') ||
+      n.startsWith('vp-npm-cache-') ||
+      n === '.npm-cache'
+  );
+  console.log(
+    `[vp-deploy] fallback cleanup: remaining artifact/cache entries: ${remaining.join(', ') || '(none)'}`
+  );
+
+  await logTmpDiskSpace('after cleanup, before npm ci');
+
+  if (!nmGone || !tarGone) {
+    throw new Error(
+      `fallback cleanup incomplete: node_modules gone=${nmGone}, tarball gone=${tarGone}`
+    );
+  }
+}
+
 /**
  * Live npm ci fallback. Avoids a long-lived cache dir; cleans cache after install.
  */
-function installVpWorkspaceNodeModulesViaNpmCi(appDir: string): void {
+async function installVpWorkspaceNodeModulesViaNpmCi(appDir: string): Promise<void> {
+  await prepareTmpForNpmCiFallback(appDir);
+
   // Do not use --omit=optional: rollup's optional native bindings are required.
   const cmd = [
     'npm ci',
@@ -510,11 +609,8 @@ export async function deployVagusPlanner(params: {
           '[vp-deploy] Vite failed with prebuilt artifact — falling back to live npm ci:',
           buildError
         );
-        await fs
-          .rm(path.join(workspace.appDir, 'node_modules'), { recursive: true, force: true })
-          .catch(() => {});
         const fallbackStarted = Date.now();
-        installVpWorkspaceNodeModulesViaNpmCi(workspace.appDir);
+        await installVpWorkspaceNodeModulesViaNpmCi(workspace.appDir);
         logStage('deps install (npm-ci fallback after vite fail)', fallbackStarted);
         buildVagusPlannerDist(workspace.appDir);
       } else {
