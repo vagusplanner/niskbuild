@@ -3,6 +3,10 @@
     "app/api/builder/[id]/deploy/route.ts": {
       "memory": 3008,
       "maxDuration": 300
+    },
+    "app/api/admin/vp-deploy-artifact/route.ts": {
+      "memory": 3008,
+      "maxDuration": 300
     }
   },
   "crons": [

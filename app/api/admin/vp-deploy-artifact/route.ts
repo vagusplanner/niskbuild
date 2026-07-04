@@ -49,8 +49,11 @@ export async function POST(request: NextRequest) {
   if (!auth.ok) return auth.response;
 
   try {
-    const logs: string[] = [];
+    const logs: string[] = [
+      `[vp-artifact] POST build cwd=${process.cwd()}`,
+    ];
     const result = await buildAndUploadVpDeployArtifact({
+      root: process.cwd(),
       log: (msg) => {
         console.log(msg);
         logs.push(msg);
@@ -64,6 +67,7 @@ export async function POST(request: NextRequest) {
       message: `Artifact uploaded (${(result.sizeBytes / 1024 / 1024).toFixed(2)} MB)`,
     });
   } catch (error) {
+    console.error('[vp-artifact] POST build failed:', error);
     return apiErrorResponse(error, 'Failed to build VP deploy artifact');
   }
 }
