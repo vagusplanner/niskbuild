@@ -194,7 +194,9 @@ export default function PromptBar({
               {activityLog.map((line, i) => (
                 <p
                   key={`${i}-${line.slice(0, 24)}`}
-                  className="text-[11px] text-[var(--code-comment)] leading-relaxed font-mono"
+                  className={`text-[11px] text-[var(--code-comment)] leading-relaxed font-mono whitespace-pre-wrap break-words ${
+                    line.includes('❌') ? 'max-h-40 overflow-y-auto' : ''
+                  }`}
                 >
                   {line}
                 </p>
@@ -241,11 +243,11 @@ export default function PromptBar({
         </div>
         {statusMessage && (
           <p
-            className={`text-[11px] mt-2 px-1 leading-snug ${
+            className={`text-[11px] mt-2 px-1 leading-snug whitespace-pre-wrap break-words font-mono ${
               statusMessage.includes('✅')
                 ? 'text-[var(--success)]'
                 : statusMessage.includes('❌')
-                  ? 'text-[var(--error)]'
+                  ? 'text-[var(--error)] max-h-48 overflow-y-auto'
                   : 'text-[var(--copper-melt)]'
             }`}
           >
@@ -282,7 +284,15 @@ export default function PromptBar({
       </div>
 
       {statusMessage && (
-        <p className="text-[11px] shrink-0 leading-snug text-[var(--copper-melt)]">{statusMessage}</p>
+        <p
+          className={`text-[11px] shrink-0 leading-snug whitespace-pre-wrap break-words font-mono ${
+            statusMessage.includes('❌')
+              ? 'text-[var(--error)] max-h-48 overflow-y-auto'
+              : 'text-[var(--copper-melt)]'
+          }`}
+        >
+          {statusMessage}
+        </p>
       )}
 
       <div className="flex items-end gap-2 flex-wrap">

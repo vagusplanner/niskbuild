@@ -324,6 +324,8 @@ function AppBuilderWorkspaceInner({ appId, loginNextPath }: AppBuilderWorkspaceP
     setDeploying(true);
     setStatusMessage(`🔄 Building and deploying ${appConfig?.name ?? 'app'}…`);
 
+    let clearStatusMs = 10000;
+
     try {
       const res = await fetch(`/api/builder/${encodeURIComponent(appId)}/deploy`, {
         method: 'POST',
@@ -332,14 +334,27 @@ function AppBuilderWorkspaceInner({ appId, loginNextPath }: AppBuilderWorkspaceP
         body: JSON.stringify({ title: appConfig?.deployTitle ?? appConfig?.name }),
       });
 
-      const data = await res.json();
+      let data: {
+        error?: string;
+        upgrade?: boolean;
+        url?: string;
+      } = {};
+      try {
+        data = (await res.json()) as typeof data;
+      } catch {
+        setStatusMessage(`❌ Deploy failed (HTTP ${res.status}, non-JSON response)`);
+        clearStatusMs = 120000;
+        return;
+      }
 
       if (!res.ok) {
         if (data.upgrade) {
           const go = confirm(`${data.error || 'Upgrade required'}\n\nOpen Pricing?`);
           if (go) window.location.href = '/pricing';
         } else {
+          // Server includes Vite stdout/stderr tails in error — show them in UI + network tab.
           setStatusMessage(`❌ ${data.error || 'Deploy failed'}`);
+          clearStatusMs = 120000;
         }
         return;
       }
@@ -359,11 +374,13 @@ function AppBuilderWorkspaceInner({ appId, loginNextPath }: AppBuilderWorkspaceP
       } else {
         setStatusMessage(`✅ Deployed — ${data.url}`);
       }
-    } catch {
-      setStatusMessage('❌ Network error during deploy');
+    } catch (err) {
+      const detail = err instanceof Error && err.message ? err.message : 'Network error during deploy';
+      setStatusMessage(`❌ ${detail}`);
+      clearStatusMs = 120000;
     } finally {
       setDeploying(false);
-      setTimeout(() => setStatusMessage(''), 10000);
+      setTimeout(() => setStatusMessage(''), clearStatusMs);
     }
   };
 

@@ -222,8 +222,14 @@ export async function buildVagusPlannerDist(appDir = VP_APP): Promise<void> {
     await logViteBinaryPreflight(appDir);
 
     throw new Error(
-      `vite build FAILED — exit code: ${exitCode} after ${duration}ms` +
-        (stderr.trim() ? ` — ${stderr.trim().slice(-800)}` : '')
+      formatViteBuildClientError({
+        summary: 'vite build FAILED',
+        exitCode,
+        durationMs: duration,
+        stdout,
+        stderr,
+        signal: err.signal,
+      })
     );
   }
 
@@ -251,7 +257,17 @@ export async function buildVagusPlannerDist(appDir = VP_APP): Promise<void> {
     console.error(`[vp-deploy] vite build stdout (full):\n${stdout || '(empty)'}`);
     await logViteBinaryPreflight(appDir);
     throw new Error(
-      `Vagus Planner build did not produce dist/index.html after ${duration}ms`
+      formatViteBuildClientError({
+        summary:
+          `Vagus Planner build did not produce dist/index.html` +
+          (duration < 2000
+            ? ' (suspiciously fast — likely command/permission failure)'
+            : ''),
+        exitCode,
+        durationMs: duration,
+        stdout,
+        stderr,
+      })
     );
   }
 
@@ -373,6 +389,53 @@ function execOutputToString(value: unknown): string {
   if (typeof value === 'string') return value;
   if (Buffer.isBuffer(value)) return value.toString('utf8');
   return String(value);
+}
+
+const DIAGNOSTIC_TAIL_CHARS = 2000;
+
+/** Redact tokens/keys that might appear in build output before returning to the client. */
+function sanitizeDeployDiagnostic(text: string): string {
+  return text
+    .replace(/(Bearer\s+)[A-Za-z0-9._\-]+/gi, '$1[REDACTED]')
+    .replace(/(authorization["']?\s*[:=]\s*["']?)[^"'\s]+/gi, '$1[REDACTED]')
+    .replace(/\bsk-[A-Za-z0-9_-]{8,}/g, 'sk-[REDACTED]')
+    .replace(/\bsk_(?:live|test)_[A-Za-z0-9]+/g, 'sk_[REDACTED]')
+    .replace(/\bsbp_[A-Za-z0-9]+/g, 'sbp_[REDACTED]')
+    .replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '[REDACTED_JWT]')
+    .replace(
+      /((?:API[_-]?KEY|SECRET|TOKEN|PASSWORD|PRIVATE[_-]?KEY|SERVICE[_-]?ROLE)\s*[=:]\s*)\S+/gi,
+      '$1[REDACTED]'
+    );
+}
+
+function diagnosticTail(text: string, maxChars = DIAGNOSTIC_TAIL_CHARS): string {
+  const trimmed = text.trim();
+  if (!trimmed) return '(empty)';
+  const sanitized = sanitizeDeployDiagnostic(trimmed);
+  if (sanitized.length <= maxChars) return sanitized;
+  return `…(truncated)…\n${sanitized.slice(-maxChars)}`;
+}
+
+/** Client-safe multi-line diagnostic for deploy API responses / network tab. */
+function formatViteBuildClientError(params: {
+  summary: string;
+  exitCode: number | string;
+  durationMs: number;
+  stdout: string;
+  stderr: string;
+  signal?: NodeJS.Signals | null;
+}): string {
+  const lines = [
+    params.summary,
+    `exit code: ${params.exitCode}`,
+    `duration: ${params.durationMs}ms`,
+  ];
+  if (params.signal) {
+    lines.push(`signal: ${params.signal}`);
+  }
+  lines.push('', `stderr (last ${DIAGNOSTIC_TAIL_CHARS} chars):`, diagnosticTail(params.stderr));
+  lines.push('', `stdout (last ${DIAGNOSTIC_TAIL_CHARS} chars):`, diagnosticTail(params.stdout));
+  return lines.join('\n');
 }
 
 /**

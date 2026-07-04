@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { apiErrorResponse } from '@/lib/api-error';
+import { captureApiException } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { resolveBuilderApp } from '@/lib/builder-apps/handlers';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
@@ -71,6 +71,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
       message: `${app.name} deployed — share your live preview link.`,
     });
   } catch (error) {
-    return apiErrorResponse(error, 'Deploy failed');
+    // Return the real diagnostic message (stdout/stderr tails from Vite/npm)
+    // so it is visible in the browser network tab and UI — not only Vercel/Sentry.
+    captureApiException(error);
+    const message =
+      error instanceof Error && error.message.trim()
+        ? error.message.trim()
+        : 'Deploy failed';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
