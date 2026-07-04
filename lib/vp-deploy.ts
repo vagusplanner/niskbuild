@@ -330,12 +330,18 @@ async function publishDistToPublicFromDir(
   requestOrigin: string,
   distDir: string
 ): Promise<string> {
+  // Local dev only — Next serves files from project public/ (writable during npm run dev).
   const targetDir = path.join(ROOT, 'public', 'vp-live', token);
   await fs.rm(targetDir, { recursive: true, force: true });
   await copyDir(distDir, targetDir);
 
   const origin = requestOrigin.replace(/\/$/, '');
   return `${origin}/vp-live/${token}/index.html`;
+}
+
+/** True only for local `npm run dev` — never on Vercel (/var/task is read-only). */
+function useLocalPublicVpLivePublish(): boolean {
+  return process.env.NODE_ENV === 'development';
 }
 
 async function publishDistToStorageFromDir(
@@ -372,16 +378,13 @@ async function publishDistFromDir(
   requestOrigin: string,
   distDir: string
 ): Promise<string> {
-  if (process.env.NODE_ENV === 'development') {
+  if (useLocalPublicVpLivePublish()) {
     return publishDistToPublicFromDir(token, requestOrigin, distDir);
   }
 
-  try {
-    return await publishDistToStorageFromDir(userId, token, distDir);
-  } catch (storageError) {
-    console.warn('Supabase storage deploy failed, falling back to local public path:', storageError);
-    return publishDistToPublicFromDir(token, requestOrigin, distDir);
-  }
+  // Production/Vercel: Supabase Storage only. Do not fall back to public/vp-live —
+  // process.cwd() is /var/task and public/ is not writable at runtime.
+  return publishDistToStorageFromDir(userId, token, distDir);
 }
 
 function execOutputToString(value: unknown): string {
