@@ -13,6 +13,7 @@
     "generate:brand-pdfs": "node scripts/generate-brand-pdfs.mjs",
     "start": "next start",
     "lint": "eslint",
+    "build:vp-deploy-artifact": "node scripts/build-vp-deploy-artifact.js",
     "postinstall": "npm ci --prefix apps/vagus-planner --omit=dev --maxsockets=1 --no-audit --prefer-offline --no-fund"
   },
   "dependencies": {

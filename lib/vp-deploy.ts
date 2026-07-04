@@ -10,6 +10,11 @@ import {
 } from '@/lib/preview-links';
 import { applyVpSourcesToDirectory } from '@/lib/vp-builder-source-store';
 import { buildVpCapacitorBuildEnv } from '@/lib/vp-capacitor-build-env.js';
+import {
+  downloadAndExtractVpDeployArtifact,
+  getVpDeployArtifactByHash,
+  hashLockfile,
+} from '@/lib/vp-deploy-artifact.js';
 
 const ROOT = process.cwd();
 const VP_APP = path.join(ROOT, 'apps/vagus-planner');
@@ -240,16 +245,73 @@ function execOutputToString(value: unknown): string {
 }
 
 /**
- * Install VP production + build-tool deps into the /tmp workspace via npm ci.
- * Intentionally does not symlink apps/vagus-planner/node_modules — that tree is
- * not traced into the serverless function (too large for the 250MB limit).
- *
- * /tmp is ~500MB on Vercel. npm always writes tarballs to a cache before extract
- * (no stream-only mode). We avoid a second dedicated cache dir and wipe npm's
- * cache immediately after install so cache + node_modules do not coexist longer
- * than necessary.
+ * Prefer prebuilt node_modules artifact (no network install). Fall back to live
+ * npm ci when no matching lockfile hash exists or extract fails.
  */
-function installVpWorkspaceNodeModules(appDir: string): void {
+async function ensureVpWorkspaceNodeModules(
+  appDir: string
+): Promise<'artifact' | 'npm-ci'> {
+  const lockfileHash = hashLockfile(ROOT) as string;
+
+  const lookupStarted = Date.now();
+  let artifact: {
+    lockfile_hash: string;
+    storage_path: string;
+    size_bytes: number;
+    created_at: string;
+  } | null = null;
+
+  try {
+    artifact = await getVpDeployArtifactByHash(lockfileHash);
+  } catch (lookupError) {
+    console.warn('[vp-deploy] artifact lookup error:', lookupError);
+  }
+  logStage(
+    'artifact lookup',
+    lookupStarted,
+    artifact ? `hit ${artifact.storage_path}` : `miss (hash=${lockfileHash})`
+  );
+
+  if (!artifact) {
+    console.warn(
+      `No matching deploy artifact found for lockfile hash ${lockfileHash} — falling back to live npm ci. Consider running npm run build:vp-deploy-artifact to speed up future deploys.`
+    );
+    installVpWorkspaceNodeModulesViaNpmCi(appDir);
+    return 'npm-ci';
+  }
+
+  try {
+    const installStarted = Date.now();
+    const { downloadMs, extractMs, bytes } = await downloadAndExtractVpDeployArtifact(
+      artifact.storage_path,
+      appDir,
+      { log: console.log }
+    );
+    await fs.access(path.join(appDir, 'node_modules', '.bin', 'vite'));
+    logStage(
+      'artifact install (total)',
+      installStarted,
+      `(download=${downloadMs}ms extract=${extractMs}ms bytes=${bytes})`
+    );
+    console.log(
+      `[vp-deploy] using prebuilt artifact ${artifact.storage_path} for lockfile hash ${lockfileHash}`
+    );
+    return 'artifact';
+  } catch (artifactError) {
+    console.warn(
+      `[vp-deploy] artifact install failed for hash ${lockfileHash} — falling back to live npm ci:`,
+      artifactError
+    );
+    await fs.rm(path.join(appDir, 'node_modules'), { recursive: true, force: true }).catch(() => {});
+    installVpWorkspaceNodeModulesViaNpmCi(appDir);
+    return 'npm-ci';
+  }
+}
+
+/**
+ * Live npm ci fallback. Avoids a long-lived cache dir; cleans cache after install.
+ */
+function installVpWorkspaceNodeModulesViaNpmCi(appDir: string): void {
   // Do not use --omit=optional: rollup's optional native bindings are required.
   // No --cache=… and no --prefer-offline: one-shot install; do not grow /tmp.
   const cmd = [
@@ -372,6 +434,7 @@ async function copyVpBuildSources(destRoot: string): Promise<void> {
 async function prepareVpBuildWorkspace(userId: string): Promise<{
   appDir: string;
   distDir: string;
+  depsMode: 'dev' | 'artifact' | 'npm-ci';
   cleanup: () => Promise<void>;
 }> {
   if (process.env.NODE_ENV === 'development') {
@@ -381,6 +444,7 @@ async function prepareVpBuildWorkspace(userId: string): Promise<{
     return {
       appDir: VP_APP,
       distDir: VP_DIST,
+      depsMode: 'dev',
       cleanup: async () => {},
     };
   }
@@ -396,12 +460,13 @@ async function prepareVpBuildWorkspace(userId: string): Promise<{
   logStage('overlay user sources', overlayStarted);
 
   const installStarted = Date.now();
-  installVpWorkspaceNodeModules(tmpRoot);
-  logStage('npm ci --omit=dev', installStarted);
+  const depsMode = await ensureVpWorkspaceNodeModules(tmpRoot);
+  logStage(`deps install (${depsMode})`, installStarted);
 
   return {
     appDir: tmpRoot,
     distDir: path.join(tmpRoot, 'dist'),
+    depsMode,
     cleanup: async () => {
       await fs.rm(tmpRoot, { recursive: true, force: true });
     },
@@ -428,7 +493,26 @@ export async function deployVagusPlanner(params: {
 
   try {
     const buildStarted = Date.now();
-    buildVagusPlannerDist(workspace.appDir);
+    try {
+      buildVagusPlannerDist(workspace.appDir);
+    } catch (buildError) {
+      // Mac-built artifacts lack Linux native binaries (rollup/esbuild); recover via npm ci.
+      if (workspace.depsMode === 'artifact') {
+        console.warn(
+          '[vp-deploy] Vite failed with prebuilt artifact — falling back to live npm ci:',
+          buildError
+        );
+        await fs
+          .rm(path.join(workspace.appDir, 'node_modules'), { recursive: true, force: true })
+          .catch(() => {});
+        const fallbackStarted = Date.now();
+        installVpWorkspaceNodeModulesViaNpmCi(workspace.appDir);
+        logStage('deps install (npm-ci fallback after vite fail)', fallbackStarted);
+        buildVagusPlannerDist(workspace.appDir);
+      } else {
+        throw buildError;
+      }
+    }
     logStage('vite build', buildStarted);
 
     const indexPath = path.join(workspace.distDir, 'index.html');
