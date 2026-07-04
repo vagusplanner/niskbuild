@@ -15,11 +15,15 @@ import {
   getVpDeployArtifactByHash,
   hashLockfile,
 } from '@/lib/vp-deploy-artifact.js';
+import {
+  contentTypeFor,
+  VP_DEPLOY_BUCKET,
+  vpDeployBundlePublicUrl,
+} from '@/lib/vp-deploy-bundle';
 
 const ROOT = process.cwd();
 const VP_APP = path.join(ROOT, 'apps/vagus-planner');
 const VP_DIST = path.join(VP_APP, 'dist');
-const VP_DEPLOY_BUCKET = 'vp-deployments';
 
 /** Only files/dirs required for `vite build` — keep /tmp footprint minimal. */
 const VP_BUILD_ROOT_FILES = [
@@ -39,38 +43,6 @@ type DeployFile = {
   relativePath: string;
   absolutePath: string;
 };
-
-function contentTypeFor(relativePath: string): string {
-  const ext = path.extname(relativePath).toLowerCase();
-  switch (ext) {
-    case '.html':
-      return 'text/html; charset=utf-8';
-    case '.js':
-    case '.mjs':
-      return 'application/javascript; charset=utf-8';
-    case '.css':
-      return 'text/css; charset=utf-8';
-    case '.json':
-      return 'application/json; charset=utf-8';
-    case '.svg':
-      return 'image/svg+xml';
-    case '.png':
-      return 'image/png';
-    case '.jpg':
-    case '.jpeg':
-      return 'image/jpeg';
-    case '.webp':
-      return 'image/webp';
-    case '.woff':
-      return 'font/woff';
-    case '.woff2':
-      return 'font/woff2';
-    case '.ico':
-      return 'image/x-icon';
-    default:
-      return 'application/octet-stream';
-  }
-}
 
 function elapsedMs(startedAt: number): number {
   return Date.now() - startedAt;
@@ -347,6 +319,7 @@ function useLocalPublicVpLivePublish(): boolean {
 async function publishDistToStorageFromDir(
   userId: string,
   token: string,
+  requestOrigin: string,
   distDir: string
 ): Promise<string> {
   const supabase = createAdminClient();
@@ -368,8 +341,8 @@ async function publishDistToStorageFromDir(
     }
   }
 
-  const { data } = supabase.storage.from(VP_DEPLOY_BUCKET).getPublicUrl(`${prefix}/index.html`);
-  return data.publicUrl;
+  // Serve via same-origin /vp-deploy proxy (CORS headers for Vite crossorigin modules).
+  return vpDeployBundlePublicUrl(userId, token, requestOrigin);
 }
 
 async function publishDistFromDir(
@@ -384,7 +357,7 @@ async function publishDistFromDir(
 
   // Production/Vercel: Supabase Storage only. Do not fall back to public/vp-live —
   // process.cwd() is /var/task and public/ is not writable at runtime.
-  return publishDistToStorageFromDir(userId, token, distDir);
+  return publishDistToStorageFromDir(userId, token, requestOrigin, distDir);
 }
 
 function execOutputToString(value: unknown): string {

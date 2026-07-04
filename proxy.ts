@@ -21,7 +21,13 @@ export async function proxy(request: NextRequest) {
   const host = request.headers.get('host') || '';
 
   // preview.niskbuild.com/abc123 → /preview/abc123
-  if (host.startsWith('preview.') && pathname.length > 1 && !pathname.startsWith('/preview/')) {
+  // /vp-deploy/... must not be rewritten (bundle assets live on preview host).
+  if (
+    host.startsWith('preview.') &&
+    pathname.length > 1 &&
+    !pathname.startsWith('/preview/') &&
+    !pathname.startsWith('/vp-deploy/')
+  ) {
     const url = request.nextUrl.clone();
     url.pathname = `/preview${pathname}`;
     return NextResponse.rewrite(url);

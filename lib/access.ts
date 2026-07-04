@@ -38,6 +38,11 @@ export function isPreviewPath(pathname: string) {
   return pathname.startsWith('/preview/');
 }
 
+/** VP deploy bundle proxy (public Storage-backed assets, no auth) */
+export function isVpDeployBundlePath(pathname: string) {
+  return pathname.startsWith('/vp-deploy/');
+}
+
 /** Tenant runtime + offline pages (no auth) */
 export function isTenantRuntimePath(pathname: string) {
   return (
@@ -75,7 +80,11 @@ export const PAID_TIERS = [
 ] as const;
 
 export function isPublicPath(pathname: string) {
-  return PUBLIC_PATHS.includes(pathname);
+  return (
+    PUBLIC_PATHS.includes(pathname) ||
+    isPreviewPath(pathname) ||
+    isVpDeployBundlePath(pathname)
+  );
 }
 
 export function isAuthOnlyPath(pathname: string) {
