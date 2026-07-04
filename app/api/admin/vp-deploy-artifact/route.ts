@@ -14,21 +14,32 @@ export async function GET(request: NextRequest) {
   if (!auth.ok) return auth.response;
 
   try {
+    let currentHash: string | null = null;
+    let hashError: string | null = null;
+    try {
+      currentHash = hashLockfile() as string;
+    } catch (err) {
+      hashError = err instanceof Error ? err.message : String(err);
+      console.error('[vp-artifact] hashLockfile failed:', hashError);
+    }
+
     const latest = await getLatestVpDeployArtifact();
-    const currentHash = hashLockfile();
     return NextResponse.json({
       currentLockfileHash: currentHash,
+      hashError,
       latest: latest
         ? {
             lockfileHash: latest.lockfile_hash,
             storagePath: latest.storage_path,
             sizeBytes: latest.size_bytes,
             createdAt: latest.created_at,
-            matchesCurrentLockfile: latest.lockfile_hash === currentHash,
+            matchesCurrentLockfile:
+              currentHash != null && latest.lockfile_hash === currentHash,
           }
         : null,
     });
   } catch (error) {
+    console.error('[vp-artifact] GET status failed:', error);
     return apiErrorResponse(error, 'Failed to load VP deploy artifact status');
   }
 }

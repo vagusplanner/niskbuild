@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import AdminPlatformShell from '@/app/components/admin/AdminPlatformShell';
 
 type ArtifactStatus = {
-  currentLockfileHash: string;
+  currentLockfileHash: string | null;
+  hashError?: string | null;
   latest: {
     lockfileHash: string;
     storagePath: string;
@@ -91,8 +92,8 @@ export default function AdminVpDeployClient() {
       stats={[
         {
           label: 'Current lockfile hash',
-          value: status?.currentLockfileHash?.slice(0, 8) ?? '—',
-          hint: status?.currentLockfileHash,
+          value: status?.currentLockfileHash?.slice(0, 8) ?? (status?.hashError ? 'Error' : '—'),
+          hint: status?.hashError || status?.currentLockfileHash || undefined,
         },
         {
           label: 'Artifact status',

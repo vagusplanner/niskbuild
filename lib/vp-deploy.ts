@@ -308,12 +308,22 @@ async function ensureVpWorkspaceNodeModules(
   }
 }
 
+/** Writable HOME/cache for Vercel — default $HOME (/home/sbx_user*) is not writable. */
+function npmCiEnv(): NodeJS.ProcessEnv {
+  return {
+    ...process.env,
+    NODE_ENV: 'production',
+    HOME: '/tmp',
+    npm_config_cache: '/tmp/.npm-cache',
+    npm_config_prefer_offline: 'false',
+  };
+}
+
 /**
  * Live npm ci fallback. Avoids a long-lived cache dir; cleans cache after install.
  */
 function installVpWorkspaceNodeModulesViaNpmCi(appDir: string): void {
   // Do not use --omit=optional: rollup's optional native bindings are required.
-  // No --cache=… and no --prefer-offline: one-shot install; do not grow /tmp.
   const cmd = [
     'npm ci',
     '--omit=dev',
@@ -327,6 +337,7 @@ function installVpWorkspaceNodeModulesViaNpmCi(appDir: string): void {
   console.log('[vp-deploy] npm ci STARTING');
   console.log(`[vp-deploy] npm ci command: ${cmd}`);
   console.log(`[vp-deploy] npm ci cwd: ${appDir}`);
+  console.log('[vp-deploy] npm ci HOME=/tmp npm_config_cache=/tmp/.npm-cache');
 
   const started = Date.now();
   try {
@@ -335,10 +346,7 @@ function installVpWorkspaceNodeModulesViaNpmCi(appDir: string): void {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
       maxBuffer: 20 * 1024 * 1024,
-      env: {
-        ...process.env,
-        NODE_ENV: 'production',
-      },
+      env: npmCiEnv(),
     });
 
     const duration = Date.now() - started;
@@ -381,7 +389,7 @@ function installVpWorkspaceNodeModulesViaNpmCi(appDir: string): void {
       execSync('npm cache clean --force', {
         cwd: appDir,
         stdio: 'pipe',
-        env: { ...process.env, NODE_ENV: 'production' },
+        env: npmCiEnv(),
       });
       console.log('[vp-deploy] npm cache cleaned after install');
     } catch (cleanError) {

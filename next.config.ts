@@ -19,9 +19,26 @@ const nextConfig: NextConfig = {
       "./apps/vagus-planner/src/**/*",
       "./apps/vagus-planner/public/**/*",
     ],
+    // Admin artifact build/status needs lockfile hash + sources for npm ci.
+    "/api/admin/vp-deploy-artifact": [
+      "./apps/vagus-planner/package.json",
+      "./apps/vagus-planner/package-lock.json",
+      "./apps/vagus-planner/vite.config.js",
+      "./apps/vagus-planner/jsconfig.json",
+      "./apps/vagus-planner/index.html",
+      "./apps/vagus-planner/postcss.config.js",
+      "./apps/vagus-planner/tailwind.config.js",
+      "./apps/vagus-planner/components.json",
+      "./apps/vagus-planner/src/**/*",
+      "./apps/vagus-planner/public/**/*",
+    ],
   },
   outputFileTracingExcludes: {
     "/api/builder/*/deploy": [
+      "./apps/vagus-planner/node_modules/**/*",
+      "./apps/vagus-planner/dist/**/*",
+    ],
+    "/api/admin/vp-deploy-artifact": [
       "./apps/vagus-planner/node_modules/**/*",
       "./apps/vagus-planner/dist/**/*",
     ],

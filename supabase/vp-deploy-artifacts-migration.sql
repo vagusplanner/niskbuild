@@ -12,6 +12,7 @@ values (
   array[
     'application/gzip',
     'application/x-gzip',
+    'application/json',
     'application/octet-stream'
   ]
 )
