@@ -630,21 +630,32 @@ function isVpDeployTmpArtifactCacheEntry(name: string): boolean {
 }
 
 const TMP_LISTING_CHUNK = 40;
+const TMP_FULL_LISTING_MAX = 120;
 
 async function logTmpDirectoryListing(label: string): Promise<void> {
   try {
     const names = (await fs.readdir('/tmp')).sort((a, b) => a.localeCompare(b));
+    const leftovers = names.filter(isVpDeployTmpLeftoverEntry);
     console.log(`[vp-deploy] /tmp listing (${label}): ${names.length} total entries`);
-    for (let i = 0; i < names.length; i += TMP_LISTING_CHUNK) {
-      const chunk = names.slice(i, i + TMP_LISTING_CHUNK);
-      const end = Math.min(i + TMP_LISTING_CHUNK, names.length);
+    if (names.length <= TMP_FULL_LISTING_MAX) {
+      for (let i = 0; i < names.length; i += TMP_LISTING_CHUNK) {
+        const chunk = names.slice(i, i + TMP_LISTING_CHUNK);
+        const end = Math.min(i + TMP_LISTING_CHUNK, names.length);
+        console.log(
+          `[vp-deploy] /tmp listing (${label}) entries ${i + 1}-${end}: ${chunk.join(', ')}`
+        );
+      }
+    } else {
       console.log(
-        `[vp-deploy] /tmp listing (${label}) entries ${i + 1}-${end}: ${chunk.join(', ')}`
+        `[vp-deploy] /tmp listing (${label}): skipping full dump (${names.length} entries > ${TMP_FULL_LISTING_MAX}); logging VP leftovers only`
       );
     }
-    const leftovers = names.filter(isVpDeployTmpLeftoverEntry);
+    const leftoverSummary =
+      leftovers.length <= 80
+        ? leftovers.join(', ') || '(none)'
+        : `${leftovers.slice(0, 80).join(', ')} … and ${leftovers.length - 80} more`;
     console.log(
-      `[vp-deploy] /tmp VP deploy leftovers (${label}): ${leftovers.length} → ${leftovers.join(', ') || '(none)'}`
+      `[vp-deploy] /tmp VP deploy leftovers (${label}): ${leftovers.length} → ${leftoverSummary}`
     );
   } catch (err) {
     console.warn(`[vp-deploy] /tmp listing failed (${label}):`, err);
@@ -676,30 +687,52 @@ async function removeTmpPath(target: string, logPrefix: string): Promise<boolean
 /**
  * Unconditional broad /tmp sweep at deploy start — clears debris from prior warm-container
  * invocations that crashed before their own cleanup ran.
+ * Non-fatal: any failure is logged and deploy continues.
  */
 async function sweepVpDeployTmpBeforeDeploy(): Promise<void> {
   const sweepStarted = Date.now();
-  console.log('[vp-deploy] warm-container /tmp sweep: starting (all prior invocations)');
+  try {
+    console.log('[vp-deploy] warm-container /tmp sweep: starting (all prior invocations)');
 
-  await logTmpDiskSpace('deploy start before sweep');
-  await logTmpDirectoryListing('deploy start before sweep');
+    await logTmpDiskSpace('deploy start before sweep');
+    await logTmpDirectoryListing('deploy start before sweep');
 
-  const tmpNames = await fs.readdir('/tmp').catch(() => [] as string[]);
-  const removed: string[] = [];
-  for (const name of tmpNames) {
-    if (!isVpDeployTmpLeftoverEntry(name)) continue;
-    if (await removeTmpPath(path.join('/tmp', name), 'warm-container sweep')) {
-      removed.push(name);
+    let tmpNames: string[] = [];
+    try {
+      tmpNames = await fs.readdir('/tmp');
+    } catch (readdirErr) {
+      console.error('[vp-deploy] warm-container sweep: readdir(/tmp) failed (non-fatal):', readdirErr);
+      return;
     }
+
+    const removed: string[] = [];
+    for (const name of tmpNames) {
+      if (!isVpDeployTmpLeftoverEntry(name)) continue;
+      try {
+        if (await removeTmpPath(path.join('/tmp', name), 'warm-container sweep')) {
+          removed.push(name);
+        }
+      } catch (removeErr) {
+        console.warn(`[vp-deploy] warm-container sweep: remove /tmp/${name} failed (non-fatal):`, removeErr);
+      }
+    }
+
+    const removedSummary =
+      removed.length <= 80
+        ? removed.join(', ') || '(nothing to remove)'
+        : `${removed.slice(0, 80).join(', ')} … and ${removed.length - 80} more`;
+    console.log(
+      `[vp-deploy] warm-container /tmp sweep: removed ${removed.length} entries in ${Date.now() - sweepStarted}ms: ${removedSummary}`
+    );
+
+    await logTmpDiskSpace('deploy start after sweep');
+    await logTmpDirectoryListing('deploy start after sweep');
+  } catch (sweepErr) {
+    console.error(
+      `[vp-deploy] warm-container /tmp sweep failed after ${Date.now() - sweepStarted}ms (non-fatal, continuing deploy):`,
+      sweepErr
+    );
   }
-
-  console.log(
-    `[vp-deploy] warm-container /tmp sweep: removed ${removed.length} entries in ${Date.now() - sweepStarted}ms` +
-      (removed.length ? `: ${removed.join(', ')}` : ' (nothing to remove)')
-  );
-
-  await logTmpDiskSpace('deploy start after sweep');
-  await logTmpDirectoryListing('deploy start after sweep');
 }
 
 /**
