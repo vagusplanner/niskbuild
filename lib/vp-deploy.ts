@@ -569,73 +569,160 @@ function artifactTarballPathForAppDir(appDir: string): string {
   return path.join('/tmp', `vp-artifact-dl-${path.basename(appDir)}.tar.gz`);
 }
 
-async function logTmpDiskSpace(label: string): Promise<void> {
+type TmpDiskStats = { freeMb: number; totalMb: number } | null;
+
+async function readTmpDiskStats(): Promise<TmpDiskStats> {
   try {
-    // Node 18.15+ / Vercel runtimes support fs.statfs
     const stats = await fs.statfs('/tmp');
     const bavail = Number(stats.bavail);
     const blocks = Number(stats.blocks);
     const bsize = Number(stats.bsize);
-    const freeMb = (bavail * bsize) / (1024 * 1024);
-    const totalMb = (blocks * bsize) / (1024 * 1024);
+    return {
+      freeMb: (bavail * bsize) / (1024 * 1024),
+      totalMb: (blocks * bsize) / (1024 * 1024),
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function logTmpDiskSpace(label: string): Promise<TmpDiskStats> {
+  try {
+    const disk = await readTmpDiskStats();
+    if (!disk) {
+      console.warn(`[vp-deploy] /tmp disk check failed (${label})`);
+      return null;
+    }
     console.log(
-      `[vp-deploy] /tmp disk (${label}): free=${freeMb.toFixed(1)}MB total=${totalMb.toFixed(1)}MB`
+      `[vp-deploy] /tmp disk (${label}): free=${disk.freeMb.toFixed(1)}MB total=${disk.totalMb.toFixed(1)}MB`
     );
+    return disk;
   } catch (err) {
     console.warn(`[vp-deploy] /tmp disk check failed (${label}):`, err);
+    return null;
   }
+}
+
+/** Leftover paths this deploy pipeline creates under /tmp (any prior invocation). */
+function isVpDeployTmpLeftoverEntry(name: string): boolean {
+  if (name === '.npm-cache') return true;
+  if (name.startsWith('vp-build-')) return true;
+  if (name.startsWith('vp-artifact-dl-') && name.endsWith('.tar.gz')) return true;
+  if (name.startsWith('vp-node-modules-') && (name.endsWith('.tar.gz') || name.endsWith('.json'))) {
+    return true;
+  }
+  if (name.startsWith('vp-npm-cache-')) return true;
+  // mkdtemp('vp-artifact-') from admin artifact build when os.tmpdir() is /tmp
+  if (name.startsWith('vp-artifact-')) return true;
+  return false;
+}
+
+/** Artifact/cache leftovers only — never vp-build-* (active workspace lives there). */
+function isVpDeployTmpArtifactCacheEntry(name: string): boolean {
+  if (name === '.npm-cache') return true;
+  if (name.startsWith('vp-artifact-dl-') && name.endsWith('.tar.gz')) return true;
+  if (name.startsWith('vp-node-modules-') && (name.endsWith('.tar.gz') || name.endsWith('.json'))) {
+    return true;
+  }
+  if (name.startsWith('vp-npm-cache-')) return true;
+  if (name.startsWith('vp-artifact-')) return true;
+  return false;
+}
+
+const TMP_LISTING_CHUNK = 40;
+
+async function logTmpDirectoryListing(label: string): Promise<void> {
+  try {
+    const names = (await fs.readdir('/tmp')).sort((a, b) => a.localeCompare(b));
+    console.log(`[vp-deploy] /tmp listing (${label}): ${names.length} total entries`);
+    for (let i = 0; i < names.length; i += TMP_LISTING_CHUNK) {
+      const chunk = names.slice(i, i + TMP_LISTING_CHUNK);
+      const end = Math.min(i + TMP_LISTING_CHUNK, names.length);
+      console.log(
+        `[vp-deploy] /tmp listing (${label}) entries ${i + 1}-${end}: ${chunk.join(', ')}`
+      );
+    }
+    const leftovers = names.filter(isVpDeployTmpLeftoverEntry);
+    console.log(
+      `[vp-deploy] /tmp VP deploy leftovers (${label}): ${leftovers.length} → ${leftovers.join(', ') || '(none)'}`
+    );
+  } catch (err) {
+    console.warn(`[vp-deploy] /tmp listing failed (${label}):`, err);
+  }
+}
+
+async function removeTmpPath(target: string, logPrefix: string): Promise<boolean> {
+  try {
+    const st = await fs.stat(target);
+    const sizeHint = st.isFile()
+      ? ` (${(st.size / (1024 * 1024)).toFixed(1)}MB file)`
+      : ' (dir)';
+    await fs.rm(target, { recursive: true, force: true });
+    console.log(`[vp-deploy] ${logPrefix}: removed ${target}${sizeHint}`);
+    return true;
+  } catch (err) {
+    const code =
+      err && typeof err === 'object' && 'code' in err
+        ? String((err as NodeJS.ErrnoException).code)
+        : '';
+    if (code === 'ENOENT') {
+      return false;
+    }
+    console.warn(`[vp-deploy] ${logPrefix}: failed to remove ${target}:`, err);
+    return false;
+  }
+}
+
+/**
+ * Unconditional broad /tmp sweep at deploy start — clears debris from prior warm-container
+ * invocations that crashed before their own cleanup ran.
+ */
+async function sweepVpDeployTmpBeforeDeploy(): Promise<void> {
+  const sweepStarted = Date.now();
+  console.log('[vp-deploy] warm-container /tmp sweep: starting (all prior invocations)');
+
+  await logTmpDiskSpace('deploy start before sweep');
+  await logTmpDirectoryListing('deploy start before sweep');
+
+  const tmpNames = await fs.readdir('/tmp').catch(() => [] as string[]);
+  const removed: string[] = [];
+  for (const name of tmpNames) {
+    if (!isVpDeployTmpLeftoverEntry(name)) continue;
+    if (await removeTmpPath(path.join('/tmp', name), 'warm-container sweep')) {
+      removed.push(name);
+    }
+  }
+
+  console.log(
+    `[vp-deploy] warm-container /tmp sweep: removed ${removed.length} entries in ${Date.now() - sweepStarted}ms` +
+      (removed.length ? `: ${removed.join(', ')}` : ' (nothing to remove)')
+  );
+
+  await logTmpDiskSpace('deploy start after sweep');
+  await logTmpDirectoryListing('deploy start after sweep');
 }
 
 /**
  * Free /tmp before live npm ci: wipe extracted node_modules, download tarball,
  * and npm cache so ENOSPC is less likely after an artifact attempt.
+ * Does not remove vp-build-* dirs (current workspace); start-of-deploy sweep handles stale builds.
  */
 async function prepareTmpForNpmCiFallback(appDir: string): Promise<void> {
   const nodeModules = path.join(appDir, 'node_modules');
   const tarballPath = artifactTarballPathForAppDir(appDir);
-  const npmCache = '/tmp/.npm-cache';
 
   console.log('[vp-deploy] fallback cleanup: starting');
-  await logTmpDiskSpace('before cleanup');
+  await logTmpDiskSpace('fallback before cleanup');
+  await logTmpDirectoryListing('fallback before cleanup');
 
-  const removeTarget = async (target: string, label: string) => {
-    try {
-      const st = await fs.stat(target);
-      const sizeHint = st.isFile()
-        ? ` (${(st.size / (1024 * 1024)).toFixed(1)}MB file)`
-        : ' (dir)';
-      await fs.rm(target, { recursive: true, force: true });
-      console.log(`[vp-deploy] fallback cleanup: removed ${label}${sizeHint}`);
-    } catch (err) {
-      const code =
-        err && typeof err === 'object' && 'code' in err
-          ? String((err as NodeJS.ErrnoException).code)
-          : '';
-      if (code === 'ENOENT') {
-        console.log(`[vp-deploy] fallback cleanup: ${label} already absent`);
-      } else {
-        console.warn(`[vp-deploy] fallback cleanup: failed to remove ${label}:`, err);
-      }
-    }
-  };
+  await removeTmpPath(nodeModules, 'fallback cleanup');
+  await removeTmpPath(tarballPath, 'fallback cleanup');
 
-  await removeTarget(nodeModules, nodeModules);
-  await removeTarget(tarballPath, tarballPath);
-
-  // Any leftover download/archive/cache names from prior attempts
   const tmpNames = await fs.readdir('/tmp').catch(() => [] as string[]);
   for (const name of tmpNames) {
-    if (
-      name.startsWith('vp-artifact-dl-') ||
-      (name.startsWith('vp-node-modules-') && name.endsWith('.tar.gz')) ||
-      name.startsWith('vp-npm-cache-') ||
-      name === '.npm-cache'
-    ) {
-      await removeTarget(path.join('/tmp', name), `/tmp/${name}`);
-    }
+    if (!isVpDeployTmpArtifactCacheEntry(name)) continue;
+    await removeTmpPath(path.join('/tmp', name), 'fallback cleanup');
   }
-
-  await removeTarget(npmCache, npmCache);
 
   const nmGone = await fs.access(nodeModules).then(() => false).catch(() => true);
   const tarGone = await fs.access(tarballPath).then(() => false).catch(() => true);
@@ -644,17 +731,14 @@ async function prepareTmpForNpmCiFallback(appDir: string): Promise<void> {
   );
 
   const remaining = (await fs.readdir('/tmp').catch(() => [] as string[])).filter(
-    (n) =>
-      n.startsWith('vp-artifact-dl-') ||
-      n.startsWith('vp-node-modules-') ||
-      n.startsWith('vp-npm-cache-') ||
-      n === '.npm-cache'
+    isVpDeployTmpArtifactCacheEntry
   );
   console.log(
     `[vp-deploy] fallback cleanup: remaining artifact/cache entries: ${remaining.join(', ') || '(none)'}`
   );
 
-  await logTmpDiskSpace('after cleanup, before npm ci');
+  await logTmpDiskSpace('fallback after cleanup, before npm ci');
+  await logTmpDirectoryListing('fallback after cleanup');
 
   if (!nmGone || !tarGone) {
     throw new Error(
@@ -838,6 +922,9 @@ export async function deployVagusPlanner(params: {
     process.env.NEXT_PUBLIC_APP_URL ||
     'http://localhost:3000';
   const title = params.title || 'Vagus Planner';
+
+  // First: reclaim /tmp from any prior warm-container invocation (before workspace setup).
+  await sweepVpDeployTmpBeforeDeploy();
 
   console.log('[vp-deploy] start');
 
