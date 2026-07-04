@@ -52,10 +52,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
   }
 
   const headers = new Headers(VP_DEPLOY_CORS_HEADERS);
-  headers.set(
-    'Content-Type',
-    upstream.headers.get('Content-Type') || contentTypeFor(relativePath)
-  );
+  // Always derive Content-Type from the asset path — Supabase Storage often returns
+  // text/plain or application/octet-stream even when we uploaded with text/html.
+  headers.set('Content-Type', contentTypeFor(relativePath));
   const cacheControl = upstream.headers.get('Cache-Control');
   if (cacheControl) headers.set('Cache-Control', cacheControl);
   const contentLength = upstream.headers.get('Content-Length');
