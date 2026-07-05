@@ -5,9 +5,10 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import NavigationTracker from '@/lib/NavigationTracker'
 import { pagesConfig } from './pages.config'
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
+import { isStaticBundleContext } from '@/lib/static-bundle';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Goals from './pages/Goals';
 import OnboardingGate from '@/components/onboarding/OnboardingGate';
@@ -54,8 +55,9 @@ const LayoutWrapper = ({ children, currentPageName }) => Layout ?
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated } = useAuth();
-  const path = window.location.pathname;
-  const searchParams = new URLSearchParams(window.location.search);
+  const location = useLocation();
+  const path = location.pathname;
+  const searchParams = new URLSearchParams(location.search);
   const isBuilderPreview = searchParams.has('builder');
   const isLandingPath = path === '/' || path === '/Landing' || path === '';
   const isPublicLegalPath = path === '/PrivacyPolicy' || path === '/TermsOfService' || path === '/Contact';
@@ -70,7 +72,7 @@ const AuthenticatedApp = () => {
   }
 
   if (isLandingPath && isBuilderPreview) {
-    return <Navigate to={`/Dashboard${window.location.search}`} replace />;
+    return <Navigate to={`/Dashboard${location.search}`} replace />;
   }
 
   // Always render landing page without any auth check — Landing itself handles the redirect for logged-in users
@@ -182,6 +184,8 @@ const AuthenticatedApp = () => {
 
 
 function App() {
+  const Router = isStaticBundleContext() ? HashRouter : BrowserRouter;
+
   return (
     <QueryClientProvider client={queryClientInstance}>
       <OnboardingGate>

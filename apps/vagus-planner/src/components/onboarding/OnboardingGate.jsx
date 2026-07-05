@@ -3,12 +3,17 @@ import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import InteractiveOnboarding from './InteractiveOnboarding';
 
+import { isStaticBundleContext } from '@/lib/static-bundle';
+
 export default function OnboardingGate({ children }) {
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const staticBundle = isStaticBundleContext();
   
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me()
+    queryFn: () => base44.auth.me(),
+    enabled: !staticBundle,
+    retry: false,
   });
 
   const { data: settings } = useQuery({

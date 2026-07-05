@@ -5,6 +5,20 @@ import { mapSupabaseUserToVpUser } from './vp-auth-user';
 
 const AuthContext = createContext();
 
+function isBenignUnauthenticatedError(error) {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === 'object' && error !== null && 'message' in error
+        ? String(error.message)
+        : String(error);
+  return (
+    message.includes('Auth session missing') ||
+    message.includes('session missing') ||
+    message.includes('JWT')
+  );
+}
+
 async function resolveAuthenticatedUser() {
   const session = await getSafeSession();
   if (session?.user) {
@@ -52,13 +66,17 @@ export const AuthProvider = ({ children }) => {
         setAuthError(null);
       }
     } catch (error) {
-      console.error('Auth check failed:', error);
+      console.warn('Auth check: no session', error instanceof Error ? error.message : error);
       setUser(null);
       setIsAuthenticated(false);
-      setAuthError({
-        type: 'auth_required',
-        message: error instanceof Error ? error.message : 'Authentication required',
-      });
+      if (!isBenignUnauthenticatedError(error)) {
+        setAuthError({
+          type: 'auth_required',
+          message: error instanceof Error ? error.message : 'Authentication required',
+        });
+      } else {
+        setAuthError(null);
+      }
     } finally {
       setIsLoadingAuth(false);
       setAuthChecked(true);
