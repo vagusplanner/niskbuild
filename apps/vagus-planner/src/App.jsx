@@ -110,12 +110,18 @@ const AuthenticatedApp = () => {
       return <UserNotRegisteredError />;
     }
     if (authError.type === 'auth_required') {
+      if (isStaticBundleContext()) {
+        return <Navigate to="/" replace />;
+      }
       return <Navigate to={`/login?next=${encodeURIComponent(path)}`} replace />;
     }
   }
 
-  // Redirect unauthenticated users to login (builder studio preview skips auth)
+  // Redirect unauthenticated users (builder studio preview skips auth)
   if (!isAuthenticated && !isBuilderPreview) {
+    if (isStaticBundleContext()) {
+      return <Navigate to="/" replace />;
+    }
     return <Navigate to={`/login?next=${encodeURIComponent(path)}`} replace />;
   }
 

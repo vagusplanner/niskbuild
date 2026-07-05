@@ -4,6 +4,7 @@
 // =============================================
 
 import { createClient } from '@supabase/supabase-js'
+import { redirectToVpLogin } from './static-bundle'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -228,8 +229,8 @@ export const base44 = {
       const { data: { user } } = await supabase.auth.getUser()
       return !!user
     },
-    redirectToLogin: () => {
-      window.location.href = '/login'
+    redirectToLogin: (nextPath) => {
+      redirectToVpLogin(typeof nextPath === 'string' ? nextPath : '/dashboard')
     },
     updateMe: async (updates) => {
       const { data, error } = await supabase.auth.updateUser(updates)

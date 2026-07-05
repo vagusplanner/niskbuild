@@ -14,6 +14,7 @@ import React, { useState, useEffect } from 'react';
             import { Link, useNavigate, useLocation } from 'react-router-dom';
       import { useQueryClient } from '@tanstack/react-query';
             import { createPageUrl } from './utils';
+            import { isStaticBundleContext } from '@/lib/static-bundle';
             import { motion, AnimatePresence } from 'framer-motion';
             import '@/components/i18n/i18n';
       import LanguageSwitcher from '@/components/i18n/LanguageSwitcher';
@@ -443,11 +444,11 @@ export default function Layout({ children, currentPageName }) {
         // G + key navigation shortcuts
         if (e.key === 'g' && !isInput) {
           const handler = (e2) => {
-            if (e2.key === 'h') window.location.href = '/Dashboard';
-            if (e2.key === 'c') window.location.href = '/Calendar';
-            if (e2.key === 'i') window.location.href = '/Islam';
-            if (e2.key === 't') window.location.href = '/Goals';
-            if (e2.key === 'n') window.location.href = '/Connect';
+            if (e2.key === 'h') navigate('/Dashboard');
+            if (e2.key === 'c') navigate('/Calendar');
+            if (e2.key === 'i') navigate('/Islam');
+            if (e2.key === 't') navigate('/Goals');
+            if (e2.key === 'n') navigate('/Connect');
             window.removeEventListener('keydown', handler);
           };
           window.addEventListener('keydown', handler);
@@ -463,21 +464,27 @@ export default function Layout({ children, currentPageName }) {
   // Public pages (Landing, legal, contact) are rendered outside this Layout entirely
   // via App.jsx early-return logic, so this guard only fires for authenticated routes.
   useEffect(() => {
-    const path = window.location.pathname;
-    const publicPaths = ['/', '/Landing', '/PrivacyPolicy', '/TermsOfService', '/Contact'];
-    // Never redirect from a public path or the Landing page component
-    if (publicPaths.some(p => path === p || path.startsWith(p + '?')) || currentPageName === 'Landing') return;
-    
+    const routerPath = location.pathname;
+    const publicPaths = ['/', '/Landing', '/PrivacyPolicy', '/TermsOfService', '/Contact', '/login'];
+    if (publicPaths.includes(routerPath) || currentPageName === 'Landing') return;
+
     base44.auth.isAuthenticated().then(isAuth => {
       if (!isAuth) {
-        // Send to marketing landing page, NOT /login
-        window.location.href = '/';
+        // Never use window.location.href = '/' on static bundles — that leaves the deploy host.
+        if (isStaticBundleContext()) {
+          navigate('/');
+        } else {
+          window.location.href = '/';
+        }
       }
     }).catch(() => {
-      // On error, still redirect to home rather than /login
-      window.location.href = '/';
+      if (isStaticBundleContext()) {
+        navigate('/');
+      } else {
+        window.location.href = '/';
+      }
     });
-  }, [currentPageName]);
+  }, [currentPageName, location.pathname, navigate]);
 
   // ── Landing page: render without sidebar/nav (public marketing page)
   if (currentPageName === 'Landing') {

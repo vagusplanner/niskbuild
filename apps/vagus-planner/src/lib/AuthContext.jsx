@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect, useCallback } fr
 import { supabase } from './base44-compat';
 import { getSafeSession } from './supabaseSession';
 import { mapSupabaseUserToVpUser } from './vp-auth-user';
+import { isStaticBundleContext, redirectToVpLogin } from './static-bundle';
 
 const AuthContext = createContext();
 
@@ -181,12 +182,15 @@ export const AuthProvider = ({ children }) => {
   const logout = async (shouldRedirect = true) => {
     await signOut();
     if (shouldRedirect) {
-      window.location.href = '/login';
+      redirectToVpLogin();
     }
   };
 
   const navigateToLogin = () => {
-    window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
+    const next = isStaticBundleContext()
+      ? window.location.hash?.replace(/^#/, '') || '/dashboard'
+      : window.location.pathname;
+    redirectToVpLogin(next);
   };
 
   const value = {
