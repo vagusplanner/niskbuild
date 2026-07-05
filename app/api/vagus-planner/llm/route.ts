@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { captureApiException } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { getGroqClient } from '@/lib/groq-client';
@@ -9,33 +9,39 @@ import {
   parseGroqJsonContent,
   withGroqTimeout,
 } from '@/lib/shift-ai/groq-json';
+import {
+  vpApiCorsPreflightResponse,
+  vpApiJson,
+  withVpApiCors,
+} from '@/lib/vp-api-cors';
 
 const MAX_PROMPT_CHARS = 32_000;
 
+export async function OPTIONS(request: NextRequest) {
+  return vpApiCorsPreflightResponse(request);
+}
+
 export async function POST(request: NextRequest) {
   const guard = await guardApiRequest(request, { rateLimit: 24 });
-  if (!guard.ok) return guard.response;
+  if (!guard.ok) return withVpApiCors(request, guard.response);
 
   try {
     const body = await request.json().catch(() => null);
     if (!body || typeof body !== 'object') {
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+      return vpApiJson(request, { error: 'Invalid JSON body' }, { status: 400 });
     }
 
     const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : '';
     if (!prompt || prompt.length < 2) {
-      return NextResponse.json({ error: 'prompt is required' }, { status: 400 });
+      return vpApiJson(request, { error: 'prompt is required' }, { status: 400 });
     }
     if (prompt.length > MAX_PROMPT_CHARS) {
-      return NextResponse.json({ error: 'prompt is too long' }, { status: 400 });
+      return vpApiJson(request, { error: 'prompt is too long' }, { status: 400 });
     }
 
     const groq = getGroqClient();
     if (!groq) {
-      return NextResponse.json(
-        { error: 'AI is temporarily unavailable' },
-        { status: 503 }
-      );
+      return vpApiJson(request, { error: 'AI is temporarily unavailable' }, { status: 503 });
     }
 
     const schema =
@@ -74,10 +80,10 @@ export async function POST(request: NextRequest) {
       const parsed = parseGroqJsonContent(raw, 'Could not parse AI response');
       if (!parsed.ok) {
         logGroqParseFailure('vp-llm', raw, parsed.error);
-        return NextResponse.json({ error: parsed.error }, { status: 502 });
+        return vpApiJson(request, { error: parsed.error }, { status: 502 });
       }
 
-      return NextResponse.json(parsed.json);
+      return vpApiJson(request, parsed.json);
     }
 
     const completion = await withGroqTimeout(
@@ -98,15 +104,15 @@ export async function POST(request: NextRequest) {
 
     const text = completion.choices[0]?.message?.content?.trim() ?? '';
     if (!text) {
-      return NextResponse.json({ error: 'Empty AI response' }, { status: 502 });
+      return vpApiJson(request, { error: 'Empty AI response' }, { status: 502 });
     }
 
-    return NextResponse.json({ text });
+    return vpApiJson(request, { text });
   } catch (error) {
     captureApiException(error);
     const message =
       error instanceof Error ? error.message : 'Failed to process AI request';
     const status = message.toLowerCase().includes('timed out') ? 504 : 500;
-    return NextResponse.json({ error: message }, { status });
+    return vpApiJson(request, { error: message }, { status });
   }
 }

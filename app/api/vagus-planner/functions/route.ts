@@ -1,22 +1,31 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { captureApiException } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
+import {
+  vpApiCorsPreflightResponse,
+  vpApiJson,
+  withVpApiCors,
+} from '@/lib/vp-api-cors';
 import { dispatchVpFunction } from '@/lib/vp-functions/dispatch';
+
+export async function OPTIONS(request: NextRequest) {
+  return vpApiCorsPreflightResponse(request);
+}
 
 export async function POST(request: NextRequest) {
   const guard = await guardApiRequest(request, { rateLimit: 30 });
-  if (!guard.ok) return guard.response;
+  if (!guard.ok) return withVpApiCors(request, guard.response);
 
   try {
     const body = await request.json().catch(() => null);
     if (!body || typeof body !== 'object') {
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+      return vpApiJson(request, { error: 'Invalid JSON body' }, { status: 400 });
     }
 
     const functionName =
       typeof body.function === 'string' ? body.function.trim() : '';
     if (!functionName) {
-      return NextResponse.json({ error: 'function is required' }, { status: 400 });
+      return vpApiJson(request, { error: 'function is required' }, { status: 400 });
     }
 
     const payload =
@@ -31,24 +40,22 @@ export async function POST(request: NextRequest) {
     });
 
     if (result === null) {
-      return NextResponse.json(
+      return vpApiJson(
+        request,
         { error: 'Not implemented', function: functionName },
         { status: 501 }
       );
     }
 
     if (!result.ok) {
-      return NextResponse.json(
-        { error: result.error },
-        { status: result.status ?? 400 }
-      );
+      return vpApiJson(request, { error: result.error }, { status: result.status ?? 400 });
     }
 
-    return NextResponse.json({ data: result.data });
+    return vpApiJson(request, { data: result.data });
   } catch (error) {
     captureApiException(error);
     const message =
       error instanceof Error ? error.message : 'Function invocation failed';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return vpApiJson(request, { error: message }, { status: 500 });
   }
 }
