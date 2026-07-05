@@ -47,6 +47,7 @@ const ENTITY_TABLES = {
   NotificationPreference: 'vp_notification_preferences',
   Notification: 'vp_notifications',
   Chat: 'vp_chats',
+  LiveLocation: 'vp_live_locations',
 }
 
 function tableFrom(tableName) {

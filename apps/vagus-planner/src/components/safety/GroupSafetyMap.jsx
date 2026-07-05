@@ -58,19 +58,16 @@ export default function GroupSafetyMap({
   const [selectedUser, setSelectedUser] = useState(null);
 
   // Fetch live locations
-  const { data: liveLocations = [], isLoading, refetch } = useQuery({
-    queryKey: ['liveLocations', groupChatId || tripId],
+  const { data: liveLocations = [], isLoading, refetch, isError } = useQuery({
+    queryKey: ['liveLocations', contextType, groupChatId || tripId],
     queryFn: async () => {
-      const query = contextType === 'trip'
-        ? { trip_id: tripId, is_sharing: true }
-        : { group_chat_id: groupChatId, is_sharing: true };
-      const locations = await base44.entities.LiveLocation.list('-last_updated_at', 100);
-      return locations.filter(l =>
-        (contextType === 'trip' ? l.trip_id === tripId : l.group_chat_id === groupChatId) &&
-        l.is_sharing
-      );
+      const filter =
+        contextType === 'trip'
+          ? { trip_id: tripId, is_sharing: true, context_type: 'trip' }
+          : { group_chat_id: groupChatId, is_sharing: true, context_type: 'group_chat' };
+      return base44.entities.LiveLocation.filter(filter, '-last_updated_at', 100);
     },
-    refetchInterval
+    refetchInterval,
   });
 
   // Calculate center and bounds
@@ -101,6 +98,20 @@ export default function GroupSafetyMap({
     if (minDist < 0.5) return 'nearby'; // within 500m
     return 'separated'; // > 500m
   };
+
+  if (isError) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center space-y-2">
+          <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto" />
+          <p className="font-semibold text-slate-700 dark:text-slate-300">Unable to load live locations</p>
+          <p className="text-xs text-slate-500">
+            Ensure the live location database migration has been applied in Supabase.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (isLoading && liveLocations.length === 0) {
     return (
