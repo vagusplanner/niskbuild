@@ -31,7 +31,6 @@ import type {
   GooglePlacesProjectContext,
 } from '@/lib/google-places-types';
 import { getSafeSession } from '@/lib/supabaseSession';
-import { usePlatformOwner } from '@/lib/use-platform-owner';
 import {
   canExportNative,
   canImportGooglePlaces,
@@ -87,7 +86,6 @@ function AppBuilderWorkspaceInner({ appId, loginNextPath }: AppBuilderWorkspaceP
   const [showSocialPublisher, setShowSocialPublisher] = useState(false);
   const [chatWidthPx, setChatWidthPxState] = useState(340);
   const [promptHeightPx, setPromptHeightPxState] = useState(140);
-  const platformOwner = usePlatformOwner(user);
 
   const activeTarget = useMemo(
     () => targets.find((t) => t.id === targetId) ?? targets[0],
@@ -309,9 +307,7 @@ function AppBuilderWorkspaceInner({ appId, loginNextPath }: AppBuilderWorkspaceP
   const canUseCloud =
     isPaidAndActive(subscriptionTier, subscriptionStatus) || isSandboxTier(subscriptionTier);
   const canExportXcode = canExportNative(subscriptionTier, subscriptionStatus);
-  // TEMPORARY: platform owners may deploy VP previews without paid subscription (see canPublishLivePreviewLinks).
-  const canDeploy =
-    isPaidAndActive(subscriptionTier, subscriptionStatus) || platformOwner;
+  const canDeploy = isPaidAndActive(subscriptionTier, subscriptionStatus);
   const canGooglePlaces = canImportGooglePlaces(subscriptionTier, subscriptionStatus);
   const canCompetitor = canUseCompetitorIntel(subscriptionTier, subscriptionStatus);
   const canSocialProof = canUseSocialProofAggregator(subscriptionTier, subscriptionStatus);

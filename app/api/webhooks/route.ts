@@ -7,7 +7,7 @@ import { canUseOwnApiKeys, getCloudCreditsForTier } from '@/lib/tier-config';
 import {
   deactivatePreviewsByEmail,
   deactivatePreviewsForUser,
-  reactivatePreviewsForUser,
+  reactivatePreviewsIfPaidAndActive,
 } from '@/lib/preview-links';
 import { resetCreditAlertFlags } from '@/lib/usage-alerts';
 import { resetBuildsThisPeriod } from '@/lib/build-activity';
@@ -56,10 +56,21 @@ async function handleSubscriptionActivated(
   userId?: string | null
 ) {
   const uid = userId || (await resolveUserIdByEmail(supabase, email));
-  if (uid) {
-    await resetCreditAlertFlags(uid);
-    await reactivatePreviewsForUser(uid);
-  }
+  if (!uid) return;
+
+  await resetCreditAlertFlags(uid);
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('subscription_tier, subscription_status')
+    .eq('id', uid)
+    .maybeSingle();
+
+  await reactivatePreviewsIfPaidAndActive(
+    uid,
+    profile?.subscription_tier,
+    profile?.subscription_status
+  );
 }
 
 async function handleSubscriptionEnded(
@@ -310,6 +321,7 @@ export async function POST(request: NextRequest) {
       if (profile?.id) {
         await resetCreditAlertFlags(profile.id);
         await resetBuildsThisPeriod(profile.id);
+        await reactivatePreviewsIfPaidAndActive(profile.id, tier, 'active');
       }
 
       console.log(`🔄 Credits refreshed for ${customer.email} on invoice.paid`);

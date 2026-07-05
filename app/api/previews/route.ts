@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
-import {
-  canPublishLivePreviewLinks,
-  isPlatformOwner,
-} from '@/lib/platform-owner-auth';
+import { isPaidAndActive } from '@/lib/tier-config';
 import { getPreviewStatusForUser, upsertPreview } from '@/lib/preview-links';
 
 export async function GET(request: NextRequest) {
@@ -36,10 +33,7 @@ export async function POST(request: NextRequest) {
     .eq('id', guard.user!.id)
     .single();
 
-  const platformOwner = await isPlatformOwner();
-
-  // TEMPORARY: platform owners bypass paid-subscription gate for preview link testing.
-  if (!canPublishLivePreviewLinks(profile?.subscription_tier, profile?.subscription_status, platformOwner)) {
+  if (!isPaidAndActive(profile?.subscription_tier, profile?.subscription_status)) {
     return NextResponse.json(
       { error: 'Active paid subscription required for live preview links' },
       { status: 403 }

@@ -1,6 +1,7 @@
 import 'server-only';
 import { randomBytes } from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isPaidAndActive } from '@/lib/tier-config';
 
 export function generatePreviewToken(): string {
   return randomBytes(16).toString('base64url');
@@ -65,6 +66,16 @@ export async function reactivatePreviewsForUser(userId: string): Promise<number>
   }
 
   return count;
+}
+
+/** Restore preview links when a profile is on a paid, active subscription. */
+export async function reactivatePreviewsIfPaidAndActive(
+  userId: string,
+  tier: string | null | undefined,
+  status: string | null | undefined
+): Promise<number> {
+  if (!isPaidAndActive(tier, status)) return 0;
+  return reactivatePreviewsForUser(userId);
 }
 
 export async function getPreviewStatusForUser(userId: string): Promise<{
