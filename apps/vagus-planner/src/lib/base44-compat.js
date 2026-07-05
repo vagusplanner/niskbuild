@@ -323,15 +323,28 @@ export const base44 = {
     invoke: async (name, payload) => {
       console.log(`📡 Invoke function: ${name}`, payload)
       try {
-        const response = await fetch('/api/ai-agent', {
+        const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
+        const response = await fetch(`${apiBase}/api/vagus-planner/functions`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ function: name, payload })
+          credentials: 'include',
+          body: JSON.stringify({ function: name, payload: payload ?? {} }),
         })
-        return await response.json()
+
+        const data = await response.json()
+
+        if (!response.ok) {
+          const message =
+            typeof data?.error === 'string'
+              ? data.error
+              : `Function "${name}" request failed`
+          throw new Error(message)
+        }
+
+        return data
       } catch (error) {
         console.error('❌ Error invoking function:', error)
-        return { error: error.message }
+        throw error
       }
     }
   },
