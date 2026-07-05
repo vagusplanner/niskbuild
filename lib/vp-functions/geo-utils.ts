@@ -81,7 +81,10 @@ export async function overpassQuery(query: string) {
   const res = await fetch(OVERPASS_URL, {
     method: 'POST',
     body: query,
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'User-Agent': 'NiskBuild-VP/1.0',
+    },
   });
   if (!res.ok) throw new Error('Overpass query failed');
   const data = (await res.json()) as { elements?: Array<Record<string, unknown>> };

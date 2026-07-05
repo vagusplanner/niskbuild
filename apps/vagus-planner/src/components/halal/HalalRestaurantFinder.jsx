@@ -51,13 +51,16 @@ export default function HalalRestaurantFinder({ isOpen, onClose }) {
     setLoading(true);
     setRestaurants([]);
     setSelected(null);
-    const res = await base44.functions.invoke('findHalalRestaurants', {
-      lat: loc.lat,
-      lng: loc.lng,
-      query: query || ''
-    });
-    setRestaurants(res.data?.restaurants || []);
-    setLoading(false);
+    try {
+      const res = await base44.functions.invoke('findHalalRestaurants', {
+        lat: loc.lat,
+        lng: loc.lng,
+        query: query || ''
+      });
+      setRestaurants(res.data?.restaurants || []);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSearch = () => {

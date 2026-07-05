@@ -53,7 +53,7 @@ export const globalSearch: VpFunctionHandler = async ({ user, payload }) => {
       : searchTable(supabase, 'vp_events', userId, ['title', 'description', 'location'], query),
     typeFilter && typeFilter !== 'tasks'
       ? Promise.resolve([])
-      : searchTable(supabase, 'vp_tasks', userId, ['title', 'notes'], query),
+      : searchTable(supabase, 'vp_tasks', userId, ['title', 'description'], query),
     typeFilter && typeFilter !== 'goals'
       ? Promise.resolve([])
       : searchTable(supabase, 'vp_goals', userId, ['title', 'description'], query),
@@ -81,7 +81,7 @@ export const globalSearch: VpFunctionHandler = async ({ user, payload }) => {
       id: t.id,
       type: 'task',
       title: t.title,
-      description: t.notes,
+      description: t.description,
       status: t.status === 'pending' ? 'todo' : t.status,
       priority: t.priority >= 2 ? 'high' : t.priority === 1 ? 'medium' : 'low',
       due_date: t.due_date,
