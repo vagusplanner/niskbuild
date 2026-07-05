@@ -3,7 +3,7 @@ import { captureApiException } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { resolveBuilderApp } from '@/lib/builder-apps/handlers';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
-import { isPaidAndActive } from '@/lib/tier-config';
+import { canPublishLivePreviewLinks, isPlatformOwner } from '@/lib/platform-owner-auth';
 import { deployVagusPlanner } from '@/lib/vp-deploy';
 
 /**
@@ -38,8 +38,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const tier = profile?.subscription_tier ?? 'free';
     const status = profile?.subscription_status ?? 'inactive';
+    const platformOwner = await isPlatformOwner();
 
-    if (!isPaidAndActive(tier, status)) {
+    // TEMPORARY: platform owners bypass paid-subscription gate for VP deploy testing.
+    if (!canPublishLivePreviewLinks(tier, status, platformOwner)) {
       return NextResponse.json(
         {
           error: 'Active paid subscription required to deploy live preview links',

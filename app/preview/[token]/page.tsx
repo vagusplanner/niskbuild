@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isPlatformOwnerUserId } from '@/lib/platform-owner-auth';
 
 interface PreviewPageProps {
   params: Promise<{ token: string }>;
@@ -10,11 +11,17 @@ export default async function PreviewPage({ params }: PreviewPageProps) {
 
   const { data: preview } = await supabase
     .from('previews')
-    .select('html_content, is_active, title')
+    .select('html_content, is_active, title, user_id')
     .eq('token', token)
     .maybeSingle();
 
-  if (!preview || !preview.is_active) {
+  // TEMPORARY: keep previews visible for platform-owner creators even if deactivated
+  // by subscription webhook while VP deploy pipeline is being verified.
+  const creatorIsPlatformOwner = preview?.user_id
+    ? await isPlatformOwnerUserId(preview.user_id)
+    : false;
+
+  if (!preview || (!preview.is_active && !creatorIsPlatformOwner)) {
     const pricingUrl = process.env.NEXT_PUBLIC_APP_URL
       ? `${process.env.NEXT_PUBLIC_APP_URL}/pricing`
       : 'https://niskbuild.com/pricing';
