@@ -87,6 +87,16 @@ export function isPublicPath(pathname: string) {
   );
 }
 
+/** Paths that must never require NiskBuild login (shared previews, bundle proxy, etc.) */
+export function isAuthExemptPath(pathname: string) {
+  return (
+    isPublicPath(pathname) ||
+    isPreviewPath(pathname) ||
+    isTenantRuntimePath(pathname) ||
+    isVpDeployBundlePath(pathname)
+  );
+}
+
 export function isAuthOnlyPath(pathname: string) {
   return AUTH_PATH_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }

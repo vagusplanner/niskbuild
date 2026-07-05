@@ -2,13 +2,12 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { updateSession } from '@/lib/supabase/middleware';
 import {
   hasPaidTier,
+  isAuthExemptPath,
   isAuthOnlyPath,
   isPaidPath,
   isPhoneVerifyExemptPath,
   isPlatformOwnerPath,
-  isPreviewPath,
-  isPublicPath,
-  isTenantRuntimePath,
+  isVpDeployBundlePath,
 } from '@/lib/access';
 import {
   isBasePlatform,
@@ -56,14 +55,18 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // Always allow API routes and static assets on base platform
-  if (pathname.startsWith('/api') || pathname.startsWith('/_next')) {
+  // Always allow API routes, static assets, and public VP deploy bundles (no auth).
+  if (
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/_next') ||
+    isVpDeployBundlePath(pathname)
+  ) {
     return NextResponse.next();
   }
 
   const { supabase, supabaseResponse, user } = await updateSession(request);
 
-  if (isPublicPath(pathname) || isPreviewPath(pathname) || isTenantRuntimePath(pathname)) {
+  if (isAuthExemptPath(pathname)) {
     return supabaseResponse;
   }
 
