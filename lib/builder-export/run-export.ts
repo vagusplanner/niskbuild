@@ -11,6 +11,10 @@ import {
   updateExportJob,
 } from '@/lib/builder-export/jobs';
 import { buildVpCapacitorBuildEnv } from '@/lib/vp-capacitor-build-env.js';
+import {
+  applyVpIosNativeConfig,
+  getVpCapacitorMobileDependencies,
+} from '@/lib/vp-capacitor-ios-config.js';
 
 const ROOT = process.cwd();
 
@@ -76,6 +80,8 @@ async function ensureCapacitorProject(config: BuilderExportAppConfig): Promise<v
   await fs.mkdir(capDir, { recursive: true });
 
   const pkgPath = path.join(capDir, 'package.json');
+  const requiredDeps = getVpCapacitorMobileDependencies();
+
   if (!(await pathExists(pkgPath))) {
     await writeJson(pkgPath, {
       name: `${config.appSlug}-mobile`,
@@ -85,14 +91,14 @@ async function ensureCapacitorProject(config: BuilderExportAppConfig): Promise<v
         sync: 'cap sync',
         open: 'cap open ios',
       },
-      dependencies: {
-        '@capacitor/core': '^7.2.0',
-        '@capacitor/cli': '^7.2.0',
-        '@capacitor/ios': '^7.2.0',
-        '@capacitor/android': '^7.2.0',
-        '@capacitor/push-notifications': '^7.0.6',
-      },
+      dependencies: requiredDeps,
     });
+  } else {
+    const pkg = JSON.parse(await fs.readFile(pkgPath, 'utf8')) as {
+      dependencies?: Record<string, string>;
+    };
+    pkg.dependencies = { ...(pkg.dependencies ?? {}), ...requiredDeps };
+    await writeJson(pkgPath, pkg);
   }
 
   await writeJson(path.join(capDir, 'capacitor.config.json'), {
@@ -100,6 +106,11 @@ async function ensureCapacitorProject(config: BuilderExportAppConfig): Promise<v
     appName: config.capacitorAppName,
     webDir: 'www',
     server: { androidScheme: 'https' },
+    plugins: {
+      StatusBar: {
+        overlaysWebView: false,
+      },
+    },
   });
 
   const nodeModules = path.join(capDir, 'node_modules');
@@ -172,6 +183,7 @@ export async function runBuilderExportPipeline(
     await runCommand('npx', ['cap', 'sync', 'ios'], capDir, {}, (chunk) => {
       void appendExportJobLog(jobId, chunk);
     });
+    applyVpIosNativeConfig(capDir);
 
     await logLine(jobId, `[${new Date().toISOString()}] Running cap sync android…`);
     await runCommand('npx', ['cap', 'sync', 'android'], capDir, {}, (chunk) => {

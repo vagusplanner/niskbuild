@@ -11,7 +11,12 @@
 const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { buildVpCapacitorBuildEnv } = require('../lib/vp-capacitor-build-env.js');
+const { buildVpCapacitorBuildEnv, requireVpApiBaseUrlForAppStoreExport } = require('../lib/vp-capacitor-build-env.js');
+const {
+  ensureVpCapacitorMobilePackage,
+  writeVpCapacitorConfig,
+  applyVpIosNativeConfig,
+} = require('../lib/vp-capacitor-ios-config.js');
 
 const ROOT = path.join(__dirname, '..');
 const VP_APP = path.join(ROOT, 'apps', 'vagus-planner');
@@ -66,33 +71,8 @@ function writeJson(filePath, data) {
 }
 
 function ensureCapacitorProject() {
-  fs.mkdirSync(CAP_DIR, { recursive: true });
-
-  const pkgPath = path.join(CAP_DIR, 'package.json');
-  if (!fs.existsSync(pkgPath)) {
-    writeJson(pkgPath, {
-      name: 'vagus-planner-mobile',
-      private: true,
-      version: '1.0.0',
-      scripts: { sync: 'cap sync ios', open: 'cap open ios' },
-      dependencies: {
-        '@capacitor/core': '^7.2.0',
-        '@capacitor/cli': '^7.2.0',
-        '@capacitor/ios': '^7.2.0',
-      },
-    });
-  }
-
-  writeJson(path.join(CAP_DIR, 'capacitor.config.json'), {
-    appId: 'com.niskbuild.vagusplanner',
-    appName: 'Vagus Planner',
-    webDir: 'www',
-    server: { androidScheme: 'https' },
-  });
-
-  if (!fs.existsSync(path.join(CAP_DIR, 'node_modules'))) {
-    run('npm install', CAP_DIR);
-  }
+  ensureVpCapacitorMobilePackage(CAP_DIR, (cmd, cwd) => run(cmd, cwd));
+  writeVpCapacitorConfig(CAP_DIR);
 }
 
 function writeExportOptionsPlist(plistPath) {
@@ -222,6 +202,7 @@ function main() {
   run('npm run build', ROOT);
 
   log('2/5', 'Building Vagus Planner Vite app for Capacitor…');
+  requireVpApiBaseUrlForAppStoreExport();
   run('npm run build', VP_APP, buildVpCapacitorBuildEnv(true));
 
   if (!fs.existsSync(path.join(VP_DIST, 'index.html'))) {
@@ -238,6 +219,7 @@ function main() {
   }
 
   run('npx cap sync ios', CAP_DIR);
+  applyVpIosNativeConfig(CAP_DIR);
 
   log('4/5', 'Packaging Xcode project…');
   if (flags.zipProject || flags.json) {

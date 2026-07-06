@@ -79,6 +79,7 @@ import SidebarTools from '@/components/sidebar/SidebarTools';
       import EnhancedOfflineSync from '@/components/offline/EnhancedOfflineSync';
       import WelcomeEmailTrigger from '@/components/auth/WelcomeEmailTrigger';
       import CapacitorPushRegistration from '@/components/notifications/CapacitorPushRegistration';
+import CapacitorStatusBarSetup from '@/components/mobile/CapacitorStatusBarSetup';
 import { filterNavItems, isPageHiddenFromNav } from '@/lib/nav-v1-scope';
 
       // Non-critical: lazy loaded after paint
@@ -743,9 +744,13 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Main Content */}
       <main 
-          className="lg:ml-56 pt-14 sm:pt-16 lg:pt-0 pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0 min-h-screen overflow-x-hidden overflow-y-auto overscroll-none hide-scrollbar"
-          style={{ paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}
-          style={{ background: 'transparent', backdropFilter: 'none' }}
+          className="lg:ml-56 pt-[calc(3.5rem+env(safe-area-inset-top))] sm:pt-[calc(4rem+env(safe-area-inset-top))] lg:pt-0 pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0 min-h-screen overflow-x-hidden overflow-y-auto overscroll-none hide-scrollbar"
+          style={{
+            paddingLeft: 'env(safe-area-inset-left)',
+            paddingRight: 'env(safe-area-inset-right)',
+            background: 'transparent',
+            backdropFilter: 'none',
+          }}
         >
           <PullToRefresh onRefresh={async () => {
             await queryClient.invalidateQueries();
@@ -771,6 +776,7 @@ export default function Layout({ children, currentPageName }) {
       <EnhancedOfflineSync />
       <ServiceWorkerManager />
       <CapacitorPushRegistration />
+      <CapacitorStatusBarSetup />
 
       {/* Lazy non-critical components */}
       <React.Suspense fallback={null}>

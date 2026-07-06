@@ -5,6 +5,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { redirectToVpLogin } from './static-bundle'
+import { mapSupabaseUserToVpUser } from './vp-auth-user'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -239,7 +240,7 @@ export const base44 = {
     },
     me: async () => {
       const { data: { user } } = await supabase.auth.getUser()
-      return user
+      return mapSupabaseUserToVpUser(user)
     },
     isAuthenticated: async () => {
       const { data: { user } } = await supabase.auth.getUser()
