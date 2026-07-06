@@ -79,7 +79,7 @@ export default function CopyrightFooter() {
                 </Link>
               </li>
               <li>
-                <Link to={createPageUrl('Islamic')} className="hover:text-teal-400 transition-colors">
+                <Link to={createPageUrl('Islam')} className="hover:text-teal-400 transition-colors">
                   Islamic Tools
                 </Link>
               </li>

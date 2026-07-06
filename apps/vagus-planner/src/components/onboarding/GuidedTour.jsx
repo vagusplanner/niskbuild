@@ -72,7 +72,7 @@ const ALL_STEPS = {
     iconBg: 'bg-amber-50 dark:bg-amber-950',
     badge: '🕌 Islam',
     title: 'Islamic Features',
-    description: 'Accurate prayer times with Adhan, Hijri calendar, Quran reader, Ramadan tracker, Hajj planner, Zakat calculator and personalised Islamic content — all in the Islam tab.',
+    description: 'Accurate prayer times with Adhan, Hijri calendar, Quran reader, Zakat calculator and personalised Islamic content — all in the Islam tab.',
     target: '[data-tour="navigation"]',
     position: 'right',
     highlight: true,
@@ -85,12 +85,12 @@ const ALL_STEPS = {
     iconColor: 'text-rose-500',
     iconBg: 'bg-rose-50 dark:bg-rose-950',
     badge: '💪 Life',
-    title: 'Wellness & Health',
-    description: 'Track sleep, mood, energy, nutrition and exercise. Get personalised AI health coaching and weekly insights to keep your body and mind in peak condition.',
+    title: 'Wellness & Life',
+    description: 'Build habits, set goals, keep a journal, and track women\'s health. Use the AI health coach chat for personalised guidance.',
     target: '[data-tour="navigation"]',
     position: 'right',
     highlight: true,
-    tip: 'Visit the Life tab for all health and wellness features',
+    tip: 'Open Wellness from the sidebar tools or mobile tab bar',
     highlightLabel: '← Life Tab'
   },
   habits: {
@@ -104,8 +104,8 @@ const ALL_STEPS = {
     target: '[data-tour="navigation"]',
     position: 'right',
     highlight: true,
-    tip: 'Find Habits inside the Life tab',
-    highlightLabel: '← Life Tab'
+    tip: 'Find Habits inside the Wellness page',
+    highlightLabel: '← Wellness'
   },
   goals: {
     id: 'goals',
@@ -118,8 +118,8 @@ const ALL_STEPS = {
     target: '[data-tour="navigation"]',
     position: 'right',
     highlight: true,
-    tip: 'Goals are in the Life tab — set your first one today',
-    highlightLabel: '← Life Tab'
+    tip: 'Goals are in the Wellness page — set your first one today',
+    highlightLabel: '← Wellness'
   },
   notifications: {
     id: 'notifications',
@@ -172,7 +172,7 @@ const FEATURE_TOOLTIPS = {
   },
   Wellness: {
     title: '💪 Life & Wellness',
-    body: 'Track health metrics, build habits, set goals, and get weekly AI coaching insights.',
+    body: 'Track habits, goals, journal entries, and women\'s health. AI coaching chat is available in the Health section.',
     cta: 'Got it'
   },
   Calendar: {

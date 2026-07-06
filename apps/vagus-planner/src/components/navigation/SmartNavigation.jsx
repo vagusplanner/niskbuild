@@ -10,24 +10,25 @@ export const NAVIGATION_MAP = {
   'calendar': '/Calendar',
   'islam': '/Islam',
   'goals': '/Goals',
-  'connect': '/Connect',
+  'wellness': '/Wellness',
   'account': '/Account',
 
   // Consolidated Deep Links (avoid duplicates)
   'profile': '/Account#profile',
   'settings': '/Account#settings',
   'billing': '/Account#billing',
-  'notifications': '/Notifications',
+  'notifications': '/Account#settings',
 
   // Islamic Edition Features (in Islam page)
-  'prayer': '/Islam?tab=prayer',
-  'quran': '/Islam?tab=quran',
-  'hajj': '/HajjUmrahDashboard',
-  'ramadan': '/Islam?tab=ramadan',
-  'zakat': '/ZakatCalculator',
-  'family': '/FamilyHub',
+  'prayer': '/Islam?section=prayer',
+  'quran': '/Islam?section=quran',
+  'zakat': '/Islam?section=zakat',
+  'sadaqah': '/Islam?section=zakat',
+  'hajj': '/Islam?section=prayer',
+  'ramadan': '/Islam',
+  'family': '/Islam',
 
-  // Admin Pages
+  // Admin Pages (hidden from nav in v1 — routes still exist)
   'admin': '/Admin',
   'feedback': '/FeedbackManagement',
   'version-history': '/VersionHistory',
@@ -37,7 +38,7 @@ export const QUICK_ACTIONS = [
   { label: 'New Event', icon: 'Calendar', link: '/Calendar', shortcut: 'E' },
   { label: 'New Goal', icon: 'Target', link: '/Goals', shortcut: 'G' },
   { label: 'New Task', icon: 'CheckSquare', link: '/Calendar?tab=tasks', shortcut: 'T' },
-  { label: 'New Chat', icon: 'MessageCircle', link: '/Connect', shortcut: 'C' },
+  { label: 'Wellness', icon: 'Heart', link: '/Wellness', shortcut: 'W' },
   { label: 'Settings', icon: 'Settings', link: '/Account#settings', shortcut: 'S' },
 ];
 

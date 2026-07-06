@@ -16,7 +16,7 @@ import {
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
-export default function InteractiveAIHealthCoach() {
+export default function InteractiveAIHealthCoach({ chatOnly = false }) {
   const [activeTab, setActiveTab] = useState('chat');
   const [chatInput, setChatInput] = useState('');
   const [conversation, setConversation] = useState([
@@ -126,6 +126,86 @@ Provide a helpful, supportive, and actionable response. Be conversational and em
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [conversation]);
 
+  const chatPanel = (
+    <div className="flex-1 flex flex-col m-0 p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+        <AnimatePresence>
+          {conversation.map((message, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={cn(
+                "flex gap-3",
+                message.role === 'user' ? 'justify-end' : 'justify-start'
+              )}
+            >
+              {message.role === 'assistant' && (
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center shrink-0">
+                  <Heart className="w-4 h-4 text-white" />
+                </div>
+              )}
+              <div
+                className={cn(
+                  "max-w-[80%] rounded-2xl px-4 py-3 text-sm",
+                  message.role === 'user'
+                    ? 'bg-teal-600 text-white'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100'
+                )}
+              >
+                {message.content}
+              </div>
+            </motion.div>
+          ))}
+          {isTyping && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex gap-3"
+            >
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center">
+                <Heart className="w-4 h-4 text-white" />
+              </div>
+              <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl px-4 py-3">
+                <Loader2 className="w-4 h-4 animate-spin text-slate-600" />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <div ref={chatEndRef} />
+      </div>
+
+      <div className="flex gap-2 pt-4 border-t">
+        <Input
+          placeholder="Ask about your health goals, workouts, nutrition..."
+          value={chatInput}
+          onChange={(e) => setChatInput(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+          disabled={isTyping}
+        />
+        <Button onClick={handleSendMessage} disabled={isTyping || !chatInput.trim()}>
+          <Send className="w-4 h-4" />
+        </Button>
+      </div>
+    </div>
+  );
+
+  if (chatOnly) {
+    return (
+      <Card className="flex flex-col min-h-[420px]">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Heart className="w-5 h-5 text-rose-600" />
+            Your AI Health Coach
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex-1 flex flex-col p-0">
+          {chatPanel}
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="h-[700px] flex flex-col">
       <CardHeader>
@@ -168,66 +248,8 @@ Provide a helpful, supportive, and actionable response. Be conversational and em
           </TabsList>
 
           {/* Chat Tab */}
-          <TabsContent value="chat" className="flex-1 flex flex-col m-0 p-4 space-y-4">
-            <div className="flex-1 overflow-y-auto space-y-4 pr-2">
-              <AnimatePresence>
-                {conversation.map((message, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={cn(
-                      "flex gap-3",
-                      message.role === 'user' ? 'justify-end' : 'justify-start'
-                    )}
-                  >
-                    {message.role === 'assistant' && (
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center shrink-0">
-                        <Heart className="w-4 h-4 text-white" />
-                      </div>
-                    )}
-                    <div
-                      className={cn(
-                        "max-w-[80%] rounded-2xl px-4 py-3 text-sm",
-                        message.role === 'user'
-                          ? 'bg-teal-600 text-white'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100'
-                      )}
-                    >
-                      {message.content}
-                    </div>
-                  </motion.div>
-                ))}
-                {isTyping && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex gap-3"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center">
-                      <Heart className="w-4 h-4 text-white" />
-                    </div>
-                    <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl px-4 py-3">
-                      <Loader2 className="w-4 h-4 animate-spin text-slate-600" />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-              <div ref={chatEndRef} />
-            </div>
-
-            <div className="flex gap-2 pt-4 border-t">
-              <Input
-                placeholder="Ask about your health goals, workouts, nutrition..."
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                disabled={isTyping}
-              />
-              <Button onClick={handleSendMessage} disabled={isTyping || !chatInput.trim()}>
-                <Send className="w-4 h-4" />
-              </Button>
-            </div>
+          <TabsContent value="chat" className="flex-1 flex flex-col m-0">
+            {chatPanel}
           </TabsContent>
 
           {/* Workout Plan Tab */}

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { isPageHiddenFromNav } from '@/lib/nav-v1-scope';
 import { cn } from '@/lib/utils';
 import { FloatingButton, useFloatingManager } from '@/components/ui/floating-manager';
 
@@ -57,7 +58,7 @@ const QUICK_ACTIONS = [
     label: 'Log Health',
     icon: Heart,
     color: 'from-red-500 to-pink-500',
-    page: 'Health',
+    page: 'Wellness',
     action: 'log-health'
   },
   {
@@ -65,7 +66,7 @@ const QUICK_ACTIONS = [
     label: 'New Chat',
     icon: MessageSquare,
     color: 'from-green-500 to-teal-500',
-    page: 'Chat',
+    page: 'Calendar',
     action: 'new-chat'
   },
   {
@@ -76,7 +77,7 @@ const QUICK_ACTIONS = [
     page: 'Calendar',
     action: 'quick-note'
   }
-];
+].filter(action => !isPageHiddenFromNav(action.page));
 
 export default function QuickActionsMenu() {
   const [isOpen, setIsOpen] = useState(false);
@@ -100,12 +101,11 @@ export default function QuickActionsMenu() {
     // Navigate to the correct page
     const pageMapping = {
       'Holidays': 'Travel',
-      'Health': 'Wellness',
-      'Chat': 'Connect'
     };
     
     const targetPage = pageMapping[action.page] || action.page;
-    navigate(`${createPageUrl(targetPage)}?action=${action.action}`);
+    const sectionSuffix = action.page === 'Wellness' && action.action === 'log-health' ? 'section=health' : `action=${action.action}`;
+    navigate(`${createPageUrl(targetPage)}?${sectionSuffix}`);
   };
 
   return (

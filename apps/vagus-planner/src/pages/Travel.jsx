@@ -20,6 +20,7 @@ import UnifiedHolidayAIPanel from '@/components/assistant/UnifiedHolidayAIPanel'
 import SmartTripPlanner from '@/components/travel/SmartTripPlanner';
 import GmailBookingScanner from '@/components/travel/GmailBookingScanner';
 import IslamicItineraryBuilder from '@/components/travel/IslamicItineraryBuilder';
+import { isPageHiddenFromNav } from '@/lib/nav-v1-scope';
 import TravelMessageParser from '@/components/travel/TravelMessageParser';
 import TravelItineraryBuilder from '@/components/travel/TravelItineraryBuilder';
 import IslamicTravelDashboard from '@/components/travel/IslamicTravelDashboard';
@@ -257,6 +258,12 @@ export default function TravelPage() {
               {/* PACKING */}
               {activeTab === 'packing' && (
                 <div className="space-y-4">
+                  {isPageHiddenFromNav('TravelPackingAssistant') ? (
+                    <p className="text-sm text-slate-500 text-center py-8">
+                      Packing assistant is temporarily unavailable. Use the Trips tab to manage your travel plans.
+                    </p>
+                  ) : (
+                  <>
                   <div className="rounded-2xl bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-950/20 dark:to-blue-950/20 border border-sky-200 dark:border-sky-800/40 p-5 text-center space-y-4">
                     <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center mx-auto">
                       <Package className="w-7 h-7 text-white" />
@@ -286,6 +293,8 @@ export default function TravelPage() {
                         </Link>
                       ))}
                     </div>
+                  )}
+                  </>
                   )}
                 </div>
               )}

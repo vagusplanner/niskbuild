@@ -3,12 +3,13 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { isPageHiddenFromNav } from '@/lib/nav-v1-scope';
 import {
   Home,
   Calendar,
   Moon,
   Heart,
-  Users,
+  Settings,
 } from 'lucide-react';
 
 /**
@@ -25,8 +26,8 @@ export default function MobileBottomNav({
     { name: 'Calendar', icon: Calendar, page: 'Calendar' },
     { name: 'Islam', icon: Moon, page: 'Islam' },
     { name: 'Life', icon: Heart, page: 'Wellness' },
-    { name: 'Connect', icon: Users, page: 'Connect' },
-  ];
+    { name: 'Account', icon: Settings, page: 'Account' },
+  ].filter(item => !isPageHiddenFromNav(item.page));
 
   const handleTabClick = (item) => {
     const isActive = currentPageName === item.page;

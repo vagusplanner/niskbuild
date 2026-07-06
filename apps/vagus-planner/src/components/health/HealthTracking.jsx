@@ -20,6 +20,7 @@ import BodyMetricsTracker from './BodyMetricsTracker';
 // Import existing sleep/energy tracking
 import SleepTracker from './SleepTracker';
 import EnergyLevelTracker from './EnergyLevelTracker';
+import { V1_HEALTH_VISIBLE_SECTIONS } from '@/lib/nav-v1-scope';
 
 // Compact section card for the overview
 function SectionCard({ icon: Icon, title, desc, color, onClick }) {
@@ -39,8 +40,8 @@ function SectionCard({ icon: Icon, title, desc, color, onClick }) {
 export default function HealthTracking() {
   const [activeSection, setActiveSection] = useState(null);
 
-  const sections = [
-    { id: 'coach',     icon: Sparkles,  title: 'AI Coach',        desc: 'Personalised guidance & chat',             color: 'bg-violet-500' },
+  const allSections = [
+    { id: 'coach',     icon: Sparkles,  title: 'AI Coach',        desc: 'Chat with your health coach',              color: 'bg-violet-500' },
     { id: 'nutrition', icon: Apple,     title: 'Nutrition',        desc: 'Meals, calories & diet planning',          color: 'bg-green-500' },
     { id: 'exercise',  icon: Dumbbell,  title: 'Exercise',         desc: 'Workouts, steps & activity log',           color: 'bg-blue-500' },
     { id: 'body',      icon: Activity,  title: 'Body Metrics',     desc: 'Weight, BMI & water intake tracker',       color: 'bg-cyan-500' },
@@ -49,6 +50,7 @@ export default function HealthTracking() {
     { id: 'womens',    icon: Heart,     title: "Women's Health",   desc: 'Period tracking & fertility insights',      color: 'bg-rose-500' },
     { id: 'insights',  icon: Brain,     title: 'AI Insights',      desc: 'Trends, patterns & smart reports',         color: 'bg-amber-500' },
   ];
+  const sections = allSections.filter(s => V1_HEALTH_VISIBLE_SECTIONS.has(s.id));
 
   if (activeSection) {
     const section = sections.find(s => s.id === activeSection);
@@ -66,7 +68,7 @@ export default function HealthTracking() {
           <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">{section.title}</h2>
         </div>
 
-        {activeSection === 'coach'     && <InteractiveAIHealthCoach />}
+        {activeSection === 'coach'     && <InteractiveAIHealthCoach chatOnly />}
         {activeSection === 'nutrition' && <><AIDietPlanner /><NutritionTracker /></>}
         {activeSection === 'exercise'  && <ExerciseTracker />}
         {activeSection === 'body'      && <BodyMetricsTracker />}
@@ -80,10 +82,6 @@ export default function HealthTracking() {
 
   return (
     <div className="space-y-4">
-      {/* AI Daily Summary — always visible */}
-      <AIHealthInsights compact />
-
-      {/* Section grid */}
       <div>
         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Health Sections</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -91,12 +89,6 @@ export default function HealthTracking() {
             <SectionCard key={s.id} {...s} onClick={() => setActiveSection(s.id)} />
           ))}
         </div>
-      </div>
-
-      {/* Today's quick log */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <NutritionTracker />
-        <ExerciseTracker />
       </div>
     </div>
   );

@@ -79,6 +79,7 @@ import SidebarTools from '@/components/sidebar/SidebarTools';
       import EnhancedOfflineSync from '@/components/offline/EnhancedOfflineSync';
       import WelcomeEmailTrigger from '@/components/auth/WelcomeEmailTrigger';
       import CapacitorPushRegistration from '@/components/notifications/CapacitorPushRegistration';
+import { filterNavItems, isPageHiddenFromNav } from '@/lib/nav-v1-scope';
 
       // Non-critical: lazy loaded after paint
       const KeyboardShortcutsModal = React.lazy(() => import('@/components/shared/KeyboardShortcutsModal'));
@@ -120,7 +121,7 @@ import SidebarTools from '@/components/sidebar/SidebarTools';
 // Removed: Wellness, Health → Consolidated, now under Islam or Settings
 // Moved: Profile/Settings/Billing → Single Account page
 
-const ROOT_PAGES = ['Dashboard', 'Calendar', 'Islam', 'Goals', 'Connect', 'Account'];
+const ROOT_PAGES = ['Dashboard', 'Calendar', 'Islam', 'Goals', 'Wellness', 'Account'];
 
 export default function Layout({ children, currentPageName }) {
   const { t } = useTranslation();
@@ -286,18 +287,13 @@ export default function Layout({ children, currentPageName }) {
   } = useIslamicEdition();
 
   // NAV_ITEMS built here so islamicEditionLoading / isIslamicEdition are already resolved
-  const NAV_ITEMS = [
+  const NAV_ITEMS = filterNavItems([
     { name: t('nav.home'),     icon: Home,          page: 'Dashboard',     description: t('dashboard.title') },
     { name: t('nav.calendar'), icon: Calendar,      page: 'Calendar',      description: t('calendar.title') },
     { name: t('nav.islamic'),  icon: Moon,          page: 'Islam',         description: t('prayer.title'), islamicOnly: true },
     { name: 'Goals',           icon: Target,        page: 'Goals',         description: 'Life & spiritual goals' },
-    { name: t('nav.connect'),  icon: MessageCircle, page: 'Connect',       description: t('connect.title') },
     { name: t('nav.account'),  icon: Settings,      page: 'Account',       description: 'Settings & billing' },
-    // Admin routes (hidden unless admin)
-    { name: t('nav.admin'),    icon: Settings,      page: 'Admin',         description: t('nav.admin'), adminOnly: true },
-    { name: t('nav.feedback'), icon: MessageSquare, page: 'FeedbackManagement', description: t('nav.feedback'), adminOnly: true },
-    { name: 'Version History', icon: HistoryIcon,   page: 'VersionHistory', description: 'Track all changes', adminOnly: true },
-  ];
+  ]);
 
   // Push notification engine — prayer times, Zakat reminders, Hadith
   usePushNotifications({ islamicMode, userEmail: user?.email });
@@ -311,7 +307,7 @@ export default function Layout({ children, currentPageName }) {
     { name: t('nav.home'),     icon: Home,          page: 'Dashboard' },
     { name: t('nav.calendar'), icon: Calendar,      page: 'Calendar' },
     showIslamTab ? { name: t('nav.islamic'), icon: Moon, page: 'Islam' } : { name: 'Goals', icon: Target, page: 'Goals' },
-    { name: t('nav.connect'),  icon: MessageCircle, page: 'Connect' },
+    { name: 'Wellness',        icon: Activity,      page: 'Wellness' },
     { name: t('nav.account'),  icon: Settings,      page: 'Account' },
   ];
 
@@ -448,7 +444,7 @@ export default function Layout({ children, currentPageName }) {
             if (e2.key === 'c') navigate('/Calendar');
             if (e2.key === 'i') navigate('/Islam');
             if (e2.key === 't') navigate('/Goals');
-            if (e2.key === 'n') navigate('/Connect');
+            if (e2.key === 'w') navigate('/Wellness');
             window.removeEventListener('keydown', handler);
           };
           window.addEventListener('keydown', handler);

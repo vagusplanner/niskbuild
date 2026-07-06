@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { islamOnboardingUrl } from '@/lib/nav-v1-scope';
 import { toast } from 'sonner';
 import IslamicModeStep from './IslamicModeStep';
 
@@ -272,28 +273,28 @@ function FeaturesStep({ onNext, onBack }) {
       title: 'Smart Calendar',
       description: 'Manage events, meetings, and tasks with AI-powered scheduling',
       gradient: 'from-blue-500 to-cyan-500',
-      page: 'Calendar'
+      route: createPageUrl('Calendar'),
     },
     {
       icon: Moon,
       title: 'Hajj & Umrah Planner',
-      description: 'Complete pilgrimage planning with itineraries, group coordination, and smart packing lists',
+      description: 'Prayer tools, travel companion, and spiritual planning in the Islam hub',
       gradient: 'from-purple-500 to-indigo-500',
-      page: 'Islamic'
+      route: islamOnboardingUrl('hajj'),
     },
     {
       icon: Sparkles,
       title: 'AI Assistant',
       description: 'Get proactive suggestions, personalized Islamic learning, and automated scheduling',
       gradient: 'from-orange-500 to-amber-500',
-      page: 'Calendar'
+      route: createPageUrl('Calendar'),
     },
     {
       icon: Users,
       title: 'Zakat & Sadaqah Tracker',
       description: 'Calculate Zakat, track charitable giving, and automate payments with calendar integration',
       gradient: 'from-emerald-500 to-teal-500',
-      page: 'Islamic'
+      route: islamOnboardingUrl('zakat'),
     }
   ];
 
@@ -309,12 +310,12 @@ function FeaturesStep({ onNext, onBack }) {
         </div>
         <h3 className="text-2xl font-bold text-slate-800 mb-2">{current.title}</h3>
         <p className="text-slate-600 max-w-md mx-auto mb-4">{current.description}</p>
-        {current.page && (
+        {current.route && (
           <Button
             variant="outline"
             size="sm"
             onClick={() => {
-              navigate(createPageUrl(current.page));
+              navigate(current.route);
               onNext();
             }}
             className="mt-2"
@@ -363,10 +364,10 @@ function TutorialStep({ onNext, onBack }) {
   const navigate = useNavigate();
 
   const tutorials = [
-    { id: 'zakat', label: 'Calculate Zakat', icon: Calculator, color: 'emerald', page: 'Islamic' },
-    { id: 'hajj', label: 'Plan Hajj/Umrah Trip', icon: Moon, color: 'purple', page: 'Islamic' },
-    { id: 'sadaqah', label: 'Track Sadaqah', icon: Heart, color: 'rose', page: 'Islamic' },
-    { id: 'ai', label: 'Use AI Assistant', icon: Sparkles, color: 'amber', page: 'Calendar' }
+    { id: 'zakat', label: 'Calculate Zakat', icon: Calculator, color: 'emerald', route: islamOnboardingUrl('zakat') },
+    { id: 'hajj', label: 'Plan Hajj/Umrah Trip', icon: Moon, color: 'purple', route: islamOnboardingUrl('hajj') },
+    { id: 'sadaqah', label: 'Track Sadaqah', icon: Heart, color: 'rose', route: islamOnboardingUrl('sadaqah') },
+    { id: 'ai', label: 'Use AI Assistant', icon: Sparkles, color: 'amber', route: createPageUrl('Calendar') }
   ];
 
   const allCompleted = tutorials.every(t => completed[t.id]);
@@ -403,11 +404,11 @@ function TutorialStep({ onNext, onBack }) {
                 </div>
               </div>
             </button>
-            {tutorial.page && (
+            {tutorial.route && (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => navigate(createPageUrl(tutorial.page))}
+                onClick={() => navigate(tutorial.route)}
                 className="self-center"
               >
                 Go →

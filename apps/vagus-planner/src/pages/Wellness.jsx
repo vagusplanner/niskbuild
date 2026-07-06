@@ -12,7 +12,6 @@ import PullToRefresh from '@/components/mobile/PullToRefresh';
 import { base44 } from '@/api/base44Client';
 
 import HealthTracking from '@/components/health/HealthTracking';
-import UnifiedHealthAIPanel from '@/components/assistant/UnifiedHealthAIPanel';
 import FullHabitTracker from '@/components/habits/FullHabitTracker';
 import GoalsPanel from '@/components/goals/GoalsPanel';
 import FocusMode from '@/components/productivity/FocusMode';
@@ -31,7 +30,7 @@ const STANDARD_WELLNESS_QUOTES = [
   { text: '"Health is not valued until sickness comes."', source: 'Thomas Fuller' },
 ];
 
-function HealthContent() { return <><UnifiedHealthAIPanel /><HealthTracking /></>; }
+function HealthContent() { return <HealthTracking />; }
 function HabitsContent() { return <FullHabitTracker />; }
 function GoalsContent() {
   const { t } = useTranslation();

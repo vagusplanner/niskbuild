@@ -6,7 +6,7 @@ import {
   Moon, BookOpen, Hand, Map, Heart, Sunrise, ChevronRight,
   Sparkles, ArrowLeft, Loader2, Star, Crown, Users, Calendar, Flame
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PullToRefresh from '@/components/mobile/PullToRefresh';
 import { cn } from '@/lib/utils';
+import { shouldShowIslamSection } from '@/lib/nav-v1-scope';
 
 // ── Section Components ────────────────────────────────────────────────────────
 import PrayerTimesMaster from '@/components/islamic/PrayerTimesMaster';
@@ -210,11 +211,10 @@ function QuranContent() {
         Everything Quran in one place: read the text with translation, listen to recitation audio, check your Tajweed (pronunciation) with AI, and track your reading progress & memorisation goals.
       </p>
       <Tabs defaultValue="read">
-        <TabsList className="grid grid-cols-4 w-full h-auto mb-4">
+        <TabsList className="grid grid-cols-3 w-full h-auto mb-4">
           <TabsTrigger value="read" className="text-[11px] py-2">📖 Read</TabsTrigger>
           <TabsTrigger value="listen" className="text-[11px] py-2">🎧 Listen</TabsTrigger>
           <TabsTrigger value="tajweed" className="text-[11px] py-2">🎙️ Tajweed</TabsTrigger>
-          <TabsTrigger value="progress" className="text-[11px] py-2">📊 Progress</TabsTrigger>
         </TabsList>
         <TabsContent value="read" className="space-y-4">
           <p className="text-xs rounded-xl p-2.5 font-medium" style={{background:'rgba(29,111,184,0.08)', color:'#1B2A4A', border:'1px solid rgba(29,111,184,0.15)'}}>📖 Read the full Quran with Arabic text, English translation, and AI-powered Tafsir (explanation). Tap any verse for detailed commentary.</p>
@@ -228,10 +228,6 @@ function QuranContent() {
         <TabsContent value="tajweed" className="space-y-4">
           <p className="text-xs rounded-xl p-2.5 font-medium" style={{background:'rgba(29,111,184,0.08)', color:'#1B2A4A', border:'1px solid rgba(29,111,184,0.15)'}}>🎙️ Recite a Surah into your microphone and get an AI Tajweed accuracy score (0–100) with specific feedback on which rules to improve. Different from just listening — this checks YOUR recitation.</p>
           <QuranVoiceCheck />
-        </TabsContent>
-        <TabsContent value="progress" className="space-y-4">
-          <p className="text-xs rounded-xl p-2.5 font-medium" style={{background:'rgba(29,111,184,0.08)', color:'#1B2A4A', border:'1px solid rgba(29,111,184,0.15)'}}>📊 Track how many Surahs/Juz you've read, set memorisation goals, and see your reading streak over time.</p>
-          <QuranReadingTracker />
         </TabsContent>
       </Tabs>
     </div>
@@ -285,10 +281,9 @@ function ZakatContent() {
         All Islamic finance and charity tools in one place. Calculate your Zakat, log Sadaqah, auto-track from expenses, plan finances Islamically, and run a family Sadaqah jar.
       </p>
       <Tabs defaultValue="calculator">
-        <TabsList className="grid grid-cols-4 w-full h-auto mb-4">
+        <TabsList className="grid grid-cols-3 w-full h-auto mb-4">
           <TabsTrigger value="calculator" className="text-[11px] py-2">🧮 Zakat Calc</TabsTrigger>
           <TabsTrigger value="sadaqah" className="text-[11px] py-2">💝 Sadaqah</TabsTrigger>
-          <TabsTrigger value="auto" className="text-[11px] py-2">🤖 Auto-Track</TabsTrigger>
           <TabsTrigger value="finance" className="text-[11px] py-2">💰 Finance</TabsTrigger>
         </TabsList>
         <TabsContent value="calculator" className="space-y-4">
@@ -299,10 +294,6 @@ function ZakatContent() {
           <p className="text-xs rounded-xl p-2.5 font-medium" style={{background:'rgba(29,111,184,0.08)', color:'#1B2A4A', border:'1px solid rgba(29,111,184,0.15)'}}>💝 Log your voluntary charity (Sadaqah) and Zakat payments. See your giving history and impact. The Family Sadaqah Jar is a shared virtual charity pot — your whole family contributes towards a monthly goal together.</p>
           <ZakatSadaqaDashboard />
           <FamilySadaqahJar />
-        </TabsContent>
-        <TabsContent value="auto" className="space-y-4">
-          <p className="text-xs rounded-xl p-2.5 font-medium" style={{background:'rgba(29,111,184,0.08)', color:'#1B2A4A', border:'1px solid rgba(29,111,184,0.15)'}}>🤖 Auto-Track analyses your expense history and savings to automatically estimate your zakatable wealth without you having to enter everything manually. Useful as a quick sanity check alongside the manual calculator.</p>
-          <AutoZakatTracker />
         </TabsContent>
         <TabsContent value="finance" className="space-y-4">
           <p className="text-xs rounded-xl p-2.5 font-medium" style={{background:'rgba(29,111,184,0.08)', color:'#1B2A4A', border:'1px solid rgba(29,111,184,0.15)'}}>💰 Islamic Financial Planning gives AI-guided advice on halal investing, avoiding riba (interest), and planning your finances according to Islamic principles. Also includes inheritance (Mirath) and Fidyah/Kaffarah calculators.</p>
@@ -325,7 +316,6 @@ function KnowledgeContent() {
       <IslamicAITutor />
       <KhutbahNotes />
       <IslamicLifeScore />
-      <IslamicLearningPath />
     </div>
   );
 }
@@ -525,7 +515,13 @@ const ALL_SECTIONS = SECTION_GROUPS.flatMap(g => g.sections);
 
 function Islam() {
   const queryClient = useQueryClient();
-  const [activeSection, setActiveSection] = useState(null);
+  const [searchParams] = useSearchParams();
+  const sectionParam = searchParams.get('section');
+  const [activeSection, setActiveSection] = useState(sectionParam || null);
+
+  React.useEffect(() => {
+    if (sectionParam) setActiveSection(sectionParam);
+  }, [sectionParam]);
 
   const section = ALL_SECTIONS.find(s => s.id === activeSection);
 
@@ -594,19 +590,23 @@ function Islam() {
 
                 {/* Section groups */}
                 <div className="space-y-6">
-                  {SECTION_GROUPS.map(group => (
+                  {SECTION_GROUPS.map(group => {
+                    const visibleSections = group.sections.filter(shouldShowIslamSection);
+                    if (!visibleSections.length) return null;
+                    return (
                     <div key={group.id}>
                       <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
                         {group.label}
-                        <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded-full font-semibold">{group.sections.length}</span>
+                        <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded-full font-semibold">{visibleSections.length}</span>
                       </p>
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                        {group.sections.map(s => (
+                        {visibleSections.map(s => (
                           <SectionTile key={s.id} section={s} onClick={() => setActiveSection(s.id)} />
                         ))}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
               </motion.div>

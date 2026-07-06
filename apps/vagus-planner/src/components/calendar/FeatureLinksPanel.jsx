@@ -1,9 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { isPageHiddenFromNav } from '@/lib/nav-v1-scope';
 import { motion } from 'framer-motion';
 import { 
-  Moon, Heart, Plane, Trophy, MessageCircle, Activity, 
+  Moon, Heart, MessageCircle, Activity, 
   BookOpen, Calendar, ArrowRight, Sparkles
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,9 +13,9 @@ import { Badge } from '@/components/ui/badge';
 const FEATURE_LINKS = [
   {
     title: 'Islamic Features',
-    description: 'Prayer times, Quran, Ramadan tracking',
+    description: 'Prayer times, Quran, Zakat calculator',
     icon: Moon,
-    page: 'Islamic',
+    page: 'Islam',
     color: 'from-teal-500 to-cyan-600',
     bgColor: 'bg-teal-50',
     borderColor: 'border-teal-200',
@@ -23,9 +24,9 @@ const FEATURE_LINKS = [
   },
   {
     title: 'Health & Wellness',
-    description: 'Mood, exercise, nutrition, sleep tracking',
+    description: 'Habits, goals, journal & women\'s health',
     icon: Activity,
-    page: 'Health',
+    page: 'Wellness',
     color: 'from-rose-500 to-pink-600',
     bgColor: 'bg-rose-50',
     borderColor: 'border-rose-200',
@@ -55,17 +56,6 @@ const FEATURE_LINKS = [
     iconColor: 'text-blue-600'
   },
   {
-    title: 'Achievements',
-    description: 'Challenges, leaderboards, badges',
-    icon: Trophy,
-    page: 'Gamification',
-    color: 'from-purple-500 to-violet-600',
-    bgColor: 'bg-purple-50',
-    borderColor: 'border-purple-200',
-    textColor: 'text-purple-700',
-    iconColor: 'text-purple-600'
-  },
-  {
     title: 'Profile & Goals',
     description: 'Personal goals and progress tracking',
     icon: Heart,
@@ -76,7 +66,7 @@ const FEATURE_LINKS = [
     textColor: 'text-pink-700',
     iconColor: 'text-pink-600'
   }
-];
+].filter(link => !isPageHiddenFromNav(link.page));
 
 export default function FeatureLinksPanel() {
   return (

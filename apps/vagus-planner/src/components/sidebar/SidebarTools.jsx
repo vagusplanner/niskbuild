@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { isPageHiddenFromNav } from '@/lib/nav-v1-scope';
 import { motion, AnimatePresence } from 'framer-motion';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
@@ -272,7 +273,11 @@ export default function SidebarTools({ isIslamicEdition, settings, currentPageNa
         <div key={group.label} className="mb-3">
           <p className="px-3 text-[9px] font-bold uppercase tracking-widest mb-1.5" style={{color:`${C.ice}30`}}>{group.label}</p>
           <div className="grid grid-cols-3 gap-1 px-2">
-            {group.tools.map(tool => {
+            {group.tools.filter(tool => {
+              if (!tool.action.startsWith('nav:')) return true;
+              const page = tool.action.split(':')[1];
+              return !isPageHiddenFromNav(page);
+            }).map(tool => {
               const Icon = tool.icon;
               const isActive = tool.action.startsWith('nav:') && currentPageName === tool.action.split(':')[1];
               return (

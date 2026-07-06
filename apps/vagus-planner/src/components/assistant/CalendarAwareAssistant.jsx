@@ -82,7 +82,7 @@ export default function CalendarAwareAssistant({ onSuggestionClick }) {
             message: `You have "${event.title}" at ${format(startDate, 'h:mm a')}. Consider praying Dhuhr before your meeting.`,
             action: 'View Prayer Times',
             actionType: 'navigate',
-            actionData: { page: 'Islamic' }
+            actionData: { page: 'Islam' }
           };
         } else if (eventHour >= 16 && eventHour < 19) {
           prayerSuggestion = {
@@ -95,7 +95,7 @@ export default function CalendarAwareAssistant({ onSuggestionClick }) {
             message: `You have "${event.title}" at ${format(startDate, 'h:mm a')}. Don't forget to pray Asr beforehand.`,
             action: 'View Prayer Times',
             actionType: 'navigate',
-            actionData: { page: 'Islamic' }
+            actionData: { page: 'Islam' }
           };
         }
 

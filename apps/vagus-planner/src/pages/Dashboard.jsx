@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { filterNavItems } from '@/lib/nav-v1-scope';
 import {
   Calendar, Moon, Heart, Plane, MessageSquare, User,
   CheckCircle2, Clock, Brain, ChevronRight, Sunrise, Star,
@@ -147,18 +148,6 @@ export default function DashboardPage() {
     staleTime: 30000,
   });
 
-  const { data: chats = [] } = useQuery({
-    queryKey: ['unreadChats', user?.email],
-    queryFn: async () => {
-      if (!user?.email) return [];
-      const msgs = await base44.entities.Chat.filter({ is_read: false }, '-created_date', 50);
-      return msgs.filter(m => m.sender_email !== user.email);
-    },
-    enabled: !!user?.email,
-    retry: false,
-    staleTime: 60000,
-  });
-
   const lang = typeof localStorage !== 'undefined' ? (localStorage.getItem('vagus_language') || 'en') : 'en';
   const rawName = user?.full_name?.split(' ')[0] || t('common.noData');
   const firstName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
@@ -178,21 +167,21 @@ export default function DashboardPage() {
   }, [isIslamicEdition]);
 
   // Quick actions — differ by edition
-  const QUICK_LINKS = islamicMode ? [
+  const QUICK_LINKS = filterNavItems(islamicMode ? [
     { icon: Moon,         label: 'Log Prayer',  page: 'Islam',    gradient: '' },
     { icon: BookOpen,     label: 'Read Quran',  page: 'Islam',    gradient: '' },
     { icon: Target,       label: 'Add Goal',    page: 'Goals',    gradient: '' },
     { icon: Plus,         label: t('calendar.addEvent'), page: 'Calendar', gradient: '' },
-    { icon: MessageSquare,label: t('nav.connect'),  page: 'Connect',  gradient: '' },
+    { icon: Heart,        label: 'Wellness',    page: 'Wellness', gradient: '' },
     { icon: Plane,        label: t('nav.travel'),   page: 'Travel',   gradient: '' },
   ] : [
     { icon: Plus,         label: t('calendar.addEvent'), page: 'Calendar',      gradient: '' },
     { icon: Target,       label: 'Add Goal',             page: 'Goals',         gradient: '' },
     { icon: Users,        label: 'Teams',                page: 'TeamWorkspace', gradient: '' },
     { icon: DollarSign,   label: 'Finance',              page: 'Finance',       gradient: '' },
-    { icon: MessageSquare,label: t('nav.connect'),       page: 'Connect',       gradient: '' },
+    { icon: Heart,        label: 'Wellness',             page: 'Wellness',      gradient: '' },
     { icon: Plane,        label: t('nav.travel'),        page: 'Travel',        gradient: '' },
-  ];
+  ]);
 
   return (
     <div className="min-h-screen pb-safe w-full overflow-x-hidden">
@@ -251,7 +240,7 @@ export default function DashboardPage() {
             )}
             <StatCard icon={Calendar}      label={t('nav.calendar')} value={events.length}  sub={t('common.today')}  accent="bg-amber-500"   to={createPageUrl('Calendar')} />
             <StatCard icon={CheckCircle2}  label={t('tasks.title')}  value={tasks.length}   sub={t('tasks.pending')} accent="bg-orange-500"  to={createPageUrl('Calendar') + '?view=task-timeline'} />
-            <StatCard icon={MessageSquare} label={t('connect.messages')} value={chats.length} sub="unread" accent="bg-teal-500" to={createPageUrl('Connect')} />
+            <StatCard icon={Heart}         label="Wellness"            value={goals.length}   sub="active goals" accent="bg-rose-500"    to={createPageUrl('Wellness')} />
           </div>
         </motion.div>
 

@@ -10,7 +10,7 @@ const SHORTCUTS = [
       { keys: ['G', 'C'], desc: 'Go to Calendar' },
       { keys: ['G', 'I'], desc: 'Go to Islam' },
       { keys: ['G', 'T'], desc: 'Go to Goals' },
-      { keys: ['G', 'N'], desc: 'Go to Connect' },
+      { keys: ['G', 'W'], desc: 'Go to Wellness' },
     ]
   },
   {

@@ -3,33 +3,34 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { createPageUrl } from '@/utils';
+import { isPageHiddenFromNav } from '@/lib/nav-v1-scope';
 import { motion } from 'framer-motion';
 
 const PAGE_RELATIONSHIPS = {
   Calendar: [
     { page: 'Profile', label: 'View Tasks & Goals', icon: '✅', description: 'Manage your to-dos' },
-    { page: 'Islamic', label: 'Prayer Times', icon: '🕌', description: 'View today\'s prayers' },
+    { page: 'Islam', label: 'Prayer Times', icon: '🕌', description: 'View today\'s prayers' },
     { page: 'Holidays', label: 'Plan a Trip', icon: '✈️', description: 'Schedule vacation' }
   ],
-  Islamic: [
+  Islam: [
     { page: 'Calendar', label: 'View Calendar', icon: '📅', description: 'See prayer events' },
     { page: 'Profile', label: 'Quran Goals', icon: '📖', description: 'Track memorization' },
-    { page: 'Holidays', label: 'Hajj/Umrah', icon: '🕋', description: 'Plan pilgrimage' }
+    { page: 'Travel', label: 'Travel Tools', icon: '✈️', description: 'Plan your trip' }
   ],
-  Health: [
+  Wellness: [
     { page: 'Calendar', label: 'Schedule Workouts', icon: '🏋️', description: 'Add to calendar' },
-    { page: 'Profile', label: 'Health Goals', icon: '🎯', description: 'Track progress' },
-    { page: 'Islamic', label: 'Fasting Tracker', icon: '🌙', description: 'Log fasts' }
+    { page: 'Goals', label: 'Health Goals', icon: '🎯', description: 'Track progress' },
+    { page: 'Islam', label: 'Spiritual Habits', icon: '🌙', description: 'Prayer & habits' }
   ],
   Profile: [
     { page: 'Calendar', label: 'View Schedule', icon: '📅', description: 'See your events' },
-    { page: 'Health', label: 'Wellness Goals', icon: '💪', description: 'Track health' },
-    { page: 'Chat', label: 'Team Chat', icon: '💬', description: 'Collaborate' }
+    { page: 'Wellness', label: 'Wellness Goals', icon: '💪', description: 'Track habits & health' },
+    { page: 'Goals', label: 'Life Goals', icon: '🎯', description: 'Set milestones' }
   ],
   Holidays: [
     { page: 'Calendar', label: 'Block Dates', icon: '📅', description: 'Reserve time' },
-    { page: 'Islamic', label: 'Hajj Planner', icon: '🕋', description: 'Religious travel' },
-    { page: 'Chat', label: 'Share Trip', icon: '💬', description: 'Invite friends' }
+    { page: 'Islam', label: 'Prayer Abroad', icon: '🕌', description: 'Travel companion' },
+    { page: 'Travel', label: 'Trip Dashboard', icon: '✈️', description: 'Manage trips' }
   ],
   Chat: [
     { page: 'Calendar', label: 'Schedule Meeting', icon: '📅', description: 'Plan together' },
@@ -39,7 +40,8 @@ const PAGE_RELATIONSHIPS = {
 };
 
 export default function RelatedFeaturesPanel({ currentPage }) {
-  const relatedFeatures = PAGE_RELATIONSHIPS[currentPage] || [];
+  const relatedFeatures = (PAGE_RELATIONSHIPS[currentPage] || [])
+    .filter(f => !isPageHiddenFromNav(f.page));
 
   if (relatedFeatures.length === 0) return null;
 
