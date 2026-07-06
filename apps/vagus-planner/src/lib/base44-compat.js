@@ -15,6 +15,21 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '')
 
+/** Bearer token for cross-origin VP API calls (e.g. Capacitor). Web preview still uses cookies. */
+async function getVpApiFetchHeaders() {
+  const headers = { 'Content-Type': 'application/json' }
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
+    if (token) {
+      headers.Authorization = `Bearer ${token}`
+    }
+  } catch {
+    // Cookie session may still authenticate same-origin web requests.
+  }
+  return headers
+}
+
 const FIRSTPARTY_SCHEMA = 'firstparty'
 
 // Entity mapping: Base44 entity names → Supabase table names (firstparty schema)
@@ -326,7 +341,7 @@ export const base44 = {
         const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
         const response = await fetch(`${apiBase}/api/vagus-planner/functions`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: await getVpApiFetchHeaders(),
           credentials: 'include',
           body: JSON.stringify({ function: name, payload: payload ?? {} }),
         })
@@ -382,7 +397,7 @@ export const base44 = {
           const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
           const response = await fetch(`${apiBase}/api/vagus-planner/llm`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: await getVpApiFetchHeaders(),
             credentials: 'include',
             body: JSON.stringify(requestBody),
           })
