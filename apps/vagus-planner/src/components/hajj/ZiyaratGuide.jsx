@@ -25,7 +25,7 @@ const TYPE_LABELS = {
   tourist: 'Cultural',
 };
 
-function SiteCard({ site, addToCalendar }) {
+function SiteCard({ site, addToCalendar, hideCalendarAdd }) {
   const [expanded, setExpanded] = useState(false);
   const copy = (text) => { navigator.clipboard.writeText(text); toast.success('Copied!'); };
 
@@ -104,10 +104,12 @@ function SiteCard({ site, addToCalendar }) {
 
               {/* Actions */}
               <div className="flex gap-2 pt-1">
-                <Button size="sm" variant="outline" onClick={() => addToCalendar(site)}
-                  className="flex-1 text-xs border-teal-200 text-teal-700 dark:text-teal-400">
-                  <Calendar className="w-3 h-3 mr-1" />Add to Calendar
-                </Button>
+                {!hideCalendarAdd && (
+                  <Button size="sm" variant="outline" onClick={() => addToCalendar(site)}
+                    className="flex-1 text-xs border-teal-200 text-teal-700 dark:text-teal-400">
+                    <Calendar className="w-3 h-3 mr-1" />Add to Calendar
+                  </Button>
+                )}
                 {site.lat && (
                   <Button size="sm" variant="outline" asChild className="text-xs border-blue-200 text-blue-700">
                     <a href={`https://www.google.com/maps?q=${site.lat},${site.lng}`} target="_blank" rel="noopener noreferrer">
@@ -124,7 +126,7 @@ function SiteCard({ site, addToCalendar }) {
   );
 }
 
-export default function ZiyaratGuide({ cityTab = 'makkah' }) {
+export default function ZiyaratGuide({ cityTab = 'makkah', hideCalendarAdd = false }) {
   const [tab, setTab] = useState(cityTab);
   const queryClient = useQueryClient();
 
@@ -166,10 +168,14 @@ export default function ZiyaratGuide({ cityTab = 'makkah' }) {
         ))}
       </div>
 
-      <p className="text-xs text-slate-500">Tap any site to see what to do, du'a, history & add to calendar.</p>
+      <p className="text-xs text-slate-500">
+        {hideCalendarAdd
+          ? "Tap any site to see what to do, du'a, history & maps."
+          : "Tap any site to see what to do, du'a, history & add to calendar."}
+      </p>
 
       {sites.map(site => (
-        <SiteCard key={site.id} site={site} addToCalendar={(s) => addToCalendar.mutate(s)} />
+        <SiteCard key={site.id} site={site} hideCalendarAdd={hideCalendarAdd} addToCalendar={(s) => addToCalendar.mutate(s)} />
       ))}
     </div>
   );

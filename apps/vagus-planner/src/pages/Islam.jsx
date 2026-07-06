@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Moon, BookOpen, Hand, Map, Heart, Sunrise, ChevronRight,
-  Sparkles, ArrowLeft, Loader2, Star, Crown, Users, Calendar, Flame
+  Sparkles, ArrowLeft, Loader2, Star, Crown, Users, Calendar, Flame, ExternalLink
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -71,6 +71,11 @@ import GoalsStrip from '@/components/goals/GoalsStrip';
 import HijriBirthdayTracker from '@/components/islamic/unique/HijriBirthdayTracker';
 import IslamicTravelCompanion from '@/components/islamic/unique/IslamicTravelCompanion';
 import IslamicLifeTimeline from '@/components/islamic/unique/IslamicLifeTimeline';
+
+import MiqatGuide from '@/components/hajj/MiqatGuide';
+import RitualStepsGuide from '@/components/hajj/RitualStepsGuide';
+import ZiyaratGuide from '@/components/hajj/ZiyaratGuide';
+import PackingListGuide from '@/components/hajj/PackingListGuide';
 
 // ── AI Guide Compact ──────────────────────────────────────────────────────────
 function IslamicAICompact() {
@@ -320,6 +325,72 @@ function KnowledgeContent() {
   );
 }
 
+const PILGRIMAGE_OFFICIAL_LINKS = [
+  { label: 'Nusuk — Official Hajj & Umrah Portal', url: 'https://www.nusuk.sa', desc: 'Visas, permits, packages & pilgrim registration', emoji: '🕋' },
+  { label: 'Saudi eVisa', url: 'https://visa.mofa.gov.sa', desc: 'Apply for Umrah/Tourist visa online', emoji: '📋' },
+  { label: 'Ministry of Hajj & Umrah', url: 'https://www.haj.gov.sa', desc: 'Official guidance, regulations & news', emoji: '🏛️' },
+  { label: 'Hajj Health Requirements', url: 'https://www.moh.gov.sa/en/Hajj', desc: 'Vaccinations & health requirements (Meningitis mandatory)', emoji: '💉' },
+  { label: 'General Authority of Civil Aviation', url: 'https://www.gaca.gov.sa', desc: 'Saudi flight information & airport services', emoji: '✈️' },
+];
+
+/** Pilgrimage — static Miqat, rituals, ziyarat & packing guides */
+function PilgrimageGuideContent() {
+  return (
+    <div className="space-y-4">
+      <p className="text-xs rounded-xl p-2.5 font-medium" style={{background:'rgba(29,111,184,0.08)', color:'#1B2A4A', border:'1px solid rgba(29,111,184,0.15)'}}>
+        🕋 Step-by-step Hajj & Umrah guide with miqat points, ritual du'as, ziyarat sites, and packing lists. All content works offline — no account data required.
+      </p>
+
+      <div className="rounded-2xl border border-purple-200 dark:border-purple-800 bg-white dark:bg-slate-900 overflow-hidden">
+        <div className="px-4 py-3 bg-purple-50 dark:bg-purple-950/30 border-b border-purple-100 dark:border-purple-900">
+          <p className="font-black text-purple-800 dark:text-purple-200 text-sm flex items-center gap-2">
+            <ExternalLink className="w-4 h-4" />Official Resources
+          </p>
+          <p className="text-xs text-purple-600 dark:text-purple-400 mt-0.5">Visas, permits, and official requirements — always check for the latest guidance</p>
+        </div>
+        <div className="divide-y divide-purple-50 dark:divide-purple-900/30">
+          {PILGRIMAGE_OFFICIAL_LINKS.map(link => (
+            <a key={link.url} href={link.url} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-3 px-4 py-3 hover:bg-purple-50 dark:hover:bg-purple-950/20 transition-colors group">
+              <span className="text-xl flex-shrink-0">{link.emoji}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-purple-700 dark:text-purple-300 group-hover:underline">{link.label}</p>
+                <p className="text-xs text-slate-500">{link.desc}</p>
+              </div>
+              <ExternalLink className="w-3.5 h-3.5 text-purple-400 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </a>
+          ))}
+        </div>
+      </div>
+
+      <Tabs defaultValue="miqat">
+        <TabsList className="grid grid-cols-4 w-full h-auto mb-4">
+          <TabsTrigger value="miqat" className="text-[11px] py-2">🗺️ Miqat</TabsTrigger>
+          <TabsTrigger value="rituals" className="text-[11px] py-2">🕌 Rituals</TabsTrigger>
+          <TabsTrigger value="ziyarat" className="text-[11px] py-2">📍 Ziyarat</TabsTrigger>
+          <TabsTrigger value="packing" className="text-[11px] py-2">🎒 Packing</TabsTrigger>
+        </TabsList>
+        <TabsContent value="miqat" className="space-y-4">
+          <p className="text-xs rounded-xl p-2.5 font-medium" style={{background:'rgba(29,111,184,0.08)', color:'#1B2A4A', border:'1px solid rgba(29,111,184,0.15)'}}>🗺️ The five miqat boundaries — niyyah (intention) and talbiyah for entering Ihram.</p>
+          <MiqatGuide />
+        </TabsContent>
+        <TabsContent value="rituals" className="space-y-4">
+          <p className="text-xs rounded-xl p-2.5 font-medium" style={{background:'rgba(29,111,184,0.08)', color:'#1B2A4A', border:'1px solid rgba(29,111,184,0.15)'}}>🕌 Umrah and Hajj step-by-step with du'as. Toggle between journeys and track progress locally on your device.</p>
+          <RitualStepsGuide hideCalendarAdd />
+        </TabsContent>
+        <TabsContent value="ziyarat" className="space-y-4">
+          <p className="text-xs rounded-xl p-2.5 font-medium" style={{background:'rgba(29,111,184,0.08)', color:'#1B2A4A', border:'1px solid rgba(29,111,184,0.15)'}}>📍 Sacred sites in Makkah and Madinah — what to do, du'as, history, and maps.</p>
+          <ZiyaratGuide hideCalendarAdd />
+        </TabsContent>
+        <TabsContent value="packing" className="space-y-4">
+          <p className="text-xs rounded-xl p-2.5 font-medium" style={{background:'rgba(29,111,184,0.08)', color:'#1B2A4A', border:'1px solid rgba(29,111,184,0.15)'}}>🎒 Men&apos;s and women&apos;s packing lists with a local checklist — nothing is saved to the cloud.</p>
+          <PackingListGuide />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
 // ── Section definitions (reorganised — no duplicates) ─────────────────────────
 const SECTION_GROUPS = [
   {
@@ -396,13 +467,13 @@ const SECTION_GROUPS = [
         ),
       },
       {
-        id: 'hajj',
+        id: 'pilgrimage_guide',
         icon: Map,
-        label: 'Hajj & Umrah',
+        label: 'Pilgrimage Guide',
         arabic: 'الحج',
-        desc: 'Full guide · Rituals · Ziyarat · Diary',
+        desc: 'Miqat · Rituals · Ziyarat · Packing',
         gradient: 'from-[#1B2A4A] to-[#2D4A65]',
-        isLink: 'HajjUmrahDashboard',
+        content: () => <PilgrimageGuideContent />,
       },
       {
         id: 'travel_companion',

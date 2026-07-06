@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import { base44 } from '@/api/base44Client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-export default function RitualStepsGuide() {
+export default function RitualStepsGuide({ hideCalendarAdd = false }) {
   const [type, setType] = useState('umrah');
   const [expanded, setExpanded] = useState(null);
   const [completed, setCompleted] = useState({});
@@ -174,10 +174,12 @@ export default function RitualStepsGuide() {
                       </div>
                     )}
 
-                    <Button size="sm" variant="outline" onClick={() => addToCalendar.mutate(step)}
-                      className="w-full text-xs border-purple-200 text-purple-700 dark:text-purple-400">
-                      <Calendar className="w-3 h-3 mr-1.5" />Add to Calendar
-                    </Button>
+                    {!hideCalendarAdd && (
+                      <Button size="sm" variant="outline" onClick={() => addToCalendar.mutate(step)}
+                        className="w-full text-xs border-purple-200 text-purple-700 dark:text-purple-400">
+                        <Calendar className="w-3 h-3 mr-1.5" />Add to Calendar
+                      </Button>
+                    )}
                   </div>
                 </motion.div>
               )}

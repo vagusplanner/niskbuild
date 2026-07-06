@@ -31,7 +31,6 @@ export const V1_HIDDEN_PAGES = new Set([
 /** Islam hub section tile ids hidden for v1 */
 export const V1_HIDDEN_ISLAM_SECTION_IDS = new Set([
   'ramadan',
-  'hajj',
   'family_hub',
   'hijri_calendar',
 ]);
@@ -58,7 +57,7 @@ export function shouldShowIslamSection(section) {
 export const ONBOARDING_ISLAM_TARGETS = {
   zakat: '/Islam?section=zakat',
   sadaqah: '/Islam?section=zakat',
-  hajj: '/Islam?section=prayer',
+  hajj: '/Islam?section=pilgrimage_guide',
 };
 
 export function islamOnboardingUrl(interest) {
