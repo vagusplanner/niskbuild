@@ -106,14 +106,19 @@ Return ONLY valid JSON, no explanation.`,
 }
 
 async function saveExtracted(extracted, transcript, queryClient) {
-  const cat = extracted.category;
+  const cat = String(extracted?.category || 'task').toLowerCase().trim();
 
   if (cat === 'task' || cat === 'islamic') {
+    const dueRaw = extracted.due_date
+    const dueDate =
+      dueRaw && String(dueRaw).trim() && !Number.isNaN(new Date(dueRaw).getTime())
+        ? new Date(dueRaw).toISOString()
+        : null
     const record = await base44.entities.Task.create({
-      title: extracted.title || transcript.substring(0, 80),
+      title: extracted.title || transcript.substring(0, 80) || 'Voice task',
       description: extracted.description || transcript,
       priority: extracted.priority || 'medium',
-      due_date: extracted.due_date || null,
+      due_date: dueDate,
       status: 'todo',
     });
     queryClient.invalidateQueries({ queryKey: ['tasks'] });

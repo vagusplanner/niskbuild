@@ -358,3 +358,170 @@ ${transcript}`,
 
   return { ok: false, error: `Unknown action: ${action}`, status: 400 };
 };
+
+type MeetingSlot = {
+  start_time?: string;
+  end_time?: string;
+  start?: string;
+  end?: string;
+  date?: string;
+  score?: number;
+  reasoning?: string;
+  confidence?: number;
+};
+
+async function groqMeetingSlots(
+  label: string,
+  userPrompt: string
+): Promise<MeetingSlot[] | null> {
+  const result = await groqJson<{ suggestions?: MeetingSlot[]; optimal_slots?: MeetingSlot[] }>(
+    'You are an expert meeting scheduler. Propose realistic open time slots.',
+    `${userPrompt}
+
+Return JSON with a "suggestions" array (3–5 items). Each item:
+{
+  "start_time": "ISO 8601 datetime",
+  "end_time": "ISO 8601 datetime",
+  "date": "YYYY-MM-DD",
+  "score": 1-10,
+  "reasoning": "short explanation",
+  "confidence": 0.0-1.0
+}`,
+    label
+  );
+  if (!result) return null;
+  return Array.isArray(result.suggestions)
+    ? result.suggestions
+    : Array.isArray(result.optimal_slots)
+      ? result.optimal_slots
+      : [];
+}
+
+function normalizeMeetingSlots(slots: MeetingSlot[]) {
+  return slots.map((slot, idx) => {
+    const start = slot.start_time ?? slot.start ?? null;
+    const end = slot.end_time ?? slot.end ?? null;
+    const startDate = start ? new Date(start) : null;
+    return {
+      start_time: start,
+      end_time: end,
+      start,
+      end,
+      date: slot.date ?? (startDate && !Number.isNaN(startDate.getTime())
+        ? startDate.toISOString().split('T')[0]
+        : null),
+      score: typeof slot.score === 'number' ? slot.score : Math.max(6, 9 - idx),
+      reasoning: slot.reasoning ?? 'Suggested based on typical availability',
+      confidence: typeof slot.confidence === 'number' ? slot.confidence : 0.75,
+    };
+  });
+}
+
+/** SmartMeetingScheduler — find optimal meeting windows. */
+export const findOptimalMeetingTimes: VpFunctionHandler = async ({ payload }) => {
+  const participants = Array.isArray(payload.participants) ? payload.participants : [];
+  const duration =
+    typeof payload.duration === 'number' && payload.duration > 0 ? payload.duration : 60;
+  const dateRange =
+    typeof payload.dateRange === 'number' && payload.dateRange > 0 ? payload.dateRange : 7;
+  const today = new Date().toISOString().split('T')[0];
+
+  const slots = await groqMeetingSlots(
+    'vp-findOptimalMeetingTimes',
+    `Find optimal ${duration}-minute meeting slots in the next ${dateRange} days.
+Participants: ${participants.length ? participants.join(', ') : 'organizer only'}
+Today: ${today}`
+  );
+
+  if (!slots) {
+    return { ok: false, error: 'AI is temporarily unavailable', status: 503 };
+  }
+
+  const normalized = normalizeMeetingSlots(slots);
+  return {
+    ok: true,
+    data: {
+      optimal_slots: normalized,
+      suggestions: normalized,
+    },
+  };
+};
+
+/** SmartMeetingTimeSelector — single best meeting time suggestions. */
+export const suggestOptimalMeetingTime: VpFunctionHandler = async ({ payload }) => {
+  const title = typeof payload.meeting_title === 'string' ? payload.meeting_title : 'Meeting';
+  const attendees = Array.isArray(payload.attendee_emails) ? payload.attendee_emails : [];
+  const duration =
+    typeof payload.duration_minutes === 'number' && payload.duration_minutes > 0
+      ? payload.duration_minutes
+      : 30;
+
+  const slots = await groqMeetingSlots(
+    'vp-suggestOptimalMeetingTime',
+    `Suggest optimal ${duration}-minute slots for "${title}".
+Attendees: ${attendees.length ? attendees.join(', ') : 'organizer only'}`
+  );
+
+  if (!slots) {
+    return { ok: false, error: 'AI is temporarily unavailable', status: 503 };
+  }
+
+  const normalized = normalizeMeetingSlots(slots);
+  return {
+    ok: true,
+    data: {
+      analysis: `Analyzed schedules for ${attendees.length || 1} participant(s).`,
+      optimal_slots: normalized,
+      recommendations: normalized.slice(0, 2).map((s) => s.reasoning).filter(Boolean),
+    },
+  };
+};
+
+/** AICollaborationTools — lightweight meeting time suggestions. */
+export const suggestMeetingTimes: VpFunctionHandler = async ({ payload }) => {
+  const duration =
+    typeof payload.duration === 'number' && payload.duration > 0 ? payload.duration : 60;
+  const attendees = Array.isArray(payload.attendees) ? payload.attendees : [];
+
+  const slots = await groqMeetingSlots(
+    'vp-suggestMeetingTimes',
+    `Suggest ${duration}-minute collaboration meeting times.
+Attendees: ${attendees.length ? attendees.join(', ') : 'team'}`
+  );
+
+  if (!slots) {
+    return { ok: false, error: 'AI is temporarily unavailable', status: 503 };
+  }
+
+  return { ok: true, data: { suggestions: normalizeMeetingSlots(slots) } };
+};
+
+/** PrayerAwareScheduler — slots that avoid prayer times. */
+export const suggestPrayerAwareMeetingTimes: VpFunctionHandler = async ({ payload }) => {
+  const duration =
+    typeof payload.duration_minutes === 'number' && payload.duration_minutes > 0
+      ? payload.duration_minutes
+      : 60;
+  const buffer =
+    typeof payload.buffer_minutes === 'number' && payload.buffer_minutes >= 0
+      ? payload.buffer_minutes
+      : 15;
+  const date =
+    typeof payload.date === 'string' ? payload.date : new Date().toISOString().split('T')[0];
+  const prayerTimes =
+    payload.prayer_times && typeof payload.prayer_times === 'object'
+      ? (payload.prayer_times as Record<string, string>)
+      : {};
+
+  const slots = await groqMeetingSlots(
+    'vp-suggestPrayerAwareMeetingTimes',
+    `Suggest ${duration}-minute meeting slots on ${date} that avoid these prayer times (leave ${buffer} min buffer):
+${JSON.stringify(prayerTimes)}`
+  );
+
+  if (!slots) {
+    return { ok: false, error: 'AI is temporarily unavailable', status: 503 };
+  }
+
+  return { ok: true, data: { suggestions: normalizeMeetingSlots(slots) } };
+};

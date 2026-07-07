@@ -361,13 +361,16 @@ export default function PrayerNotificationManager() {
                           <CheckCircle2 className="w-3 h-3" /> Scheduled
                         </span>
                       )}
-                      {!past && permission === 'granted' && (
+                      {!past && (
                         <button
                           onClick={() => togglePrayer(prayer)}
                           className={cn(
                             'relative w-10 h-6 rounded-full transition-colors flex-shrink-0',
-                            enabled ? 'bg-teal-500' : 'bg-slate-200 dark:bg-slate-700'
+                            enabled ? 'bg-teal-500' : 'bg-slate-200 dark:bg-slate-700',
+                            permission !== 'granted' && 'opacity-70'
                           )}
+                          aria-label={`Toggle ${prayer} notifications`}
+                        >
                         >
                           <span className={cn(
                             'absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform',

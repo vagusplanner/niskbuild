@@ -13,7 +13,7 @@ import {
 import { motion } from 'framer-motion';
 
 export default function GlobalNotificationSettings({ formData, onChange }) {
-  const masterOff = !formData.notifications_enabled;
+  const masterOff = formData.notifications_enabled === false;
 
   return (
     <div className="space-y-6">

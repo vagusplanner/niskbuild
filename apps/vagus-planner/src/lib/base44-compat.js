@@ -129,13 +129,17 @@ function mapPayloadToRow(entityName, payload, userId) {
   if (entityName === 'Task') {
     const row = {}
     if (userId) row.user_id = userId
-    if (p.title != null) row.title = p.title
+    if (p.title != null && String(p.title).trim()) row.title = String(p.title).trim()
+    else if (userId) row.title = 'Untitled'
     const notes = p.notes ?? p.description
-    if (notes != null) row.notes = notes
-    if (p.due_date != null) row.due_date = p.due_date
+    if (notes != null && String(notes).trim()) row.notes = String(notes).trim()
+    if (p.due_date != null && p.due_date !== '') {
+      const due = new Date(p.due_date)
+      if (!Number.isNaN(due.getTime())) row.due_date = due.toISOString()
+    }
     if (p.priority != null) row.priority = mapTaskPriority(p.priority)
     if (p.status != null) row.status = mapTaskStatus(p.status)
-    else if (userId && p.title != null) row.status = 'pending'
+    else if (userId && row.title) row.status = 'pending'
     return row
   }
 
@@ -191,9 +195,75 @@ function mapPayloadToRow(entityName, payload, userId) {
   return row
 }
 
+const USER_SETTINGS_COLUMN_MAP = {
+  notifications_enabled: 'push_notifications_enabled',
+  email_notifications: 'email_notifications_enabled',
+  notify_prayer: 'prayer_reminders_enabled',
+  notify_events: 'event_reminders_enabled',
+  notify_tasks: 'task_due_reminders_enabled',
+}
+
+function mapUserSettingsPayloadToRow(payload, existingRow, userId) {
+  const p = { ...(payload ?? {}) }
+  const row = {}
+  if (userId) row.user_id = userId
+
+  const prefs = {
+    ...(existingRow?.preferences && typeof existingRow.preferences === 'object'
+      ? existingRow.preferences
+      : {}),
+  }
+
+  for (const [appKey, col] of Object.entries(USER_SETTINGS_COLUMN_MAP)) {
+    if (appKey in p) {
+      row[col] = p[appKey] !== false
+      prefs[appKey] = p[appKey]
+      delete p[appKey]
+    }
+  }
+
+  if ('edition' in p) {
+    row.edition = p.edition
+    delete p.edition
+  }
+  if ('timezone' in p) {
+    row.timezone = p.timezone
+    delete p.timezone
+  }
+
+  for (const [key, value] of Object.entries(p)) {
+    if (['id', 'user_id', 'created_at', 'updated_at', 'preferences'].includes(key)) continue
+    prefs[key] = value
+  }
+
+  if (Object.keys(prefs).length > 0) row.preferences = prefs
+  return row
+}
+
+function mapUserSettingsFromRow(row) {
+  if (!row) return row
+  const prefs =
+    row.preferences && typeof row.preferences === 'object' && !Array.isArray(row.preferences)
+      ? row.preferences
+      : {}
+  return {
+    ...row,
+    ...prefs,
+    notifications_enabled: row.push_notifications_enabled !== false,
+    email_notifications: row.email_notifications_enabled !== false,
+    notify_prayer: row.prayer_reminders_enabled !== false,
+    notify_events: row.event_reminders_enabled !== false,
+    notify_tasks: row.task_due_reminders_enabled !== false,
+  }
+}
+
 /** Supabase columns → Base44 field names for reads */
 function mapRowFromDb(entityName, row) {
   if (!row) return row
+
+  if (entityName === 'UserSettings') {
+    return mapUserSettingsFromRow(row)
+  }
 
   if (entityName === 'Event') {
     const start = row.event_date ?? row.start_date ?? row.date
@@ -453,7 +523,12 @@ export const base44 = {
         },
         create: async (payload) => {
           const userId = await getCurrentUserId()
-          const row = mapPayloadToRow(entityName, payload, userId)
+          let row
+          if (entityName === 'UserSettings') {
+            row = mapUserSettingsPayloadToRow(payload, null, userId)
+          } else {
+            row = mapPayloadToRow(entityName, payload, userId)
+          }
           const { data, error } = await tableFrom(tableName)
             .insert([row])
             .select()
@@ -461,7 +536,17 @@ export const base44 = {
           return mapRowFromDb(entityName, data[0])
         },
         update: async (id, payload) => {
-          const row = mapPayloadToRow(entityName, payload, null)
+          let row
+          if (entityName === 'UserSettings') {
+            const { data: existing, error: readError } = await tableFrom(tableName)
+              .select('*')
+              .eq('id', id)
+              .single()
+            if (readError) throw readError
+            row = mapUserSettingsPayloadToRow(payload, existing, null)
+          } else {
+            row = mapPayloadToRow(entityName, payload, null)
+          }
           const { data, error } = await tableFrom(tableName)
             .update(row)
             .eq('id', id)

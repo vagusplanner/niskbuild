@@ -21,7 +21,11 @@ import {
   aiSchedulePlanner,
   aiSchedulingSuggestions,
   advancedMeetingScheduler,
+  findOptimalMeetingTimes,
   parseNaturalLanguageEvent,
+  suggestMeetingTimes,
+  suggestOptimalMeetingTime,
+  suggestPrayerAwareMeetingTimes,
 } from './handlers/calendar-ai';
 import { transcribeAudio } from './handlers/transcribe-audio';
 
@@ -43,6 +47,10 @@ export const VP_FUNCTION_REGISTRY = new Map<string, VpFunctionHandler>([
   ['aiSchedulePlanner', aiSchedulePlanner],
   ['aiSchedulingSuggestions', aiSchedulingSuggestions],
   ['advancedMeetingScheduler', advancedMeetingScheduler],
+  ['findOptimalMeetingTimes', findOptimalMeetingTimes],
+  ['suggestOptimalMeetingTime', suggestOptimalMeetingTime],
+  ['suggestMeetingTimes', suggestMeetingTimes],
+  ['suggestPrayerAwareMeetingTimes', suggestPrayerAwareMeetingTimes],
   ['aiMeetingAssistant', aiMeetingAssistant],
   ['transcribeAudio', transcribeAudio],
 ]);
