@@ -3,7 +3,7 @@
  * Uses OpenStreetMap Overpass API (free, no key needed) + react-leaflet.
  * Integrated as a new tab in PrayerAndQiblaPanel.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, Loader2, Navigation, Clock, Phone, ExternalLink, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -40,6 +40,12 @@ export default function NearbyMosqueMap() {
   const [selected, setSelected] = useState(null);
   const [prayerTimes, setPrayerTimes] = useState(null);
   const [mapReady, setMapReady] = useState(false);
+  const mosqueFetchIdRef = useRef(0);
+  const mosquesRef = useRef([]);
+
+  useEffect(() => {
+    mosquesRef.current = mosques;
+  }, [mosques]);
 
   const { data: settingsList = [] } = useQuery({
     queryKey: ['userSettings'],
@@ -78,6 +84,7 @@ export default function NearbyMosqueMap() {
   };
 
   const fetchMosques = async ({ lat, lng }) => {
+    const requestId = ++mosqueFetchIdRef.current;
     setLoading(true);
     try {
       // Overpass API — finds mosques within 3km
@@ -89,6 +96,7 @@ export default function NearbyMosqueMap() {
         out body center;`;
 
       const data = await fetchOverpass(query);
+      if (requestId !== mosqueFetchIdRef.current) return;
 
       const items = (data.elements || [])
         .map(el => ({
@@ -110,9 +118,15 @@ export default function NearbyMosqueMap() {
       setMosques(items);
       if (items.length === 0) toast.info('No mosques found nearby — try a wider area');
     } catch (e) {
-      toast.error('Could not load mosques');
+      if (requestId !== mosqueFetchIdRef.current) return;
+      if (mosquesRef.current.length === 0) {
+        toast.error('Could not load mosques');
+      }
+    } finally {
+      if (requestId === mosqueFetchIdRef.current) {
+        setLoading(false);
+      }
     }
-    setLoading(false);
   };
 
   // Lazy load leaflet only when needed

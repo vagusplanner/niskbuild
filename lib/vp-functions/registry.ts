@@ -11,13 +11,16 @@ import {
   fetchPublicHolidays,
   findHalalRestaurants,
   getHalalAndPrayerLocations,
+  getPrayerTimesForUser,
   getWeatherForecast,
 } from './handlers/geo';
 import { hadithSRSChallenge } from './handlers/hadith-srs';
 import { globalSearch } from './handlers/search';
 import {
+  aiMeetingAssistant,
   aiSchedulePlanner,
   aiSchedulingSuggestions,
+  advancedMeetingScheduler,
   parseNaturalLanguageEvent,
 } from './handlers/calendar-ai';
 import { transcribeAudio } from './handlers/transcribe-audio';
@@ -32,12 +35,15 @@ export const VP_FUNCTION_REGISTRY = new Map<string, VpFunctionHandler>([
   ['getWeatherForecast', getWeatherForecast],
   ['detectUserLocation', detectUserLocation],
   ['fetchPublicHolidays', fetchPublicHolidays],
+  ['getPrayerTimesForUser', getPrayerTimesForUser],
   ['hadithSRSChallenge', hadithSRSChallenge],
   ['globalSearch', globalSearch],
   ['deleteUserAccount', deleteUserAccount],
   ['parseNaturalLanguageEvent', parseNaturalLanguageEvent],
   ['aiSchedulePlanner', aiSchedulePlanner],
   ['aiSchedulingSuggestions', aiSchedulingSuggestions],
+  ['advancedMeetingScheduler', advancedMeetingScheduler],
+  ['aiMeetingAssistant', aiMeetingAssistant],
   ['transcribeAudio', transcribeAudio],
 ]);
 

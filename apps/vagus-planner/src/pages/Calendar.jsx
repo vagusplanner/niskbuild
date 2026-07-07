@@ -240,17 +240,19 @@ export default function CalendarPage() {
   }, [events, publicHolidays, publicHolidaysNextYear]);
 
   // ── Mutations ──────────────────────────────────────────────────────────────
+  const eventsQueryKey = ['events', user?.id];
+
   const createEventMutation = useMutation({
     mutationFn: (data) => base44.entities.Event.create(data),
     onMutate: async (newEvent) => {
-      await queryClient.cancelQueries({ queryKey: ['events'] });
-      const prev = queryClient.getQueryData(['events']);
-      queryClient.setQueryData(['events'], (old = []) => [...old, { ...newEvent, id: 'temp-' + Date.now() }]);
+      await queryClient.cancelQueries({ queryKey: eventsQueryKey });
+      const prev = queryClient.getQueryData(eventsQueryKey);
+      queryClient.setQueryData(eventsQueryKey, (old = []) => [...old, { ...newEvent, id: 'temp-' + Date.now() }]);
       return { prev };
     },
-    onError: (_, __, ctx) => queryClient.setQueryData(['events'], ctx.prev),
+    onError: (_, __, ctx) => queryClient.setQueryData(eventsQueryKey, ctx.prev),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['events'] });
+      queryClient.invalidateQueries({ queryKey: eventsQueryKey });
       setShowEventForm(false);
       setEditingEvent(null);
     }
@@ -259,14 +261,14 @@ export default function CalendarPage() {
   const updateEventMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Event.update(id, data),
     onMutate: async ({ id, data }) => {
-      await queryClient.cancelQueries({ queryKey: ['events'] });
-      const prev = queryClient.getQueryData(['events']);
-      queryClient.setQueryData(['events'], (old = []) => old.map(e => e.id === id ? { ...e, ...data } : e));
+      await queryClient.cancelQueries({ queryKey: eventsQueryKey });
+      const prev = queryClient.getQueryData(eventsQueryKey);
+      queryClient.setQueryData(eventsQueryKey, (old = []) => old.map(e => e.id === id ? { ...e, ...data } : e));
       return { prev };
     },
-    onError: (_, __, ctx) => queryClient.setQueryData(['events'], ctx.prev),
+    onError: (_, __, ctx) => queryClient.setQueryData(eventsQueryKey, ctx.prev),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['events'] });
+      queryClient.invalidateQueries({ queryKey: eventsQueryKey });
       setShowEventForm(false);
       setEditingEvent(null);
     }
@@ -275,13 +277,13 @@ export default function CalendarPage() {
   const deleteEventMutation = useMutation({
     mutationFn: (id) => base44.entities.Event.delete(id),
     onMutate: async (id) => {
-      await queryClient.cancelQueries({ queryKey: ['events'] });
-      const prev = queryClient.getQueryData(['events']);
-      queryClient.setQueryData(['events'], (old = []) => old.filter(e => e.id !== id));
+      await queryClient.cancelQueries({ queryKey: eventsQueryKey });
+      const prev = queryClient.getQueryData(eventsQueryKey);
+      queryClient.setQueryData(eventsQueryKey, (old = []) => old.filter(e => e.id !== id));
       return { prev };
     },
-    onError: (_, __, ctx) => queryClient.setQueryData(['events'], ctx.prev),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['events'] })
+    onError: (_, __, ctx) => queryClient.setQueryData(eventsQueryKey, ctx.prev),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: eventsQueryKey })
   });
 
   // ── Handlers ───────────────────────────────────────────────────────────────

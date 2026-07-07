@@ -114,12 +114,6 @@ async function saveExtracted(extracted, transcript, queryClient) {
       description: extracted.description || transcript,
       priority: extracted.priority || 'medium',
       due_date: extracted.due_date || null,
-      category: cat === 'islamic' ? 'personal' : 'personal',
-      tags: [
-        ...(extracted.tags || []),
-        cat === 'islamic' ? 'islamic' : 'voice',
-        'voice-capture',
-      ],
       status: 'todo',
     });
     queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -130,10 +124,8 @@ async function saveExtracted(extracted, transcript, queryClient) {
     const record = await base44.entities.Goal.create({
       title: extracted.title || transcript.substring(0, 80),
       description: extracted.description || transcript,
-      priority: extracted.priority || 'medium',
-      category: extracted.goal_category || 'personal',
       target_date: extracted.due_date || extracted.end_date || null,
-      status: 'in_progress',
+      status: 'active',
     });
     queryClient.invalidateQueries({ queryKey: ['goals'] });
     return { entity: 'Goal', record };
@@ -148,8 +140,6 @@ async function saveExtracted(extracted, transcript, queryClient) {
       description: extracted.description || transcript,
       start_date: startDate,
       end_date: endDate,
-      category: 'personal',
-      source: 'app',
     });
     queryClient.invalidateQueries({ queryKey: ['events'] });
     return { entity: 'Event', record };
@@ -159,10 +149,8 @@ async function saveExtracted(extracted, transcript, queryClient) {
     const record = await base44.entities.Expense.create({
       date: format(new Date(), 'yyyy-MM-dd'),
       amount: extracted.amount || 0,
-      type: extracted.finance_type || 'expense',
       category: extracted.finance_category || 'other',
-      description: extracted.title || transcript.substring(0, 100),
-      notes: extracted.description || transcript,
+      description: extracted.description || extracted.title || transcript.substring(0, 100),
     });
     queryClient.invalidateQueries({ queryKey: ['expenses'] });
     return { entity: 'Expense', record };
@@ -171,11 +159,8 @@ async function saveExtracted(extracted, transcript, queryClient) {
   if (cat === 'travel') {
     const record = await base44.entities.Holiday.create({
       title: extracted.title || `Trip to ${extracted.destination || 'Destination'}`,
-      destination: extracted.destination || '',
       start_date: extracted.start_date || format(new Date(), 'yyyy-MM-dd'),
-      end_date: extracted.end_date || format(addDays(new Date(), 7), 'yyyy-MM-dd'),
       notes: extracted.description || transcript,
-      status: 'planned',
     });
     queryClient.invalidateQueries({ queryKey: ['holidays'] });
     return { entity: 'Holiday', record };
@@ -185,9 +170,6 @@ async function saveExtracted(extracted, transcript, queryClient) {
     const record = await base44.entities.Reflection.create({
       date: format(new Date(), 'yyyy-MM-dd'),
       content: transcript,
-      title: extracted.title || 'Voice Note',
-      mood: 'neutral',
-      tags: ['voice-capture'],
     });
     queryClient.invalidateQueries({ queryKey: ['reflections'] });
     return { entity: 'Reflection', record };
@@ -199,7 +181,6 @@ async function saveExtracted(extracted, transcript, queryClient) {
     description: transcript,
     priority: 'medium',
     status: 'todo',
-    tags: ['voice-capture'],
   });
   queryClient.invalidateQueries({ queryKey: ['tasks'] });
   return { entity: 'Task', record };

@@ -2,6 +2,8 @@ PODS:
   - Capacitor (7.6.7):
     - CapacitorCordova
   - CapacitorCordova (7.6.7)
+  - CapacitorLocalNotifications (7.0.7):
+    - Capacitor
   - CapacitorPushNotifications (7.0.6):
     - Capacitor
   - CapacitorStatusBar (7.0.6):
@@ -10,6 +12,7 @@ PODS:
 DEPENDENCIES:
   - "Capacitor (from `../../node_modules/@capacitor/ios`)"
   - "CapacitorCordova (from `../../node_modules/@capacitor/ios`)"
+  - "CapacitorLocalNotifications (from `../../node_modules/@capacitor/local-notifications`)"
   - "CapacitorPushNotifications (from `../../node_modules/@capacitor/push-notifications`)"
   - "CapacitorStatusBar (from `../../node_modules/@capacitor/status-bar`)"
 
@@ -18,6 +21,8 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/@capacitor/ios"
   CapacitorCordova:
     :path: "../../node_modules/@capacitor/ios"
+  CapacitorLocalNotifications:
+    :path: "../../node_modules/@capacitor/local-notifications"
   CapacitorPushNotifications:
     :path: "../../node_modules/@capacitor/push-notifications"
   CapacitorStatusBar:
@@ -26,9 +31,10 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   Capacitor: 8ef25ba872436d2c5ac2a4791f7255529bdcd93b
   CapacitorCordova: 139e2ed3d91c54b5aeae7941135c9f9aefc6da1d
+  CapacitorLocalNotifications: 71124afe526ac00585314bff34651bd023f86e37
   CapacitorPushNotifications: b8e30637549ce91468b8c4dddbef2657be831f4c
   CapacitorStatusBar: 416e9e53fd6397e668d4a181cd2131617d949bd6
 
-PODFILE CHECKSUM: 88894f386eb087659c4682903262e82f279dcdd3
+PODFILE CHECKSUM: 548f3fd901604cd240a9d0a7b24a7c21e559b3e0
 
 COCOAPODS: 1.16.2

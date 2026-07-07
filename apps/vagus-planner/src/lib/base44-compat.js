@@ -79,7 +79,153 @@ const COLUMN_ALIASES = {
 }
 
 const ENTITY_COLUMN_ALIASES = {
-  Event: { start_date: 'date' },
+  Event: { start_date: 'event_date' },
+  Task: { description: 'notes' },
+}
+
+const TASK_PRIORITY_MAP = { low: 1, medium: 2, high: 3, urgent: 3 }
+const TASK_STATUS_MAP = {
+  todo: 'pending',
+  pending: 'pending',
+  in_progress: 'in_progress',
+  completed: 'completed',
+  done: 'completed',
+  cancelled: 'cancelled',
+}
+
+function mapTaskPriority(value) {
+  if (typeof value === 'number' && !Number.isNaN(value)) {
+    return Math.min(3, Math.max(0, value))
+  }
+  if (typeof value === 'string') return TASK_PRIORITY_MAP[value.toLowerCase()] ?? 2
+  return 2
+}
+
+function mapTaskStatus(value) {
+  if (typeof value === 'string') return TASK_STATUS_MAP[value.toLowerCase()] ?? 'pending'
+  return 'pending'
+}
+
+async function getCurrentUserId() {
+  const { data: { user } } = await supabase.auth.getUser()
+  return user?.id ?? null
+}
+
+/** Base44 field names → Supabase columns for insert/update */
+function mapPayloadToRow(entityName, payload, userId) {
+  const p = payload ?? {}
+
+  if (entityName === 'Event') {
+    const row = {}
+    if (userId) row.user_id = userId
+    if (p.title != null) row.title = p.title
+    if (p.description != null) row.description = p.description
+    if (p.location != null) row.location = p.location
+    const start = p.start_date ?? p.event_date
+    if (start != null) row.event_date = start
+    return row
+  }
+
+  if (entityName === 'Task') {
+    const row = {}
+    if (userId) row.user_id = userId
+    if (p.title != null) row.title = p.title
+    const notes = p.notes ?? p.description
+    if (notes != null) row.notes = notes
+    if (p.due_date != null) row.due_date = p.due_date
+    if (p.priority != null) row.priority = mapTaskPriority(p.priority)
+    if (p.status != null) row.status = mapTaskStatus(p.status)
+    else if (userId && p.title != null) row.status = 'pending'
+    return row
+  }
+
+  if (entityName === 'Expense') {
+    const row = { amount: p.amount ?? 0 }
+    if (userId) row.user_id = userId
+    if (p.category != null) row.category = p.category
+    const desc = p.description ?? p.notes ?? p.title
+    if (desc != null) row.description = desc
+    if (p.date != null) row.date = p.date
+    return row
+  }
+
+  if (entityName === 'Holiday') {
+    const row = { name: p.name ?? p.title ?? 'Holiday' }
+    if (userId) row.user_id = userId
+    const start = p.holiday_date ?? p.start_date
+    if (start != null) row.holiday_date = String(start).split('T')[0]
+    const notes = p.notes ?? p.description
+    if (notes != null) row.notes = notes
+    if (p.recurring_yearly != null) row.recurring_yearly = p.recurring_yearly
+    return row
+  }
+
+  if (entityName === 'Reflection') {
+    const row = {
+      content: p.content ?? p.description ?? p.title ?? '',
+    }
+    if (userId) row.user_id = userId
+    if (p.date != null) row.date = p.date
+    return row
+  }
+
+  if (entityName === 'Goal' || entityName === 'LifeGoal') {
+    const statusMap = {
+      in_progress: 'active',
+      active: 'active',
+      completed: 'completed',
+      archived: 'archived',
+    }
+    const row = { title: p.title ?? 'Goal' }
+    if (userId) row.user_id = userId
+    if (p.description != null) row.description = p.description
+    if (p.target_date != null) row.target_date = p.target_date
+    else if (p.due_date != null) row.target_date = p.due_date
+    if (p.status != null) row.status = statusMap[p.status] ?? p.status
+    if (p.progress != null) row.progress = p.progress
+    return row
+  }
+
+  const row = { ...p }
+  if (userId && row.user_id == null) row.user_id = userId
+  return row
+}
+
+/** Supabase columns → Base44 field names for reads */
+function mapRowFromDb(entityName, row) {
+  if (!row) return row
+
+  if (entityName === 'Event') {
+    const start = row.event_date ?? row.start_date ?? row.date
+    return {
+      ...row,
+      start_date: start,
+      end_date: row.end_date ?? start,
+    }
+  }
+
+  if (entityName === 'Task') {
+    const priorityLabels = { 0: 'low', 1: 'low', 2: 'medium', 3: 'high' }
+    return {
+      ...row,
+      description: row.notes ?? row.description,
+      status: row.status === 'pending' ? 'todo' : row.status,
+      priority:
+        typeof row.priority === 'number'
+          ? (priorityLabels[row.priority] ?? 'medium')
+          : row.priority,
+    }
+  }
+
+  if (entityName === 'Holiday') {
+    return {
+      ...row,
+      title: row.name ?? row.title,
+      start_date: row.holiday_date ?? row.start_date,
+    }
+  }
+
+  return row
 }
 
 function mapColumn(column, entityName) {
@@ -282,7 +428,7 @@ export const base44 = {
         list: async (...args) => {
           const { data, error } = await buildListQuery(tableName, entityName, args)
           if (error) throw error
-          return data ?? []
+          return (data ?? []).map((row) => mapRowFromDb(entityName, row))
         },
         filter: async (criteria = {}, sortField, limit) => {
           let query = tableFrom(tableName).select('*')
@@ -295,7 +441,7 @@ export const base44 = {
           }
           const { data, error } = await query
           if (error) throw error
-          return data ?? []
+          return (data ?? []).map((row) => mapRowFromDb(entityName, row))
         },
         get: async (id) => {
           const { data, error } = await tableFrom(tableName)
@@ -303,22 +449,25 @@ export const base44 = {
             .eq('id', id)
             .single()
           if (error) throw error
-          return data
+          return mapRowFromDb(entityName, data)
         },
         create: async (payload) => {
+          const userId = await getCurrentUserId()
+          const row = mapPayloadToRow(entityName, payload, userId)
           const { data, error } = await tableFrom(tableName)
-            .insert([payload])
+            .insert([row])
             .select()
           if (error) throw error
-          return data[0]
+          return mapRowFromDb(entityName, data[0])
         },
         update: async (id, payload) => {
+          const row = mapPayloadToRow(entityName, payload, null)
           const { data, error } = await tableFrom(tableName)
-            .update(payload)
+            .update(row)
             .eq('id', id)
             .select()
           if (error) throw error
-          return data[0]
+          return mapRowFromDb(entityName, data[0])
         },
         delete: async (id) => {
           const { error } = await tableFrom(tableName).delete().eq('id', id)

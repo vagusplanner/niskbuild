@@ -1,30 +1,34 @@
 /**
  * PrayerNotificationManager
  *
- * - Fetches today's prayer times from the backend (user's saved location)
- * - Requests browser Notification permission
- * - Schedules automatic browser notifications for each prayer using setTimeout
+ * - Loads prayer times from saved location (AlAdhan via prayerEngine)
+ * - Native local notifications on Capacitor; web Notification API in browser
  * - Persists enabled/disabled preferences per prayer in localStorage
- * - Reschedules on every mount so refreshing the page keeps alerts live
  */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
-  Bell, BellOff, BellRing, CheckCircle2, AlertCircle, Loader2,
-  MapPin, Settings, Clock, RefreshCw, Info
+  Bell, BellRing, CheckCircle2, AlertCircle, Loader2,
+  MapPin, Clock, RefreshCw, Info
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
+import { fetchPrayerTimes } from './prayerEngine';
+import {
+  getNotificationPermission,
+  requestNotificationPermission,
+  scheduleNotification,
+  isNativeCapacitor,
+} from '@/lib/vp-notifications';
 
 const PRAYERS = ['Fajr', 'Sunrise', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
 const PRAYER_ICONS = { Fajr: '🌙', Sunrise: '🌅', Dhuhr: '☀️', Asr: '🌤️', Maghrib: '🌇', Isha: '🌃' };
 const PREF_KEY = 'prayer_notif_prefs_v2';
-const SCHEDULE_KEY = 'prayer_notif_scheduled_date';
 
 function to12h(t24) {
   if (!t24) return '--:--';
@@ -41,6 +45,13 @@ function msUntil(timeStr) {
   return target.getTime() - now.getTime();
 }
 
+function prayerAtToday(timeStr) {
+  const [h, m] = timeStr.split(':').map(Number);
+  const at = new Date();
+  at.setHours(h, m, 0, 0);
+  return at;
+}
+
 function loadPrefs() {
   try { return JSON.parse(localStorage.getItem(PREF_KEY) || '{}'); } catch { return {}; }
 }
@@ -48,91 +59,124 @@ function savePrefs(p) {
   localStorage.setItem(PREF_KEY, JSON.stringify(p));
 }
 
+function resolveSettingsCoords(settings) {
+  if (!settings) return null;
+  const prefs =
+    settings.preferences && typeof settings.preferences === 'object'
+      ? settings.preferences
+      : {};
+  const lat = settings.latitude ?? prefs.latitude;
+  const lng = settings.longitude ?? prefs.longitude;
+  if (lat == null || lng == null) return null;
+  return { lat, lng };
+}
+
 export default function PrayerNotificationManager() {
-  const [permission, setPermission] = useState(() =>
-    typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
-  );
+  const [permission, setPermission] = useState('default');
   const [prefs, setPrefs] = useState(loadPrefs);
   const [scheduledPrayers, setScheduledPrayers] = useState([]);
-  const timersRef = useRef({});
+  const [prayers, setPrayers] = useState({});
+  const [loadError, setLoadError] = useState(null);
+  const [timesLoading, setTimesLoading] = useState(false);
+  const scheduleGenRef = useRef(0);
 
-  // Fetch prayer times from backend
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['prayerTimesForUser'],
-    queryFn: async () => {
-      const res = await base44.functions.invoke('getPrayerTimesForUser', {});
-      if (res.data?.error) throw new Error(res.data.error);
-      return res.data;
-    },
-    staleTime: 1000 * 60 * 30, // 30 minutes
-    retry: 1,
+  useEffect(() => {
+    void getNotificationPermission().then(setPermission);
+  }, []);
+
+  const { data: settingsList = [], refetch: refetchSettings } = useQuery({
+    queryKey: ['userSettings'],
+    queryFn: () => base44.entities.UserSettings.list(),
   });
+  const settings = settingsList[0];
+  const coords = resolveSettingsCoords(settings);
 
-  const prayers = data?.prayers || {};
-
-  // Request notification permission
-  const requestPermission = async () => {
-    if (typeof Notification === 'undefined') {
-      toast.error('Your browser does not support notifications');
+  const loadPrayerTimes = useCallback(async () => {
+    if (!coords) {
+      setLoadError(new Error('Location not set'));
+      setPrayers({});
       return;
     }
-    const result = await Notification.requestPermission();
+    setTimesLoading(true);
+    setLoadError(null);
+    try {
+      const times = await fetchPrayerTimes(
+        new Date(),
+        coords.lat,
+        coords.lng,
+        settings?.prayer_method || 'MWL',
+        settings?.asr_method || '0',
+        settings?.prayer_offsets || {},
+      );
+      setPrayers({
+        Fajr: times.Fajr,
+        Sunrise: times.Fajr,
+        Dhuhr: times.Dhuhr,
+        Asr: times.Asr,
+        Maghrib: times.Maghrib,
+        Isha: times.Isha,
+      });
+    } catch {
+      setLoadError(new Error('Could not load prayer times'));
+      setPrayers({});
+    } finally {
+      setTimesLoading(false);
+    }
+  }, [coords, settings?.prayer_method, settings?.asr_method, settings?.prayer_offsets]);
+
+  useEffect(() => {
+    void loadPrayerTimes();
+  }, [loadPrayerTimes]);
+
+  const requestPermission = async () => {
+    const result = await requestNotificationPermission();
     setPermission(result);
     if (result === 'granted') {
-      toast.success('Notifications enabled! Prayer alerts are now active.');
-    } else {
-      toast.error('Notification permission denied. Please enable it in your browser settings.');
+      toast.success(
+        isNativeCapacitor()
+          ? 'Notifications enabled! Prayer alerts are scheduled.'
+          : 'Notifications enabled! Prayer alerts are now active.',
+      );
+    } else if (result === 'denied') {
+      toast.error('Notification permission denied. Enable notifications in device or browser settings.');
     }
   };
 
-  // Schedule browser notifications for remaining prayers today
-  const scheduleNotifications = useCallback((prayerTimes, userPrefs) => {
-    // Clear previous timers
-    Object.values(timersRef.current).forEach(clearTimeout);
-    timersRef.current = {};
-
-    if (permission !== 'granted') return;
+  const scheduleNotifications = useCallback(async (prayerTimes, userPrefs) => {
+    const gen = ++scheduleGenRef.current;
+    if (permission !== 'granted') {
+      setScheduledPrayers([]);
+      return;
+    }
 
     const scheduled = [];
     for (const prayer of PRAYERS) {
       const time = prayerTimes[prayer];
       if (!time) continue;
-      // Default: Sunrise is off, others on
       const isEnabled = userPrefs[prayer] !== undefined ? userPrefs[prayer] : (prayer !== 'Sunrise');
       if (!isEnabled) continue;
 
       const ms = msUntil(time);
-      if (ms <= 0) continue; // Already passed
+      if (ms <= 0) continue;
 
-      const timer = setTimeout(() => {
-        if (Notification.permission === 'granted') {
-          const notif = new Notification(`🕌 Time for ${prayer}`, {
-            body: `${PRAYER_ICONS[prayer]} ${prayer} prayer is now — ${to12h(time)}`,
-            icon: 'https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6965607bc386491646bad6e8/10b500d37_IMG_6630.png',
-            badge: 'https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6965607bc386491646bad6e8/10b500d37_IMG_6630.png',
-            tag: `prayer-${prayer}`,
-            requireInteraction: false,
-            silent: false,
-          });
-          notif.onclick = () => { window.focus(); notif.close(); };
-        }
-      }, ms);
-
-      timersRef.current[prayer] = timer;
-      scheduled.push(prayer);
+      const at = prayerAtToday(time);
+      const ok = await scheduleNotification({
+        title: `🕌 Time for ${prayer}`,
+        body: `${PRAYER_ICONS[prayer]} ${prayer} prayer is now — ${to12h(time)}`,
+        at,
+        tag: `prayer-${prayer}`,
+      });
+      if (gen !== scheduleGenRef.current) return;
+      if (ok) scheduled.push(prayer);
     }
 
     setScheduledPrayers(scheduled);
-    // Mark today as scheduled so we know it's active
-    localStorage.setItem(SCHEDULE_KEY, new Date().toDateString());
   }, [permission]);
 
-  // Re-schedule whenever data or prefs change
   useEffect(() => {
     if (prayers && Object.keys(prayers).length > 0) {
-      scheduleNotifications(prayers, prefs);
+      void scheduleNotifications(prayers, prefs);
     }
-    return () => { Object.values(timersRef.current).forEach(clearTimeout); };
   }, [prayers, prefs, permission, scheduleNotifications]);
 
   const togglePrayer = (prayer) => {
@@ -162,10 +206,12 @@ export default function PrayerNotificationManager() {
 
   const nextPrayer = PRAYERS.find(p => prayers[p] && msUntil(prayers[p]) > 0);
   const activeCount = scheduledPrayers.length;
+  const isLoading = timesLoading;
+  const locationLabel = settings?.location_city || settings?.preferences?.location_city || 'your saved location';
+  const countryLabel = settings?.location_country || settings?.preferences?.location_country || '';
 
   return (
     <div className="rounded-2xl border border-teal-100 dark:border-teal-900/50 bg-white dark:bg-slate-900 overflow-hidden shadow-sm">
-      {/* Header */}
       <div className="bg-gradient-to-r from-teal-600 to-emerald-600 p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -181,33 +227,36 @@ export default function PrayerNotificationManager() {
               </p>
             </div>
           </div>
-          <button onClick={() => refetch()} className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors">
+          <button
+            onClick={() => { refetchSettings(); void loadPrayerTimes(); }}
+            className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+          >
             <RefreshCw className="w-4 h-4 text-white" />
           </button>
         </div>
 
-        {/* Location info */}
-        {data?.location && (
+        {coords && (
           <div className="flex items-center gap-1.5 mt-3 bg-white/10 rounded-lg px-3 py-1.5">
             <MapPin className="w-3.5 h-3.5 text-teal-200 flex-shrink-0" />
             <span className="text-xs text-white font-medium">
-              {data.location.city}{data.location.country ? `, ${data.location.country}` : ''}
+              {locationLabel}{countryLabel ? `, ${countryLabel}` : ''}
             </span>
-            <span className="text-teal-200 text-xs ml-1">· {data.method}</span>
+            <span className="text-teal-200 text-xs ml-1">· {settings?.prayer_method || 'MWL'}</span>
           </div>
         )}
       </div>
 
       <div className="p-4 space-y-4">
-        {/* Permission banner */}
         {permission === 'default' && (
           <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
             className="flex items-start gap-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40">
             <Bell className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="text-sm font-bold text-amber-800 dark:text-amber-200">Enable Browser Notifications</p>
+              <p className="text-sm font-bold text-amber-800 dark:text-amber-200">
+                {isNativeCapacitor() ? 'Enable Prayer Notifications' : 'Enable Browser Notifications'}
+              </p>
               <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
-                Allow notifications to receive automatic prayer time alerts even when you're on another tab.
+                Allow notifications to receive automatic prayer time alerts.
               </p>
             </div>
             <Button size="sm" onClick={requestPermission}
@@ -223,7 +272,9 @@ export default function PrayerNotificationManager() {
             <div>
               <p className="text-sm font-bold text-red-700 dark:text-red-400">Notifications Blocked</p>
               <p className="text-xs text-red-600 dark:text-red-500 mt-0.5">
-                Please click the lock icon in your browser address bar and allow notifications for this site.
+                {isNativeCapacitor()
+                  ? 'Open iOS Settings → Vagus Planner → Notifications and allow alerts.'
+                  : 'Click the lock icon in your browser address bar and allow notifications for this site.'}
               </p>
             </div>
           </div>
@@ -232,17 +283,16 @@ export default function PrayerNotificationManager() {
         {permission === 'unsupported' && (
           <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 text-xs">
             <Info className="w-4 h-4 flex-shrink-0" />
-            Your browser does not support web notifications.
+            Notifications are not available on this device.
           </div>
         )}
 
-        {/* No location error */}
-        {error && (
+        {loadError && (
           <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
             <AlertCircle className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                {error.message || 'Could not load prayer times'}
+                {loadError.message || 'Could not load prayer times'}
               </p>
               <Link to="/Settings" className="text-xs text-teal-600 dark:text-teal-400 hover:underline">
                 Set your location in Settings →
@@ -251,7 +301,6 @@ export default function PrayerNotificationManager() {
           </div>
         )}
 
-        {/* Loading */}
         {isLoading && (
           <div className="flex items-center justify-center py-8 gap-2 text-slate-400">
             <Loader2 className="w-5 h-5 animate-spin" />
@@ -259,7 +308,6 @@ export default function PrayerNotificationManager() {
           </div>
         )}
 
-        {/* Prayer list */}
         {!isLoading && Object.keys(prayers).length > 0 && (
           <>
             {nextPrayer && permission === 'granted' && (
@@ -275,7 +323,7 @@ export default function PrayerNotificationManager() {
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Today's Prayers</p>
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Today&apos;s Prayers</p>
                 {permission === 'granted' && (
                   <button onClick={enableAllPrayers} className="text-xs text-teal-600 dark:text-teal-400 hover:underline font-medium">
                     Enable all
@@ -307,14 +355,13 @@ export default function PrayerNotificationManager() {
                       <p className="text-xs font-mono text-slate-500 dark:text-slate-400">{to12h(time)}</p>
                     </div>
 
-                    {/* Status */}
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {!past && enabled && scheduled && (
                         <span className="flex items-center gap-1 text-[10px] text-teal-600 dark:text-teal-400 font-semibold">
                           <CheckCircle2 className="w-3 h-3" /> Scheduled
                         </span>
                       )}
-                      {!past && past === false && permission === 'granted' && (
+                      {!past && permission === 'granted' && (
                         <button
                           onClick={() => togglePrayer(prayer)}
                           className={cn(
@@ -334,12 +381,13 @@ export default function PrayerNotificationManager() {
               })}
             </div>
 
-            {/* Info note */}
             <div className="flex items-start gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
               <Info className="w-3.5 h-3.5 text-slate-400 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                Notifications fire automatically at each prayer time while this app is open in any tab. Times are calculated for{' '}
-                <span className="font-semibold">{data?.location?.city || 'your saved location'}</span>.{' '}
+                {isNativeCapacitor()
+                  ? 'Prayer alerts are scheduled as local notifications on your device. Times use '
+                  : 'Notifications fire automatically at each prayer time while this app is open. Times are calculated for '}
+                <span className="font-semibold">{locationLabel}</span>.{' '}
                 <Link to="/Settings" className="text-teal-600 dark:text-teal-400 hover:underline">Update location</Link>
               </p>
             </div>

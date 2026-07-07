@@ -306,3 +306,85 @@ export const fetchPublicHolidays: VpFunctionHandler = async ({ payload }) => {
 
   return { ok: true, data: { holidays } };
 };
+
+const PRAYER_METHOD_NUM: Record<string, number> = {
+  MWL: 3,
+  ISNA: 2,
+  Egypt: 5,
+  Makkah: 4,
+  Karachi: 1,
+  Tehran: 7,
+  Jafari: 0,
+};
+
+/** Today's prayer times for the signed-in user's saved location (PrayerNotificationManager). */
+export const getPrayerTimesForUser: VpFunctionHandler = async ({ user }) => {
+  const supabase = await createClient();
+  const { data: settings, error } = await supabase
+    .schema('firstparty')
+    .from('vp_user_settings')
+    .select('preferences, timezone')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (error) {
+    return { ok: false, error: 'Failed to load user settings', status: 500 };
+  }
+
+  const prefs =
+    settings?.preferences && typeof settings.preferences === 'object' && !Array.isArray(settings.preferences)
+      ? (settings.preferences as Record<string, unknown>)
+      : {};
+
+  const lat =
+    typeof prefs.latitude === 'number'
+      ? prefs.latitude
+      : typeof prefs.lat === 'number'
+        ? prefs.lat
+        : null;
+  const lng =
+    typeof prefs.longitude === 'number'
+      ? prefs.longitude
+      : typeof prefs.lng === 'number'
+        ? prefs.lng
+        : null;
+
+  if (lat == null || lng == null) {
+    return { ok: false, error: 'Location not set — update Settings', status: 400 };
+  }
+
+  const methodKey =
+    typeof prefs.prayer_method === 'string' ? prefs.prayer_method : 'MWL';
+  const methodNum = PRAYER_METHOD_NUM[methodKey] ?? 3;
+  const day = new Date().toISOString().split('T')[0];
+
+  const timings = await fetchAladhanTimings(lat, lng, day);
+  if (!timings) {
+    return { ok: false, error: 'Could not calculate prayer times', status: 502 };
+  }
+
+  const city =
+    typeof prefs.location_city === 'string'
+      ? prefs.location_city
+      : typeof prefs.city === 'string'
+        ? prefs.city
+        : 'Your location';
+  const country = typeof prefs.location_country === 'string' ? prefs.location_country : '';
+
+  return {
+    ok: true,
+    data: {
+      prayers: {
+        Fajr: timings.Fajr,
+        Sunrise: timings.Fajr,
+        Dhuhr: timings.Dhuhr,
+        Asr: timings.Asr,
+        Maghrib: timings.Maghrib,
+        Isha: timings.Isha,
+      },
+      location: { city, country },
+      method: methodKey,
+      timezone: settings?.timezone ?? 'UTC',
+    },
+  };
+};
