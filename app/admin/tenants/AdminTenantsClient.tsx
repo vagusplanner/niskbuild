@@ -44,7 +44,7 @@ export default function AdminTenantsClient() {
     if (tier !== 'all') params.set('tier', tier);
     if (status !== 'all') params.set('status', status);
 
-    const res = await fetch(`/api/admin/tenants?${params.toString()}`);
+    const res = await fetch(`/api/admin/tenants?${params.toString()}`, { credentials: 'include' });
     const data = await res.json();
     if (res.ok) {
       setTenants(data.tenants ?? []);
@@ -58,7 +58,7 @@ export default function AdminTenantsClient() {
   }, [fetchTenants]);
 
   const viewTenant = async (id: string) => {
-    const res = await fetch(`/api/admin/tenants/${id}`);
+    const res = await fetch(`/api/admin/tenants/${id}`, { credentials: 'include' });
     const data = await res.json();
     if (res.ok) setSelected(data.tenant);
   };
@@ -68,6 +68,7 @@ export default function AdminTenantsClient() {
     const res = await fetch(`/api/admin/tenants/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ action }),
     });
     setUpdatingId(null);

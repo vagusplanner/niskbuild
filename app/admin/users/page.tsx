@@ -2,9 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabaseClient';
-import { getSafeSession } from '@/lib/supabaseSession';
-import { isPlatformOwnerClient } from '@/lib/platform-owner-client';
 import Layout from '@/app/components/Layout';
 
 type AdminUser = {
@@ -20,93 +17,55 @@ type AdminUser = {
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [authorized, setAuthorized] = useState(false);
   const [updating, setUpdating] = useState<string | null>(null);
   const [discountDraft, setDiscountDraft] = useState<Record<string, { percent: number; note: string }>>({});
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const session = await getSafeSession();
-
-      if (!session?.user) {
-        setAuthorized(false);
-        setLoading(false);
-        return;
-      }
-
-      const owner = await isPlatformOwnerClient();
-      if (owner) {
-        setAuthorized(true);
-        fetchUsers();
-      } else {
-        setAuthorized(false);
-        setLoading(false);
-      }
-    };
-    
-    checkAuth();
+    void fetchUsers();
   }, []);
 
   const fetchUsers = async () => {
     setLoading(true);
-    
-    const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    if (profilesError) {
-      console.error('Error fetching profiles:', profilesError);
+    try {
+      const res = await fetch('/api/admin/users', { credentials: 'include' });
+      const data = await res.json();
+      if (res.ok) {
+        setUsers(data.users ?? []);
+        const drafts: Record<string, { percent: number; note: string }> = {};
+        for (const u of data.users ?? []) {
+          drafts[u.id] = {
+            percent: u.admin_discount_percent ?? 0,
+            note: u.admin_discount_note ?? '',
+          };
+        }
+        setDiscountDraft(drafts);
+      } else {
+        setUsers([]);
+      }
+    } catch {
       setUsers([]);
-    } else if (profiles) {
-      const usersWithCounts = [];
-      
-      for (const profile of profiles) {
-        const { count } = await supabase
-          .from('projects')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', profile.id);
-        
-        usersWithCounts.push({
-          ...profile,
-          project_count: count || 0,
-        });
-      }
-      
-      setUsers(usersWithCounts);
-      const drafts: Record<string, { percent: number; note: string }> = {};
-      for (const u of usersWithCounts) {
-        drafts[u.id] = {
-          percent: u.admin_discount_percent ?? 0,
-          note: u.admin_discount_note ?? '',
-        };
-      }
-      setDiscountDraft(drafts);
     }
-    
     setLoading(false);
   };
 
-  // FIXED: Proper Supabase update syntax
   const updateUserTier = async (userId: string, newTier: string) => {
     setUpdating(userId);
-    
-    const { error } = await supabase
-      .from('profiles')
-      .update({ 
-        subscription_tier: newTier,
-        subscription_status: 'active'
-      })
-      .eq('id', userId);
-    
-    if (error) {
-      alert('Error updating user: ' + error.message);
-    } else {
-      alert(`✅ User updated to ${newTier}`);
-      fetchUsers();
-    }
-    
+    const res = await fetch(`/api/admin/users/${userId}/tier`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ tier: newTier }),
+    });
+    const data = await res.json();
     setUpdating(null);
+
+    if (res.ok) {
+      const warning = data.stripeWarning ? `\n\nNote: ${data.stripeWarning}` : '';
+      alert(`✅ User updated to ${newTier}${data.stripeSynced ? ' (Stripe synced)' : ''}${warning}`);
+      void fetchUsers();
+    } else {
+      alert(data.error || 'Error updating user');
+    }
   };
 
   const applyDiscount = async (userId: string) => {
@@ -150,20 +109,6 @@ export default function AdminUsersPage() {
     return (
       <Layout>
         <div className="flex items-center justify-center min-h-[50vh] text-white">Loading admin panel...</div>
-      </Layout>
-    );
-  }
-
-  if (!authorized) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center min-h-[50vh] text-center">
-          <div>
-            <h1 className="text-2xl font-bold text-[var(--error)] mb-4">Unauthorized</h1>
-            <p className="text-nisk-muted">You don't have permission to view this page.</p>
-            <p className="text-nisk-muted text-sm mt-2">Admin access only</p>
-          </div>
-        </div>
       </Layout>
     );
   }

@@ -90,7 +90,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     if (!ticket) return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
 
-    const adminEmail = getAdminEmail();
+    const adminEmail = getAdminEmail(ownerGuard.user.email);
 
     await supabase.from('support_messages').insert({
       ticket_id: id,

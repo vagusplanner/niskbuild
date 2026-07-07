@@ -46,7 +46,7 @@ export default function AdminAppsClient() {
     const params = new URLSearchParams();
     if (status !== 'all') params.set('status', status);
 
-    const res = await fetch(`/api/admin/apps?${params.toString()}`);
+    const res = await fetch(`/api/admin/apps?${params.toString()}`, { credentials: 'include' });
     const data = await res.json();
     if (res.ok) {
       setApps(data.apps ?? []);
@@ -64,6 +64,7 @@ export default function AdminAppsClient() {
     const res = await fetch(`/api/admin/apps/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ action: 'toggle_status' }),
     });
     setUpdatingId(null);
@@ -76,6 +77,7 @@ export default function AdminAppsClient() {
     const res = await fetch(`/api/admin/apps/${editing.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ app_name: editName }),
     });
     setUpdatingId(null);

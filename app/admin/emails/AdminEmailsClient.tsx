@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabaseClient';
 import AdminPlatformShell from '@/app/components/admin/AdminPlatformShell';
 import type { EmailTemplateCatalogEntry } from '@/lib/email/template-registry';
 
@@ -73,12 +72,13 @@ export default function AdminEmailsClient() {
   }, [selectedTemplate]);
 
   const resolveUserId = async (email: string): Promise<string | null> => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('id')
-      .ilike('email', email.trim())
-      .maybeSingle();
-    return data?.id ?? null;
+    const res = await fetch(
+      `/api/admin/users/lookup?email=${encodeURIComponent(email.trim())}`,
+      { credentials: 'include' }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return typeof data.userId === 'string' ? data.userId : null;
   };
 
   const handleSend = async (force: boolean) => {

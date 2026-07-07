@@ -26,7 +26,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         admin_discount_percent: discountPercent,
         admin_discount_note: discountNote || null,
         admin_discount_applied_at: discountPercent > 0 ? new Date().toISOString() : null,
-        admin_discount_applied_by: discountPercent > 0 ? getAdminEmail() : null,
+        admin_discount_applied_by:
+          discountPercent > 0 ? getAdminEmail(ownerGuard.user.email) : null,
       })
       .eq('id', userId);
 

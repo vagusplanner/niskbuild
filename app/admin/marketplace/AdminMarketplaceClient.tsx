@@ -59,7 +59,7 @@ export default function AdminMarketplaceClient() {
   >([]);
 
   const fetchExportJobs = useCallback(async () => {
-    const res = await fetch('/api/admin/marketplace/export-jobs');
+    const res = await fetch('/api/admin/marketplace/export-jobs', { credentials: 'include' });
     const data = await res.json();
     if (res.ok) setExportJobs(data.jobs ?? []);
   }, []);
@@ -69,7 +69,9 @@ export default function AdminMarketplaceClient() {
     const params = new URLSearchParams();
     if (filter !== 'all') params.set('status', filter);
 
-    const res = await fetch(`/api/admin/marketplace/listings?${params.toString()}`);
+    const res = await fetch(`/api/admin/marketplace/listings?${params.toString()}`, {
+      credentials: 'include',
+    });
     const data = await res.json();
     if (res.ok) {
       setListings(data.listings ?? []);
@@ -98,6 +100,7 @@ export default function AdminMarketplaceClient() {
     const res = await fetch('/api/admin/marketplace/listings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({
         title: createForm.title,
         description: createForm.description,
@@ -118,6 +121,7 @@ export default function AdminMarketplaceClient() {
     await fetch('/api/admin/marketplace/export-jobs', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ id, status }),
     });
     fetchExportJobs();
@@ -128,6 +132,7 @@ export default function AdminMarketplaceClient() {
     const res = await fetch(`/api/admin/marketplace/listings/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ action }),
     });
     setUpdatingId(null);

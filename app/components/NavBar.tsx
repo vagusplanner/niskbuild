@@ -32,6 +32,24 @@ const PLATFORM_ADMIN_NAV: NavItem[] = [
     description: 'Marketplace moderation',
   },
   {
+    href: '/admin/apps/import',
+    label: 'Import app',
+    icon: '📥',
+    description: 'Register first-party apps from manifests',
+  },
+  {
+    href: '/admin/vp-deploy',
+    label: 'VP Deploy',
+    icon: '🚀',
+    description: 'Vagus Planner deployment artifacts',
+  },
+  {
+    href: '/admin/shift-ai/curriculum-packs',
+    label: 'Curriculum packs',
+    icon: '📚',
+    description: 'Shift AI curriculum pack management',
+  },
+  {
     href: '/admin/insights',
     label: 'Privacy & Analytics',
     icon: '📈',
@@ -39,9 +57,15 @@ const PLATFORM_ADMIN_NAV: NavItem[] = [
   },
   {
     href: '/admin/analytics',
-    label: 'Analytics',
+    label: 'Demand Analytics',
     icon: '📊',
     description: 'Aggregate demand by category and region',
+  },
+  {
+    href: '/admin',
+    label: 'Platform stats',
+    icon: '📋',
+    description: 'Legacy platform totals — users, builds, tiers',
   },
   {
     href: '/admin/revenue',
