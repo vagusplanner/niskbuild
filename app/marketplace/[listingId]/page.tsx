@@ -20,6 +20,7 @@ type ListingDetail = {
   hostedUrl?: string | null;
   appStoreUrl?: string | null;
   owned?: boolean;
+  isImportedApp?: boolean;
 };
 
 function ExternalLinkIcon() {
@@ -64,6 +65,7 @@ function MarketplaceDetailContent() {
   const [listing, setListing] = useState<ListingDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [cloning, setCloning] = useState(false);
+  const [purchasing, setPurchasing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -85,6 +87,7 @@ function MarketplaceDetailContent() {
             hostedUrl: found.hostedUrl ?? null,
             appStoreUrl: found.appStoreUrl ?? null,
             owned: found.owned,
+            isImportedApp: found.isImportedApp,
           });
         }
         setLoading(false);
@@ -92,18 +95,7 @@ function MarketplaceDetailContent() {
       .catch(() => setLoading(false));
   }, [listingId]);
 
-  const handleClone = async () => {
-    const session = await getSafeSession();
-    if (!session?.user) {
-      router.push(`/login?next=/marketplace/${listingId}`);
-      return;
-    }
-
-    if (listing!.price > 0 && !listing!.owned) {
-      router.push(`/marketplace?purchase=${listingId}`);
-      return;
-    }
-
+  const runClone = async () => {
     setCloning(true);
     setError(null);
     try {
@@ -119,7 +111,7 @@ function MarketplaceDetailContent() {
       }
       if (data.projectId) {
         localStorage.setItem('niskbuild_load_project_id', data.projectId);
-      } else if (listing?.prompt) {
+      } else if (listing?.prompt && listing.owned) {
         localStorage.setItem('niskbuild_template_prompt', listing.prompt);
       }
       router.push('/builder');
@@ -128,6 +120,60 @@ function MarketplaceDetailContent() {
     } finally {
       setCloning(false);
     }
+  };
+
+  const handlePurchase = async () => {
+    const session = await getSafeSession();
+    if (!session?.user) {
+      router.push(`/login?next=/marketplace/${listingId}`);
+      return;
+    }
+
+    setPurchasing(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/marketplace/purchase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ templateId: listingId }),
+      });
+      const data = await res.json();
+
+      if (data.alreadyOwned) {
+        setListing((prev) => (prev ? { ...prev, owned: true } : prev));
+        await runClone();
+        return;
+      }
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      setError(data.error || 'Checkout failed');
+    } catch {
+      setError('Failed to start checkout');
+    } finally {
+      setPurchasing(false);
+    }
+  };
+
+  const handleClone = async () => {
+    const session = await getSafeSession();
+    if (!session?.user) {
+      router.push(`/login?next=/marketplace/${listingId}`);
+      return;
+    }
+
+    if (listing!.isImportedApp) {
+      setError('Imported app delivery is coming soon — full workspace clone is not available yet.');
+      return;
+    }
+
+    if (listing!.price > 0 && !listing!.owned) {
+      await handlePurchase();
+      return;
+    }
+
+    await runClone();
   };
 
   if (loading) {
@@ -193,15 +239,26 @@ function MarketplaceDetailContent() {
       <button
         type="button"
         onClick={handleClone}
-        disabled={cloning}
+        disabled={cloning || purchasing || listing.isImportedApp}
         className="btn-primary px-8 py-3 rounded-xl font-semibold disabled:opacity-50"
       >
         {cloning
           ? 'Cloning…'
-          : listing.owned || listing.price === 0
-            ? 'Clone to my projects →'
-            : `Buy for $${listing.price}`}
+          : purchasing
+            ? 'Redirecting to checkout…'
+            : listing.isImportedApp
+              ? 'Coming soon'
+              : listing.owned || listing.price === 0
+                ? 'Clone to my projects →'
+                : `Buy for $${listing.price}`}
       </button>
+
+      {listing.isImportedApp && (
+        <p className="mt-3 text-sm text-nisk-muted">
+          This imported app is listed for preview only. Full workspace delivery is coming soon — purchases are not
+          available yet.
+        </p>
+      )}
 
       {(showHostedLink || showAppStoreLink) && (
         <footer className="mt-10 pt-6 border-t border-[var(--border)]">

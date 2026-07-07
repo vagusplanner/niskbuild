@@ -45,6 +45,13 @@ export async function POST(request: NextRequest) {
       stripePaymentId: session.payment_intent?.toString() ?? session.id,
     });
 
+    if (!result.success) {
+      return NextResponse.json(
+        { success: false, error: result.error || 'Failed to record purchase' },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({
       success: result.success,
       templateId: result.resolvedTemplateId ?? templateId,

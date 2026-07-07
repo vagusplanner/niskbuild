@@ -34,8 +34,32 @@ export type MarketplaceListingItem = MarketplaceTemplate & {
   sourceLayer?: 'firstparty' | 'subscriber' | string;
   appStoreUrl?: string | null;
   hostedUrl?: string | null;
+  /** Listing backed by imported-apps storage — full app delivery not yet available */
+  isImportedApp?: boolean;
   source: 'database';
 };
+
+export const REDACTED_PROMPT_MESSAGE =
+  'Purchase this template to unlock the full build prompt.';
+
+export function isImportedStorageListing(appSource: Record<string, unknown>): boolean {
+  return Boolean(
+    (typeof appSource.storagePath === 'string' && appSource.storagePath.length > 0) ||
+      appSource.storageBucket === 'imported-apps' ||
+      (typeof appSource.importId === 'string' && appSource.importId.length > 0)
+  );
+}
+
+export function redactListingSecrets(
+  listing: MarketplaceListingItem,
+  owned: boolean
+): MarketplaceListingItem {
+  if (owned || listing.price === 0) return listing;
+  return {
+    ...listing,
+    prompt: REDACTED_PROMPT_MESSAGE,
+  };
+}
 
 export type MarketplacePurchaseItem = {
   id: string;
@@ -89,6 +113,7 @@ export function listingRowToTemplate(row: MarketplaceListingRow): MarketplaceLis
     sourceLayer,
     hostedUrl: hostedUrl || null,
     appStoreUrl: appStoreUrl || null,
+    isImportedApp: isImportedStorageListing(appSource),
     source: 'database',
     ...(legacyId ? { legacyTemplateId: legacyId } : {}),
   } as MarketplaceListingItem & { legacyTemplateId?: string };
@@ -384,7 +409,7 @@ export async function fulfillTemplatePurchase(
     templateId?: string;
     stripePaymentId?: string | null;
   }
-): Promise<{ success: boolean; resolvedTemplateId?: string; clonedProjectId?: string }> {
+): Promise<{ success: boolean; resolvedTemplateId?: string; clonedProjectId?: string; error?: string }> {
   let legacyTemplateId = params.templateId;
   let listingId = params.listingId;
   let clonedProjectId: string | null = null;
@@ -399,12 +424,18 @@ export async function fulfillTemplatePurchase(
         row.title,
         prompt
       );
-      await recordMarketplacePurchase(supabase, {
+      const purchaseResult = await recordMarketplacePurchase(supabase, {
         buyerUserId: params.userId,
         listingId,
         stripePaymentId: params.stripePaymentId,
         clonedProjectId,
       });
+      if (!purchaseResult.purchaseId) {
+        return {
+          success: false,
+          error: 'Failed to record marketplace purchase',
+        };
+      }
       legacyTemplateId = legacyTemplateId ?? legacyTemplateIdFromAppSource(row.app_source) ?? listingId;
     }
   }
@@ -429,6 +460,10 @@ export async function fulfillTemplatePurchase(
         );
       }
     }
+  }
+
+  if (!legacyTemplateId && !listingId) {
+    return { success: false, error: 'Listing not found' };
   }
 
   return {
@@ -458,12 +493,12 @@ export async function buildListingsResponse(
   }
 
   const filtered = filterListings(catalog, opts);
-  const templates = filtered.map((listing) => ({
-    ...listing,
-    owned: userId
+  const templates = filtered.map((listing) => {
+    const owned = userId
       ? isListingOwned(listing, tier, purchasedListingIds, legacyPurchasedIds)
-      : listing.price === 0,
-  }));
+      : listing.price === 0;
+    return redactListingSecrets({ ...listing, owned }, owned);
+  });
 
   const categories = [...new Set(catalog.map((t) => t.category))];
   const prices = catalog.map((t) => t.price);
@@ -505,13 +540,11 @@ export async function buildListingDetailResponse(
   }
 
   const listing = listingRowToTemplate(row);
+  const owned = userId
+    ? isListingOwned(listing, tier, purchasedListingIds, legacyPurchasedIds)
+    : listing.price === 0;
   return {
-    listing: {
-      ...listing,
-      owned: userId
-        ? isListingOwned(listing, tier, purchasedListingIds, legacyPurchasedIds)
-        : listing.price === 0,
-    },
+    listing: redactListingSecrets({ ...listing, owned }, owned),
     source: 'database' as const,
   };
 }

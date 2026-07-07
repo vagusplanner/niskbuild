@@ -65,7 +65,16 @@ export default function CommandPalette() {
   >([]);
   const [recent, setRecent] = useState<RecentPaletteItem[]>([]);
   const [marketplaceListings, setMarketplaceListings] = useState<
-    { id: string; name: string; description: string; prompt: string; complexity: number }[]
+    {
+      id: string;
+      name: string;
+      description: string;
+      prompt: string;
+      complexity: number;
+      price: number;
+      owned?: boolean;
+      isImportedApp?: boolean;
+    }[]
   >([]);
   const router = useRouter();
   const mod = modKey();
@@ -199,6 +208,11 @@ export default function CommandPalette() {
         badge: complexityLabel(t.complexity),
         hint: '↵',
         run: () => {
+          const canUse = t.owned || t.price === 0;
+          if (!canUse || t.isImportedApp) {
+            router.push(`/marketplace/${t.id}`);
+            return;
+          }
           localStorage.setItem('niskbuild_template_prompt', t.prompt);
           router.push('/builder');
         },

@@ -22,6 +22,7 @@ interface Template {
   listingType?: string;
   source?: string;
   sourceLayer?: string;
+  isImportedApp?: boolean;
 }
 
 interface PurchaseRow {
@@ -53,6 +54,7 @@ function MarketplaceContent() {
   const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
   const [purchasingId, setPurchasingId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [toastError, setToastError] = useState(false);
   const [catalogFilter, setCatalogFilter] = useState<'all' | 'originals' | 'community' | 'templates'>('all');
   const [priceTier, setPriceTier] = useState<PriceTierId>('all');
 
@@ -108,18 +110,33 @@ function MarketplaceContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId }),
       })
-        .then((r) => r.json())
-        .then((d) => {
-          if (d.success) {
+        .then(async (r) => {
+          const d = await r.json();
+          if (r.ok && d.success) {
+            setToastError(false);
             setToast('Template unlocked! Click Use Template to open in Builder.');
             setTab('purchases');
             fetchPurchases();
             window.history.replaceState({}, '', '/marketplace');
+            return;
           }
+          setToastError(true);
+          setToast(
+            d.error ||
+              'Your payment went through but we could not unlock the template. Please contact support if this persists.'
+          );
+          window.history.replaceState({}, '', '/marketplace');
         })
-        .catch(() => {});
+        .catch(() => {
+          setToastError(true);
+          setToast(
+            'Your payment may have completed but we could not confirm it. Check My Purchases or contact support.'
+          );
+          window.history.replaceState({}, '', '/marketplace');
+        });
     }
     if (searchParams.get('canceled') === 'true') {
+      setToastError(false);
       setToast('Purchase canceled.');
       window.history.replaceState({}, '', '/marketplace');
     }
@@ -131,6 +148,8 @@ function MarketplaceContent() {
   };
 
   const handleAction = async (template: Template) => {
+    if (template.isImportedApp) return;
+
     if (template.owned || template.price === 0) {
       useTemplate(template);
       return;
@@ -157,9 +176,11 @@ function MarketplaceContent() {
       if (data.url) {
         window.location.href = data.url;
       } else {
+        setToastError(true);
         setToast(data.error || 'Checkout failed');
       }
     } catch {
+      setToastError(true);
       setToast('Failed to start checkout');
     } finally {
       setPurchasingId(null);
@@ -244,6 +265,11 @@ function MarketplaceContent() {
               Ready-made
             </span>
           )}
+          {template.isImportedApp && (
+            <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-nisk-surface text-nisk-muted border border-nisk">
+              Coming soon
+            </span>
+          )}
           {showOwnedBadge && owned && template.price > 0 && (
             <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-[var(--copper-primary)]/10 text-[var(--copper-melt)] border border-[var(--copper-primary)]/25">
               Owned
@@ -262,16 +288,18 @@ function MarketplaceContent() {
         <button
           type="button"
           onClick={() => handleAction(template)}
-          disabled={purchasingId === template.id}
+          disabled={purchasingId === template.id || template.isImportedApp}
           className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-50 ${
-            owned ? 'btn-primary' : 'btn-secondary'
+            owned && !template.isImportedApp ? 'btn-primary' : 'btn-secondary'
           }`}
         >
-          {purchasingId === template.id
-            ? 'Redirecting...'
-            : owned
-              ? 'Use Template →'
-              : `Buy for $${template.price}`}
+          {template.isImportedApp
+            ? 'Coming soon'
+            : purchasingId === template.id
+              ? 'Redirecting...'
+              : owned
+                ? 'Use Template →'
+                : `Buy for $${template.price}`}
         </button>
       </div>
     );
@@ -362,7 +390,13 @@ function MarketplaceContent() {
         </div>
 
         {toast && (
-          <div className="mb-6 p-3 rounded-xl bg-[var(--success)]/10 border border-[var(--success)]/30 text-[var(--copper-melt)] text-sm text-center">
+          <div
+            className={`mb-6 p-3 rounded-xl text-sm text-center ${
+              toastError
+                ? 'bg-[var(--error)]/10 border border-[var(--error)]/30 text-[var(--error)]'
+                : 'bg-[var(--success)]/10 border border-[var(--success)]/30 text-[var(--copper-melt)]'
+            }`}
+          >
             {toast}
             <button type="button" className="ml-2 underline" onClick={() => setToast(null)}>
               dismiss

@@ -9,6 +9,7 @@ import {
   fetchUserPurchasedListingIds,
   fetchUserSubscriptionTier,
   resolvePurchasableItem,
+  isImportedStorageListing,
 } from '@/lib/marketplace-service';
 import { listingIncludedInTier } from '@/lib/marketplace-types';
 
@@ -34,6 +35,13 @@ export async function POST(request: NextRequest) {
     }
 
     const { item: template, listingRow } = resolved;
+
+    if (listingRow && isImportedStorageListing(listingRow.app_source ?? {})) {
+      return NextResponse.json(
+        { error: 'Imported apps are not available for purchase yet — full delivery coming soon.' },
+        { status: 503 }
+      );
+    }
 
     if (template.price === 0) {
       return NextResponse.json({ error: 'This template is free' }, { status: 400 });

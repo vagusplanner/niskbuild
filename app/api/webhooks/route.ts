@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
       const listingId = session.metadata.listingId || undefined;
       if (templateId) {
         const { fulfillTemplatePurchase } = await import('@/lib/marketplace-service');
-        await fulfillTemplatePurchase(supabase, {
+        const result = await fulfillTemplatePurchase(supabase, {
           userId,
           templateId,
           listingId: listingId || undefined,
@@ -154,7 +154,14 @@ export async function POST(request: NextRequest) {
               ? session.payment_intent
               : session.id,
         });
-        console.log(`✅ User ${userId} purchased template ${templateId}`);
+        if (!result.success) {
+          console.error(
+            `❌ Template purchase fulfillment failed for ${userId} (${templateId}):`,
+            result.error
+          );
+        } else {
+          console.log(`✅ User ${userId} purchased template ${templateId}`);
+        }
       }
     } else if (session.mode === 'subscription') {
       const customerEmail = session.customer_email;
