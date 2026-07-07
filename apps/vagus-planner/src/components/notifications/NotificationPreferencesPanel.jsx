@@ -6,6 +6,10 @@ import { Bell, Mail, Smartphone, Moon, Calendar, Target, Heart, TrendingUp, Chec
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import {
+  getNotificationPermission,
+  requestNotificationPermission,
+} from '@/lib/vp-notifications';
 
 const PREFS = [
   { key: 'notify_prayer',    label: 'Prayer Times',       desc: 'Adhan alerts at each prayer time',    icon: Moon,     emoji: '🕌' },
@@ -29,7 +33,11 @@ function Toggle({ on, onChange }) {
 
 export default function NotificationPreferencesPanel({ settingsData: settingsDataProp }) {
   const queryClient = useQueryClient();
-  const [pushPerm, setPushPerm] = useState(typeof Notification !== 'undefined' ? Notification.permission : 'default');
+  const [pushPerm, setPushPerm] = useState('default');
+
+  useEffect(() => {
+    void getNotificationPermission().then(setPushPerm);
+  }, []);
 
   const { data: settingsQueryData = [], isLoading } = useQuery({
     queryKey: ['userSettings'],
@@ -65,16 +73,17 @@ export default function NotificationPreferencesPanel({ settingsData: settingsDat
   };
 
   const requestPush = async () => {
-    if (!('Notification' in window)) {
+    const perm = await getNotificationPermission();
+    if (perm === 'unsupported') {
       toast.error('Push notifications are not supported in this browser.');
       return;
     }
-    const perm = await Notification.requestPermission();
-    setPushPerm(perm);
-    if (perm === 'granted') {
+    const next = await requestNotificationPermission();
+    setPushPerm(next);
+    if (next === 'granted') {
       toast.success('🔔 Push notifications enabled!');
     } else {
-      toast.error('Please allow notifications in your browser/device settings.');
+      toast.error('Please allow notifications in your device settings.');
     }
   };
 

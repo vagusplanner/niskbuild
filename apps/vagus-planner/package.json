@@ -15,6 +15,7 @@
     "@base44/sdk": "^0.8.32",
     "@base44/vite-plugin": "^1.0.23",
     "@capacitor/core": "^7.2.0",
+    "@capacitor/local-notifications": "^7.0.7",
     "@capacitor/push-notifications": "^7.0.6",
     "@capacitor/status-bar": "^7.0.6",
     "@hello-pangea/dnd": "^17.0.0",

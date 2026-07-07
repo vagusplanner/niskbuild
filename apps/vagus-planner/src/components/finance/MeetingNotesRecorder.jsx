@@ -59,12 +59,12 @@ export default function MeetingNotesRecorder({ compact = false }) {
 
   const processAudio = async (blob) => {
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file: blob });
-      const rawTranscript = await base44.integrations.Core.InvokeLLM({
-        prompt: 'Transcribe this audio recording exactly. Return only the transcription text.',
-        file_urls: [file_url],
-      });
-      const text = typeof rawTranscript === 'string' ? rawTranscript : JSON.stringify(rawTranscript);
+      const { file_url, storage_path } = await base44.integrations.Core.UploadFile({ file: blob });
+      const transcribeRes = await base44.functions.invoke('transcribeAudio', { file_url, storage_path });
+      const text = transcribeRes?.data?.transcript;
+      if (!text || typeof text !== 'string') {
+        throw new Error('Empty transcription');
+      }
       setTranscript(text);
 
       // AI summarize

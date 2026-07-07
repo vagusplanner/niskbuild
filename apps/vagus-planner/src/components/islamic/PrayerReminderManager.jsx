@@ -11,6 +11,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
+import {
+  getNotificationPermission,
+  requestNotificationPermission,
+  scheduleNotification,
+  isNativeCapacitor,
+  fireNotification,
+} from '@/lib/vp-notifications';
 
 const PRAYERS = [
   { name: 'Fajr',    emoji: '🌅', icon: Sunrise, color: 'from-indigo-400 to-purple-500',  desc: 'Dawn prayer' },
@@ -41,9 +48,11 @@ function fetchPrayerTimesFromAladhan(lat, lng, method = 2) {
 
 export default function PrayerReminderManager() {
   const [prayerTimes, setPrayerTimes] = useState(null);
-  const [notifPermission, setNotifPermission] = useState(
-    typeof Notification !== 'undefined' ? Notification.permission : 'default'
-  );
+  const [notifPermission, setNotifPermission] = useState('default');
+
+  useEffect(() => {
+    void getNotificationPermission().then(setNotifPermission);
+  }, []);
   const [editingPrayer, setEditingPrayer] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
 
@@ -91,7 +100,7 @@ export default function PrayerReminderManager() {
       .catch(() => {});
   }, [settings]);
 
-  // Schedule browser notifications for today's prayers
+  // Schedule notifications for today's prayers
   useEffect(() => {
     if (!prayerTimes || notifPermission !== 'granted') return;
 
@@ -109,16 +118,20 @@ export default function PrayerReminderManager() {
 
       const msUntil = reminderDate.getTime() - now.getTime();
       if (msUntil > 0 && msUntil < 24 * 60 * 60 * 1000) {
-        const t = setTimeout(() => {
-          new Notification(`🕌 ${name} Prayer`, {
-            body: parseInt(cfg.minutesBefore) === 0
-              ? `It's time for ${name} prayer`
-              : `${name} prayer in ${cfg.minutesBefore} minutes (${prayerTimes[name]})`,
-            icon: '/favicon.ico',
-            tag: `prayer-${name}`,
-          });
-        }, msUntil);
-        timeouts.push(t);
+        const title = `🕌 ${name} Prayer`;
+        const body = parseInt(cfg.minutesBefore) === 0
+          ? `It's time for ${name} prayer`
+          : `${name} prayer in ${cfg.minutesBefore} minutes (${prayerTimes[name]})`;
+        const tag = `prayer-${name}`;
+
+        if (isNativeCapacitor()) {
+          void scheduleNotification({ title, body, at: reminderDate, tag });
+        } else {
+          const t = setTimeout(() => {
+            void fireNotification({ title, body, tag });
+          }, msUntil);
+          timeouts.push(t);
+        }
       }
     });
 
@@ -126,13 +139,14 @@ export default function PrayerReminderManager() {
   }, [prayerTimes, notifPermission, reminderConfig]);
 
   const requestPermission = async () => {
-    if (typeof Notification === 'undefined') {
+    const perm = await getNotificationPermission();
+    if (perm === 'unsupported') {
       toast.error('Notifications not supported in this browser');
       return;
     }
-    const perm = await Notification.requestPermission();
-    setNotifPermission(perm);
-    if (perm === 'granted') {
+    const result = await requestNotificationPermission();
+    setNotifPermission(result);
+    if (result === 'granted') {
       toast.success('Prayer reminders enabled!');
     } else {
       toast.error('Please allow notifications to receive prayer reminders');

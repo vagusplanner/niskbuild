@@ -428,14 +428,47 @@ export const base44 = {
           throw error
         }
       },
-      UploadFile: async (file) => {
-        console.log('📤 UploadFile:', file.name)
-        const { data, error } = await supabase
-          .storage
-          .from('uploads')
-          .upload(`files/${Date.now()}_${file.name}`, file)
+      UploadFile: async (input) => {
+        const file =
+          input instanceof Blob || input instanceof File
+            ? input
+            : input && typeof input === 'object' && input.file instanceof Blob
+              ? input.file
+              : null
+        if (!file) {
+          throw new Error('UploadFile requires a File or Blob')
+        }
+
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user?.id) {
+          throw new Error('Must be signed in to upload files')
+        }
+
+        const name =
+          file.name ||
+          (file.type?.includes('mp4') ? `audio_${Date.now()}.m4a` : `audio_${Date.now()}.webm`)
+
+        const safeName = name.replace(/[^a-zA-Z0-9._-]/g, '_')
+        const path = `${user.id}/files/${Date.now()}_${safeName}`
+
+        const { data, error } = await supabase.storage.from('uploads').upload(path, file, {
+          contentType: file.type || undefined,
+          upsert: false,
+        })
         if (error) throw error
-        return data
+
+        // Private bucket — signed URL only (1h window for server transcription download)
+        const { data: signed, error: signError } = await supabase.storage
+          .from('uploads')
+          .createSignedUrl(data.path, 3600)
+        if (signError) throw signError
+
+        const file_url = signed?.signedUrl ?? null
+        if (!file_url) {
+          throw new Error('Could not create signed URL for uploaded file')
+        }
+
+        return { ...data, file_url, storage_path: data.path }
       },
       SendEmail: async (params, subjectArg, bodyArg) => {
         const normalized =

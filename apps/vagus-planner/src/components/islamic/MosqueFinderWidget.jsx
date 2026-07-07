@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { MapPin, Navigation, Loader2, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
+import { fetchOverpass } from '@/lib/overpass-client';
 
 function distM(lat1, lng1, lat2, lng2) {
   const R = 6371000;
@@ -30,16 +31,7 @@ async function fetchNearbyMosques(lat, lng, radiusM = 3000) {
     );
     out body center;`;
 
-  const res = await fetch('https://overpass-api.de/api/interpreter', {
-    method: 'POST',
-    body: query,
-  });
-
-  if (!res.ok) {
-    throw new Error('Overpass request failed');
-  }
-
-  const data = await res.json();
+  const data = await fetchOverpass(query);
 
   return (data.elements || [])
     .map((el) => ({

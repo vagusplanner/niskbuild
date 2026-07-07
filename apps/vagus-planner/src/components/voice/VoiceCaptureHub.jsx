@@ -259,20 +259,20 @@ export default function VoiceCaptureHub({ onClose }) {
   const processAudio = async (blob) => {
     setPhase('processing');
     try {
-      // Upload audio for LLM processing
-      const { file_url } = await base44.integrations.Core.UploadFile({ file: blob });
+      const { file_url, storage_path } = await base44.integrations.Core.UploadFile({ file: blob });
 
-      // Transcribe + extract in one LLM call using vision+audio
-      const transcribeResult = await base44.integrations.Core.InvokeLLM({
-        prompt: `This is an audio recording. Please transcribe EXACTLY what is said, word for word. Return only the transcription text, nothing else.`,
-        file_urls: [file_url],
+      const transcribeRes = await base44.functions.invoke('transcribeAudio', {
+        file_url,
+        storage_path,
       });
+      const text = transcribeRes?.data?.transcript;
+      if (!text || typeof text !== 'string') {
+        throw new Error('Empty transcription');
+      }
 
-      const text = typeof transcribeResult === 'string' ? transcribeResult : JSON.stringify(transcribeResult);
       setTranscript(text);
       setEditedTranscript(text);
 
-      // Now extract structured data
       const data = await extractAndSave(text, queryClient);
       setExtracted(data);
       setPhase('review');

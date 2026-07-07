@@ -16,6 +16,11 @@ import {
 import { formatDistanceToNow, format, addMinutes } from 'date-fns';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import {
+  fireNotification,
+  getNotificationPermission,
+  requestNotificationPermission,
+} from '@/lib/vp-notifications';
 
 const TYPE_CONFIG = {
   event_reminder:    { icon: Calendar, color: 'text-blue-600 bg-blue-50',   label: 'Events' },
@@ -113,23 +118,26 @@ function NotifIcon({ type, priority }) {
 export default function SmartNotificationCenter() {
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
-  const [pushPermission, setPushPermission] = useState(() => 
-    'Notification' in window ? Notification.permission : 'unsupported'
-  );
+  const [pushPermission, setPushPermission] = useState('default');
+
+  useEffect(() => {
+    void getNotificationPermission().then(setPushPermission);
+  }, []);
 
   const handleEnablePush = async () => {
-    if (!('Notification' in window)) return;
-    const result = await Notification.requestPermission();
+    const perm = await getNotificationPermission();
+    if (perm === 'unsupported') return;
+    const result = await requestNotificationPermission();
     setPushPermission(result);
     if (result === 'granted') {
       toast.success("Push notifications enabled!");
-      new Notification('Vagus Planner', {
+      await fireNotification({
+        title: 'Vagus Planner',
         body: 'Notifications are now active 🎉',
-        icon: 'https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6965607bc386491646bad6e8/10b500d37_IMG_6630.png',
-        tag: 'welcome'
+        tag: 'welcome',
       });
     } else {
-      toast.info('Blocked. Enable notifications in your browser settings.');
+      toast.info('Blocked. Enable notifications in your device settings.');
     }
   };
 

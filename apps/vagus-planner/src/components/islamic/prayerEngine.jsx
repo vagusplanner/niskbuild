@@ -4,6 +4,13 @@
  * Supports all 7 major calculation methods + Asr juristic variants + tune offsets.
  */
 
+import {
+  getNotificationPermission,
+  scheduleNotification,
+  isNativeCapacitor,
+  fireNotification,
+} from '@/lib/vp-notifications';
+
 export const CALCULATION_METHODS = [
   { value: 'MWL',      num: 3,  label: 'Muslim World League',                   region: 'Europe, Far East, parts of USA' },
   { value: 'ISNA',     num: 2,  label: 'Islamic Society of North America',       region: 'North America' },
@@ -138,17 +145,15 @@ export async function geocodeCity(cityName) {
   }));
 }
 
-// ── Browser notification scheduler ───────────────────────────────────────────
+// ── Notification scheduler (web + Capacitor native) ─────────────────────────
 const _scheduledTimers = {};
 
-export function schedulePrayerReminders(times, config) {
-  // Clear existing
+export async function schedulePrayerReminders(times, config) {
   Object.values(_scheduledTimers).forEach(clearTimeout);
   Object.keys(_scheduledTimers).forEach(k => delete _scheduledTimers[k]);
 
-  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
-
-  const now = new Date();
+  const perm = await getNotificationPermission();
+  if (perm !== 'granted') return;
 
   for (const prayer of PRAYER_DISPLAY) {
     const cfg = config[prayer.key] || {};
@@ -163,15 +168,19 @@ export function schedulePrayerReminders(times, config) {
     const msUntil = alertMs - Date.now();
 
     if (msUntil > 0 && msUntil < 86400000) {
-      _scheduledTimers[prayer.key] = setTimeout(() => {
-        const minsText = parseInt(cfg.minutesBefore) === 0 ? '' : ` in ${cfg.minutesBefore} minutes`;
-        new Notification(`${prayer.emoji} ${prayer.key} Prayer${minsText}`, {
-          body: `${prayer.key} is at ${time}`,
-          icon: '/favicon.ico',
-          tag: `prayer-${prayer.key}`,
-          silent: cfg.sound === 'none',
-        });
-      }, msUntil);
+      const minsText = parseInt(cfg.minutesBefore) === 0 ? '' : ` in ${cfg.minutesBefore} minutes`;
+      const title = `${prayer.emoji} ${prayer.key} Prayer${minsText}`;
+      const body = `${prayer.key} is at ${time}`;
+      const tag = `prayer-${prayer.key}`;
+      const at = new Date(Date.now() + msUntil);
+
+      if (isNativeCapacitor()) {
+        await scheduleNotification({ title, body, at, tag });
+      } else {
+        _scheduledTimers[prayer.key] = setTimeout(() => {
+          void fireNotification({ title, body, tag });
+        }, msUntil);
+      }
     }
   }
 }

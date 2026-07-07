@@ -12,6 +12,10 @@ import { Bell, BellOff, Volume2, VolumeX, Settings2, AlarmClock, Clock, Play, Lo
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import {
+  getNotificationPermission,
+  requestNotificationPermission,
+} from '@/lib/vp-notifications';
+import {
   PRAYER_DISPLAY, fetchPrayerTimes, getNextPrayer,
   minutesUntil, formatCountdown, schedulePrayerReminders
 } from './prayerEngine';
@@ -61,9 +65,11 @@ function defaultPrayerConfig() {
 export default function PrayerReminderSettings() {
   const [config, setConfig] = useState(loadConfig);
   const [editPrayer, setEditPrayer] = useState(null);
-  const [notifPerm, setNotifPerm] = useState(
-    typeof Notification !== 'undefined' ? Notification.permission : 'default'
-  );
+  const [notifPerm, setNotifPerm] = useState('default');
+
+  useEffect(() => {
+    void getNotificationPermission().then(setNotifPerm);
+  }, []);
   const [prayerTimes, setPrayerTimes] = useState(null);
   const [snoozeActive, setSnoozeActive] = useState({}); // { prayerKey: snoozeUntilMs }
   const [previewLoading, setPreviewLoading] = useState(null);
@@ -89,7 +95,7 @@ export default function PrayerReminderSettings() {
   // Schedule browser notifications whenever config or times change
   useEffect(() => {
     if (!prayerTimes) return;
-    schedulePrayerReminders(prayerTimes, config);
+    void schedulePrayerReminders(prayerTimes, config);
   }, [prayerTimes, config]);
 
   const getConfig = (prayer) => ({ ...defaultPrayerConfig(), ...(config[prayer] || {}) });
@@ -101,14 +107,15 @@ export default function PrayerReminderSettings() {
   };
 
   const requestPermission = async () => {
-    if (typeof Notification === 'undefined') {
+    const perm = await getNotificationPermission();
+    if (perm === 'unsupported') {
       toast.error('Notifications not supported in this browser');
       return;
     }
-    const p = await Notification.requestPermission();
+    const p = await requestNotificationPermission();
     setNotifPerm(p);
     if (p === 'granted') toast.success('Reminders enabled!');
-    else toast.error('Please allow notifications in your browser settings');
+    else toast.error('Please allow notifications in your device settings');
   };
 
   const previewSound = async (prayerKey) => {

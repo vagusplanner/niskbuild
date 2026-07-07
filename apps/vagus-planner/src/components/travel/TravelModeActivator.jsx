@@ -16,16 +16,21 @@ import {
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { fetchOverpass } from '@/lib/overpass-client';
+import {
+  fireNotification as fireVpNotification,
+  getNotificationPermission,
+  requestNotificationPermission,
+  scheduleNotification,
+  isNativeCapacitor,
+} from '@/lib/vp-notifications';
 
 const APP_ICON = 'https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6965607bc386491646bad6e8/10b500d37_IMG_6630.png';
 const PRAYERS = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
 const PRAYER_EMOJI = { Fajr: '🌅', Dhuhr: '☀️', Asr: '🌤️', Maghrib: '🌇', Isha: '🌙' };
 
 function fireAlarm({ title, body, tag }) {
-  if (!('Notification' in window) || Notification.permission !== 'granted') return;
-  try {
-    new Notification(title, { body, icon: APP_ICON, tag, requireInteraction: true, badge: APP_ICON });
-  } catch {}
+  void fireVpNotification({ title, body, tag, requireInteraction: true });
 }
 
 async function reverseGeocode(lat, lng) {
@@ -52,11 +57,7 @@ async function fetchMosquesNearby(lat, lng) {
   // Overpass API — mosques within 5km
   const query = `[out:json][timeout:15];(node["amenity"="place_of_worship"]["religion"="muslim"](around:5000,${lat},${lng});way["amenity"="place_of_worship"]["religion"="muslim"](around:5000,${lat},${lng}););out center 12;`;
   try {
-    const res = await fetch('https://overpass-api.de/api/interpreter', {
-      method: 'POST', body: query,
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-    });
-    const data = await res.json();
+    const data = await fetchOverpass(query);
     return (data.elements || []).map(el => {
       const elLat = el.lat || el.center?.lat;
       const elLng = el.lon || el.center?.lon;
@@ -76,11 +77,7 @@ async function fetchHalalNearby(lat, lng) {
   // Overpass — halal restaurants/cafes within 2km
   const query = `[out:json][timeout:15];(node["diet:halal"="yes"](around:2000,${lat},${lng});node["amenity"~"restaurant|cafe|fast_food"]["diet:halal"!="no"](around:1500,${lat},${lng}););out 15;`;
   try {
-    const res = await fetch('https://overpass-api.de/api/interpreter', {
-      method: 'POST', body: query,
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-    });
-    const data = await res.json();
+    const data = await fetchOverpass(query);
     return (data.elements || []).map(el => {
       const distKm = calcDistKm(lat, lng, el.lat, el.lon);
       return {
@@ -134,15 +131,16 @@ export default function TravelModeActivator({ compact = false }) {
   const [mosques, setMosques] = useState([]);
   const [halal, setHalal] = useState([]);
   const [alarmsEnabled, setAlarmsEnabled] = useState(false);
-  const [permissionState, setPermissionState] = useState(() =>
-    'Notification' in window ? Notification.permission : 'unsupported'
-  );
+  const [permissionState, setPermissionState] = useState('default');
   const [expanded, setExpanded] = useState(!compact);
   const alarmTimersRef = useRef([]);
 
+  useEffect(() => {
+    void getNotificationPermission().then(setPermissionState);
+  }, []);
+
   // Schedule prayer alarms for travel location
   const scheduleTravelAlarms = (timings, city) => {
-    // Clear old alarms
     alarmTimersRef.current.forEach(t => clearTimeout(t));
     alarmTimersRef.current = [];
 
@@ -155,30 +153,34 @@ export default function TravelModeActivator({ compact = false }) {
       const [h, m] = t.split(':').map(Number);
       const prayerDate = new Date();
       prayerDate.setHours(h, m, 0, 0);
-      // Notify 10 mins before
       const fireAt = new Date(prayerDate.getTime() - 10 * 60 * 1000);
       const msUntil = fireAt.getTime() - now.getTime();
       if (msUntil > 0 && msUntil < 24 * 60 * 60 * 1000) {
-        const timer = setTimeout(() => {
-          fireAlarm({
-            title: `${PRAYER_EMOJI[name]} ${name} Prayer — ${city}`,
-            body: `${name} is in 10 minutes (${t} local time). You are in ${city}.`,
-            tag: `travel-prayer-${name}-${today}`,
-          });
-        }, msUntil);
-        alarmTimersRef.current.push(timer);
+        const payload = {
+          title: `${PRAYER_EMOJI[name]} ${name} Prayer — ${city}`,
+          body: `${name} is in 10 minutes (${t} local time). You are in ${city}.`,
+          tag: `travel-prayer-${name}-${today}`,
+        };
+        if (isNativeCapacitor()) {
+          void scheduleNotification({ ...payload, at: fireAt });
+        } else {
+          const timer = setTimeout(() => fireAlarm(payload), msUntil);
+          alarmTimersRef.current.push(timer);
+        }
       }
-      // Also fire at prayer time
       const msUntilExact = prayerDate.getTime() - now.getTime();
       if (msUntilExact > 0 && msUntilExact < 24 * 60 * 60 * 1000) {
-        const timer = setTimeout(() => {
-          fireAlarm({
-            title: `🕌 ${name} Prayer Time — ${city}`,
-            body: `It is now ${t} in ${city}. Time for ${name} prayer.`,
-            tag: `travel-prayer-exact-${name}-${today}`,
-          });
-        }, msUntilExact);
-        alarmTimersRef.current.push(timer);
+        const payload = {
+          title: `🕌 ${name} Prayer Time — ${city}`,
+          body: `It is now ${t} in ${city}. Time for ${name} prayer.`,
+          tag: `travel-prayer-exact-${name}-${today}`,
+        };
+        if (isNativeCapacitor()) {
+          void scheduleNotification({ ...payload, at: prayerDate });
+        } else {
+          const timer = setTimeout(() => fireAlarm(payload), msUntilExact);
+          alarmTimersRef.current.push(timer);
+        }
       }
     });
 
@@ -186,11 +188,18 @@ export default function TravelModeActivator({ compact = false }) {
   };
 
   const enableAlarms = async () => {
-    if (!('Notification' in window)) { toast.error('Notifications not supported on this device.'); return; }
-    if (Notification.permission !== 'granted') {
-      const result = await Notification.requestPermission();
+    const perm = await getNotificationPermission();
+    if (perm === 'unsupported') {
+      toast.error('Notifications not supported on this device.');
+      return;
+    }
+    if (perm !== 'granted') {
+      const result = await requestNotificationPermission();
       setPermissionState(result);
-      if (result !== 'granted') { toast.error('Please allow notifications to enable prayer alarms.'); return; }
+      if (result !== 'granted') {
+        toast.error('Please allow notifications to enable prayer alarms.');
+        return;
+      }
     }
     setAlarmsEnabled(true);
     if (prayerTimes && location) scheduleTravelAlarms(prayerTimes, location.city);

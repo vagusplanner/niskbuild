@@ -8,6 +8,13 @@ import React, { useState, useEffect } from 'react';
 import { Moon, Bell, BellOff, Calendar, Star, Clock, Loader2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import {
+  getNotificationPermission,
+  requestNotificationPermission,
+  scheduleNotification,
+  isNativeCapacitor,
+  fireNotification,
+} from '@/lib/vp-notifications';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { fetchPrayerTimes } from './prayerEngine';
@@ -108,35 +115,41 @@ export default function TahajjudScheduler() {
     },
   });
 
-  const setAlarm = () => {
+  const setAlarm = async () => {
     if (!tahajjudWindow) return;
-    // Browser notification alarm
-    if (!('Notification' in window)) {
+    const perm = await getNotificationPermission();
+    if (perm === 'unsupported') {
       toast.error('Notifications not supported in this browser');
       return;
     }
-    Notification.requestPermission().then(perm => {
-      if (perm !== 'granted') { toast.error('Please allow notifications'); return; }
+    const granted = perm === 'granted' ? perm : await requestNotificationPermission();
+    if (granted !== 'granted') {
+      toast.error('Please allow notifications');
+      return;
+    }
 
-      const now = new Date();
-      const [h, m] = tahajjudWindow.optimal.split(':').map(Number);
-      const alarmTime = new Date(now);
-      alarmTime.setHours(h, m, 0, 0);
-      if (alarmTime <= now) alarmTime.setDate(alarmTime.getDate() + 1);
+    const now = new Date();
+    const [h, m] = tahajjudWindow.optimal.split(':').map(Number);
+    const alarmTime = new Date(now);
+    alarmTime.setHours(h, m, 0, 0);
+    if (alarmTime <= now) alarmTime.setDate(alarmTime.getDate() + 1);
 
+    const title = '🌙 Time for Tahajjud';
+    const body = `It's ${to12h(tahajjudWindow.optimal)} — the last third of the night. Fajr at ${to12h(tahajjudWindow.fajr)}.`;
+
+    if (isNativeCapacitor()) {
+      await scheduleNotification({ title, body, at: alarmTime, tag: 'tahajjud-alarm' });
+    } else {
       const delay = alarmTime.getTime() - now.getTime();
       const t = setTimeout(() => {
-        new Notification('🌙 Time for Tahajjud', {
-          body: `It's ${to12h(tahajjudWindow.optimal)} — the last third of the night. Fajr at ${to12h(tahajjudWindow.fajr)}.`,
-          icon: '/icon-192x192.png',
-        });
+        void fireNotification({ title, body, tag: 'tahajjud-alarm' });
         setAlarmSet(false);
       }, delay);
-
       setAlarmTimeout(t);
-      setAlarmSet(true);
-      toast.success(`Alarm set for ${to12h(tahajjudWindow.optimal)}`);
-    });
+    }
+
+    setAlarmSet(true);
+    toast.success(`Alarm set for ${to12h(tahajjudWindow.optimal)}`);
   };
 
   const cancelAlarm = () => {

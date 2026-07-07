@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import L from 'leaflet';
+import { fetchOverpass } from '@/lib/overpass-client';
 
 // Fix Leaflet default icon paths
 delete L.Icon.Default.prototype._getIconUrl;
@@ -106,12 +107,7 @@ export default function IslamicTravelDashboard() {
       out center;
     `;
     try {
-      const res = await fetch('https://overpass-api.de/api/interpreter', {
-        method: 'POST',
-        body: query,
-        headers: { 'Content-Type': 'text/plain' },
-      });
-      const data = await res.json();
+      const data = await fetchOverpass(query);
       const elements = data.elements || [];
 
       const m = [], r = [];

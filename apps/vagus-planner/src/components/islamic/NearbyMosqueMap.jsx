@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { fetchPrayerTimes } from './prayerEngine';
+import { fetchOverpass } from '@/lib/overpass-client';
 
 const PRAYER_NAMES = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
 
@@ -87,11 +88,7 @@ export default function NearbyMosqueMap() {
         );
         out body center;`;
 
-      const res = await fetch('https://overpass-api.de/api/interpreter', {
-        method: 'POST',
-        body: query,
-      });
-      const data = await res.json();
+      const data = await fetchOverpass(query);
 
       const items = (data.elements || [])
         .map(el => ({

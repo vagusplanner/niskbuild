@@ -28,6 +28,7 @@ import {
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import IslamicEditionGate from '@/components/auth/IslamicEditionGate';
+import { fetchOverpass } from '@/lib/overpass-client';
 
 // ── Service definitions ────────────────────────────────────────────────────────
 const SERVICES = [
@@ -557,8 +558,7 @@ function MosqueMapContent() {
         );
         out body center;`;
 
-      const res = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: query });
-      const data = await res.json();
+      const data = await fetchOverpass(query);
 
       const items = (data.elements || [])
         .map(el => ({

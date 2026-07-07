@@ -15,6 +15,12 @@ import {
 } from './handlers/geo';
 import { hadithSRSChallenge } from './handlers/hadith-srs';
 import { globalSearch } from './handlers/search';
+import {
+  aiSchedulePlanner,
+  aiSchedulingSuggestions,
+  parseNaturalLanguageEvent,
+} from './handlers/calendar-ai';
+import { transcribeAudio } from './handlers/transcribe-audio';
 
 export const VP_FUNCTION_REGISTRY = new Map<string, VpFunctionHandler>([
   ['createStripeCheckout', createStripeCheckout],
@@ -29,6 +35,10 @@ export const VP_FUNCTION_REGISTRY = new Map<string, VpFunctionHandler>([
   ['hadithSRSChallenge', hadithSRSChallenge],
   ['globalSearch', globalSearch],
   ['deleteUserAccount', deleteUserAccount],
+  ['parseNaturalLanguageEvent', parseNaturalLanguageEvent],
+  ['aiSchedulePlanner', aiSchedulePlanner],
+  ['aiSchedulingSuggestions', aiSchedulingSuggestions],
+  ['transcribeAudio', transcribeAudio],
 ]);
 
 export function getVpFunctionHandler(name: string): VpFunctionHandler | undefined {
