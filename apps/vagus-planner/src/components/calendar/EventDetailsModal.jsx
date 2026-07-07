@@ -83,7 +83,13 @@ export default function EventDetailsModal({ event, isOpen, onClose, onEdit, onDe
       const tasks = await base44.entities.Task.filter({ event_id: event.id });
       setRelatedTasks(tasks);
     } catch (error) {
-      console.error('Failed to fetch related tasks:', error);
+      const message = error?.message ?? String(error);
+      if (/event_id.*does not exist/i.test(message)) {
+        console.warn('Related tasks lookup skipped — run vp-tasks-event-id migration');
+      } else {
+        console.error('Failed to fetch related tasks:', error);
+      }
+      setRelatedTasks([]);
     }
   };
 

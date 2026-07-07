@@ -264,7 +264,15 @@ export default function VoiceCaptureHub({ onClose }) {
       setPhase('review');
     } catch (e) {
       console.error('Voice processing error:', e);
-      toast.error('Could not process audio. Try speaking more clearly.');
+      const detail = e?.message || (typeof e === 'string' ? e : '');
+      const rateLimited = /rate limit/i.test(detail);
+      toast.error(
+        rateLimited
+          ? 'Too many AI requests — wait a moment and try again.'
+          : detail && detail !== '[object Object]'
+            ? `Could not process audio: ${detail}`
+            : 'Could not process audio. Try speaking more clearly.'
+      );
       setPhase('idle');
     }
   };

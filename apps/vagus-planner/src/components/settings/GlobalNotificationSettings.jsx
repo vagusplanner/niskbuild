@@ -40,7 +40,7 @@ export default function GlobalNotificationSettings({ formData, onChange }) {
               </div>
             </div>
             <Switch
-              checked={formData.notifications_enabled}
+              checked={formData.notifications_enabled !== false}
               onCheckedChange={(v) => onChange('notifications_enabled', v)}
             />
           </div>
@@ -55,7 +55,7 @@ export default function GlobalNotificationSettings({ formData, onChange }) {
               </div>
             </div>
             <Switch
-              checked={formData.email_notifications}
+              checked={formData.email_notifications !== false}
               onCheckedChange={(v) => onChange('email_notifications', v)}
             />
           </div>
@@ -101,7 +101,7 @@ export default function GlobalNotificationSettings({ formData, onChange }) {
               <p className="text-xs text-slate-500 mt-0.5">Allow stacking several reminders on one event</p>
             </div>
             <Switch
-              checked={formData.multiple_reminders_enabled}
+              checked={formData.multiple_reminders_enabled !== false}
               onCheckedChange={(v) => onChange('multiple_reminders_enabled', v)}
               disabled={masterOff}
             />
@@ -157,7 +157,7 @@ export default function GlobalNotificationSettings({ formData, onChange }) {
               <p className="text-xs text-slate-500 mt-0.5">Mute all notifications between set hours</p>
             </div>
             <Switch
-              checked={formData.do_not_disturb}
+              checked={Boolean(formData.do_not_disturb)}
               onCheckedChange={(v) => onChange('do_not_disturb', v)}
             />
           </div>

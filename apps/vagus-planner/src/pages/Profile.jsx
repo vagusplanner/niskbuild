@@ -402,7 +402,7 @@ export default function ProfilePage() {
                           {group.fields.map(f => f.type === 'switch' ? (
                             <div key={f.key} className="flex items-center justify-between">
                               <div><Label className="text-sm font-medium">{f.label}</Label>{f.desc&&<p className="text-xs text-slate-400 mt-0.5">{f.desc}</p>}</div>
-                              <Switch checked={f.default !== false ? settings?.[f.key] !== false : (settings?.[f.key] || false)} onCheckedChange={(val)=>handleToggleSetting(f.key, val)} />
+                              <Switch checked={Boolean(f.default !== false ? settings?.[f.key] !== false : (settings?.[f.key] ?? false))} onCheckedChange={(val)=>handleToggleSetting(f.key, val)} />
                             </div>
                           ) : (
                             <div key={f.key} className="space-y-1.5">

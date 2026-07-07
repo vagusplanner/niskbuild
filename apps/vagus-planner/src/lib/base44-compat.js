@@ -140,6 +140,7 @@ function mapPayloadToRow(entityName, payload, userId) {
     if (p.priority != null) row.priority = mapTaskPriority(p.priority)
     if (p.status != null) row.status = mapTaskStatus(p.status)
     else if (userId && row.title) row.status = 'pending'
+    if (p.event_id != null && p.event_id !== '') row.event_id = p.event_id
     return row
   }
 
@@ -279,6 +280,7 @@ function mapRowFromDb(entityName, row) {
     return {
       ...row,
       description: row.notes ?? row.description,
+      event_id: row.event_id ?? null,
       status: row.status === 'pending' ? 'todo' : row.status,
       priority:
         typeof row.priority === 'number'

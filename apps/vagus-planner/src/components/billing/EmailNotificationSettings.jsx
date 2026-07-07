@@ -134,7 +134,7 @@ export default function EmailNotificationSettings() {
               </div>
               <Switch
                 id={setting.id}
-                checked={setting.value}
+                checked={Boolean(setting.value)}
                 onCheckedChange={(checked) => handleToggle(setting.id, checked)}
                 disabled={setting.disabled || updateMutation.isPending}
                 className="mt-1"

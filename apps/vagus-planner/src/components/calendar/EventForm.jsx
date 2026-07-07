@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import AutoRescheduleEngine from '@/components/calendar/AutoRescheduleEngine';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Calendar, Clock, MapPin, Bell, Repeat, Tag, FileText, Sparkles, Loader2, Mail, Wand2, MessageSquare, Paperclip } from 'lucide-react';
@@ -322,18 +322,46 @@ Be smart about patterns - if most similar events happen at same time, suggest th
     [allEvents, event]
   );
 
+  const debouncedAutoCategorize = useMemo(
+    () =>
+      debounce(async (title, description) => {
+        if (!title || title.length < 3) return;
+
+        try {
+          const result = await base44.integrations.Core.InvokeLLM({
+            prompt: `Based on this event title "${title}"${description ? ` and description "${description}"` : ''}, which category does it belong to? Categories: work, personal, health, prayer, holiday, family, social, other. Just return the category name, nothing else.`,
+            response_json_schema: {
+              type: 'object',
+              properties: {
+                category: { type: 'string' },
+              },
+            },
+          });
+
+          if (result.category && CATEGORIES.find((c) => c.value === result.category)) {
+            setFormData((prev) => ({ ...prev, category: result.category }));
+          }
+        } catch {
+          // Silent fail
+        }
+      }, 600),
+    []
+  );
+
+  useEffect(() => () => debouncedAutoCategorize.cancel(), [debouncedAutoCategorize]);
+
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
     // Auto-categorize and auto-fill when title changes
     if (field === 'title' && value && !event) {
-      autoCategorize(value, formData.description);
+      debouncedAutoCategorize(value, formData.description);
       debouncedAutoFill(value);
     }
     
     // Auto-categorize when description changes
     if (field === 'description' && value && !event) {
-      autoCategorize(formData.title, value);
+      debouncedAutoCategorize(formData.title, value);
     }
 
     // Generate smart reminder when category or location changes
@@ -390,28 +418,6 @@ Be smart about patterns - if most similar events happen at same time, suggest th
     setFormData(prev => ({ ...prev, ...updates }));
     setShowInviteParser(false);
     toast.success('Event details imported!');
-  };
-
-  const autoCategorize = async (title, description) => {
-    if (!title || title.length < 3) return;
-    
-    try {
-      const result = await base44.integrations.Core.InvokeLLM({
-        prompt: `Based on this event title "${title}"${description ? ` and description "${description}"` : ''}, which category does it belong to? Categories: work, personal, health, prayer, holiday, family, social, other. Just return the category name, nothing else.`,
-        response_json_schema: {
-          type: "object",
-          properties: {
-            category: { type: "string" }
-          }
-        }
-      });
-      
-      if (result.category && CATEGORIES.find(c => c.value === result.category)) {
-        setFormData(prev => ({ ...prev, category: result.category }));
-      }
-    } catch (error) {
-      // Silent fail
-    }
   };
 
   const getAiSuggestions = async () => {

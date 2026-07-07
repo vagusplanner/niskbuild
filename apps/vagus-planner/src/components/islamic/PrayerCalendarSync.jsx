@@ -5,41 +5,35 @@ import { MapPin, Bell, BellOff, CheckCircle2, Loader2, Calendar, RefreshCw, Info
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { format, addDays } from 'date-fns';
+import {
+  getNotificationPermission,
+  requestNotificationPermission,
+  scheduleNotification,
+} from '@/lib/vp-notifications';
 
 const PRAYERS = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
 const PRAYER_EMOJIS = { Fajr: '🌅', Dhuhr: '☀️', Asr: '🌤️', Maghrib: '🌅', Isha: '🌙' };
 const STORAGE_KEY = 'prayer_notifications_enabled';
-const TIMERS_KEY  = 'prayer_notification_timers';
 
-function scheduleNotifications(prayerTimes) {
-  // Clear old timeouts stored in sessionStorage
-  const oldTimers = JSON.parse(sessionStorage.getItem(TIMERS_KEY) || '[]');
-  oldTimers.forEach(id => clearTimeout(id));
+async function schedulePrayerNotifications(prayerTimes) {
+  const perm = await getNotificationPermission();
+  if (perm !== 'granted') return;
 
-  if (Notification.permission !== 'granted') return;
-
-  const newTimers = [];
   const now = Date.now();
 
-  prayerTimes.forEach(({ prayer, time, date }) => {
+  for (const { prayer, time, date } of prayerTimes) {
     const clean = time.replace(/\s*\(.*?\)/, '').trim();
-    const dt = new Date(`${date} ${clean}`);
-    const ms = dt.getTime() - now;
+    const at = new Date(`${date} ${clean}`);
+    const ms = at.getTime() - now;
     if (ms > 0 && ms < 24 * 60 * 60 * 1000) {
-      const id = setTimeout(() => {
-        new Notification(`🕌 ${prayer} Time`, {
-          body: `It's time for ${prayer} prayer. ${PRAYER_EMOJIS[prayer]}`,
-          icon: '/icon-192.png',
-          tag: `prayer-${prayer}`,
-          requireInteraction: false,
-        });
-      }, ms);
-      newTimers.push(id);
+      await scheduleNotification({
+        title: `🕌 ${prayer} Time`,
+        body: `It's time for ${prayer} prayer. ${PRAYER_EMOJIS[prayer]}`,
+        at,
+        tag: `prayer-${prayer}`,
+      });
     }
-  });
-
-  sessionStorage.setItem(TIMERS_KEY, JSON.stringify(newTimers));
+  }
 }
 
 export default function PrayerCalendarSync() {
@@ -50,7 +44,12 @@ export default function PrayerCalendarSync() {
   const [todayTimes, setTodayTimes] = useState(null);
   const [syncResult, setSyncResult] = useState(null);
   const [notifOn, setNotifOn]       = useState(() => localStorage.getItem(STORAGE_KEY) === 'true');
-  const [notifPerm, setNotifPerm]   = useState(typeof Notification !== 'undefined' ? Notification.permission : 'default');
+  const [notifPerm, setNotifPerm]   = useState('default');
+  const scheduleGenRef = useRef(0);
+
+  useEffect(() => {
+    void getNotificationPermission().then(setNotifPerm);
+  }, []);
 
   // Auto-detect location on mount
   useEffect(() => {
@@ -70,7 +69,11 @@ export default function PrayerCalendarSync() {
 
   // Re-schedule notifications when todayTimes or notifOn changes
   useEffect(() => {
-    if (notifOn && todayTimes) scheduleNotifications(todayTimes);
+    if (!notifOn || !todayTimes) return;
+    const gen = ++scheduleGenRef.current;
+    void schedulePrayerNotifications(todayTimes).then(() => {
+      if (gen !== scheduleGenRef.current) return;
+    });
   }, [notifOn, todayTimes]);
 
   const fetchTodayTimes = async () => {
@@ -109,24 +112,28 @@ export default function PrayerCalendarSync() {
 
   const toggleNotifications = async () => {
     if (!notifOn) {
-      const perm = await Notification.requestPermission();
+      const perm = await requestNotificationPermission();
       setNotifPerm(perm);
       if (perm !== 'granted') {
-        toast.error('Please allow notifications in your browser settings.');
+        toast.error('Please allow notifications in your device settings.');
         return;
       }
       setNotifOn(true);
       localStorage.setItem(STORAGE_KEY, 'true');
-      if (todayTimes) scheduleNotifications(todayTimes);
+      if (todayTimes) {
+        scheduleGenRef.current += 1;
+        await schedulePrayerNotifications(todayTimes);
+      }
       toast.success('🔔 Prayer notifications enabled!');
     } else {
       setNotifOn(false);
       localStorage.setItem(STORAGE_KEY, 'false');
-      const old = JSON.parse(sessionStorage.getItem(TIMERS_KEY) || '[]');
-      old.forEach(id => clearTimeout(id));
+      scheduleGenRef.current += 1;
       toast.success('Notifications disabled.');
     }
   };
+
+  const toggleDisabled = !todayTimes || notifPerm === 'denied';
 
   return (
     <div className="space-y-4">
@@ -206,9 +213,16 @@ export default function PrayerCalendarSync() {
               <p className="text-[10px] text-slate-400">Get alerted at each prayer time today</p>
             </div>
           </div>
-          <button onClick={toggleNotifications}
-            className={cn('relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors',
-              notifOn ? 'bg-teal-500' : 'bg-slate-200 dark:bg-slate-700')}>
+          <button
+            type="button"
+            onClick={toggleNotifications}
+            disabled={toggleDisabled}
+            aria-pressed={notifOn}
+            className={cn(
+              'relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors',
+              toggleDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
+              notifOn ? 'bg-teal-500' : 'bg-slate-200 dark:bg-slate-700'
+            )}>
             <span className={cn('pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200',
               notifOn ? 'translate-x-5' : 'translate-x-0')} />
           </button>
@@ -244,7 +258,7 @@ export default function PrayerCalendarSync() {
       {/* Info note */}
       <div className="flex items-start gap-2 text-[10px] text-slate-400 px-1">
         <Info className="w-3 h-3 flex-shrink-0 mt-0.5" />
-        <span>Prayer times are calculated using the Muslim World League method based on your device's GPS location. Notifications are scheduled locally and reset on page reload.</span>
+        <span>Prayer times are calculated using the Muslim World League method based on your device's GPS location. On iOS, notifications use native local alerts.</span>
       </div>
     </div>
   );

@@ -57,7 +57,7 @@ export default function NotificationPreferences({ settings, onUpdate }) {
                   </div>
                 </div>
                 <Switch
-                  checked={settings?.[type.key] !== false}
+                  checked={Boolean(settings?.[type.key] !== false)}
                   onCheckedChange={(val) => handleToggle(type.key, val)}
                 />
               </motion.div>
@@ -142,7 +142,7 @@ export default function NotificationPreferences({ settings, onUpdate }) {
               <p className="text-sm text-slate-500">Allow multiple reminders per event</p>
             </div>
             <Switch
-              checked={settings?.multiple_reminders_enabled !== false}
+              checked={Boolean(settings?.multiple_reminders_enabled !== false)}
               onCheckedChange={(val) => handleToggle('multiple_reminders_enabled', val)}
             />
           </div>
@@ -153,7 +153,7 @@ export default function NotificationPreferences({ settings, onUpdate }) {
               <p className="text-sm text-slate-500">Get notified for all-day events</p>
             </div>
             <Switch
-              checked={settings?.allday_event_reminders !== false}
+              checked={Boolean(settings?.allday_event_reminders !== false)}
               onCheckedChange={(val) => handleToggle('allday_event_reminders', val)}
             />
           </div>
@@ -200,7 +200,7 @@ export default function NotificationPreferences({ settings, onUpdate }) {
               <p className="text-sm text-slate-500">Mute notifications during set hours</p>
             </div>
             <Switch
-              checked={settings?.do_not_disturb || false}
+              checked={Boolean(settings?.do_not_disturb)}
               onCheckedChange={(val) => handleToggle('do_not_disturb', val)}
             />
           </div>

@@ -28,6 +28,7 @@ import {
   suggestPrayerAwareMeetingTimes,
 } from './handlers/calendar-ai';
 import { transcribeAudio } from './handlers/transcribe-audio';
+import { aiEventSummary, onNewUserWelcome, trackAnalytics } from './handlers/stubs';
 
 export const VP_FUNCTION_REGISTRY = new Map<string, VpFunctionHandler>([
   ['createStripeCheckout', createStripeCheckout],
@@ -53,6 +54,9 @@ export const VP_FUNCTION_REGISTRY = new Map<string, VpFunctionHandler>([
   ['suggestPrayerAwareMeetingTimes', suggestPrayerAwareMeetingTimes],
   ['aiMeetingAssistant', aiMeetingAssistant],
   ['transcribeAudio', transcribeAudio],
+  ['trackAnalytics', trackAnalytics],
+  ['onNewUserWelcome', onNewUserWelcome],
+  ['aiEventSummary', aiEventSummary],
 ]);
 
 export function getVpFunctionHandler(name: string): VpFunctionHandler | undefined {
