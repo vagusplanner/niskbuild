@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { requirePlatformOwner } from '@/lib/platform-owner-auth';
+import { guardApiRequest } from '@/lib/api-auth';
+import { isPlatformOwner } from '@/lib/platform-owner-auth';
 
+/** Lightweight owner check for nav UI — returns 200 for all signed-in users (no 401 spam). */
 export async function GET(request: NextRequest) {
-  const owner = await requirePlatformOwner(request);
-  if (!owner.ok) return owner.response;
+  const guard = await guardApiRequest(request, { rateLimit: 30 });
+  if (!guard.ok) return guard.response;
 
-  return NextResponse.json({ ok: true, userId: owner.user.id });
+  const owner = await isPlatformOwner();
+  return NextResponse.json({ isOwner: owner, userId: owner ? guard.user!.id : undefined });
 }

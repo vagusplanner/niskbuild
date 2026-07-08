@@ -89,8 +89,8 @@ export async function POST(request: NextRequest) {
         getReloadPriceId(boost) ||
         (resolvedPackId ? getReloadPriceIdByPackId(resolvedPackId) : null);
 
-      if (!priceId) {
-        return NextResponse.json({ error: 'Invalid price configuration' }, { status: 400 });
+      if (!pack) {
+        return NextResponse.json({ error: 'Invalid reload pack' }, { status: 400 });
       }
 
       const supabase = await createClient();
@@ -108,11 +108,25 @@ export async function POST(request: NextRequest) {
       }
 
       const credits = pack?.credits ?? 0;
+      const lineItem: Stripe.Checkout.SessionCreateParams.LineItem = priceId
+        ? { price: priceId, quantity: 1 }
+        : {
+            price_data: {
+              currency: 'usd',
+              unit_amount: pack.priceUsd * 100,
+              product_data: {
+                name: `NiskBuild Reload: ${pack.name}`,
+                description: pack.description.slice(0, 200),
+              },
+            },
+            quantity: 1,
+          };
+
       const session = await stripe.checkout.sessions.create({
         mode: 'payment',
         payment_method_types: ['card'],
         customer_email: email,
-        line_items: [{ price: priceId, quantity: 1 }],
+        line_items: [lineItem],
         success_url: `${appUrl}/dashboard/settings?reload=success&credits=${credits}`,
         cancel_url: `${appUrl}/pricing?reload_canceled=true`,
         metadata: {

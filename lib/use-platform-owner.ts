@@ -18,8 +18,13 @@ export function usePlatformOwner(user: { id?: string } | null | undefined): bool
     let cancelled = false;
 
     fetch('/api/admin/platform-owner', { credentials: 'include' })
-      .then((res) => {
-        if (!cancelled) setIsOwner(res.ok);
+      .then(async (res) => {
+        if (cancelled || !res.ok) {
+          if (!cancelled) setIsOwner(false);
+          return;
+        }
+        const data = (await res.json()) as { isOwner?: boolean };
+        if (!cancelled) setIsOwner(data.isOwner === true);
       })
       .catch(() => {
         if (!cancelled) setIsOwner(false);

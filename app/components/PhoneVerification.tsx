@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 interface PhoneVerificationProps {
   onVerified: () => void;
@@ -12,8 +12,10 @@ export default function PhoneVerification({ onVerified }: PhoneVerificationProps
   const [step, setStep] = useState<'phone' | 'code'>('phone');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const verifiedRef = useRef(false);
 
   const sendCode = async () => {
+    if (loading) return;
     setLoading(true);
     setMessage('');
     try {
@@ -26,6 +28,7 @@ export default function PhoneVerification({ onVerified }: PhoneVerificationProps
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       if (data.skipped) {
+        verifiedRef.current = true;
         onVerified();
         return;
       }
@@ -39,6 +42,14 @@ export default function PhoneVerification({ onVerified }: PhoneVerificationProps
   };
 
   const confirmCode = async () => {
+    if (loading || verifiedRef.current) return;
+
+    const normalizedCode = code.replace(/\D/g, '');
+    if (normalizedCode.length < 4) {
+      setMessage('Enter the full verification code.');
+      return;
+    }
+
     setLoading(true);
     setMessage('');
     try {
@@ -46,16 +57,28 @@ export default function PhoneVerification({ onVerified }: PhoneVerificationProps
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ code, phone }),
+        body: JSON.stringify({ code: normalizedCode, phone }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+
+      verifiedRef.current = true;
+      setMessage('Verified! Redirecting…');
       onVerified();
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Verification failed');
-    } finally {
       setLoading(false);
     }
+  };
+
+  const handlePhoneSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    void sendCode();
+  };
+
+  const handleCodeSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    void confirmCode();
   };
 
   return (
@@ -65,7 +88,7 @@ export default function PhoneVerification({ onVerified }: PhoneVerificationProps
         Enter your number to receive a 6-digit SMS code. Required for free Sandbox accounts.
       </p>
       {step === 'phone' ? (
-        <div className="flex gap-2">
+        <form onSubmit={handlePhoneSubmit} className="flex gap-2">
           <input
             type="tel"
             value={phone}
@@ -74,48 +97,54 @@ export default function PhoneVerification({ onVerified }: PhoneVerificationProps
             className="flex-1 bg-nisk border border-nisk rounded-lg px-3 py-2 text-white text-sm"
           />
           <button
-            type="button"
-            onClick={sendCode}
+            type="submit"
             disabled={loading || phone.length < 8}
             className="btn-primary px-4 py-2 rounded-lg text-sm disabled:opacity-50"
           >
             Send code
           </button>
-        </div>
+        </form>
       ) : (
-        <div className="space-y-2">
+        <form onSubmit={handleCodeSubmit} className="space-y-2">
           <div className="flex gap-2">
             <input
               type="text"
               inputMode="numeric"
+              autoComplete="one-time-code"
               value={code}
-              onChange={(e) => setCode(e.target.value)}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               placeholder="6-digit code"
               maxLength={6}
               className="flex-1 bg-nisk border border-nisk rounded-lg px-3 py-2 text-white text-sm"
             />
             <button
-              type="button"
-              onClick={confirmCode}
-              disabled={loading || code.length < 4}
+              type="submit"
+              disabled={loading || code.replace(/\D/g, '').length < 4}
               className="btn-primary px-4 py-2 rounded-lg text-sm disabled:opacity-50"
             >
-              Verify
+              {loading ? 'Verifying…' : 'Verify'}
             </button>
           </div>
           <button
             type="button"
-            onClick={() => setStep('phone')}
+            onClick={() => {
+              setStep('phone');
+              setCode('');
+              setMessage('');
+            }}
             className="text-xs text-nisk-muted hover:text-white"
           >
             ← Change phone number
           </button>
-        </div>
+        </form>
       )}
       {message && (
         <p
           className={`text-xs mt-2 ${
-            message.includes('sent') || message.includes('verified')
+            message.includes('sent') ||
+            message.includes('verified') ||
+            message.includes('Verified') ||
+            message.includes('Redirecting')
               ? 'text-[var(--success)]'
               : 'text-[var(--error)]'
           }`}

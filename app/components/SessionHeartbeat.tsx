@@ -52,11 +52,14 @@ export default function SessionHeartbeat() {
 
         if (res.status === 403) {
           const data = await res.json();
-          alert(
-            data.error ||
-              'Session limit reached on your plan. Sign out another device in Settings, then try again.'
-          );
-          window.location.href = '/login?reason=session_limit';
+          if (data.blocked) {
+            alert(
+              data.error ||
+                'Session limit reached on your plan. Sign out another device in Settings, then try again.'
+            );
+            window.location.href = '/login?reason=session_limit';
+          }
+          return;
         }
       } catch {
         // Ignore transient network errors

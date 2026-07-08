@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { cleanGeneratedCode } from '@/lib/cleanGeneratedCode';
+import { BUILDER_PREVIEW_SANDBOX } from '@/lib/preview-html';
 import { canCompareVersions, formatTimeAgo } from '@/lib/version-limits';
 
 export type VersionListItem = {
@@ -340,7 +341,7 @@ export default function VersionHistoryPanel({
                 title={`Preview v${previewVersion.version_number}`}
                 srcDoc={previewHtml}
                 className="w-full min-h-[300px] max-h-[70vh] bg-white"
-                sandbox="allow-scripts allow-same-origin"
+                sandbox={BUILDER_PREVIEW_SANDBOX}
               />
             </div>
           </div>

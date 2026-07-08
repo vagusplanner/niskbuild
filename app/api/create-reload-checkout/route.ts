@@ -46,11 +46,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!stripePriceId) {
-      return NextResponse.json({ error: 'Invalid price configuration' }, { status: 400 });
-    }
-
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+    if (!stripePriceId) {
+      // Fall back to dynamic price_data when env price IDs are not configured
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        payment_method_types: ['card'],
+        customer_email: user.email,
+        line_items: [
+          {
+            price_data: {
+              currency: 'usd',
+              unit_amount: pack.priceUsd * 100,
+              product_data: {
+                name: `NiskBuild Reload: ${pack.name}`,
+                description: pack.description.slice(0, 200),
+              },
+            },
+            quantity: 1,
+          },
+        ],
+        success_url: `${appUrl}/dashboard/settings?reload=success&credits=${pack.credits}`,
+        cancel_url: `${appUrl}/pricing?reload_canceled=true`,
+        metadata: {
+          type: 'reload',
+          packId: pack.id,
+          credits: String(pack.credits),
+          userId: user.id,
+          boostType: boostType || '',
+          isReload: 'true',
+        },
+      });
+      return NextResponse.json({ url: session.url });
+    }
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',

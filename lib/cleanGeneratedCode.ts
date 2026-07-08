@@ -1,3 +1,5 @@
+import { preparePreviewHtml } from '@/lib/preview-html';
+
 /**
  * Strips markdown fences and ensures preview-ready HTML for the iframe.
  */
@@ -11,16 +13,16 @@ export function cleanGeneratedCode(rawCode: string): string {
 
   const doctypeMatch = cleaned.match(/(<!DOCTYPE[\s\S]*<\/html>)/i);
   if (doctypeMatch) {
-    return doctypeMatch[1];
+    return preparePreviewHtml(doctypeMatch[1]);
   }
 
   if (cleaned.includes('<html') || cleaned.includes('<!DOCTYPE')) {
-    return cleaned;
+    return preparePreviewHtml(cleaned);
   }
 
   // Wrap plain HTML fragments or text in a full document for preview
   if (cleaned.includes('<body') || cleaned.includes('<div') || cleaned.includes('<section')) {
-    return `<!DOCTYPE html>
+    return preparePreviewHtml(`<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
@@ -28,10 +30,10 @@ export function cleanGeneratedCode(rawCode: string): string {
   <title>NiskBuild App</title>
 </head>
 ${cleaned.includes('<body') ? cleaned : `<body>${cleaned}</body>`}
-</html>`;
+</html>`);
   }
 
-  return `<!DOCTYPE html>
+  return preparePreviewHtml(`<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
@@ -60,7 +62,7 @@ ${cleaned.includes('<body') ? cleaned : `<body>${cleaned}</body>`}
   <h1>🚀 NiskBuild Generated App</h1>
   <pre>${cleaned.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
 </body>
-</html>`;
+</html>`);
 }
 
 export function isExportableCode(code: string): boolean {

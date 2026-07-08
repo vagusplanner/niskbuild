@@ -17,6 +17,7 @@ import PreviewDeviceSwitcher, {
   type PreviewDevice,
 } from '@/app/components/PreviewDeviceSwitcher';
 import BuilderPreviewPageNav from '@/app/components/BuilderPreviewPageNav';
+import { BUILDER_PREVIEW_SANDBOX } from '@/lib/preview-html';
 import type {
   GooglePlacesBusiness,
   GooglePlacesProjectContext,
@@ -365,7 +366,7 @@ function PreviewIframe({
       srcDoc={previewHtml || placeholderPreview}
       title="Live Preview"
       className={`${previewFrameClass} border-0 bg-white`}
-      sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"
+      sandbox={BUILDER_PREVIEW_SANDBOX}
     />
   );
 }

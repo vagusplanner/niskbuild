@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { RELOAD_PACKS, PACK_ID_TO_BOOST } from '@/lib/reload-packs';
 
 export default function ReloadPacks() {
   const [loading, setLoading] = useState<string | null>(null);
+  const inFlightRef = useRef(false);
 
   const buyPack = async (packId: string) => {
+    if (inFlightRef.current || loading) return;
+    inFlightRef.current = true;
     setLoading(packId);
     try {
       const boostType = PACK_ID_TO_BOOST[packId];
@@ -17,11 +20,15 @@ export default function ReloadPacks() {
         body: JSON.stringify({ isReload: true, boostType, packId }),
       });
       const data = await res.json();
-      if (data.url) window.location.href = data.url;
-      else alert(data.error || 'Checkout failed');
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      alert(data.error || 'Checkout failed');
     } catch {
       alert('Checkout failed');
     } finally {
+      inFlightRef.current = false;
       setLoading(null);
     }
   };
@@ -51,7 +58,7 @@ export default function ReloadPacks() {
             <button
               type="button"
               onClick={() => buyPack(pack.id)}
-              disabled={loading === pack.id}
+              disabled={loading !== null}
               className="btn-secondary mt-4 w-full py-2 rounded-lg text-sm font-medium disabled:opacity-50"
             >
               {loading === pack.id ? 'Redirecting...' : 'Buy pack'}

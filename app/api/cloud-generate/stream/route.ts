@@ -9,7 +9,10 @@ import { canUseOwnApiKeys } from '@/lib/tier-config';
 
 const CODE_SYSTEM_PROMPT = `You are an expert web developer. Generate ONLY complete HTML/CSS/JavaScript code. 
 No explanations. No markdown. Start directly with <!DOCTYPE html>. 
-Make it responsive, modern, and visually appealing. Use Tailwind CSS when appropriate.`;
+Make it responsive, modern, and visually appealing. Use Tailwind CSS when appropriate.
+For Tailwind, use <script src="https://cdn.tailwindcss.com"></script> — never use cdn.jsdelivr.net tailwind.min.js.
+Do not include Font Awesome or placeholder kit URLs. Use inline SVG or Unicode symbols for icons instead.
+If you use CSS variables like --color-border or --color-bg, define them on :root with valid color values.`;
 
 async function getUserProfile(userId: string) {
   const supabase = createAdminClient();

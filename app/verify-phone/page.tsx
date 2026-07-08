@@ -59,7 +59,8 @@ function VerifyPhoneContent() {
       </p>
       <PhoneVerification
         onVerified={() => {
-          router.replace('/dashboard?welcome=1');
+          // Full navigation so middleware reads fresh phone_verified (client router.replace can race)
+          window.location.replace('/dashboard?welcome=1');
         }}
       />
       <p className="text-center text-xs text-nisk-muted mt-6">
