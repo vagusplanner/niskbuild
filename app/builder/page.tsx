@@ -343,12 +343,12 @@ function BuilderContent() {
       const match = projects.find((p) => p.id === pendingId);
       localStorage.removeItem('niskbuild_load_project_id');
       if (match) {
-        setActiveProjectId(match.id);
-        setPrompt(match.prompt);
-        applyGeneratedCode(match.generated_code, `📂 Loaded: ${match.title}`, {
-          prompt: match.prompt,
-          timestamp: match.created_at,
-        });
+        loadProject(match);
+      } else {
+        setStatusMessage(
+          '❌ Project not found — it may have been deleted. Starting with a blank workspace.'
+        );
+        setTimeout(() => setStatusMessage(''), 8000);
       }
     }
   };

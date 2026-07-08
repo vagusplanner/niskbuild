@@ -49,42 +49,61 @@ function DashboardContent() {
   const [billing, setBilling] = useState<BillingSummary | null>(null);
   const [deployedCount, setDeployedCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [projectsError, setProjectsError] = useState<string | null>(null);
   const [checkoutMsg, setCheckoutMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    getSafeSession().then((s) => {
-      if (!s?.user) {
+    let cancelled = false;
+
+    (async () => {
+      const session = await getSafeSession();
+      if (cancelled) return;
+      if (!session?.user) {
         router.replace('/login?next=/dashboard');
         return;
       }
-      setUser(s.user);
-    });
+      setUser(session.user);
 
-    Promise.all([
-      fetch('/api/projects').then((r) => r.json()),
-      fetch('/api/billing/summary', { credentials: 'include' }).then((r) =>
-        r.ok ? r.json() : null
-      ),
-      fetch('/api/previews', { credentials: 'include' }).then((r) =>
-        r.ok ? r.json() : null
-      ),
-    ])
-      .then(([projectsData, billingData, previewsData]) => {
-        setProjects(projectsData.projects || []);
-        if (billingData) {
-          setBilling({
-            creditsRemaining: billingData.creditsRemaining ?? 0,
-            creditsAllowance: billingData.creditsAllowance ?? 0,
-            daysUntilReset: billingData.daysUntilReset ?? null,
-          });
-        }
-        setDeployedCount(previewsData?.active ?? 0);
-      })
-      .finally(() => setLoading(false));
+      const [projectsResult, billingData, previewsData] = await Promise.all([
+        fetch('/api/projects', { credentials: 'include' }).then(async (r) => {
+          if (!r.ok) return { ok: false as const };
+          const data = await r.json();
+          return { ok: true as const, projects: (data.projects || []) as Project[] };
+        }),
+        fetch('/api/billing/summary', { credentials: 'include' }).then((r) =>
+          r.ok ? r.json() : null
+        ),
+        fetch('/api/previews', { credentials: 'include' }).then((r) =>
+          r.ok ? r.json() : null
+        ),
+      ]);
+
+      if (cancelled) return;
+
+      if (!projectsResult.ok) {
+        setProjectsError("Couldn't load your projects. Try refreshing the page.");
+      } else {
+        setProjects(projectsResult.projects);
+      }
+
+      if (billingData) {
+        setBilling({
+          creditsRemaining: billingData.creditsRemaining ?? 0,
+          creditsAllowance: billingData.creditsAllowance ?? 0,
+          daysUntilReset: billingData.daysUntilReset ?? null,
+        });
+      }
+      setDeployedCount(previewsData?.active ?? 0);
+      setLoading(false);
+    })();
 
     if (searchParams.get('success') === 'true') {
       setCheckoutMsg('Payment successful! Your plan is now active.');
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [router, searchParams]);
 
   if (!user) {
@@ -99,7 +118,6 @@ function DashboardContent() {
     ? Math.max(0, billing.creditsAllowance - billing.creditsRemaining)
     : 0;
   const generationLimit = billing?.creditsAllowance ?? 0;
-  const liveCount = projects.filter((p) => p.generated_code?.trim().length > 100).length;
 
   return (
     <div className="max-w-5xl mx-auto py-8">
@@ -130,7 +148,7 @@ function DashboardContent() {
         </div>
         <div className="brick-card-top rounded-xl border border-[var(--border)] bg-[var(--code-bg)] p-4">
           <p className="text-[10px] uppercase tracking-wider text-nisk-muted">Deployed</p>
-          <p className="text-xl font-bold text-[var(--foreground)] mt-1">{deployedCount || liveCount}</p>
+          <p className="text-xl font-bold text-[var(--foreground)] mt-1">{deployedCount}</p>
           <p className="text-[10px] text-nisk-muted mt-1">Live preview links</p>
         </div>
         <div className="brick-card-top rounded-xl border border-[var(--border)] bg-[var(--code-bg)] p-4">
@@ -152,6 +170,10 @@ function DashboardContent() {
 
       {loading ? (
         <p className="text-nisk-muted text-sm">Loading…</p>
+      ) : projectsError ? (
+        <div className="rounded-xl border border-[var(--error)]/30 bg-[var(--error)]/10 px-4 py-3 text-sm text-[var(--error)]">
+          {projectsError}
+        </div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {projects.map((project) => {
