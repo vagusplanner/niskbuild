@@ -28,6 +28,7 @@ function canAccessBuilder(data: { tier?: string; status?: string; paid?: boolean
 export default function SubscriptionGuard({ children, onLock }: SubscriptionGuardProps) {
   const [hasAccess, setHasAccess] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
+  const [needsSignIn, setNeedsSignIn] = useState(false);
 
   const checkSubscription = useCallback(async () => {
     try {
@@ -37,10 +38,12 @@ export default function SubscriptionGuard({ children, onLock }: SubscriptionGuar
 
       if (!session) {
         setHasAccess(false);
+        setNeedsSignIn(true);
         setIsChecking(false);
         onLock?.();
         return;
       }
+      setNeedsSignIn(false);
 
       const response = await fetch('/api/subscription/status', {
         credentials: 'include',
@@ -59,6 +62,7 @@ export default function SubscriptionGuard({ children, onLock }: SubscriptionGuar
       if (!access) onLock?.();
     } catch {
       setHasAccess(false);
+      setNeedsSignIn(false);
       onLock?.();
     } finally {
       setIsChecking(false);
@@ -93,6 +97,38 @@ export default function SubscriptionGuard({ children, onLock }: SubscriptionGuar
   }
 
   if (!hasAccess) {
+    if (needsSignIn) {
+      return (
+        <div className="min-h-screen bg-nisk flex items-center justify-center p-8">
+          <div className="max-w-md text-center">
+            <div className="text-6xl mb-4">🔑</div>
+            <h2 className="text-2xl font-bold text-white mb-3">Sign in to start building</h2>
+            <p className="text-nisk-muted mb-6">
+              You need an account to generate apps, save projects, and export ZIP files.
+            </p>
+            <div className="flex gap-3 justify-center flex-wrap">
+              <button
+                onClick={() => {
+                  window.location.href = '/login?next=/builder';
+                }}
+                className="px-6 py-2 bg-gradient-brand text-white rounded-lg text-sm font-medium"
+              >
+                Sign in
+              </button>
+              <button
+                onClick={() => {
+                  window.location.href = '/pricing';
+                }}
+                className="px-6 py-2 border border-nisk text-gray-300 rounded-lg text-sm hover:text-white"
+              >
+                View plans
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-nisk flex items-center justify-center p-8">
         <div className="max-w-md text-center">

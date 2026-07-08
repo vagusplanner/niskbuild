@@ -906,7 +906,6 @@ function BuilderContent() {
     setIsGenerating(true);
     setStreamingCode('');
     setStreamingNarration('');
-    setActiveProjectId(null);
     setVisualEditHistory([]);
     setSelectedVisualElement(null);
     aiOriginalCodeRef.current = null;
@@ -1005,12 +1004,22 @@ function BuilderContent() {
       setStreamingCode('');
       setStreamingNarration('');
 
-      if (error && !code.trim()) {
-        setGeneratedCode(`// Error: ${error}`);
+      if (error) {
+        if (!code.trim()) {
+          setGeneratedCode(`// Error: ${error}`);
+          setPreviewHtml(
+            `<div style="padding:2rem;color:#EF4444;background:#1a0a0a;height:100%;text-align:center"><h3>❌ Generation Failed</h3><p>${error}</p><p style="margin-top:1rem"><a href="/pricing" style="color:#d49a5c">View plans</a></p></div>`
+          );
+          setStatusMessage(`❌ ${error}`);
+          return;
+        }
+
+        // Mid-stream interruption: keep partial code for recovery, but do not treat as success.
+        setGeneratedCode(code);
         setPreviewHtml(
-          `<div style="padding:2rem;color:#EF4444;background:#1a0a0a;height:100%;text-align:center"><h3>❌ Generation Failed</h3><p>${error}</p><p style="margin-top:1rem"><a href="/pricing" style="color:#d49a5c">View plans</a></p></div>`
+          `<div style="padding:2rem;color:#FBBF24;background:#1a1612;height:100%;text-align:center"><h3>⚠️ Generation Interrupted</h3><p>${error}</p><p style="margin-top:0.75rem;color:#94A3B8">We kept the partial output in the editor. Click Generate again to retry.</p></div>`
         );
-        setStatusMessage(`❌ ${error}`);
+        setStatusMessage(`⚠️ Generation interrupted — ${error}`);
         return;
       }
 

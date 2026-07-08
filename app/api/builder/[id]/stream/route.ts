@@ -43,14 +43,19 @@ export async function POST(request: NextRequest, context: RouteContext) {
       };
 
       try {
-        await streamBuildNarration(
-          prompt,
-          'vp',
-          (accumulated) => {
-            send({ kind: 'narration', text: accumulated });
-          },
-          target ? `Editing ${target.label} (${target.file})` : undefined
-        );
+        try {
+          await streamBuildNarration(
+            prompt,
+            'vp',
+            (accumulated) => {
+              send({ kind: 'narration', text: accumulated });
+            },
+            target ? `Editing ${target.label} (${target.file})` : undefined
+          );
+        } catch {
+          const fallback = 'Reading the current page…\nPlanning your edits…\nApplying changes to the app…';
+          send({ kind: 'narration', text: fallback });
+        }
 
         send({ kind: 'status', text: 'Applying changes to your app source…' });
 
