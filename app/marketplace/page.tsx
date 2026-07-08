@@ -7,6 +7,7 @@ import { getSafeSession } from '@/lib/supabaseSession';
 import Layout from '@/app/components/Layout';
 import NiskBuildLogo from '@/app/components/NiskBuildLogo';
 import { complexityLabel, formatTemplatePrice, PRICE_TIER_BUCKETS, matchesPriceTier, type PriceTierId } from '@/lib/marketplace-types';
+import { redirectToStripe } from '@/lib/checkout-redirect';
 
 interface Template {
   id: string;
@@ -174,7 +175,7 @@ function MarketplaceContent() {
         return;
       }
       if (data.url) {
-        window.location.href = data.url;
+        redirectToStripe(data.url);
       } else {
         setToastError(true);
         setToast(data.error || 'Checkout failed');

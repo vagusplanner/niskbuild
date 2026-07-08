@@ -7,6 +7,7 @@ import {
   isPaidPath,
   isPhoneVerifyExemptPath,
   isPlatformOwnerPath,
+  isStaticPublicAsset,
   isVpDeployBundlePath,
 } from '@/lib/access';
 import {
@@ -59,7 +60,8 @@ export async function proxy(request: NextRequest) {
   if (
     pathname.startsWith('/api') ||
     pathname.startsWith('/_next') ||
-    isVpDeployBundlePath(pathname)
+    isVpDeployBundlePath(pathname) ||
+    isStaticPublicAsset(pathname)
   ) {
     return NextResponse.next();
   }
@@ -119,6 +121,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!api/auth|_next/static|_next/image|assets|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!api/auth|_next/static|_next/image|assets|favicon.ico|site\\.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|webmanifest|ico|json|txt|xml|woff2?)$).*)',
   ],
 };

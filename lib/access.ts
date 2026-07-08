@@ -87,13 +87,24 @@ export function isPublicPath(pathname: string) {
   );
 }
 
+/** Public files from /public — must not be gated behind auth (PWA manifest, robots, etc.) */
+export function isStaticPublicAsset(pathname: string) {
+  return (
+    pathname === '/site.webmanifest' ||
+    pathname === '/robots.txt' ||
+    pathname === '/sitemap.xml' ||
+    /\.(?:webmanifest|ico|json|txt|xml|woff2?)$/i.test(pathname)
+  );
+}
+
 /** Paths that must never require NiskBuild login (shared previews, bundle proxy, etc.) */
 export function isAuthExemptPath(pathname: string) {
   return (
     isPublicPath(pathname) ||
     isPreviewPath(pathname) ||
     isTenantRuntimePath(pathname) ||
-    isVpDeployBundlePath(pathname)
+    isVpDeployBundlePath(pathname) ||
+    isStaticPublicAsset(pathname)
   );
 }
 

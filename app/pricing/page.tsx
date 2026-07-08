@@ -9,6 +9,7 @@ import NiskBuildLogo from '@/app/components/NiskBuildLogo';
 import PricingCards from '@/app/components/PricingCards';
 import ReloadPacks from '@/app/components/ReloadPacks';
 import { PRICING_FAQ, type BillingInterval } from '@/lib/pricing-tiers';
+import { redirectToStripe } from '@/lib/checkout-redirect';
 
 function PricingContent() {
   const [loading, setLoading] = useState<string | null>(null);
@@ -57,7 +58,7 @@ function PricingContent() {
       if (!response.ok || error) {
         throw new Error(error || 'Checkout failed');
       }
-      if (url) window.location.href = url;
+      if (url) redirectToStripe(url);
     } catch (error) {
       console.error('Checkout error:', error);
       const message = error instanceof Error ? error.message : 'Something went wrong. Please try again.';

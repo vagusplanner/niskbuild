@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import CheckoutHeadGuard from "./components/CheckoutHeadGuard";
 import CommandPalette from "./components/CommandPalette";
 import DocsQuickPanel from "./components/DocsQuickPanel";
 import GlobalKeyboardShortcuts from "./components/GlobalKeyboardShortcuts";
@@ -98,6 +99,7 @@ export default function RootLayout({
           <GlobalKeyboardShortcuts />
           <KeyboardShortcutsModal />
           <SessionHeartbeat />
+          <CheckoutHeadGuard />
           <UmamiAnalytics />
           <SentryErrorBoundary>{children}</SentryErrorBoundary>
         </ThemeProvider>

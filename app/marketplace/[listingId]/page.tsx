@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Layout from '@/app/components/Layout';
 import { getSafeSession } from '@/lib/supabaseSession';
 import { formatTemplatePrice } from '@/lib/marketplace-types';
+import { redirectToStripe } from '@/lib/checkout-redirect';
 
 type ListingDetail = {
   id: string;
@@ -145,7 +146,7 @@ function MarketplaceDetailContent() {
         return;
       }
       if (data.url) {
-        window.location.href = data.url;
+        redirectToStripe(data.url);
         return;
       }
       setError(data.error || 'Checkout failed');

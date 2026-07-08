@@ -9,6 +9,7 @@ import AppTopNav from '@/app/components/AppTopNav';
 import GoogleSignInButton from '@/app/components/GoogleSignInButton';
 import EmailAuthForm from '@/app/components/EmailAuthForm';
 import NiskBuildLogo from '@/app/components/NiskBuildLogo';
+import { sanitizeNextPath } from '@/lib/post-auth-redirect';
 
 function LoginContent() {
   const [loading, setLoading] = useState(false);
@@ -16,7 +17,7 @@ function LoginContent() {
   const [error, setError] = useState('');
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get('next') || '/pricing';
+  const next = sanitizeNextPath(searchParams.get('next')) || '/pricing';
 
   useEffect(() => {
     if (searchParams.get('error') === 'auth_failed') {

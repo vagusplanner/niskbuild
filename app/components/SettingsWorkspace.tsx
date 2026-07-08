@@ -21,6 +21,7 @@ import {
   type AnalyticsRegion,
 } from '@/lib/user-region';
 import { hasPaidTier } from '@/lib/access';
+import { redirectToStripe } from '@/lib/checkout-redirect';
 import { canUseLocalOllama } from '@/lib/tier-config';
 import {
   passwordStrengthColor,
@@ -219,7 +220,7 @@ export default function SettingsWorkspace() {
         body: JSON.stringify({ returnUrl: `${window.location.origin}/dashboard/settings?tab=billing` }),
       });
       const data = await res.json();
-      if (data.url) window.location.href = data.url;
+      if (data.url) redirectToStripe(data.url);
       else throw new Error(data.error || 'Portal unavailable');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not open portal', 'error');

@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { RELOAD_PACKS, PACK_ID_TO_BOOST } from '@/lib/reload-packs';
+import { redirectToStripe } from '@/lib/checkout-redirect';
 
 export default function ReloadPacks() {
   const [loading, setLoading] = useState<string | null>(null);
@@ -21,7 +22,7 @@ export default function ReloadPacks() {
       });
       const data = await res.json();
       if (data.url) {
-        window.location.href = data.url;
+        redirectToStripe(data.url);
         return;
       }
       alert(data.error || 'Checkout failed');
