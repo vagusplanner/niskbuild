@@ -7,6 +7,9 @@ import { getGroqClient } from '@/lib/groq-client';
 import { streamBuildNarration } from '@/lib/generate-narration';
 import { canUseOwnApiKeys } from '@/lib/tier-config';
 import { getProviderOrder } from '@/lib/ai-providers';
+import { recordUsageEvent } from '@/lib/usage-events';
+import { touchLastBuildAt } from '@/lib/build-activity';
+import { clientIpFromHeaders } from '@/lib/coarse-town';
 import Anthropic from '@anthropic-ai/sdk';
 
 const CODE_SYSTEM_PROMPT = `You are an expert web developer. Generate ONLY complete HTML/CSS/JavaScript code. 
@@ -105,7 +108,7 @@ export async function POST(request: NextRequest) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
   }
 
-  const { prompt } = await request.json();
+  const { prompt, projectId } = await request.json();
   if (!prompt?.trim()) {
     return new Response(JSON.stringify({ error: 'Prompt is required' }), { status: 400 });
   }
@@ -296,6 +299,15 @@ export async function POST(request: NextRequest) {
         if (!streamedCode) {
           send({ kind: 'code', text: finalCode });
         }
+
+        void recordUsageEvent({
+          eventType: 'build',
+          userId: guard.user!.id,
+          prompt,
+          projectId: typeof projectId === 'string' ? projectId : null,
+          clientIp: clientIpFromHeaders(request.headers),
+        });
+        void touchLastBuildAt(guard.user!.id);
 
         send('[DONE]');
       } catch (err) {

@@ -132,10 +132,15 @@ export async function addCloudCredits(
   const current = profile?.cloud_credits_remaining ?? 0;
   const next = current + credits;
 
-  await supabase
+  const { error } = await supabase
     .from('profiles')
     .update({ cloud_credits_remaining: next })
     .eq('id', userId);
+
+  if (error) {
+    console.error('addCloudCredits:', error.message);
+    return { ok: false };
+  }
 
   return { ok: true, remaining: next };
 }

@@ -100,6 +100,7 @@ export default function SettingsWorkspace() {
 
   const [billing, setBilling] = useState<BillingSummary | null>(null);
   const [payments, setPayments] = useState<PaymentRow[]>([]);
+  const [paymentsError, setPaymentsError] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
 
@@ -147,7 +148,7 @@ export default function SettingsWorkspace() {
       const [profRes, billRes, histRes, privacyRes, keysRes, countRes] = await Promise.all([
         fetch('/api/settings/profile', { credentials: 'include' }).then((r) => r.json()),
         fetch('/api/billing/summary', { credentials: 'include' }).then((r) => r.json()),
-        fetch('/api/billing/history', { credentials: 'include' }).then((r) => r.json()),
+        fetch('/api/billing/history', { credentials: 'include' }),
         fetch('/api/settings/privacy', { credentials: 'include' }).then((r) => r.json()),
         fetch('/api/settings/api-keys', { credentials: 'include' }).then((r) => r.json()),
         supabase
@@ -155,6 +156,8 @@ export default function SettingsWorkspace() {
           .select('*', { count: 'exact', head: true })
           .eq('user_id', session.user.id),
       ]);
+
+      const histData = histRes.ok ? await histRes.json() : null;
 
       const p = profRes.profile || {};
       setFullName(p.full_name || '');
@@ -164,7 +167,15 @@ export default function SettingsWorkspace() {
       setMetadataOptIn(p.metadata_opt_in !== false);
       setPhoneVerified(p.phone_verified ?? true);
       setBilling(billRes);
-      setPayments(histRes.payments || []);
+      if (!histRes.ok) {
+        setPayments([]);
+        setPaymentsError("Couldn't load billing history. Try refreshing the page.");
+      } else {
+        setPayments(histData?.payments || []);
+        setPaymentsError(
+          histData?.error && !(histData.payments?.length > 0) ? histData.error : null
+        );
+      }
       setDemographicTier(privacyRes.demographicTier || 'unspecified');
       setAnalyticsOptIn(privacyRes.analyticsOptIn !== false);
       const detected = detectBrowserRegion();
@@ -644,7 +655,9 @@ export default function SettingsWorkspace() {
 
               <section className="bg-nisk-card border border-nisk rounded-xl p-6">
                 <h2 className="text-lg font-semibold text-white mb-4">Billing History</h2>
-                {payments.length === 0 ? (
+                {paymentsError ? (
+                  <p className="text-sm text-[var(--error)]">{paymentsError}</p>
+                ) : payments.length === 0 ? (
                   <p className="text-sm text-nisk-muted">No payments yet. Your billing history will appear here after your first payment.</p>
                 ) : (
                   <div className="overflow-x-auto">

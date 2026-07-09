@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     if (!canExportPwa(tier, status)) {
       return NextResponse.json(
         {
-          error: 'PWA export requires an active Pro plan or above.',
+          error: 'PWA export requires an active Basic plan or above.',
           upgrade: true,
           tier,
         },

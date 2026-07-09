@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { getSafeSession } from '@/lib/supabaseSession';
@@ -58,6 +58,41 @@ function DashboardContent() {
   const [projectsError, setProjectsError] = useState<string | null>(null);
   const [checkoutBanner, setCheckoutBanner] = useState<CheckoutBanner>(null);
 
+  const loadDashboardData = useCallback(async (sessionUser: { id: string; email?: string }) => {
+    setUser(sessionUser);
+
+    const [projectsResult, billingData, previewsData] = await Promise.all([
+      fetch('/api/projects', { credentials: 'include' }).then(async (r) => {
+        if (!r.ok) return { ok: false as const };
+        const data = await r.json();
+        return { ok: true as const, projects: (data.projects || []) as Project[] };
+      }),
+      fetch('/api/billing/summary', { credentials: 'include' }).then((r) =>
+        r.ok ? r.json() : null
+      ),
+      fetch('/api/previews', { credentials: 'include' }).then((r) =>
+        r.ok ? r.json() : null
+      ),
+    ]);
+
+    if (!projectsResult.ok) {
+      setProjectsError("Couldn't load your projects. Try refreshing the page.");
+    } else {
+      setProjectsError(null);
+      setProjects(projectsResult.projects);
+    }
+
+    if (billingData) {
+      setBilling({
+        creditsRemaining: billingData.creditsRemaining ?? 0,
+        creditsAllowance: billingData.creditsAllowance ?? 0,
+        daysUntilReset: billingData.daysUntilReset ?? null,
+      });
+    }
+    setDeployedCount(previewsData?.active ?? 0);
+    setLoading(false);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -68,45 +103,26 @@ function DashboardContent() {
         router.replace('/login?next=/dashboard');
         return;
       }
-      setUser(session.user);
-
-      const [projectsResult, billingData, previewsData] = await Promise.all([
-        fetch('/api/projects', { credentials: 'include' }).then(async (r) => {
-          if (!r.ok) return { ok: false as const };
-          const data = await r.json();
-          return { ok: true as const, projects: (data.projects || []) as Project[] };
-        }),
-        fetch('/api/billing/summary', { credentials: 'include' }).then((r) =>
-          r.ok ? r.json() : null
-        ),
-        fetch('/api/previews', { credentials: 'include' }).then((r) =>
-          r.ok ? r.json() : null
-        ),
-      ]);
-
-      if (cancelled) return;
-
-      if (!projectsResult.ok) {
-        setProjectsError("Couldn't load your projects. Try refreshing the page.");
-      } else {
-        setProjects(projectsResult.projects);
-      }
-
-      if (billingData) {
-        setBilling({
-          creditsRemaining: billingData.creditsRemaining ?? 0,
-          creditsAllowance: billingData.creditsAllowance ?? 0,
-          daysUntilReset: billingData.daysUntilReset ?? null,
-        });
-      }
-      setDeployedCount(previewsData?.active ?? 0);
-      setLoading(false);
+      await loadDashboardData(session.user);
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [router, searchParams]);
+  }, [router, loadDashboardData]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const refreshOnFocus = () => {
+      if (document.visibilityState === 'visible') {
+        void loadDashboardData(user);
+      }
+    };
+
+    document.addEventListener('visibilitychange', refreshOnFocus);
+    return () => document.removeEventListener('visibilitychange', refreshOnFocus);
+  }, [user, loadDashboardData]);
 
   useEffect(() => {
     if (searchParams.get('success') !== 'true') return;

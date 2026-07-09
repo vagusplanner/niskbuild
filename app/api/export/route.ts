@@ -3,6 +3,7 @@ import JSZip from 'jszip';
 import { captureApiException } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createNiskBuildConfig } from '@/lib/niskbuild-config';
+import { applyExportWatermark } from '@/lib/export-policy';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
 import { canExportCleanZip } from '@/lib/tier-config';
 import { cleanGeneratedCode } from '@/lib/cleanGeneratedCode';
@@ -25,17 +26,7 @@ export async function POST(request: NextRequest) {
 
     const tier = profile?.subscription_tier ?? 'free';
     const status = profile?.subscription_status ?? 'inactive';
-
-    if (!canExportCleanZip(tier, status)) {
-      return NextResponse.json(
-        {
-          error: 'Clean ZIP export requires an active paid plan. Sandbox tier is preview-only.',
-          upgrade: true,
-          tier,
-        },
-        { status: 403 }
-      );
-    }
+    const cleanExport = canExportCleanZip(tier, status);
 
     const { code, prompt, projectName, promptHistory, files, activeFile, seo } = await request.json();
 
@@ -48,7 +39,10 @@ export async function POST(request: NextRequest) {
       : DEFAULT_SEO_SETTINGS;
 
     const cleanedCode = cleanGeneratedCode(code);
-    const htmlWithSeo = injectSeoIntoHtml(cleanedCode, seoSettings);
+    let htmlWithSeo = injectSeoIntoHtml(cleanedCode, seoSettings);
+    if (!cleanExport) {
+      htmlWithSeo = applyExportWatermark(htmlWithSeo);
+    }
 
     const config = createNiskBuildConfig({
       projectName: projectName || prompt?.substring(0, 50) || 'NiskBuild Project',
@@ -101,6 +95,7 @@ export async function POST(request: NextRequest) {
       headers: {
         'Content-Type': 'application/zip',
         'Content-Disposition': `attachment; filename="niskbuild-export-${Date.now()}.zip"`,
+        ...(cleanExport ? {} : { 'X-NiskBuild-Watermarked': '1' }),
       },
     });
   } catch (error) {

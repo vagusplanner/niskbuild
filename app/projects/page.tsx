@@ -17,18 +17,40 @@ function ProjectsContent() {
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    getSafeSession().then((s) => {
-      if (!s?.user) {
+    let cancelled = false;
+
+    (async () => {
+      const session = await getSafeSession();
+      if (cancelled) return;
+      if (!session?.user) {
         router.replace('/login?next=/projects');
         return;
       }
-      fetch('/api/projects')
-        .then((r) => r.json())
-        .then((d) => setProjects(d.projects || []))
-        .finally(() => setLoading(false));
-    });
+
+      try {
+        const res = await fetch('/api/projects', { credentials: 'include' });
+        if (!res.ok) {
+          setLoadError("Couldn't load your projects. Try refreshing the page.");
+          setProjects([]);
+          return;
+        }
+        const data = await res.json();
+        setProjects(data.projects || []);
+        setLoadError(null);
+      } catch {
+        setLoadError("Couldn't load your projects. Try refreshing the page.");
+        setProjects([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   return (
@@ -45,12 +67,24 @@ function ProjectsContent() {
 
       {loading ? (
         <p className="text-nisk-muted">Loading…</p>
+      ) : loadError ? (
+        <div className="rounded-xl border border-[var(--error)]/30 bg-[var(--error)]/10 px-4 py-3 text-sm text-[var(--error)]">
+          {loadError}
+        </div>
       ) : projects.length === 0 ? (
-        <div className="text-center py-16 border border-dashed border-nisk rounded-2xl">
-          <p className="text-nisk-muted mb-4">No projects yet.</p>
-          <Link href="/marketplace" className="text-[var(--copper-melt)] hover:underline text-sm">
-            Start from marketplace →
-          </Link>
+        <div className="brick-card-top rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-8 text-center">
+          <p className="text-sm font-semibold text-[var(--foreground)]">No projects yet</p>
+          <p className="text-xs text-nisk-muted mt-2 max-w-md mx-auto">
+            Start in the Builder with a plain-English prompt — your saved apps will show up here.
+          </p>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+            <Link href="/builder" className="btn-primary px-4 py-2 rounded-lg text-sm">
+              Open Builder →
+            </Link>
+            <Link href="/marketplace" className="text-sm text-[var(--copper-melt)] hover:underline">
+              Or start from marketplace
+            </Link>
+          </div>
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">

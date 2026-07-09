@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo, Suspense } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { hasCompletedOnboarding, markOnboardingComplete } from '@/lib/auth';
@@ -181,6 +181,17 @@ function BuilderContent() {
   const visualEditDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const aiOriginalCodeRef = useRef<string | null>(null);
   const lastCodeLenRef = useRef(0);
+
+  const showToast = useCallback((message: string, options?: { error?: boolean; durationMs?: number }) => {
+    const text =
+      message.startsWith('✅') || message.startsWith('❌') || message.startsWith('⚠️')
+        ? message
+        : options?.error
+          ? `❌ ${message}`
+          : message;
+    setStatusMessage(text);
+    window.setTimeout(() => setStatusMessage(''), options?.durationMs ?? 8000);
+  }, []);
 
   useEffect(() => {
     if (!statusMessage.trim()) return;
@@ -722,7 +733,7 @@ function BuilderContent() {
         if (res.status === 403 || res.status === 402) {
           handleExportError(data.error || 'Visual edit requires Pro plan and credits', data.upgrade);
         } else {
-          alert(data.error || 'Visual edit failed');
+          showToast(data.error || 'Visual edit failed', { error: true });
         }
         return;
       }
@@ -740,7 +751,7 @@ function BuilderContent() {
       }
     } catch {
       setVisualEditHistory((prev) => prev.slice(0, -1));
-      alert('Visual edit failed — network error');
+      showToast('Visual edit failed — network error', { error: true });
     } finally {
       setVisualEditApplying(false);
     }
@@ -787,7 +798,7 @@ function BuilderContent() {
       return;
     }
     if (!isExportableCode(generatedCode)) {
-      alert('Generate an app first before using visual edit mode.');
+      showToast('Generate an app first before using visual edit mode.', { error: true });
       return;
     }
     setVisualEditMode((prev) => {
@@ -810,13 +821,13 @@ function BuilderContent() {
       zip.file('niskbuild.config.json');
 
     if (!configEntry) {
-      alert('No niskbuild.config.json found — this ZIP may not be a NiskBuild export.');
+      showToast('No niskbuild.config.json found — this ZIP may not be a NiskBuild export.', { error: true });
       return;
     }
 
     const config = parseNiskBuildConfig(JSON.parse(await configEntry.async('string')));
     if (!config) {
-      alert('Invalid niskbuild.config.json');
+      showToast('Invalid niskbuild.config.json', { error: true });
       return;
     }
 
@@ -1053,7 +1064,7 @@ function BuilderContent() {
 
   const handleExportZip = async () => {
     if (!isExportableCode(generatedCode)) {
-      alert('Generate an app first before exporting.');
+      showToast('Generate an app first before exporting.', { error: true });
       return;
     }
 
@@ -1097,9 +1108,14 @@ function BuilderContent() {
       a.download = `${baseName}${versionSuffix}.zip`;
       a.click();
       URL.revokeObjectURL(url);
-      setStatusMessage('✅ ZIP exported — your code, your ownership');
+      const watermarked = response.headers.get('X-NiskBuild-Watermarked') === '1';
+      showToast(
+        watermarked
+          ? '✅ ZIP exported with Sandbox watermark — upgrade for clean exports'
+          : '✅ ZIP exported — your code, your ownership'
+      );
     } catch (err) {
-      alert(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      showToast(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`, { error: true });
     } finally {
       setIsExporting(false);
     }
@@ -1121,11 +1137,11 @@ function BuilderContent() {
 
   const handleOpenMobileExport = () => {
     if (!isExportableCode(generatedCode)) {
-      alert('Generate an app first before exporting.');
+      showToast('Generate an app first before exporting.', { error: true });
       return;
     }
     if (!canExportPwa(subscriptionTier, subscriptionStatus)) {
-      handleExportError('PWA export requires an active Pro plan or above.', true);
+      handleExportError('PWA export requires an active Basic plan or above.', true);
       return;
     }
     setShowMobileExport(true);
@@ -1171,7 +1187,7 @@ function BuilderContent() {
 
   const handleDeployLive = async () => {
     if (!isExportableCode(generatedCode)) {
-      alert('Generate an app first before deploying.');
+      showToast('Generate an app first before deploying.', { error: true });
       return;
     }
 
@@ -1200,7 +1216,7 @@ function BuilderContent() {
           );
           if (upgrade) window.location.href = '/pricing';
         } else {
-          alert(data.error || 'Failed to publish preview link');
+          showToast(data.error || 'Failed to publish preview link', { error: true });
         }
         setStatusMessage(`❌ ${data.error || 'Preview publish failed'}`);
         return;
@@ -1358,7 +1374,7 @@ function BuilderContent() {
     const data = await res.json();
 
     if (!res.ok) {
-      alert(`Delete failed: ${data.error || 'Unknown error'}`);
+      showToast(`Delete failed: ${data.error || 'Unknown error'}`, { error: true });
     } else {
       setSavedProjects((prev) => prev.filter((p) => p.id !== project.id));
       setStatusMessage('🗑️ Project deleted');
@@ -1369,7 +1385,7 @@ function BuilderContent() {
   const handleSaveProject = async () => {
     if (!user) return;
     if (!isExportableCode(generatedCode)) {
-      alert('Generate an app first before saving.');
+      showToast('Generate an app first before saving.', { error: true });
       return;
     }
 
@@ -1403,7 +1419,7 @@ function BuilderContent() {
         const upgrade = confirm(`${data.error}\n\nOpen Pricing to upgrade?`);
         if (upgrade) window.location.href = '/pricing';
       } else {
-        alert(`Save failed: ${data.error || 'Unknown error'}`);
+        showToast(`Save failed: ${data.error || 'Unknown error'}`, { error: true });
       }
     } else {
       setStatusMessage('✅ Project saved');

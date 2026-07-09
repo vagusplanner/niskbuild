@@ -5,20 +5,22 @@
 
 const PREVIEW_ROOT_VARS = `
 :root {
-  --color-border: hsl(214.3 31.8% 91.4%);
-  --color-bg: hsl(0 0% 100%);
-  --color-fg: hsl(222.2 84% 4.9%);
-  --color-muted: hsl(215.4 16.3% 46.9%);
-  --color-accent: hsl(210 40% 96.1%);
-  --background: hsl(0 0% 100%);
-  --foreground: hsl(222.2 84% 4.9%);
-  --border: hsl(214.3 31.8% 91.4%);
-  --primary: hsl(222.2 47.4% 11.2%);
-  --secondary: hsl(210 40% 96.1%);
-  --muted: hsl(210 40% 96.1%);
-  --card: hsl(0 0% 100%);
-  --ring: hsl(215 20.2% 65.1%);
+  --color-border: hsl(214.3, 31.8%, 91.4%);
+  --color-bg: hsl(0, 0%, 100%);
+  --color-fg: hsl(222.2, 84%, 4.9%);
+  --color-muted: hsl(215.4, 16.3%, 46.9%);
+  --color-accent: hsl(210, 40%, 96.1%);
+  --background: hsl(0, 0%, 100%);
+  --foreground: hsl(222.2, 84%, 4.9%);
+  --border: hsl(214.3, 31.8%, 91.4%);
+  --primary: hsl(222.2, 47.4%, 11.2%);
+  --secondary: hsl(210, 40%, 96.1%);
+  --muted: hsl(210, 40%, 96.1%);
+  --card: hsl(0, 0%, 100%);
+  --ring: hsl(215, 20.2%, 65.1%);
 }
+[class*="border-[--color-border]"] { border-color: var(--color-border) !important; }
+[class*="bg-[--color-bg]"] { background-color: var(--color-bg) !important; }
 `;
 
 const PREVIEW_VARS_STYLE = `<style data-niskbuild-preview-vars>${PREVIEW_ROOT_VARS}</style>`;

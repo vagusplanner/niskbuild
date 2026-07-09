@@ -1,5 +1,7 @@
 /** Client helper — read SSE from /api/cloud-generate/stream (narration + code) */
 
+export const CLOUD_GENERATE_STREAM_TIMEOUT_MS = 120_000;
+
 export type CloudGenerateStreamCallbacks = {
   onNarration?: (accumulated: string, delta: string) => void;
   onStatus?: (message: string) => void;
@@ -14,12 +16,31 @@ export async function readCloudGenerateStream(
   const normalized: CloudGenerateStreamCallbacks =
     typeof callbacks === 'function' ? { onCodeChunk: callbacks } : callbacks;
 
-  const res = await fetch('/api/cloud-generate/stream', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ prompt, projectId }),
-  });
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), CLOUD_GENERATE_STREAM_TIMEOUT_MS);
+
+  let res: Response;
+  try {
+    res = await fetch('/api/cloud-generate/stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      signal: controller.signal,
+      body: JSON.stringify({ prompt, projectId }),
+    });
+  } catch (err) {
+    window.clearTimeout(timeoutId);
+    if (err instanceof Error && err.name === 'AbortError') {
+      return {
+        code: '',
+        narration: '',
+        error: 'Generation timed out after 120 seconds. Please try again.',
+      };
+    }
+    return { code: '', narration: '', error: 'Stream failed' };
+  }
+
+  window.clearTimeout(timeoutId);
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
@@ -35,9 +56,33 @@ export async function readCloudGenerateStream(
   let buffer = '';
   let code = '';
   let narration = '';
+  const streamDeadline = Date.now() + CLOUD_GENERATE_STREAM_TIMEOUT_MS;
 
   while (true) {
-    const { done, value } = await reader.read();
+    if (Date.now() > streamDeadline) {
+      await reader.cancel().catch(() => {});
+      return {
+        code,
+        narration,
+        error: 'Generation timed out after 120 seconds. Please try again.',
+      };
+    }
+
+    let done: boolean;
+    let value: Uint8Array | undefined;
+    try {
+      ({ done, value } = await reader.read());
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        return {
+          code,
+          narration,
+          error: 'Generation timed out after 120 seconds. Please try again.',
+        };
+      }
+      return { code, narration, error: 'Stream interrupted' };
+    }
+
     if (done) break;
 
     buffer += decoder.decode(value, { stream: true });

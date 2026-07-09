@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createClient } from '@/lib/supabase/server';
+import { ensureCloudCreditsInitialized } from '@/lib/credits';
 import { CLOUD_CREDITS_BY_TIER } from '@/lib/tier-config';
 import { planDisplayName } from '@/lib/plan-display';
 
@@ -13,6 +14,8 @@ export async function GET(request: NextRequest) {
 
   const supabase = await createClient();
   const user = guard.user!;
+
+  await ensureCloudCreditsInitialized(user.id);
 
   const { data: profile } = await supabase
     .from('profiles')

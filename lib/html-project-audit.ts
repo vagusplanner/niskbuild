@@ -242,7 +242,7 @@ export function runHtmlProjectAudit(input: HtmlProjectAuditInput): HtmlProjectAu
     canExportPwa(tier, status) ? 'pass' : 'warn',
     canExportPwa(tier, status)
       ? 'PWA export available on your plan'
-      : 'Pro Worker+ required for PWA export'
+      : 'Basic plan or above required for PWA export'
   );
 
   push(

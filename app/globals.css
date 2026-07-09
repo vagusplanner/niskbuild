@@ -135,7 +135,12 @@ pre, code {
 }
 .border-nisk { border-color: var(--border); }
 .border-nisk-accent {
-  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+  border-color: var(--border);
+}
+@supports (color: color-mix(in srgb, red, blue)) {
+  .border-nisk-accent {
+    border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+  }
 }
 .text-nisk-muted { color: var(--muted); }
 .text-nisk-primary { color: var(--primary); }
@@ -157,18 +162,33 @@ pre, code {
   box-shadow: 0 1px 0 rgba(232, 184, 122, 0.08);
 }
 .forge-plate {
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--copper-dark) 12%, var(--iron-mid)) 0%,
-      color-mix(in srgb, var(--copper-primary) 10%, var(--iron-dark)) 50%,
-      color-mix(in srgb, var(--copper-dark) 16%, var(--iron-dark)) 100%
-    );
-  border-bottom: 1px solid color-mix(in srgb, var(--copper-primary) 28%, var(--border));
+  background: linear-gradient(
+    180deg,
+    var(--iron-mid) 0%,
+    var(--iron-dark) 50%,
+    var(--iron-dark) 100%
+  );
+  border-bottom: 1px solid var(--border);
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--copper-melt) 18%, transparent),
-    inset 0 -1px 0 color-mix(in srgb, var(--copper-dark) 40%, transparent),
+    inset 0 1px 0 rgba(212, 154, 92, 0.12),
+    inset 0 -1px 0 rgba(143, 90, 40, 0.25),
     0 4px 20px var(--copper-glow);
+}
+@supports (color: color-mix(in srgb, red, blue)) {
+  .forge-plate {
+    background:
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--copper-dark) 12%, var(--iron-mid)) 0%,
+        color-mix(in srgb, var(--copper-primary) 10%, var(--iron-dark)) 50%,
+        color-mix(in srgb, var(--copper-dark) 16%, var(--iron-dark)) 100%
+      );
+    border-bottom: 1px solid color-mix(in srgb, var(--copper-primary) 28%, var(--border));
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, var(--copper-melt) 18%, transparent),
+      inset 0 -1px 0 color-mix(in srgb, var(--copper-dark) 40%, transparent),
+      0 4px 20px var(--copper-glow);
+  }
 }
 .forge-plate.glass-nav {
   backdrop-filter: blur(20px) saturate(1.1);
@@ -305,7 +325,12 @@ pre, code {
   font-weight: 600;
   transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
   box-shadow: 0 4px 20px var(--copper-glow);
-  border: 1px solid color-mix(in srgb, var(--copper-melt) 50%, transparent);
+  border: 1px solid var(--copper-melt);
+}
+@supports (color: color-mix(in srgb, red, blue)) {
+  .btn-primary {
+    border: 1px solid color-mix(in srgb, var(--copper-melt) 50%, transparent);
+  }
 }
 .btn-primary:hover:not(:disabled) {
   opacity: 0.96;
@@ -320,9 +345,14 @@ pre, code {
   transition: all 0.2s;
 }
 .btn-secondary:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+  border-color: var(--primary);
   background: var(--card-bg);
   color: var(--foreground);
+}
+@supports (color: color-mix(in srgb, red, blue)) {
+  .btn-secondary:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+  }
 }
 .btn-ghost {
   color: var(--muted);
@@ -347,7 +377,12 @@ pre, code {
 .card-hover:hover {
   transform: translateY(-2px);
   box-shadow: 0 16px 40px -12px var(--copper-glow);
-  border-color: color-mix(in srgb, var(--copper-primary) 45%, var(--border));
+  border-color: var(--copper-primary);
+}
+@supports (color: color-mix(in srgb, red, blue)) {
+  .card-hover:hover {
+    border-color: color-mix(in srgb, var(--copper-primary) 45%, var(--border));
+  }
 }
 
 .status-dot {

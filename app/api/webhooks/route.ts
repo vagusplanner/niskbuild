@@ -130,7 +130,10 @@ async function processStripeEvent(
     if (session.metadata?.type === 'reload' && userId) {
       const credits = parseInt(session.metadata.credits || '0', 10);
       if (credits > 0) {
-        await addCloudCredits(userId, credits);
+        const creditResult = await addCloudCredits(userId, credits);
+        if (!creditResult.ok) {
+          throw new WebhookProcessingError(`Reload credit grant failed for user ${userId}`);
+        }
         console.log(`✅ User ${userId} purchased ${credits} reload credits`);
       }
     } else if (session.metadata?.type === 'template' && userId) {

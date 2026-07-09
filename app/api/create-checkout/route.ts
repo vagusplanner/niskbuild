@@ -38,6 +38,17 @@ function resolveBoostType(boostType?: unknown, packId?: unknown): ReloadBoost | 
 const stripeSecret = process.env.STRIPE_SECRET_KEY?.trim();
 const stripe = stripeSecret ? new Stripe(stripeSecret) : null;
 
+function stripeCustomerFields(
+  profile: { stripe_customer_id?: string | null } | null,
+  email: string
+): Pick<Stripe.Checkout.SessionCreateParams, 'customer' | 'customer_email'> {
+  const customerId = profile?.stripe_customer_id?.trim();
+  if (customerId) {
+    return { customer: customerId };
+  }
+  return { customer_email: email };
+}
+
 export async function POST(request: NextRequest) {
   const guard = await guardApiRequest(request);
   if (!guard.ok) return guard.response;
@@ -125,7 +136,7 @@ export async function POST(request: NextRequest) {
       const session = await stripe.checkout.sessions.create({
         mode: 'payment',
         payment_method_types: ['card'],
-        customer_email: email,
+        ...stripeCustomerFields(profile, email),
         line_items: [lineItem],
         success_url: `${appUrl}/dashboard/settings?reload=success&credits=${credits}`,
         cancel_url: `${appUrl}/pricing?reload_canceled=true`,
@@ -166,7 +177,7 @@ export async function POST(request: NextRequest) {
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: 'subscription',
       payment_method_types: ['card'],
-      customer_email: email,
+      ...stripeCustomerFields(profile, email),
       subscription_data: {
         metadata: { tier, userId, interval },
       },

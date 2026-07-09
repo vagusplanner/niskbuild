@@ -57,14 +57,14 @@ export default function MobileExportModal({
                   📱 PWA Export
                 </p>
                 <p className="text-xs text-nisk-muted mt-1">
-                  Works on all phones via browser — Pro plan and above
+                  Works on all phones via browser — Basic plan and above
                 </p>
                 <p className="text-xs text-[var(--accent-cyan)]/80 mt-2">
                   Install on any iPhone or Android — no App Store needed. Share the link and users tap Add to Home Screen.
                 </p>
               </div>
               <span className="text-[10px] uppercase tracking-wider text-emerald-400 shrink-0">
-                {exporting === 'pwa' ? '…' : 'Pro+'}
+                {exporting === 'pwa' ? '…' : 'Basic+'}
               </span>
             </div>
           </button>
