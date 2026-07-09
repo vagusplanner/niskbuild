@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { getSafeSession } from '@/lib/supabaseSession';
 import AppTopNav from '@/app/components/AppTopNav';
@@ -50,24 +51,21 @@ const HOW_STEPS = [
 
 const PROOF_CARDS = [
   {
-    prompt: 'A booking site for my dental clinic',
+    prompt: 'medical/dental clinic',
     label: 'Clinical',
-    // TODO: replace with real product screenshot of a dental clinic build
-    gradient: 'linear-gradient(145deg, #e8f2ef 0%, #c5ddd4 45%, #2d6a5a 100%)',
+    src: '/images/proof/medical-clinic.png',
     accent: '#2d6a5a',
   },
   {
-    prompt: 'A vintage record shop with a warm, retro feel',
+    prompt: 'a vintage/retro shop',
     label: 'Retail',
-    // TODO: replace with real product screenshot of a vinyl shop build
-    gradient: 'linear-gradient(145deg, #f5ebe0 0%, #c4a574 40%, #5c3a1e 100%)',
+    src: '/images/proof/vintage-shop.png',
     accent: '#964B00',
   },
   {
-    prompt: 'An analytics dashboard for a SaaS product',
+    prompt: 'SaaS analytics dashboard',
     label: 'Product',
-    // TODO: replace with real product screenshot of a SaaS analytics build
-    gradient: 'linear-gradient(145deg, #1a1f2e 0%, #2F80ED 35%, #7A288A 100%)',
+    src: '/images/proof/saas-dashboard.png',
     accent: '#2F80ED',
   },
 ] as const;
@@ -261,16 +259,15 @@ export default function LandingV2Page() {
                 key={card.prompt}
                 className="rounded-2xl border border-[var(--border)] overflow-hidden bg-[var(--card-bg)] flex flex-col"
               >
-                {/* TODO: swap gradient placeholder for real product screenshot */}
-                <div
-                  className="aspect-[4/3] relative"
-                  style={{ background: card.gradient }}
-                  role="img"
-                  aria-label={`Placeholder preview for: ${card.prompt}`}
-                >
-                  <span className="absolute bottom-3 left-3 text-[10px] uppercase tracking-wider font-semibold px-2 py-1 rounded bg-black/35 text-white/90">
-                    Screenshot placeholder · {card.label}
-                  </span>
+                <div className="aspect-[16/10] relative bg-[var(--iron-mid)]">
+                  <Image
+                    src={card.src}
+                    alt={`NiskBuild preview for prompt: ${card.prompt}`}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                    className="object-cover object-top"
+                    priority={false}
+                  />
                 </div>
                 <div className="p-4 md:p-5 flex-1 flex flex-col">
                   <p className="text-[10px] uppercase tracking-wider text-[var(--muted)] mb-2 font-semibold">
