@@ -78,7 +78,6 @@ export default function CommandPalette() {
     }[]
   >([]);
   const [fullNavAccess, setFullNavAccess] = useState<boolean | null>(null);
-  const [phoneVerified, setPhoneVerified] = useState(false);
   const router = useRouter();
   const mod = modKey();
   const navRestricted = fullNavAccess !== true;
@@ -160,18 +159,8 @@ export default function CommandPalette() {
     [mod, router]
   );
 
-  const restrictedQuickActions: PaletteItem[] = useMemo(() => {
-    const actions: PaletteItem[] = [];
-    if (!phoneVerified) {
-      actions.push({
-        id: 'qa-verify',
-        label: 'Verify phone',
-        section: 'Quick Actions',
-        href: '/verify-phone',
-        run: () => router.push('/verify-phone'),
-      });
-    }
-    actions.push(
+  const restrictedQuickActions: PaletteItem[] = useMemo(
+    () => [
       {
         id: 'qa-settings',
         label: 'Open Settings',
@@ -181,38 +170,15 @@ export default function CommandPalette() {
         run: () => router.push('/dashboard/settings'),
       },
       {
-        id: 'qa-billing',
-        label: 'View Billing',
-        section: 'Quick Actions',
-        hint: shortcut(mod, 'B'),
-        href: '/dashboard/settings?tab=billing',
-        run: () => router.push('/dashboard/settings?tab=billing'),
-      },
-      {
         id: 'qa-pricing',
         label: 'View plans',
         section: 'Quick Actions',
         href: '/pricing',
         run: () => router.push('/pricing'),
       },
-      {
-        id: 'qa-brand',
-        label: 'Brand kit',
-        section: 'Quick Actions',
-        href: '/brand',
-        run: () => router.push('/brand'),
-      },
-      {
-        id: 'qa-docs-help',
-        label: 'Open Docs',
-        section: 'Quick Actions',
-        hint: '?',
-        href: '/docs',
-        run: () => router.push('/docs'),
-      }
-    );
-    return actions;
-  }, [mod, phoneVerified, router]);
+    ],
+    [mod, router]
+  );
 
   const effectiveQuickActions = navRestricted ? restrictedQuickActions : quickActions;
 
@@ -226,7 +192,6 @@ export default function CommandPalette() {
         .then((r) => (r.ok ? r.json() : null))
         .then((data) => {
           setFullNavAccess(data?.fullNavAccess === true);
-          setPhoneVerified(data?.phoneVerified === true);
         })
         .catch(() => {
           setFullNavAccess(false);
@@ -304,16 +269,18 @@ export default function CommandPalette() {
 
   const docItems: PaletteItem[] = useMemo(
     () =>
-      DOCS_INDEX.map((d) => ({
-        id: `doc-${d.id}`,
-        label: d.title,
-        description: d.section,
-        section: 'Docs' as const,
-        hint: '↵',
-        href: d.href,
-        run: () => router.push(d.href),
-      })),
-    [router]
+      navRestricted
+        ? []
+        : DOCS_INDEX.map((d) => ({
+            id: `doc-${d.id}`,
+            label: d.title,
+            description: d.section,
+            section: 'Docs' as const,
+            hint: '↵',
+            href: d.href,
+            run: () => router.push(d.href),
+          })),
+    [navRestricted, router]
   );
 
   const recentItems: PaletteItem[] = useMemo(() => {
@@ -427,7 +394,7 @@ export default function CommandPalette() {
               setActiveIndex(0);
             }}
             placeholder={
-              navRestricted ? 'Search docs, settings, and plans…' : 'Search projects, templates, docs…'
+              navRestricted ? 'Search settings and plans…' : 'Search projects, templates, docs…'
             }
             className="flex-1 bg-transparent text-white placeholder-gray-500 outline-none text-sm"
           />

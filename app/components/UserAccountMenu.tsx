@@ -9,7 +9,6 @@ interface UserAccountMenuProps {
   subscriptionTier?: string;
   subscriptionStatus?: string;
   restricted?: boolean;
-  needsPhoneVerify?: boolean;
 }
 
 function tierLabel(tier: string, status: string) {
@@ -22,7 +21,6 @@ export default function UserAccountMenu({
   subscriptionTier = 'free',
   subscriptionStatus = 'inactive',
   restricted = false,
-  needsPhoneVerify = false,
 }: UserAccountMenuProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -64,17 +62,8 @@ export default function UserAccountMenu({
               {tierLabel(subscriptionTier, subscriptionStatus)}
             </p>
           </div>
-          <nav className="py-1">
-            {needsPhoneVerify && (
-              <Link
-                href="/verify-phone"
-                className="block px-4 py-2 text-sm font-medium text-[var(--copper-melt)] hover:bg-[var(--surface-elevated)]"
-                onClick={() => setOpen(false)}
-              >
-                Verify phone
-              </Link>
-            )}
-            {!restricted && (
+          {!restricted && (
+            <nav className="py-1">
               <Link
                 href="/dashboard"
                 className="block px-4 py-2 text-sm text-nisk-muted hover:text-[var(--foreground)] hover:bg-[var(--surface-elevated)]"
@@ -82,22 +71,20 @@ export default function UserAccountMenu({
               >
                 Dashboard
               </Link>
-            )}
-            <Link
-              href="/dashboard/settings"
-              className="block px-4 py-2 text-sm text-nisk-muted hover:text-[var(--foreground)] hover:bg-[var(--surface-elevated)]"
-              onClick={() => setOpen(false)}
-            >
-              Settings
-            </Link>
-            <Link
-              href="/pricing"
-              className="block px-4 py-2 text-sm text-nisk-muted hover:text-[var(--foreground)] hover:bg-[var(--surface-elevated)]"
-              onClick={() => setOpen(false)}
-            >
-              Billing & plans
-            </Link>
-            {!restricted && (
+              <Link
+                href="/dashboard/settings"
+                className="block px-4 py-2 text-sm text-nisk-muted hover:text-[var(--foreground)] hover:bg-[var(--surface-elevated)]"
+                onClick={() => setOpen(false)}
+              >
+                Settings
+              </Link>
+              <Link
+                href="/pricing"
+                className="block px-4 py-2 text-sm text-nisk-muted hover:text-[var(--foreground)] hover:bg-[var(--surface-elevated)]"
+                onClick={() => setOpen(false)}
+              >
+                Billing & plans
+              </Link>
               <Link
                 href="/dashboard/support"
                 className="block px-4 py-2 text-sm text-nisk-muted hover:text-[var(--foreground)] hover:bg-[var(--surface-elevated)]"
@@ -105,8 +92,8 @@ export default function UserAccountMenu({
               >
                 Support
               </Link>
-            )}
-          </nav>
+            </nav>
+          )}
           <div className="border-t border-nisk py-1">
             <button
               type="button"

@@ -1,4 +1,3 @@
-import { hasPaidTier } from '@/lib/access';
 import { isPaidAndActive } from '@/lib/tier-config';
 import type { NavItem } from '@/lib/nav-config';
 import { OVERFLOW_NAV } from '@/lib/nav-config';
@@ -17,28 +16,13 @@ export function hasFullNavAccess(profile: AccountGateProfile): boolean {
   return profile.phone_verified === true;
 }
 
-const VERIFY_FIRST_HREFS = new Set([
-  '/docs',
-  '/brand',
-  '/dashboard/settings',
-  '/pricing',
-]);
-
-/** Paths the command palette may link to before full nav access. */
-const VERIFY_FIRST_PALETTE_PREFIXES = [
-  '/verify-phone',
-  '/docs',
-  '/brand',
-  '/dashboard/settings',
-  '/pricing',
-] as const;
+const VERIFY_FIRST_HREFS = new Set(['/dashboard/settings', '/pricing']);
 
 export function isPaletteDestinationAllowed(href: string, fullAccess: boolean): boolean {
   if (fullAccess) return true;
   const path = href.split('?')[0];
-  return VERIFY_FIRST_PALETTE_PREFIXES.some(
-    (allowed) => path === allowed || path.startsWith(`${allowed}/`)
-  );
+  if (VERIFY_FIRST_HREFS.has(path)) return true;
+  return path.startsWith('/dashboard/settings/');
 }
 
 export function paletteItemAllowed(
@@ -54,21 +38,7 @@ export const VERIFY_FIRST_OVERFLOW_NAV: NavItem[] = OVERFLOW_NAV.filter((item) =
   VERIFY_FIRST_HREFS.has(item.href)
 );
 
-export const VERIFY_PHONE_NAV_ITEM: NavItem = {
-  href: '/verify-phone',
-  label: 'Verify phone',
-  icon: '📱',
-  description: 'Unlock Builder & Dashboard',
-};
-
-export function overflowNavForAccount(
-  profile: AccountGateProfile
-): NavItem[] {
+export function overflowNavForAccount(profile: AccountGateProfile): NavItem[] {
   if (hasFullNavAccess(profile)) return OVERFLOW_NAV;
-  const needsPhone =
-    !isPaidAndActive(profile.subscription_tier, profile.subscription_status) &&
-    profile.phone_verified !== true;
-  return needsPhone
-    ? [VERIFY_PHONE_NAV_ITEM, ...VERIFY_FIRST_OVERFLOW_NAV]
-    : VERIFY_FIRST_OVERFLOW_NAV;
+  return VERIFY_FIRST_OVERFLOW_NAV;
 }

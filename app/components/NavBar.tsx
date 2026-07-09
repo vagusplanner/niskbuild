@@ -345,7 +345,6 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
               subscriptionTier={subscriptionTier}
               subscriptionStatus={subscriptionStatus}
               restricted={navRestricted}
-              needsPhoneVerify={navRestricted && !phoneVerified}
             />
           ) : variant === 'marketing' ? (
             <Link href="/login" className="btn-primary text-sm px-4 py-2">
