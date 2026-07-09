@@ -7,6 +7,7 @@ export type ProjectVersionRow = {
   version_number: number;
   blueprint_json: unknown;
   generated_code: string;
+  files_json?: unknown;
   prompt_used: string;
   credits_used: number;
   created_at: string;
@@ -54,22 +55,28 @@ export async function insertProjectVersion(
     tier: string;
     blueprint_json?: unknown;
     generated_code: string;
+    files_json?: unknown;
     prompt_used: string;
     credits_used: number;
   }
 ): Promise<ProjectVersionRow | null> {
   const versionNumber = await getNextVersionNumber(supabase, params.projectId);
 
+  const insertRow: Record<string, unknown> = {
+    project_id: params.projectId,
+    version_number: versionNumber,
+    blueprint_json: params.blueprint_json ?? null,
+    generated_code: params.generated_code,
+    prompt_used: params.prompt_used,
+    credits_used: params.credits_used,
+  };
+  if (params.files_json != null) {
+    insertRow.files_json = params.files_json;
+  }
+
   const { data, error } = await supabase
     .from('project_versions')
-    .insert({
-      project_id: params.projectId,
-      version_number: versionNumber,
-      blueprint_json: params.blueprint_json ?? null,
-      generated_code: params.generated_code,
-      prompt_used: params.prompt_used,
-      credits_used: params.credits_used,
-    })
+    .insert(insertRow)
     .select('*')
     .single();
 

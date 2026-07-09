@@ -63,18 +63,22 @@ export async function POST(request: NextRequest, context: RouteContext) {
   }
 
   const body = await request.json();
-  const { blueprint_json, generated_code, prompt_used, credits_used } = body;
+  const { blueprint_json, generated_code, files_json, prompt_used, credits_used } = body;
 
   if (!generated_code?.trim()) {
     return NextResponse.json({ error: 'generated_code is required' }, { status: 400 });
   }
 
   const tier = profile?.subscription_tier ?? 'free';
+  const filesPayload =
+    files_json != null && typeof files_json === 'object' ? files_json : undefined;
+
   const version = await insertProjectVersion(supabase, {
     projectId,
     tier,
     blueprint_json,
     generated_code,
+    files_json: filesPayload,
     prompt_used: prompt_used || '',
     credits_used: Number(credits_used) || 0,
   });
@@ -82,6 +86,21 @@ export async function POST(request: NextRequest, context: RouteContext) {
   if (!version) {
     return NextResponse.json({ error: 'Failed to save version' }, { status: 500 });
   }
+
+  // Keep the project row in sync so reload/list reflects the latest multi-page state.
+  const projectUpdate: Record<string, unknown> = {
+    generated_code,
+  };
+  if (filesPayload != null) {
+    projectUpdate.files_json = filesPayload;
+  }
+  if (blueprint_json !== undefined) {
+    projectUpdate.blueprint_json = blueprint_json;
+  }
+  if (typeof prompt_used === 'string' && prompt_used.trim()) {
+    projectUpdate.prompt = prompt_used;
+  }
+  await supabase.from('projects').update(projectUpdate).eq('id', projectId).eq('user_id', user.id);
 
   return NextResponse.json({
     version: {

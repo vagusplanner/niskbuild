@@ -20,6 +20,7 @@ type VersionHistoryPanelProps = {
   subscriptionTier: string;
   onRestore: (payload: {
     generated_code: string;
+    files_json?: unknown;
     prompt: string;
     blueprint_json: unknown;
     restored_version: number;
@@ -129,6 +130,7 @@ export default function VersionHistoryPanel({
       }
       onRestore({
         generated_code: data.generated_code,
+        files_json: data.files_json,
         prompt: data.prompt || '',
         blueprint_json: data.blueprint_json,
         restored_version: data.restored_version,

@@ -11,6 +11,10 @@ import { getDeployablePreviewHtml } from '@/lib/deploy-preview';
 import { injectSeoIntoHtml } from '@/lib/seo-inject';
 import { buildProjectFiles, filesToMap, type ProjectFile } from '@/lib/project-files';
 import {
+  buildProjectFilesPayload,
+  resolveProjectFiles,
+} from '@/lib/project-files-json';
+import {
   addProjectPage,
   buildPageScopedPrompt,
   getPreviewHtmlForPage,
@@ -123,6 +127,8 @@ interface SavedProject {
   title: string;
   prompt: string;
   generated_code: string;
+  /** Full multi-page file map; null/undefined = legacy single-file project */
+  files_json?: unknown;
   created_at: string;
   project_context?: GooglePlacesProjectContext | null;
 }
@@ -451,16 +457,25 @@ function BuilderContent() {
   const saveProjectVersionSilent = async (
     code: string,
     promptUsed: string,
-    creditsUsed: number
+    creditsUsed: number,
+    filesSnapshot?: ProjectFile[],
+    activePageSnapshot?: string
   ) => {
     if (!activeProjectId) return;
     try {
+      const files = filesSnapshot ?? projectFiles;
+      const page = activePageSnapshot ?? activeFile;
+      // Keep index.html in the map in sync with the code being versioned.
+      const synced = files.map((f) =>
+        f.path === 'index.html' ? { ...f, content: code } : f
+      );
       const res = await fetch(`/api/projects/${activeProjectId}/versions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
           generated_code: code,
+          files_json: buildProjectFilesPayload(synced, page),
           blueprint_json: blueprintData,
           prompt_used: promptUsed,
           credits_used: creditsUsed,
@@ -1030,7 +1045,14 @@ function BuilderContent() {
             { prompt: effectivePrompt, timestamp: new Date().toISOString() },
             { activePage: activeForGen, files: filesForGen }
           );
-          void saveProjectVersionSilent(localData.code, effectivePrompt, 0);
+          const localMerged = mergeGeneratedIntoFiles(filesForGen, activeForGen, localData.code);
+          void saveProjectVersionSilent(
+            localData.code,
+            effectivePrompt,
+            0,
+            localMerged,
+            activeForGen
+          );
           return;
         }
 
@@ -1147,7 +1169,8 @@ function BuilderContent() {
         historyEntry,
         { activePage: activeForGen, files: filesForGen }
       );
-      void saveProjectVersionSilent(code, effectivePrompt, 1);
+      const cloudMerged = mergeGeneratedIntoFiles(filesForGen, activeForGen, code);
+      void saveProjectVersionSilent(code, effectivePrompt, 1, cloudMerged, activeForGen);
     } catch {
       setStreamingCode('');
       setStreamingNarration('');
@@ -1502,6 +1525,11 @@ function BuilderContent() {
     const title = window.prompt('Project name:', prompt.substring(0, 50) || 'Untitled Project');
     if (!title) return;
 
+    const syncedFiles = projectFiles.map((f) =>
+      f.path === 'index.html' ? { ...f, content: generatedCode } : f
+    );
+    const filesPayload = buildProjectFilesPayload(syncedFiles, activeFile);
+
     const res = await fetch('/api/projects', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1509,6 +1537,7 @@ function BuilderContent() {
         title,
         prompt,
         generated_code: generatedCode,
+        files_json: filesPayload,
         project_context: projectContext,
       }),
     });
@@ -1536,10 +1565,24 @@ function BuilderContent() {
     const ctx =
       project.project_context?.type === 'google_places' ? project.project_context : null;
     setProjectContext(ctx);
-    applyGeneratedCode(project.generated_code, `📂 Loaded: ${project.title}`, {
-      prompt: project.prompt,
-      timestamp: project.created_at,
-    });
+
+    const resolved = resolveProjectFiles(project.generated_code, project.files_json);
+    setProjectFiles(resolved.files);
+    setActiveFile(resolved.activeFile);
+    lastCodeLenRef.current = project.generated_code.length;
+    setGeneratedCode(project.generated_code);
+    const preview = getPreviewHtmlForPage(
+      resolved.activeFile,
+      resolved.files,
+      project.generated_code
+    );
+    setPreviewHtml(wrapPreviewHtml(preview));
+    if (isExportableCode(project.generated_code)) {
+      aiOriginalCodeRef.current = project.generated_code;
+    }
+    setStatusMessage(`📂 Loaded: ${project.title}`);
+    setTimeout(() => setStatusMessage(''), 4000);
+
     void loadProjectSeo(project.id);
     setShowProjects(false);
     setActiveEditorTab('preview');
@@ -1855,11 +1898,19 @@ function BuilderContent() {
             if (payload.blueprint_json) {
               setBlueprintData(payload.blueprint_json as ComponentBlueprint);
             }
-            applyGeneratedCode(
-              payload.generated_code,
-              `↩️ Restored from v${payload.restored_version}`,
-              { prompt: payload.prompt, timestamp: new Date().toISOString() }
+            const resolved = resolveProjectFiles(payload.generated_code, payload.files_json);
+            setProjectFiles(resolved.files);
+            setActiveFile(resolved.activeFile);
+            lastCodeLenRef.current = payload.generated_code.length;
+            setGeneratedCode(payload.generated_code);
+            const preview = getPreviewHtmlForPage(
+              resolved.activeFile,
+              resolved.files,
+              payload.generated_code
             );
+            setPreviewHtml(wrapPreviewHtml(preview));
+            setStatusMessage(`↩️ Restored from v${payload.restored_version}`);
+            setTimeout(() => setStatusMessage(''), 5000);
             setCurrentVersionNumber(payload.restored_version);
           }}
         />

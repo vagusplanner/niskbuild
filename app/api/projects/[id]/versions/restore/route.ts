@@ -21,7 +21,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
   const { data: project, error: projectError } = await supabase
     .from('projects')
-    .select('id, title, prompt, generated_code, blueprint_json')
+    .select('id, title, prompt, generated_code, files_json, blueprint_json')
     .eq('id', projectId)
     .eq('user_id', user.id)
     .maybeSingle();
@@ -55,17 +55,22 @@ export async function POST(request: NextRequest, context: RouteContext) {
     tier,
     blueprint_json: project.blueprint_json,
     generated_code: project.generated_code,
+    files_json: project.files_json ?? undefined,
     prompt_used: project.prompt || '',
     credits_used: 0,
   });
 
+  const updateRow: Record<string, unknown> = {
+    generated_code: targetVersion.generated_code,
+    prompt: targetVersion.prompt_used || project.prompt,
+    blueprint_json: targetVersion.blueprint_json,
+  };
+  // Always write files_json on restore so a multi-page → single-page restore clears stale pages.
+  updateRow.files_json = targetVersion.files_json ?? null;
+
   const { error: updateError } = await supabase
     .from('projects')
-    .update({
-      generated_code: targetVersion.generated_code,
-      prompt: targetVersion.prompt_used || project.prompt,
-      blueprint_json: targetVersion.blueprint_json,
-    })
+    .update(updateRow)
     .eq('id', projectId)
     .eq('user_id', user.id);
 
@@ -78,6 +83,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     restored_version: targetVersion.version_number,
     saved_snapshot_version: nextVersion,
     generated_code: targetVersion.generated_code,
+    files_json: targetVersion.files_json ?? null,
     prompt: targetVersion.prompt_used,
     blueprint_json: targetVersion.blueprint_json,
     latest_version: nextVersion,

@@ -26,7 +26,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
   const { data, error } = await supabase
     .from('project_versions')
-    .select('id, version_number, generated_code, blueprint_json, prompt_used, credits_used, created_at')
+    .select(
+      'id, version_number, generated_code, files_json, blueprint_json, prompt_used, credits_used, created_at'
+    )
     .eq('id', versionId)
     .eq('project_id', projectId)
     .maybeSingle();
