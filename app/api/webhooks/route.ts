@@ -170,7 +170,12 @@ async function processStripeEvent(
         await requireProfileUpdate(supabase.from('profiles').update(updates).eq('id', userId));
         await handleSubscriptionActivated(supabase, customerEmail || '', userId);
         if (customerEmail) {
-          void sendUpgradeConfirmedEmail(userId, customerEmail, tier);
+          const emailOk = await sendUpgradeConfirmedEmail(userId, customerEmail, tier);
+          if (!emailOk) {
+            console.error(
+              `Upgrade confirmation email not sent for user ${userId} (${customerEmail})`
+            );
+          }
         }
         console.log(`✅ User ${userId} upgraded to ${tier} (${updates.cloud_credits_remaining} credits)`);
       } else if (customerEmail) {
@@ -184,7 +189,12 @@ async function processStripeEvent(
           .eq('email', customerEmail)
           .single();
         if (profile?.id) {
-          void sendUpgradeConfirmedEmail(profile.id, customerEmail, tier);
+          const emailOk = await sendUpgradeConfirmedEmail(profile.id, customerEmail, tier);
+          if (!emailOk) {
+            console.error(
+              `Upgrade confirmation email not sent for user ${profile.id} (${customerEmail})`
+            );
+          }
         }
         console.log(`✅ User ${customerEmail} upgraded to ${tier} (${updates.cloud_credits_remaining} credits)`);
       }

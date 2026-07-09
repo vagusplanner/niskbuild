@@ -102,9 +102,13 @@ export async function proxy(request: NextRequest) {
   }
 
   if (!paid && !profile?.phone_verified && !isPhoneVerifyExemptPath(pathname)) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/verify-phone';
-    return NextResponse.redirect(url);
+    const checkoutSuccess =
+      pathname === '/dashboard' && request.nextUrl.searchParams.get('success') === 'true';
+    if (!checkoutSuccess) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/verify-phone';
+      return NextResponse.redirect(url);
+    }
   }
 
   if (isPaidPath(pathname) || isAuthOnlyPath(pathname)) {

@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { getSafeSession } from '@/lib/supabaseSession';
+import { hasPaidTier } from '@/lib/access';
 import Layout from '@/app/components/Layout';
 
 interface Project {
@@ -41,6 +42,11 @@ function projectIcon(title: string): string {
   return '⚡';
 }
 
+type CheckoutBanner = {
+  kind: 'confirming' | 'success' | 'pending';
+  text: string;
+} | null;
+
 function DashboardContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -50,7 +56,7 @@ function DashboardContent() {
   const [deployedCount, setDeployedCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [projectsError, setProjectsError] = useState<string | null>(null);
-  const [checkoutMsg, setCheckoutMsg] = useState<string | null>(null);
+  const [checkoutBanner, setCheckoutBanner] = useState<CheckoutBanner>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -97,14 +103,58 @@ function DashboardContent() {
       setLoading(false);
     })();
 
-    if (searchParams.get('success') === 'true') {
-      setCheckoutMsg('Payment successful! Your plan is now active.');
-    }
-
     return () => {
       cancelled = true;
     };
   }, [router, searchParams]);
+
+  useEffect(() => {
+    if (searchParams.get('success') !== 'true') return;
+
+    let cancelled = false;
+    setCheckoutBanner({ kind: 'confirming', text: 'Confirming your payment…' });
+
+    const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    (async () => {
+      for (let attempt = 0; attempt < 20 && !cancelled; attempt++) {
+        if (attempt > 0) await sleep(1500);
+        try {
+          const res = await fetch('/api/billing/summary', { credentials: 'include' });
+          if (!res.ok) continue;
+          const data = await res.json();
+          const paid =
+            hasPaidTier(data.tier) &&
+            (data.status === 'active' || data.status === 'past_due');
+          if (paid) {
+            setBilling({
+              creditsRemaining: data.creditsRemaining ?? 0,
+              creditsAllowance: data.creditsAllowance ?? 0,
+              daysUntilReset: data.daysUntilReset ?? null,
+            });
+            setCheckoutBanner({
+              kind: 'success',
+              text: `Payment successful! You're on ${data.tierLabel || data.tier}. Check your inbox for a confirmation email.`,
+            });
+            router.replace('/dashboard');
+            return;
+          }
+        } catch {
+          // retry until timeout
+        }
+      }
+      if (!cancelled) {
+        setCheckoutBanner({
+          kind: 'pending',
+          text: 'Payment received. Your plan may take a minute to activate — refresh this page or open Settings → Billing.',
+        });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, router]);
 
   if (!user) {
     return (
@@ -124,9 +174,17 @@ function DashboardContent() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-[var(--foreground)]">Dashboard</h1>
         <p className="text-nisk-muted text-sm mt-1">{user.email}</p>
-        {checkoutMsg && (
-          <p className="mt-3 text-sm text-[var(--success)] bg-[var(--success)]/10 border border-[var(--success)]/30 rounded-lg px-4 py-2">
-            {checkoutMsg}
+        {checkoutBanner && (
+          <p
+            className={`mt-3 text-sm rounded-lg px-4 py-2 border ${
+              checkoutBanner.kind === 'success'
+                ? 'text-[var(--success)] bg-[var(--success)]/10 border-[var(--success)]/30'
+                : checkoutBanner.kind === 'pending'
+                  ? 'text-amber-200 bg-amber-500/10 border-amber-500/30'
+                  : 'text-nisk-muted bg-[var(--surface)] border-[var(--border)]'
+            }`}
+          >
+            {checkoutBanner.text}
           </p>
         )}
       </div>

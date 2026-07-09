@@ -12,7 +12,8 @@ import NiskBuildLogo from './NiskBuildLogo';
 import LogoNavMenu from './LogoNavMenu';
 import UserAccountMenu from './UserAccountMenu';
 import ThemeToggle from './ThemeToggle';
-import { PRIMARY_NAV, OVERFLOW_NAV, type NavItem } from '@/lib/nav-config';
+import { PRIMARY_NAV, type NavItem } from '@/lib/nav-config';
+import { overflowNavForAccount } from '@/lib/nav-access';
 import { MARKETING_NAV } from '@/lib/landing-nav';
 
 /** Platform-owner admin — 3-layer architecture control */
@@ -108,6 +109,8 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
   const [user, setUser] = useState<{ id?: string; email?: string } | null>(null);
   const [subscriptionTier, setSubscriptionTier] = useState('free');
   const [subscriptionStatus, setSubscriptionStatus] = useState('inactive');
+  const [fullNavAccess, setFullNavAccess] = useState<boolean | null>(null);
+  const [phoneVerified, setPhoneVerified] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [churnCount, setChurnCount] = useState(0);
@@ -123,6 +126,8 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
           .then((d) => {
             if (d?.tier) setSubscriptionTier(d.tier);
             if (d?.status) setSubscriptionStatus(d.status);
+            setPhoneVerified(d?.phoneVerified === true);
+            setFullNavAccess(d?.fullNavAccess === true);
           })
           .catch(() => {});
       }
@@ -154,8 +159,22 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
       return GUEST_NAV;
     }
 
+    if (fullNavAccess !== true) {
+      return [];
+    }
+
     return [...PRIMARY_NAV];
-  }, [variant, user]);
+  }, [variant, user, fullNavAccess]);
+
+  const navRestricted = !!user && fullNavAccess !== true;
+  const homeHref = user ? (fullNavAccess ? '/dashboard' : '/pricing') : '/landing';
+  const overflowNav = user
+    ? overflowNavForAccount({
+        subscription_tier: subscriptionTier,
+        subscription_status: subscriptionStatus,
+        phone_verified: phoneVerified,
+      })
+    : [];
 
   const isNavActive = (href: string) => {
     const path = href.split('#')[0];
@@ -194,8 +213,8 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
       <div className="h-full max-w-[1800px] mx-auto px-4 flex items-center justify-between gap-4">
         {user ? (
           <LogoNavMenu
-            href="/dashboard"
-            overflowNav={OVERFLOW_NAV}
+            href={homeHref}
+            overflowNav={overflowNav}
             isNavActive={isNavActive}
           />
         ) : (
@@ -275,6 +294,8 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
               >
                 <span className="text-base font-bold leading-none">?</span>
               </button>
+              {!navRestricted && (
+                <>
               <button
                 type="button"
                 onClick={openCommandPalette}
@@ -308,6 +329,8 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
                   />
                 </svg>
               </button>
+                </>
+              )}
             </>
           )}
           <ThemeToggle compact />
@@ -321,6 +344,8 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
               user={user}
               subscriptionTier={subscriptionTier}
               subscriptionStatus={subscriptionStatus}
+              restricted={navRestricted}
+              needsPhoneVerify={navRestricted && !phoneVerified}
             />
           ) : variant === 'marketing' ? (
             <Link href="/login" className="btn-primary text-sm px-4 py-2">
@@ -346,6 +371,11 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
 
       {mobileOpen && (
         <div className="md:hidden border-t border-[var(--border)] glass-nav px-4 py-3 space-y-1">
+          {navRestricted && user && variant !== 'marketing' && (
+            <p className="px-3 py-2 mb-2 text-xs text-nisk-muted border-b border-[var(--border)]">
+              Verify your phone or complete checkout to unlock the full app.
+            </p>
+          )}
           {nav.map((item) => (
             <Link
               key={item.href}
@@ -359,7 +389,7 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
           {user && variant !== 'marketing' && (
             <>
               <p className="px-3 pt-2 text-[10px] uppercase tracking-wider text-nisk-muted">More</p>
-              {OVERFLOW_NAV.map((item) => (
+              {overflowNav.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}

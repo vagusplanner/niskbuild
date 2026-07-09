@@ -11,6 +11,7 @@ import {
   pushRecentPaletteItem,
   type RecentPaletteItem,
 } from '@/lib/command-palette-events';
+import { paletteItemAllowed } from '@/lib/nav-access';
 import { modKey, shortcut } from '@/lib/keyboard';
 
 type Section = 'Recent' | 'Projects' | 'Templates' | 'Quick Actions' | 'Docs';
@@ -76,8 +77,11 @@ export default function CommandPalette() {
       isImportedApp?: boolean;
     }[]
   >([]);
+  const [fullNavAccess, setFullNavAccess] = useState<boolean | null>(null);
+  const [phoneVerified, setPhoneVerified] = useState(false);
   const router = useRouter();
   const mod = modKey();
+  const navRestricted = fullNavAccess !== true;
 
   const close = useCallback(() => {
     setVisible(false);
@@ -156,6 +160,80 @@ export default function CommandPalette() {
     [mod, router]
   );
 
+  const restrictedQuickActions: PaletteItem[] = useMemo(() => {
+    const actions: PaletteItem[] = [];
+    if (!phoneVerified) {
+      actions.push({
+        id: 'qa-verify',
+        label: 'Verify phone',
+        section: 'Quick Actions',
+        href: '/verify-phone',
+        run: () => router.push('/verify-phone'),
+      });
+    }
+    actions.push(
+      {
+        id: 'qa-settings',
+        label: 'Open Settings',
+        section: 'Quick Actions',
+        hint: `${mod},`,
+        href: '/dashboard/settings',
+        run: () => router.push('/dashboard/settings'),
+      },
+      {
+        id: 'qa-billing',
+        label: 'View Billing',
+        section: 'Quick Actions',
+        hint: shortcut(mod, 'B'),
+        href: '/dashboard/settings?tab=billing',
+        run: () => router.push('/dashboard/settings?tab=billing'),
+      },
+      {
+        id: 'qa-pricing',
+        label: 'View plans',
+        section: 'Quick Actions',
+        href: '/pricing',
+        run: () => router.push('/pricing'),
+      },
+      {
+        id: 'qa-brand',
+        label: 'Brand kit',
+        section: 'Quick Actions',
+        href: '/brand',
+        run: () => router.push('/brand'),
+      },
+      {
+        id: 'qa-docs-help',
+        label: 'Open Docs',
+        section: 'Quick Actions',
+        hint: '?',
+        href: '/docs',
+        run: () => router.push('/docs'),
+      }
+    );
+    return actions;
+  }, [mod, phoneVerified, router]);
+
+  const effectiveQuickActions = navRestricted ? restrictedQuickActions : quickActions;
+
+  useEffect(() => {
+    getSafeSession().then((session) => {
+      if (!session?.user) {
+        setFullNavAccess(true);
+        return;
+      }
+      fetch('/api/subscription/status', { credentials: 'include' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          setFullNavAccess(data?.fullNavAccess === true);
+          setPhoneVerified(data?.phoneVerified === true);
+        })
+        .catch(() => {
+          setFullNavAccess(false);
+        });
+    });
+  }, []);
+
   useEffect(() => {
     const onOpen = () => {
       setOpen(true);
@@ -167,7 +245,7 @@ export default function CommandPalette() {
   }, []);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || navRestricted) return;
     getSafeSession().then((session) => {
       if (!session?.user) return;
       fetch('/api/projects', { credentials: 'include' })
@@ -179,28 +257,32 @@ export default function CommandPalette() {
       .then((r) => r.json())
       .then((data) => setMarketplaceListings(data.templates || []))
       .catch(() => setMarketplaceListings([]));
-  }, [open]);
+  }, [open, navRestricted]);
 
   const projectItems: PaletteItem[] = useMemo(
     () =>
-      projects.map((p) => ({
-        id: `project-${p.id}`,
-        label: p.title,
-        description: formatEditedDate(p.created_at),
-        section: 'Projects' as const,
-        badge: projectCategory(p as { project_context?: { type?: string } | null }),
-        hint: '↵',
-        run: () => {
-          localStorage.setItem('niskbuild_load_project_id', p.id);
-          router.push('/builder');
-        },
-      })),
-    [projects, router]
+      navRestricted
+        ? []
+        : projects.map((p) => ({
+            id: `project-${p.id}`,
+            label: p.title,
+            description: formatEditedDate(p.created_at),
+            section: 'Projects' as const,
+            badge: projectCategory(p as { project_context?: { type?: string } | null }),
+            hint: '↵',
+            run: () => {
+              localStorage.setItem('niskbuild_load_project_id', p.id);
+              router.push('/builder');
+            },
+          })),
+    [navRestricted, projects, router]
   );
 
   const templateItems: PaletteItem[] = useMemo(
     () =>
-      marketplaceListings.map((t) => ({
+      navRestricted
+        ? []
+        : marketplaceListings.map((t) => ({
         id: `template-${t.id}`,
         label: t.name,
         description: t.description,
@@ -217,7 +299,7 @@ export default function CommandPalette() {
           router.push('/builder');
         },
       })),
-    [marketplaceListings, router]
+    [marketplaceListings, navRestricted, router]
   );
 
   const docItems: PaletteItem[] = useMemo(
@@ -236,12 +318,15 @@ export default function CommandPalette() {
 
   const recentItems: PaletteItem[] = useMemo(() => {
     const map = new Map<string, PaletteItem>();
-    [...projectItems, ...templateItems, ...docItems, ...quickActions].forEach((i) => map.set(i.id, i));
+    [...projectItems, ...templateItems, ...docItems, ...effectiveQuickActions].forEach((i) =>
+      map.set(i.id, i)
+    );
     return recent
       .map((r) => map.get(r.id))
       .filter((i): i is PaletteItem => !!i)
+      .filter((i) => paletteItemAllowed(i, !navRestricted))
       .map((i) => ({ ...i, section: 'Recent' as const }));
-  }, [recent, projectItems, templateItems, docItems, quickActions]);
+  }, [recent, projectItems, templateItems, docItems, effectiveQuickActions, navRestricted]);
 
   const filtered = useMemo(() => {
     const q = query.trim();
@@ -260,10 +345,10 @@ export default function CommandPalette() {
       sections.push(...docItems.filter(match));
     }
 
-    sections.push(...quickActions);
+    sections.push(...effectiveQuickActions);
 
     return sections;
-  }, [query, recentItems, projectItems, templateItems, docItems, quickActions]);
+  }, [query, recentItems, projectItems, templateItems, docItems, effectiveQuickActions]);
 
   const grouped = useMemo(() => {
     const order: Section[] = ['Recent', 'Projects', 'Templates', 'Quick Actions', 'Docs'];
@@ -341,7 +426,9 @@ export default function CommandPalette() {
               setQuery(e.target.value);
               setActiveIndex(0);
             }}
-            placeholder="Search projects, templates, docs…"
+            placeholder={
+              navRestricted ? 'Search docs, settings, and plans…' : 'Search projects, templates, docs…'
+            }
             className="flex-1 bg-transparent text-white placeholder-gray-500 outline-none text-sm"
           />
           <kbd className="text-[10px] text-nisk-muted font-mono hidden sm:inline">esc</kbd>

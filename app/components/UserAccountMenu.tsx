@@ -8,6 +8,8 @@ interface UserAccountMenuProps {
   user: { email?: string };
   subscriptionTier?: string;
   subscriptionStatus?: string;
+  restricted?: boolean;
+  needsPhoneVerify?: boolean;
 }
 
 function tierLabel(tier: string, status: string) {
@@ -19,6 +21,8 @@ export default function UserAccountMenu({
   user,
   subscriptionTier = 'free',
   subscriptionStatus = 'inactive',
+  restricted = false,
+  needsPhoneVerify = false,
 }: UserAccountMenuProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -61,13 +65,24 @@ export default function UserAccountMenu({
             </p>
           </div>
           <nav className="py-1">
-            <Link
-              href="/dashboard"
-              className="block px-4 py-2 text-sm text-nisk-muted hover:text-[var(--foreground)] hover:bg-[var(--surface-elevated)]"
-              onClick={() => setOpen(false)}
-            >
-              Dashboard
-            </Link>
+            {needsPhoneVerify && (
+              <Link
+                href="/verify-phone"
+                className="block px-4 py-2 text-sm font-medium text-[var(--copper-melt)] hover:bg-[var(--surface-elevated)]"
+                onClick={() => setOpen(false)}
+              >
+                Verify phone
+              </Link>
+            )}
+            {!restricted && (
+              <Link
+                href="/dashboard"
+                className="block px-4 py-2 text-sm text-nisk-muted hover:text-[var(--foreground)] hover:bg-[var(--surface-elevated)]"
+                onClick={() => setOpen(false)}
+              >
+                Dashboard
+              </Link>
+            )}
             <Link
               href="/dashboard/settings"
               className="block px-4 py-2 text-sm text-nisk-muted hover:text-[var(--foreground)] hover:bg-[var(--surface-elevated)]"
@@ -82,13 +97,15 @@ export default function UserAccountMenu({
             >
               Billing & plans
             </Link>
-            <Link
-              href="/dashboard/support"
-              className="block px-4 py-2 text-sm text-nisk-muted hover:text-[var(--foreground)] hover:bg-[var(--surface-elevated)]"
-              onClick={() => setOpen(false)}
-            >
-              Support
-            </Link>
+            {!restricted && (
+              <Link
+                href="/dashboard/support"
+                className="block px-4 py-2 text-sm text-nisk-muted hover:text-[var(--foreground)] hover:bg-[var(--surface-elevated)]"
+                onClick={() => setOpen(false)}
+              >
+                Support
+              </Link>
+            )}
           </nav>
           <div className="border-t border-nisk py-1">
             <button

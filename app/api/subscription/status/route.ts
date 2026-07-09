@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { captureApiException } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { hasFullNavAccess } from '@/lib/nav-access';
 import { getCloudCreditsForTier, isPaidAndActive } from '@/lib/tier-config';
 import { ensureCloudCreditsInitialized } from '@/lib/credits';
 
@@ -15,7 +16,9 @@ export async function GET(request: NextRequest) {
 
     const { data: profile, error } = await supabase
       .from('profiles')
-      .select('subscription_tier, subscription_status, cloud_credits_remaining, purchased_templates')
+      .select(
+        'subscription_tier, subscription_status, phone_verified, cloud_credits_remaining, purchased_templates'
+      )
       .eq('id', user.id)
       .single();
 
@@ -29,7 +32,7 @@ export async function GET(request: NextRequest) {
           subscription_status: 'inactive',
           cloud_credits_remaining: getCloudCreditsForTier('free'),
         })
-        .select('subscription_tier, subscription_status, cloud_credits_remaining')
+        .select('subscription_tier, subscription_status, phone_verified, cloud_credits_remaining')
         .single();
 
       if (insertError) {
@@ -44,6 +47,12 @@ export async function GET(request: NextRequest) {
         paid: false,
         tier: newProfile?.subscription_tier || 'free',
         status: newProfile?.subscription_status || 'inactive',
+        phoneVerified: newProfile?.phone_verified ?? false,
+        fullNavAccess: hasFullNavAccess({
+          subscription_tier: newProfile?.subscription_tier,
+          subscription_status: newProfile?.subscription_status,
+          phone_verified: newProfile?.phone_verified,
+        }),
         credits: newProfile?.cloud_credits_remaining ?? getCloudCreditsForTier('free'),
         creditsAllowance: getCloudCreditsForTier('free'),
       });
@@ -57,17 +66,27 @@ export async function GET(request: NextRequest) {
 
     const { data: refreshed } = await supabase
       .from('profiles')
-      .select('subscription_tier, subscription_status, cloud_credits_remaining, purchased_templates')
+      .select(
+        'subscription_tier, subscription_status, phone_verified, cloud_credits_remaining, purchased_templates'
+      )
       .eq('id', user.id)
       .single();
 
     const credits = refreshed?.cloud_credits_remaining ?? profile?.cloud_credits_remaining ?? 0;
+
+    const phoneVerified = refreshed?.phone_verified ?? profile?.phone_verified ?? false;
 
     return NextResponse.json({
       active: paidActive,
       paid: paidActive,
       tier,
       status,
+      phoneVerified,
+      fullNavAccess: hasFullNavAccess({
+        subscription_tier: tier,
+        subscription_status: status,
+        phone_verified: phoneVerified,
+      }),
       credits,
       creditsAllowance: getCloudCreditsForTier(tier),
       purchasedTemplates: Array.isArray(refreshed?.purchased_templates ?? profile?.purchased_templates)
