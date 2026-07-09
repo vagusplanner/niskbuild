@@ -194,7 +194,7 @@ function PricingContent() {
           </p>
           <p className="text-nisk-muted text-sm">
             Need a custom plan?{' '}
-            <Link href="/landing#contact" className="text-[var(--primary)] hover:underline">
+            <Link href="/landing-v2#contact" className="text-[var(--primary)] hover:underline">
               Contact us →
             </Link>
           </p>

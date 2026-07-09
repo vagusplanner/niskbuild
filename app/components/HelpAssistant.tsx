@@ -583,7 +583,7 @@ export default function HelpAssistant({
                     Support
                   </Link>
                   {' · '}
-                  <Link href="/landing#contact" className="text-[var(--primary)] hover:underline">
+                  <Link href="/landing-v2#contact" className="text-[var(--primary)] hover:underline">
                     Contact
                   </Link>
                 </p>

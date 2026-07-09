@@ -94,7 +94,7 @@ export default function TermsPage() {
             <h2 className="text-2xl font-semibold text-white mb-4">11. Contact</h2>
             <p>
               Questions about these Terms?{' '}
-              <Link href="/landing#contact" className="text-purple-400 hover:text-purple-300">
+              <Link href="/landing-v2#contact" className="text-purple-400 hover:text-purple-300">
                 Use our contact form →
               </Link>
             </p>

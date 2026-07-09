@@ -6,8 +6,9 @@ import { getSafeSession } from '@/lib/supabaseSession';
 import AppTopNav from '@/app/components/AppTopNav';
 import NiskBuildLogo from '@/app/components/NiskBuildLogo';
 import LandingV2HeroDemo from '@/app/components/LandingV2HeroDemo';
+import ContactForm from '@/app/components/ContactForm';
 import { FOOTER_LINKS } from '@/lib/landing-nav';
-import { PRICING_TIERS } from '@/lib/pricing-tiers';
+import { PRICING_FAQ, PRICING_TIERS } from '@/lib/pricing-tiers';
 
 const COMPARISON_ROWS = [
   {
@@ -362,8 +363,54 @@ export default function LandingV2Page() {
         </div>
       </section>
 
-      {/* 6. FINAL CTA */}
-      <section className="py-20 px-4 bg-nisk-surface">
+      {/* 6. FAQ — same questions as /landing (PRICING_FAQ) */}
+      <section id="faq" className="py-20 px-4 scroll-mt-28">
+        <div className="max-w-3xl mx-auto">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--copper-melt)] mb-3 text-center">
+            FAQ
+          </p>
+          <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-10 text-center text-[var(--nisk-color)]">
+            Common questions
+          </h2>
+          <div className="space-y-2">
+            {PRICING_FAQ.map((faq) => (
+              <details
+                key={faq.q}
+                className="rounded-xl border border-[var(--border)] bg-[var(--card-bg)] group"
+              >
+                <summary className="cursor-pointer p-4 font-medium text-[var(--nisk-color)] hover:text-[var(--copper-melt)] transition-colors list-none flex justify-between items-center gap-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copper-primary)] rounded-xl">
+                  {faq.q}
+                  <span className="text-nisk-muted group-open:rotate-180 transition-transform shrink-0">
+                    ▾
+                  </span>
+                </summary>
+                <p className="px-4 pb-4 text-nisk-muted text-sm leading-relaxed">{faq.a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 7. CONTACT — same ContactForm → /api/support/contact as /landing */}
+      <section id="contact" className="py-20 px-4 bg-nisk-surface scroll-mt-28">
+        <div className="max-w-xl mx-auto">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--copper-melt)] mb-3 text-center">
+            Contact
+          </p>
+          <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-3 text-center text-[var(--nisk-color)]">
+            Contact us
+          </h2>
+          <p className="text-nisk-muted text-center mb-8 text-sm">
+            All inquiries go through our team. Pro plans get a full ticket portal in the dashboard.
+          </p>
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] p-6 md:p-8">
+            <ContactForm variant="landing" />
+          </div>
+        </div>
+      </section>
+
+      {/* 8. FINAL CTA */}
+      <section className="py-20 px-4">
         <div className="max-w-2xl mx-auto text-center">
           <div
             className="h-[3px] w-16 mx-auto mb-8 rounded-full"

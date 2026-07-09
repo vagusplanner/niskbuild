@@ -139,7 +139,7 @@ export default function PrivacyPage() {
             <h2 className="text-2xl font-semibold text-white mb-4">11. Contact Us</h2>
             <p>If you have questions about this Privacy Policy, please use our contact form:</p>
             <p className="mt-2">
-              <Link href="/landing#contact" className="text-purple-400 hover:text-purple-300">
+              <Link href="/landing-v2#contact" className="text-purple-400 hover:text-purple-300">
                 Send us a message →
               </Link>
             </p>

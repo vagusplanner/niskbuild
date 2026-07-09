@@ -69,7 +69,7 @@ Platform facts (accurate as of 2026):
 - Basic ($69/mo): 5 projects, clean ZIP + PWA export, 150 cloud credits, no BYOC, no Google Places
 - Pro Worker ($129/mo): BYOC, Google Places AI, Phaser games, 600 credits, support tickets
 - Agency+ ($299+): preview links, team features, higher credits
-- Billing: /pricing · Settings: /dashboard/settings · Human support: /dashboard/support (Pro+ tickets) or /landing#contact (Basic/Sandbox form)
+- Billing: /pricing · Settings: /dashboard/settings · Human support: /dashboard/support (Pro+ tickets) or /landing-v2#contact (Basic/Sandbox form)
 - Builder shortcuts: ⌘+Enter generate, ⌘+S save, ⌘+B inspector, F fullscreen
 - Reload packs on pricing page; annual billing saves 2 months
 
@@ -151,7 +151,7 @@ async function generateWithGroq(
 ): Promise<string> {
   const groq = getGroqClient();
   if (!groq) {
-    return "Cloud AI isn't configured right now. Try again later or contact support at /landing#contact.";
+    return "Cloud AI isn't configured right now. Try again later or contact support at /landing-v2#contact.";
   }
 
   const completion = await groq.chat.completions.create({
