@@ -143,6 +143,15 @@ function PricingContent() {
           initialContactTier={searchParams.get('contact')}
         />
 
+        <p className="text-center mt-8">
+          <Link
+            href="/pricing/compare"
+            className="text-[var(--primary)] hover:underline font-medium text-sm"
+          >
+            See the full plan comparison →
+          </Link>
+        </p>
+
         {/* Trust row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-12">
           {[

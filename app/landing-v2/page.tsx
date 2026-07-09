@@ -353,7 +353,7 @@ export default function LandingV2Page() {
 
           <p className="text-center mt-8">
             <Link
-              href="/pricing"
+              href="/pricing/compare"
               className="text-[var(--copper-melt)] hover:text-[var(--copper-light)] font-medium text-sm underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copper-primary)] rounded"
             >
               See the full plan comparison →
