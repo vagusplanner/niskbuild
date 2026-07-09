@@ -6,19 +6,14 @@ import { canSpendCloudCredits, outOfCreditsMessage } from '@/lib/credits-init';
 import { getGroqClient } from '@/lib/groq-client';
 import { streamBuildNarration } from '@/lib/generate-narration';
 import { derivePromptNarrationFallback } from '@/lib/narration-shared';
+import { HTML_CODE_SYSTEM_PROMPT } from '@/lib/html-code-system-prompt';
+import { logBuildPerformance } from '@/lib/build-performance-server';
 import { canUseOwnApiKeys } from '@/lib/tier-config';
 import { getProviderOrder } from '@/lib/ai-providers';
 import { recordUsageEvent } from '@/lib/usage-events';
 import { touchLastBuildAt } from '@/lib/build-activity';
 import { clientIpFromHeaders } from '@/lib/coarse-town';
 import Anthropic from '@anthropic-ai/sdk';
-
-const CODE_SYSTEM_PROMPT = `You are an expert web developer. Generate ONLY complete HTML/CSS/JavaScript code. 
-No explanations. No markdown. Start directly with <!DOCTYPE html>. 
-Make it responsive, modern, and visually appealing. Use Tailwind CSS when appropriate.
-For Tailwind, use <script src="https://cdn.tailwindcss.com"></script> — never use cdn.jsdelivr.net tailwind.min.js.
-Do not include Font Awesome or placeholder kit URLs. Use inline SVG or Unicode symbols for icons instead.
-If you use CSS variables like --color-border or --color-bg, define them on :root with valid color values.`;
 
 async function getUserProfile(userId: string) {
   const supabase = createAdminClient();
@@ -43,7 +38,7 @@ async function generateWithAnthropicKey(prompt: string, apiKey: string): Promise
       model: 'claude-3-sonnet-20240229',
       max_tokens: 4096,
       temperature: 0.7,
-      system: CODE_SYSTEM_PROMPT,
+      system: HTML_CODE_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: prompt }],
     });
     const code = message.content[0]?.type === 'text' ? message.content[0].text : '';
@@ -63,7 +58,7 @@ async function generateWithTogether(prompt: string): Promise<{ ok: true; code: s
     const together = new OpenAI({ apiKey, baseURL: 'https://api.together.xyz/v1' });
     const completion = await together.chat.completions.create({
       messages: [
-        { role: 'system', content: CODE_SYSTEM_PROMPT },
+        { role: 'system', content: HTML_CODE_SYSTEM_PROMPT },
         { role: 'user', content: prompt },
       ],
       model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
@@ -85,7 +80,7 @@ async function generateWithOpenAIKey(prompt: string, apiKey: string): Promise<{ 
     const client = new OpenAI({ apiKey });
     const completion = await client.chat.completions.create({
       messages: [
-        { role: 'system', content: CODE_SYSTEM_PROMPT },
+        { role: 'system', content: HTML_CODE_SYSTEM_PROMPT },
         { role: 'user', content: prompt },
       ],
       model: 'gpt-4-turbo-preview',
@@ -101,7 +96,7 @@ async function generateWithOpenAIKey(prompt: string, apiKey: string): Promise<{ 
   }
 }
 
-/** SSE: live narration (plain English) then code tokens for preview */
+/** SSE: live narration and code tokens in parallel for preview */
 export async function POST(request: NextRequest) {
   const guard = await guardApiRequest(request);
   if (!guard.ok) return guard.response;
@@ -159,150 +154,183 @@ export async function POST(request: NextRequest) {
           ? request.headers.get('x-nisk-debug-fail-stage')
           : null;
 
-        try {
-          if (debugFailStage === 'narration') {
-            throw new Error('Debug forced narration failure');
+        const streamStartedAt = Date.now();
+        let firstCodeAt: number | null = null;
+        const narrationExtra =
+          typeof narrationContext === 'string' ? narrationContext : undefined;
+
+        const markFirstCode = () => {
+          if (firstCodeAt === null) firstCodeAt = Date.now();
+        };
+
+        // Narration and code generation run concurrently — SSE `kind` keeps streams separate on the client.
+        const narrationPromise = (async () => {
+          try {
+            if (debugFailStage === 'narration') {
+              throw new Error('Debug forced narration failure');
+            }
+            await streamBuildNarration(
+              prompt,
+              'html',
+              (accumulated) => {
+                send({ kind: 'narration', text: accumulated });
+              },
+              narrationExtra
+            );
+          } catch {
+            const fallback = derivePromptNarrationFallback(prompt, narrationExtra);
+            send({ kind: 'narration', text: fallback });
           }
-          await streamBuildNarration(
-            prompt,
-            'html',
-            (accumulated) => {
-              send({ kind: 'narration', text: accumulated });
-            },
-            typeof narrationContext === 'string' ? narrationContext : undefined
-          );
-        } catch {
-          const fallback = derivePromptNarrationFallback(
-            prompt,
-            typeof narrationContext === 'string' ? narrationContext : undefined
-          );
-          send({ kind: 'narration', text: fallback });
-        }
+        })();
 
-        send({ kind: 'status', text: 'Generating your app — preview will update when ready…' });
+        const codePromise = (async (): Promise<{
+          finalCode: string;
+          streamedCode: boolean;
+          lastError: string;
+        }> => {
+          send({ kind: 'status', text: 'Generating your app — preview will update when ready…' });
 
-        const providerOrder = getProviderOrder(tier);
-        let finalCode = '';
-        let lastError = '';
-        let streamedCode = false;
+          const providerOrder = getProviderOrder(tier);
+          let finalCode = '';
+          let lastError = '';
+          let streamedCode = false;
 
-        // If the user opted into BYOC, try their keys first (non-streaming).
-        if (useOwnKeys && hasUserKeys) {
-          send({ kind: 'status', text: 'Using your own API keys…' });
-          if (profile?.anthropic_api_key?.trim()) {
-            const result = await generateWithAnthropicKey(prompt, profile.anthropic_api_key.trim());
-            if (result.ok) {
-              finalCode = result.code;
-            } else {
-              lastError = result.error;
+          if (useOwnKeys && hasUserKeys) {
+            send({ kind: 'status', text: 'Using your own API keys…' });
+            if (profile?.anthropic_api_key?.trim()) {
+              const result = await generateWithAnthropicKey(prompt, profile.anthropic_api_key.trim());
+              if (result.ok) {
+                finalCode = result.code;
+                markFirstCode();
+              } else {
+                lastError = result.error;
+              }
+            }
+            if (!finalCode && profile?.openai_api_key?.trim()) {
+              const result = await generateWithOpenAIKey(prompt, profile.openai_api_key.trim());
+              if (result.ok) {
+                finalCode = result.code;
+                markFirstCode();
+              } else {
+                lastError = result.error;
+              }
             }
           }
-          if (!finalCode && profile?.openai_api_key?.trim()) {
-            const result = await generateWithOpenAIKey(prompt, profile.openai_api_key.trim());
-            if (result.ok) {
-              finalCode = result.code;
-            } else {
-              lastError = result.error;
-            }
-          }
-        }
 
-        for (const provider of providerOrder) {
-          if (finalCode) break;
-          if (debugFailProvider && debugFailProvider === provider) {
-            lastError = `Debug forced failure for provider: ${provider}`;
-            continue;
-          }
-          send({ kind: 'status', text: `Trying ${provider}…` });
-
-          if (provider === 'groq') {
-            if (!groq) {
-              lastError = 'Groq API key not configured';
+          for (const provider of providerOrder) {
+            if (finalCode) break;
+            if (debugFailProvider && debugFailProvider === provider) {
+              lastError = `Debug forced failure for provider: ${provider}`;
               continue;
             }
-            try {
-              const codeStream = await groq.chat.completions.create({
-                messages: [
-                  { role: 'system', content: CODE_SYSTEM_PROMPT },
-                  { role: 'user', content: prompt },
-                ],
-                model: 'llama-3.3-70b-versatile',
-                temperature: 0.7,
-                max_tokens: 4096,
-                stream: true,
-              });
+            send({ kind: 'status', text: `Trying ${provider}…` });
 
-              for await (const chunk of codeStream) {
-                const text = chunk.choices[0]?.delta?.content ?? '';
-                if (text) {
-                  finalCode += text;
-                  streamedCode = true;
-                  send({ kind: 'code', text });
-                  if (debugFailStage === 'mid-stream' && finalCode.length >= 800) {
-                    throw new Error('Debug forced mid-stream failure');
+            if (provider === 'groq') {
+              if (!groq) {
+                lastError = 'Groq API key not configured';
+                continue;
+              }
+              try {
+                const codeStream = await groq.chat.completions.create({
+                  messages: [
+                    { role: 'system', content: HTML_CODE_SYSTEM_PROMPT },
+                    { role: 'user', content: prompt },
+                  ],
+                  model: 'llama-3.3-70b-versatile',
+                  temperature: 0.7,
+                  max_tokens: 4096,
+                  stream: true,
+                });
+
+                for await (const chunk of codeStream) {
+                  const text = chunk.choices[0]?.delta?.content ?? '';
+                  if (text) {
+                    markFirstCode();
+                    finalCode += text;
+                    streamedCode = true;
+                    send({ kind: 'code', text });
+                    if (debugFailStage === 'mid-stream' && finalCode.length >= 800) {
+                      throw new Error('Debug forced mid-stream failure');
+                    }
                   }
                 }
+
+                if (finalCode.trim()) break;
+                lastError = 'Groq returned empty code';
+                finalCode = '';
+                continue;
+              } catch (err) {
+                lastError = err instanceof Error ? err.message : 'Groq stream failed';
+                finalCode = '';
+                streamedCode = false;
+                continue;
               }
+            }
 
-              if (finalCode.trim()) break;
-              lastError = 'Groq returned empty code';
-              finalCode = '';
+            if (provider === 'anthropic') {
+              const key = process.env.ANTHROPIC_API_KEY?.trim();
+              if (!key) {
+                lastError = 'Anthropic API key not configured';
+                continue;
+              }
+              const result = await generateWithAnthropicKey(prompt, key);
+              if (result.ok) {
+                finalCode = result.code;
+                markFirstCode();
+              } else lastError = result.error;
               continue;
-            } catch (err) {
-              lastError = err instanceof Error ? err.message : 'Groq stream failed';
-              finalCode = '';
-              streamedCode = false;
+            }
+
+            if (provider === 'together') {
+              const result = await generateWithTogether(prompt);
+              if (result.ok) {
+                finalCode = result.code;
+                markFirstCode();
+              } else lastError = result.error;
+              continue;
+            }
+
+            if (provider === 'local') {
+              lastError = 'Local generation not available in cloud stream route';
               continue;
             }
           }
 
-          if (provider === 'anthropic') {
-            const key = process.env.ANTHROPIC_API_KEY?.trim();
-            if (!key) {
-              lastError = 'Anthropic API key not configured';
-              continue;
+          if (!finalCode && process.env.OPENAI_API_KEY?.trim()) {
+            if (!(debugFailProvider && debugFailProvider === 'openai')) {
+              send({ kind: 'status', text: 'Trying openai…' });
+              const result = await generateWithOpenAIKey(prompt, process.env.OPENAI_API_KEY.trim());
+              if (result.ok) {
+                finalCode = result.code;
+                markFirstCode();
+              } else lastError = result.error;
+            } else {
+              lastError = 'Debug forced failure for provider: openai';
             }
-            const result = await generateWithAnthropicKey(prompt, key);
-            if (result.ok) finalCode = result.code;
-            else lastError = result.error;
-            continue;
           }
 
-          if (provider === 'together') {
-            const result = await generateWithTogether(prompt);
-            if (result.ok) finalCode = result.code;
-            else lastError = result.error;
-            continue;
-          }
+          return { finalCode, streamedCode, lastError };
+        })();
 
-          if (provider === 'local') {
-            // Local Ollama is intentionally not attempted in this cloud route.
-            lastError = 'Local generation not available in cloud stream route';
-            continue;
-          }
-        }
-
-        // Optional last resort: platform OpenAI key (not included in tier provider list today).
-        if (!finalCode && process.env.OPENAI_API_KEY?.trim()) {
-          if (!(debugFailProvider && debugFailProvider === 'openai')) {
-            send({ kind: 'status', text: 'Trying openai…' });
-            const result = await generateWithOpenAIKey(prompt, process.env.OPENAI_API_KEY.trim());
-            if (result.ok) finalCode = result.code;
-            else lastError = result.error;
-          } else {
-            lastError = 'Debug forced failure for provider: openai';
-          }
-        }
+        const [codeResult] = await Promise.all([codePromise, narrationPromise]);
+        const { finalCode, streamedCode, lastError } = codeResult;
 
         if (!finalCode.trim()) {
           throw new Error(lastError || 'All AI providers failed');
         }
 
-        // If we fell back to a non-streaming provider, send the full result as one SSE payload.
-        // (Groq success path already emitted streamed chunks into the client.)
         if (!streamedCode) {
           send({ kind: 'code', text: finalCode });
         }
+
+        const durationMs = Date.now() - streamStartedAt;
+        logBuildPerformance(guard.user!.id, {
+          source: 'cloud_stream_server',
+          ttfcMs: firstCodeAt !== null ? firstCodeAt - streamStartedAt : null,
+          durationMs,
+          success: true,
+          codeChars: finalCode.length,
+        });
 
         void recordUsageEvent({
           eventType: 'build',

@@ -228,3 +228,30 @@ export function deleteProjectPage(files: ProjectFile[], path: string): ProjectFi
   if (!files.some((f) => f.path === path)) return null;
   return files.filter((f) => f.path !== path);
 }
+
+/** Add a page scaffold (or return existing path). Used by UI and prompt intent detection. */
+export function addProjectPage(
+  files: ProjectFile[],
+  indexHtml: string,
+  displayName: string
+): { files: ProjectFile[]; path: string; created: boolean } {
+  const path = slugifyPageFilename(displayName);
+  if (files.some((f) => f.path === path)) {
+    return { files, path, created: false };
+  }
+
+  const scaffold = createPageScaffold(path, indexHtml || '');
+  return {
+    files: [
+      ...files,
+      {
+        path,
+        name: path.split('/').pop() || path,
+        content: scaffold,
+        icon: '📄',
+      },
+    ],
+    path,
+    created: true,
+  };
+}

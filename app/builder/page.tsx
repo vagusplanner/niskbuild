@@ -11,8 +11,8 @@ import { getDeployablePreviewHtml } from '@/lib/deploy-preview';
 import { injectSeoIntoHtml } from '@/lib/seo-inject';
 import { buildProjectFiles, filesToMap, type ProjectFile } from '@/lib/project-files';
 import {
+  addProjectPage,
   buildPageScopedPrompt,
-  createPageScaffold,
   getPreviewHtmlForPage,
   inferProjectContext,
   isHtmlPage,
@@ -25,6 +25,8 @@ import {
 } from '@/lib/project-pages';
 import { buildContextualSuggestions } from '@/lib/project-suggestions';
 import { derivePromptNarrationFallback, formatNarrationContext } from '@/lib/narration-shared';
+import { detectAddPageIntent } from '@/lib/page-add-intent';
+import { reportBuildPerformance } from '@/lib/build-performance';
 import { isFullAppAuditPrompt } from '@/lib/builder-audit-shared';
 import { injectPreviewPageNavScript } from '@/lib/preview-page-nav-inject';
 import type { NiskBuildPromptEntry } from '@/lib/niskbuild-config';
@@ -111,6 +113,10 @@ const EDITOR_PLACEHOLDER = `// Your generated code will appear here...
 // Describe your app below and press Generate`;
 
 const PLACEHOLDER_PREVIEW = `<div style="display:flex;align-items:center;justify-content:center;height:100%;background:linear-gradient(160deg,#1e1a16 0%,#1a1612 100%);color:#8a7d6e;font-family:system-ui,sans-serif;font-size:14px;text-align:center;padding:2rem;"><div style="max-width:320px;padding:2rem;background:#241f1a;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.35);border:1px solid rgba(184,115,51,0.2);"><div style="font-size:36px;margin-bottom:12px">✨</div><p style="margin:0 0 8px;font-weight:600;color:#e8dcc8;">Your preview appears here</p><p style="margin:0;font-size:13px;">Describe your app in the chat and hit <strong style="color:#d49a5c">Generate</strong></p></div></div>`;
+
+/** Faster first preview paint during cloud code streaming */
+const PREVIEW_STREAM_DEBOUNCE_MS = 150;
+const PREVIEW_MIN_CODE_CHARS = 40;
 
 interface SavedProject {
   id: string;
@@ -404,21 +410,28 @@ function BuilderContent() {
     return html;
   };
 
-  const applyGeneratedCode = (rawCode: string, status: string, entry?: NiskBuildPromptEntry) => {
+  const applyGeneratedCode = (
+    rawCode: string,
+    status: string,
+    entry?: NiskBuildPromptEntry,
+    overrides?: { activePage?: string; files?: ProjectFile[] }
+  ) => {
+    const targetPage = overrides?.activePage ?? activeFile;
+    const filesSnapshot = overrides?.files ?? projectFiles;
     const hasExistingProject = isExportableCode(generatedCode);
 
-    if (hasExistingProject && isHtmlPage(activeFile)) {
-      const merged = mergeGeneratedIntoFiles(projectFiles, activeFile, rawCode);
+    if (hasExistingProject && isHtmlPage(targetPage)) {
+      const merged = mergeGeneratedIntoFiles(filesSnapshot, targetPage, rawCode);
       setProjectFiles(merged);
-      if (activeFile === 'index.html') {
+      if (targetPage === 'index.html') {
         lastCodeLenRef.current = rawCode.length;
         setGeneratedCode(rawCode);
       }
-      const preview = getPreviewHtmlForPage(activeFile, merged, generatedCode);
+      const preview = getPreviewHtmlForPage(targetPage, merged, generatedCode);
       setPreviewHtml(wrapPreviewHtml(preview));
     } else {
       const cleaned = cleanGeneratedCode(rawCode);
-      syncFilesFromCode(rawCode, undefined, { activePage: activeFile });
+      syncFilesFromCode(rawCode, undefined, { activePage: targetPage });
       lastCodeLenRef.current = rawCode.length;
       setGeneratedCode(rawCode);
       setPreviewHtml(wrapPreviewHtml(cleaned));
@@ -430,7 +443,7 @@ function BuilderContent() {
     setStatusMessage(status);
     setActiveEditorTab('preview');
     if (entry) {
-      setPromptHistory((prev) => [...prev, { ...entry, target: activeFile }]);
+      setPromptHistory((prev) => [...prev, { ...entry, target: targetPage }]);
       fetchBlueprint(entry.prompt);
     }
   };
@@ -569,19 +582,11 @@ function BuilderContent() {
 
     const indexHtml =
       projectFiles.find((f) => f.path === 'index.html')?.content?.trim() || generatedCode;
-    const scaffold = createPageScaffold(path, indexHtml || '');
+    const added = addProjectPage(projectFiles, indexHtml, name);
 
-    setProjectFiles((prev) => [
-      ...prev,
-      {
-        path,
-        name: path.split('/').pop() || path,
-        content: scaffold,
-        icon: '📄',
-      },
-    ]);
-    handleSelectFile(path);
-    setStatusMessage(`📄 Added ${pageDisplayLabel(path)} — prompt to fill it in for your app`);
+    setProjectFiles(added.files);
+    handleSelectFile(added.path);
+    setStatusMessage(`📄 Added ${pageDisplayLabel(added.path)} — prompt to fill it in for your app`);
     setTimeout(() => setStatusMessage(''), 6000);
   };
 
@@ -927,9 +932,30 @@ function BuilderContent() {
       ? `${basePrompt}\n\n${placesContext}`
       : basePrompt;
 
+    let filesForGen = projectFiles;
+    let activeForGen = activeFile;
+
+    const pageIntent = detectAddPageIntent(basePrompt);
+    if (pageIntent && isExportableCode(generatedCode)) {
+      const indexHtml =
+        projectFiles.find((f) => f.path === 'index.html')?.content?.trim() || generatedCode;
+      const added = addProjectPage(projectFiles, indexHtml, pageIntent.pageName);
+      filesForGen = added.files;
+      activeForGen = added.path;
+      if (added.created) {
+        setProjectFiles(added.files);
+        setActiveFile(added.path);
+        setStatusMessage(
+          `📄 Created ${pageDisplayLabel(added.path)} — generating content from your prompt…`
+        );
+      } else if (activeFile !== added.path) {
+        setActiveFile(added.path);
+      }
+    }
+
     const ctx = inferProjectContext({
-      files: projectFiles,
-      activePage: activeFile,
+      files: filesForGen,
+      activePage: activeForGen,
       generatedCode,
       businessName: projectContext?.business?.name ?? null,
       businessType: projectContext?.business?.businessType ?? null,
@@ -962,6 +988,9 @@ function BuilderContent() {
     setGeneratedCode('// Generating...');
     setPreviewHtml('<div style="padding:2rem;text-align:center;color:#94A3B8;background:#0B0F19;height:100%">🔄 Generating your app...</div>');
 
+    const genStartedAt = performance.now();
+    let clientTtfcMs: number | null = null;
+
     const session = await getSafeSession();
     const sandbox = isSandboxTier(subscriptionTier);
     const onProductionHost =
@@ -984,13 +1013,22 @@ function BuilderContent() {
         const localData = await localRes.json();
 
         if (localRes.ok && localData.success && localData.code) {
+          const durationMs = Math.round(performance.now() - genStartedAt);
+          reportBuildPerformance({
+            source: 'local_ollama',
+            ttfcMs: durationMs,
+            durationMs,
+            success: true,
+            codeChars: localData.code.length,
+          });
           if (session?.user?.id) {
             recordLocalGeneration(session.user.id, effectivePrompt, localData.code);
           }
           applyGeneratedCode(
             localData.code,
             '✅ Generated via Local Ollama',
-            { prompt: effectivePrompt, timestamp: new Date().toISOString() }
+            { prompt: effectivePrompt, timestamp: new Date().toISOString() },
+            { activePage: activeForGen, files: filesForGen }
           );
           void saveProjectVersionSilent(localData.code, effectivePrompt, 0);
           return;
@@ -1039,20 +1077,35 @@ function BuilderContent() {
           onStatus: (message) => setStatusMessage(message),
           onCodeChunk: (accumulated) => {
             setStreamingCode(accumulated);
-            if (!(ctx.isExistingProject && isHtmlPage(activeFile) && activeFile !== 'index.html')) {
+            if (
+              clientTtfcMs === null &&
+              accumulated.length >= PREVIEW_MIN_CODE_CHARS
+            ) {
+              clientTtfcMs = Math.round(performance.now() - genStartedAt);
+            }
+            if (!(ctx.isExistingProject && isHtmlPage(activeForGen) && activeForGen !== 'index.html')) {
               setGeneratedCode(accumulated);
             }
             if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current);
             previewDebounceRef.current = setTimeout(() => {
               const cleaned = cleanGeneratedCode(accumulated);
-              if (cleaned.length > 80) {
+              if (cleaned.length >= PREVIEW_MIN_CODE_CHARS) {
                 setPreviewHtml(wrapPreviewHtml(cleaned));
               }
-            }, 400);
+            }, PREVIEW_STREAM_DEBOUNCE_MS);
           },
         },
         { narrationContext }
       );
+
+      const durationMs = Math.round(performance.now() - genStartedAt);
+      reportBuildPerformance({
+        source: 'cloud_stream',
+        ttfcMs: clientTtfcMs,
+        durationMs,
+        success: !error && !!code.trim(),
+        codeChars: code.length,
+      });
 
       setStreamingCode('');
       setStreamingNarration('');
@@ -1088,7 +1141,12 @@ function BuilderContent() {
       if (session?.user?.id) {
         recordCloudGeneration(session.user.id, effectivePrompt, code, 1);
       }
-      applyGeneratedCode(code, '✅ Generated via Cloud AI (live)', historyEntry);
+      applyGeneratedCode(
+        code,
+        '✅ Generated via Cloud AI (live)',
+        historyEntry,
+        { activePage: activeForGen, files: filesForGen }
+      );
       void saveProjectVersionSilent(code, effectivePrompt, 1);
     } catch {
       setStreamingCode('');

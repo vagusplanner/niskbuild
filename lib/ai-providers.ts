@@ -3,6 +3,7 @@ import 'server-only';
 import { canUseLocalOllama } from '@/lib/tier-config';
 import Anthropic from '@anthropic-ai/sdk';
 import { getGroqClient } from '@/lib/groq-client';
+import { HTML_CODE_SYSTEM_PROMPT } from '@/lib/html-code-system-prompt';
 
 let anthropic: Anthropic | null = null;
 
@@ -51,14 +52,7 @@ export interface UserKeyOptions {
   anthropicKey?: string | null;
 }
 
-// System prompt for code generation
-const SYSTEM_PROMPT = `You are an expert web developer. Generate ONLY complete HTML/CSS/JavaScript code. 
-No explanations. No markdown. Start directly with <!DOCTYPE html>. 
-Make it responsive, modern, and visually appealing. Use Tailwind CSS when appropriate.
-For Tailwind, use <script src="https://cdn.tailwindcss.com"></script> — never use cdn.jsdelivr.net tailwind.min.js.
-Do not include Font Awesome or placeholder kit URLs. Use inline SVG or Unicode symbols for icons instead.
-If you use CSS variables like --color-border or --color-bg, define them on :root with valid color values.`;
-
+// System prompt for code generation (shared with cloud stream + local Ollama)
 // Generate with Groq (fast, cheap)
 async function generateWithGroq(prompt: string): Promise<AIResponse> {
   const groq = getGroqClient();
@@ -69,7 +63,7 @@ async function generateWithGroq(prompt: string): Promise<AIResponse> {
   try {
     const completion = await groq.chat.completions.create({
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'system', content: HTML_CODE_SYSTEM_PROMPT },
         { role: 'user', content: prompt },
       ],
       model: 'llama-3.3-70b-versatile',
@@ -92,7 +86,7 @@ async function generateWithAnthropicKey(prompt: string, apiKey: string): Promise
       model: 'claude-3-sonnet-20240229',
       max_tokens: 4096,
       temperature: 0.7,
-      system: SYSTEM_PROMPT,
+      system: HTML_CODE_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: prompt }],
     });
     const code = message.content[0].type === 'text' ? message.content[0].text : '';
@@ -120,7 +114,7 @@ async function generateWithTogether(prompt: string): Promise<AIResponse> {
   try {
     const completion = await together.chat.completions.create({
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'system', content: HTML_CODE_SYSTEM_PROMPT },
         { role: 'user', content: prompt },
       ],
       model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
@@ -142,7 +136,7 @@ async function generateWithOpenAIKey(prompt: string, apiKey: string): Promise<AI
     const client = new OpenAI({ apiKey });
     const completion = await client.chat.completions.create({
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'system', content: HTML_CODE_SYSTEM_PROMPT },
         { role: 'user', content: prompt },
       ],
       model: 'gpt-4-turbo-preview',
@@ -176,7 +170,7 @@ async function generateWithLocal(prompt: string): Promise<AIResponse> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'qwen2.5-coder:7b',
-        prompt: `${SYSTEM_PROMPT}\n\nUser request: ${prompt}`,
+        prompt: `${HTML_CODE_SYSTEM_PROMPT}\n\nUser request: ${prompt}`,
         stream: false,
         max_tokens: 4096,
       }),
