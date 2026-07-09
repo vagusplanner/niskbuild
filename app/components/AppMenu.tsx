@@ -28,7 +28,7 @@ const BASE_NAV = [
   { href: '/marketplace', label: 'Marketplace' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/dashboard/settings', label: 'Settings' },
-  { href: '/landing', label: 'Landing' },
+  { href: '/landing-v2', label: 'Landing' },
 ];
 
 const ADMIN_NAV = [

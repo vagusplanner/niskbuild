@@ -93,6 +93,6 @@ export async function signOut() {
   }
 
   if (typeof window !== 'undefined') {
-    window.location.href = '/landing';
+    window.location.href = '/landing-v2';
   }
 }

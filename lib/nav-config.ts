@@ -50,7 +50,7 @@ export const APP_NAV: NavItem[] = [
 export const MAIN_NAV: NavItem[] = [...PRIMARY_NAV, ...OVERFLOW_NAV];
 
 export const PUBLIC_NAV: NavItem[] = [
-  { href: '/landing', label: 'Home', icon: '🏠' },
+  { href: '/landing-v2', label: 'Home', icon: '🏠' },
   { href: '/pricing', label: 'Pricing', icon: '💳' },
   { href: '/login', label: 'Sign In', icon: '🔐' },
 ];

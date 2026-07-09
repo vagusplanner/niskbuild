@@ -12,7 +12,7 @@ export const metadata = {
 export default function GamesPage() {
   return (
     <Layout variant="marketing" showFooter={true}>
-      <PageBackHeader href="/landing" label="Back to home" />
+      <PageBackHeader href="/landing-v2" label="Back to home" />
       <div className="max-w-4xl mx-auto py-12 px-4 text-center">
         <div className="text-6xl mb-4">🎮</div>
         <h1 className="text-4xl font-bold text-white mb-4">AI Game Builder</h1>

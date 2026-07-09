@@ -94,7 +94,7 @@ function LoginContent() {
         </p>
 
         <p className="mt-4 text-center text-sm text-nisk-muted">
-          <Link href="/landing" className="text-[var(--primary)] hover:underline">← Back to Landing</Link>
+          <Link href="/landing-v2" className="text-[var(--primary)] hover:underline">← Back to Landing</Link>
         </p>
       </div>
     </div>

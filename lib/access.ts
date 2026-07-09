@@ -23,6 +23,7 @@ export function isPlatformOwnerPath(pathname: string) {
 export const PUBLIC_PATHS = [
   '/',
   '/landing',
+  '/landing-v2',
   '/login',
   '/signup',
   '/reset-password',

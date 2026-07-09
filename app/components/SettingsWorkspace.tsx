@@ -319,7 +319,7 @@ export default function SettingsWorkspace() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Delete failed');
       await signOut();
-      window.location.href = '/landing';
+      window.location.href = '/landing-v2';
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Delete failed', 'error');
       setDeletingAccount(false);

@@ -96,7 +96,7 @@ const PLATFORM_ADMIN_NAV: NavItem[] = [
 
 /** Logged-out visitors on app pages */
 const GUEST_NAV: NavItem[] = [
-  { href: '/landing', label: 'Home', icon: '🏠' },
+  { href: '/landing-v2', label: 'Home', icon: '🏠' },
   { href: '/pricing', label: 'Pricing', icon: '💳' },
 ];
 
@@ -167,7 +167,7 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
   }, [variant, user, fullNavAccess]);
 
   const navRestricted = !!user && fullNavAccess !== true;
-  const homeHref = user ? (fullNavAccess ? '/dashboard' : '/pricing') : '/landing';
+  const homeHref = user ? (fullNavAccess ? '/dashboard' : '/pricing') : '/landing-v2';
   const overflowNav = user
     ? overflowNavForAccount({
         subscription_tier: subscriptionTier,
@@ -218,7 +218,7 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
             isNavActive={isNavActive}
           />
         ) : (
-          <NiskBuildLogo href="/landing" variant="lockup" size="sm" />
+          <NiskBuildLogo href="/landing-v2" variant="lockup" size="sm" />
         )}
 
         {!isBuilder && (
