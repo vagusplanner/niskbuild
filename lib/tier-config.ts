@@ -111,7 +111,7 @@ export function isPaidAndActive(
   tier: string | null | undefined,
   status: string | null | undefined
 ): boolean {
-  return hasPaidTier(tier) && status === 'active';
+  return hasPaidTier(tier) && (status === 'active' || status === 'past_due');
 }
 
 /** Pro Worker tier and above (excludes Basic) */

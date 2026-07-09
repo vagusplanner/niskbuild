@@ -765,7 +765,15 @@ export default function SettingsWorkspace() {
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-nisk-card border border-nisk rounded-xl p-6 max-w-md w-full">
             <h3 className="text-lg font-semibold text-white mb-2">Cancel subscription?</h3>
-            <p className="text-sm text-nisk-muted mb-3">You will lose access to:</p>
+            <p className="text-sm text-nisk-muted mb-3">
+              If you cancel in the billing portal, you keep full access until{' '}
+              <strong className="text-gray-200">
+                {billing?.nextBillingDate
+                  ? new Date(billing.nextBillingDate).toLocaleDateString()
+                  : 'the end of your current billing period'}
+              </strong>
+              . After that date, you will lose access to:
+            </p>
             <ul className="text-sm text-gray-300 list-disc pl-5 mb-4 space-y-1">
               <li>Cloud AI credits and generation</li>
               <li>Clean ZIP export and live preview links</li>

@@ -123,3 +123,37 @@ export function getSovereignSetupPriceId(): string | null {
 export function isSelfServeCheckoutTier(tier: string | null | undefined): boolean {
   return !!getPriceId(tier || '', 'month');
 }
+
+const PRICE_ID_TO_TIER: Record<string, string> = (() => {
+  const map: Record<string, string> = {};
+  for (const [tier, prefix] of Object.entries(TIER_KEY_PREFIX)) {
+    for (const suffix of ['MONTHLY', 'ANNUAL'] as const) {
+      const key = `${prefix}_${suffix}` as keyof typeof STRIPE_PRICE_IDS;
+      const priceId = STRIPE_PRICE_IDS[key];
+      if (priceId) map[priceId] = tier;
+    }
+  }
+  return map;
+})();
+
+/** Resolve NiskBuild tier slug from a Stripe Price ID (subscription line item). */
+export function tierFromStripePriceId(priceId: string | null | undefined): string | null {
+  if (!priceId) return null;
+  return PRICE_ID_TO_TIER[priceId] ?? null;
+}
+
+type StripeSubscriptionTierSource = {
+  metadata?: { tier?: string } | null;
+  items: { data: Array<{ price?: { id?: string } | string | null }> };
+};
+
+/** Price ID is source of truth; metadata.tier is fallback for legacy checkouts. */
+export function resolveTierFromSubscription(
+  subscription: StripeSubscriptionTierSource,
+  fallback = 'pro'
+): string {
+  const firstItem = subscription.items.data[0];
+  const price = firstItem?.price;
+  const priceId = typeof price === 'string' ? price : price?.id;
+  return tierFromStripePriceId(priceId) ?? subscription.metadata?.tier ?? fallback;
+}
