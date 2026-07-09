@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Could not submit your message' }, { status: 500 });
     }
 
-    void notifyAdminNewTicket({
+    const notify = await notifyAdminNewTicket({
       ticketId: ticket.id,
       subject,
       name,
@@ -58,6 +58,21 @@ export async function POST(request: NextRequest) {
       category,
       message,
     });
+
+    if (!notify.ok) {
+      console.error('[support/contact] ticket saved but notification email failed', {
+        ticketId: ticket.id,
+        error: notify.error,
+      });
+      return NextResponse.json(
+        {
+          error:
+            'Your message was saved, but we could not notify the team by email. Please try again or email hello@niskbuild.com.',
+          ticketId: ticket.id,
+        },
+        { status: 502 }
+      );
+    }
 
     return NextResponse.json({
       success: true,

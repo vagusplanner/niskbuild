@@ -2,7 +2,7 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendEmail } from '@/lib/send-email';
-import { getAdminEmail } from '@/lib/admin-auth';
+import { getSupportInboxEmail } from '@/lib/admin-auth';
 
 export type CreateTicketInput = {
   userId?: string | null;
@@ -56,8 +56,8 @@ export async function notifyAdminNewTicket(params: {
   category: string;
   message: string;
   planTier?: string | null;
-}): Promise<void> {
-  const adminEmail = getAdminEmail();
+}): Promise<{ ok: boolean; error?: string }> {
+  const inbox = getSupportInboxEmail();
   const html = `
     <div style="font-family:system-ui,sans-serif;max-width:560px;color:#111;">
       <h2 style="margin:0 0 12px;">New support ticket</h2>
@@ -72,12 +72,22 @@ export async function notifyAdminNewTicket(params: {
     </div>
   `;
 
-  void sendEmail({
-    to: adminEmail,
+  const result = await sendEmail({
+    to: inbox,
     subject: `[NiskBuild] ${params.subject}`,
     html,
     replyTo: params.email,
   });
+
+  if (!result.ok) {
+    console.error('[notifyAdminNewTicket] email failed', {
+      to: inbox,
+      ticketId: params.ticketId,
+      error: result.error,
+    });
+  }
+
+  return result;
 }
 
 export async function notifyUserTicketReply(params: {

@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (ticket) {
-      void notifyAdminNewTicket({
+      await notifyAdminNewTicket({
         ticketId: ticket.id,
         subject,
         name,

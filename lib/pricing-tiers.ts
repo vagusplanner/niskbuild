@@ -158,10 +158,10 @@ export const PRICING_TIERS: PricingTier[] = [
   },
   {
     name: 'Sovereign',
-    price: '$3,999',
-    period: '/month + $1,500 setup',
-    annualPrice: '$39,990',
-    annualPeriod: '/year + $1,500 setup',
+    price: 'From $3,999',
+    period: '/mo + $1,500 setup',
+    annualPrice: 'From $39,990',
+    annualPeriod: '/yr + $1,500 setup',
     description: 'Best for: Enterprise',
     features: [
       'Unlimited everything',

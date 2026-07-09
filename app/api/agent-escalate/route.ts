@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
-import { getAdminEmail } from '@/lib/admin-auth';
+import { getSupportInboxEmail } from '@/lib/admin-auth';
 import { sendEmail } from '@/lib/send-email';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -38,11 +38,7 @@ function parseHistory(value: unknown): HistoryMessage[] {
 }
 
 function supportInbox(): string {
-  return (
-    process.env.SUPPORT_EMAIL?.trim() ||
-    process.env.ADMIN_EMAIL?.trim() ||
-    getAdminEmail()
-  );
+  return getSupportInboxEmail();
 }
 
 function buildEscalationEmailHtml(params: {
