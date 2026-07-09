@@ -24,6 +24,7 @@ import {
   deleteProjectPage,
 } from '@/lib/project-pages';
 import { buildContextualSuggestions } from '@/lib/project-suggestions';
+import { derivePromptNarrationFallback, formatNarrationContext } from '@/lib/narration-shared';
 import { isFullAppAuditPrompt } from '@/lib/builder-audit-shared';
 import { injectPreviewPageNavScript } from '@/lib/preview-page-nav-inject';
 import type { NiskBuildPromptEntry } from '@/lib/niskbuild-config';
@@ -610,6 +611,14 @@ function BuilderContent() {
     setTimeout(() => setStatusMessage(''), 5000);
   };
 
+  const savedProjectTitle = useMemo(
+    () =>
+      activeProjectId
+        ? savedProjects.find((p) => p.id === activeProjectId)?.title
+        : undefined,
+    [activeProjectId, savedProjects]
+  );
+
   const pageContext = useMemo(
     () =>
       inferProjectContext({
@@ -617,19 +626,37 @@ function BuilderContent() {
         activePage: activeFile,
         generatedCode,
         businessName: projectContext?.business?.name ?? null,
+        businessType: projectContext?.business?.businessType ?? null,
+        savedProjectTitle,
+        currentPrompt: prompt,
         lastPrompt: promptHistory[promptHistory.length - 1]?.prompt,
+        promptHistory: promptHistory.map((h) => h.prompt),
       }),
-    [projectFiles, activeFile, generatedCode, projectContext, promptHistory]
+    [
+      projectFiles,
+      activeFile,
+      generatedCode,
+      projectContext,
+      promptHistory,
+      savedProjectTitle,
+      prompt,
+    ]
   );
 
-  const promptSuggestions = useMemo(() => {
-    const base = buildContextualSuggestions(pageContext);
-    return [
-      'Run a full export audit before shipping to clients',
-      'Check all pages, buttons, and links work on mobile',
-      ...base,
-    ].slice(0, 6);
-  }, [pageContext]);
+  const promptSuggestions = useMemo(
+    () =>
+      buildContextualSuggestions(
+        {
+          ...pageContext,
+          currentPrompt: prompt,
+          savedProjectTitle,
+          businessType: projectContext?.business?.businessType,
+          promptHistory: promptHistory.map((h) => h.prompt),
+        },
+        6
+      ),
+    [pageContext, prompt, savedProjectTitle, projectContext, promptHistory]
+  );
 
   const applyAuditReport = (
     report: string,
@@ -905,9 +932,21 @@ function BuilderContent() {
       activePage: activeFile,
       generatedCode,
       businessName: projectContext?.business?.name ?? null,
+      businessType: projectContext?.business?.businessType ?? null,
+      savedProjectTitle,
+      currentPrompt: basePrompt,
       lastPrompt: promptHistory[promptHistory.length - 1]?.prompt,
+      promptHistory: promptHistory.map((h) => h.prompt),
     });
     const effectivePrompt = buildPageScopedPrompt(withPlaces, ctx);
+    const narrationContext = formatNarrationContext({
+      pageLabel: ctx.pageLabel,
+      siteKind: ctx.siteKind,
+      businessName: ctx.businessName,
+      projectTitle: savedProjectTitle ?? ctx.projectTitle,
+      primaryHeading: ctx.primaryHeading,
+      activePage: ctx.activePage,
+    });
 
     if (planMode && !promptOverride?.includes('TARGETED EDIT')) {
       await handlePlan(effectivePrompt);
@@ -916,7 +955,7 @@ function BuilderContent() {
 
     setIsGenerating(true);
     setStreamingCode('');
-    setStreamingNarration('');
+    setStreamingNarration(derivePromptNarrationFallback(effectivePrompt, narrationContext));
     setVisualEditHistory([]);
     setSelectedVisualElement(null);
     aiOriginalCodeRef.current = null;
@@ -934,9 +973,7 @@ function BuilderContent() {
 
     if (useLocalPath) {
       setStatusMessage('🖥️ Generating via local Ollama...');
-      setStreamingNarration(
-        'Understanding your request…\nPlanning the page layout…\nGenerating HTML, styles, and interactions…'
-      );
+      setStreamingNarration(derivePromptNarrationFallback(effectivePrompt, narrationContext));
       try {
         const localRes = await fetch('/api/generate', {
           method: 'POST',
@@ -994,23 +1031,28 @@ function BuilderContent() {
     const historyEntry: NiskBuildPromptEntry = { prompt: effectivePrompt, timestamp: new Date().toISOString() };
 
     try {
-      const { code, error } = await readCloudGenerateStream(effectivePrompt, activeProjectId, {
-        onNarration: (accumulated) => setStreamingNarration(accumulated),
-        onStatus: (message) => setStatusMessage(message),
-        onCodeChunk: (accumulated) => {
-          setStreamingCode(accumulated);
-          if (!(ctx.isExistingProject && isHtmlPage(activeFile) && activeFile !== 'index.html')) {
-            setGeneratedCode(accumulated);
-          }
-          if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current);
-          previewDebounceRef.current = setTimeout(() => {
-            const cleaned = cleanGeneratedCode(accumulated);
-            if (cleaned.length > 80) {
-              setPreviewHtml(wrapPreviewHtml(cleaned));
+      const { code, error } = await readCloudGenerateStream(
+        effectivePrompt,
+        activeProjectId,
+        {
+          onNarration: (accumulated) => setStreamingNarration(accumulated),
+          onStatus: (message) => setStatusMessage(message),
+          onCodeChunk: (accumulated) => {
+            setStreamingCode(accumulated);
+            if (!(ctx.isExistingProject && isHtmlPage(activeFile) && activeFile !== 'index.html')) {
+              setGeneratedCode(accumulated);
             }
-          }, 400);
+            if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current);
+            previewDebounceRef.current = setTimeout(() => {
+              const cleaned = cleanGeneratedCode(accumulated);
+              if (cleaned.length > 80) {
+                setPreviewHtml(wrapPreviewHtml(cleaned));
+              }
+            }, 400);
+          },
         },
-      });
+        { narrationContext }
+      );
 
       setStreamingCode('');
       setStreamingNarration('');

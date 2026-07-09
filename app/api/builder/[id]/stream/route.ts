@@ -5,6 +5,7 @@ import {
   resolveBuilderApp,
 } from '@/lib/builder-apps/handlers';
 import { streamBuildNarration } from '@/lib/generate-narration';
+import { derivePromptNarrationFallback } from '@/lib/narration-shared';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -53,7 +54,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
             target ? `Editing ${target.label} (${target.file})` : undefined
           );
         } catch {
-          const fallback = 'Reading the current page…\nPlanning your edits…\nApplying changes to the app…';
+          const extra = target ? `Editing ${target.label} (${target.file})` : undefined;
+          const fallback = derivePromptNarrationFallback(prompt, extra);
           send({ kind: 'narration', text: fallback });
         }
 

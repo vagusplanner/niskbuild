@@ -11,7 +11,8 @@ export type CloudGenerateStreamCallbacks = {
 export async function readCloudGenerateStream(
   prompt: string,
   projectId: string | null,
-  callbacks: CloudGenerateStreamCallbacks | ((accumulated: string, delta: string) => void)
+  callbacks: CloudGenerateStreamCallbacks | ((accumulated: string, delta: string) => void),
+  options?: { narrationContext?: string }
 ): Promise<{ code: string; narration: string; error?: string }> {
   const normalized: CloudGenerateStreamCallbacks =
     typeof callbacks === 'function' ? { onCodeChunk: callbacks } : callbacks;
@@ -26,7 +27,11 @@ export async function readCloudGenerateStream(
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       signal: controller.signal,
-      body: JSON.stringify({ prompt, projectId }),
+      body: JSON.stringify({
+        prompt,
+        projectId,
+        narrationContext: options?.narrationContext,
+      }),
     });
   } catch (err) {
     window.clearTimeout(timeoutId);

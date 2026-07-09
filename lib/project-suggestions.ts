@@ -2,17 +2,24 @@ import type { ProjectPageContext } from '@/lib/project-pages';
 import { pageDisplayLabel } from '@/lib/project-pages';
 import { PROMPT_SUGGESTIONS } from '@/lib/prompt-suggestions';
 
-function pick<T>(arr: T[], n: number): T[] {
-  const copy = [...arr];
-  const out: T[] = [];
-  while (copy.length > 0 && out.length < n) {
-    const i = Math.floor(Math.random() * copy.length);
-    out.push(copy.splice(i, 1)[0]);
-  }
-  return out;
-}
+export type SuggestionContext = ProjectPageContext & {
+  /** Text currently in the prompt bar */
+  currentPrompt?: string;
+  /** Saved project title from dashboard */
+  savedProjectTitle?: string;
+  /** Google Places or other import business type */
+  businessType?: string;
+  /** Recent user prompts (newest last) */
+  promptHistory?: string[];
+};
 
 const KIND_SUGGESTIONS: Record<string, string[]> = {
+  medical: [
+    'Add an online appointment booking form with date and time slots',
+    'Add a services section for treatments with descriptions and pricing',
+    'Add patient testimonials and insurance information',
+    'Add a team section with doctor photos and credentials',
+  ],
   restaurant: [
     'Add an online menu section with categories and prices',
     'Add a reservation form with date, time, and party size',
@@ -55,6 +62,24 @@ const KIND_SUGGESTIONS: Record<string, string[]> = {
     'Add author bio and related articles',
     'Add reading time and share buttons on posts',
   ],
+  legal: [
+    'Add practice area cards with consultation CTA',
+    'Add attorney profiles with credentials and case results',
+    'Add a FAQ section for common legal questions',
+    'Add a secure contact form for case inquiries',
+  ],
+  real_estate: [
+    'Add property listing cards with beds, baths, and price',
+    'Add map search and neighborhood highlights',
+    'Add agent profile with contact and showing scheduler',
+    'Add mortgage calculator or open-house banner',
+  ],
+  local_business: [
+    'Add Google Maps embed with directions and parking info',
+    'Add customer reviews carousel from Google ratings',
+    'Add services list with call-to-action buttons',
+    'Add hours, phone, and click-to-call on mobile',
+  ],
 };
 
 const PAGE_SUGGESTIONS: Record<string, string[]> = {
@@ -91,53 +116,138 @@ function pageKey(path: string): string {
   return base;
 }
 
-export function buildContextualSuggestions(
-  ctx: ProjectPageContext,
-  max = 4
-): string[] {
+function mapBusinessTypeToKind(businessType?: string): string | undefined {
+  if (!businessType) return undefined;
+  const t = businessType.toLowerCase();
+  if (/doctor|dental|clinic|hospital|medical|health/.test(t)) return 'medical';
+  if (/restaurant|food|cafe|meal|bakery|bar/.test(t)) return 'restaurant';
+  if (/store|shop|retail|grocery/.test(t)) return 'ecommerce';
+  if (/lawyer|attorney|legal/.test(t)) return 'legal';
+  if (/gym|fitness|yoga/.test(t)) return 'fitness';
+  if (/real estate|realtor|property/.test(t)) return 'real_estate';
+  if (/beauty|salon|spa|hair/.test(t)) return 'booking';
+  return 'local_business';
+}
+
+function detectSiteKind(text: string): string | undefined {
+  const t = text.toLowerCase();
+  if (/medical|clinic|doctor|dental|patient|healthcare|hospital|physician/.test(t)) return 'medical';
+  if (/restaurant|menu|cafe|food|dining|bakery/.test(t)) return 'restaurant';
+  if (/shop|store|cart|ecommerce|product|checkout|retail/.test(t)) return 'ecommerce';
+  if (/saas|pricing|subscription|dashboard|startup|software/.test(t)) return 'saas';
+  if (/portfolio|photographer|gallery|creative|designer/.test(t)) return 'portfolio';
+  if (/booking|appointment|calendar|schedule|salon|spa/.test(t)) return 'booking';
+  if (/fitness|gym|workout|health club|yoga/.test(t)) return 'fitness';
+  if (/blog|article|newsletter|magazine/.test(t)) return 'blog';
+  if (/law|legal|attorney|lawyer|firm/.test(t)) return 'legal';
+  if (/real estate|property|realtor|listing|rental/.test(t)) return 'real_estate';
+  return undefined;
+}
+
+function collectSubjectText(ctx: SuggestionContext): string {
+  return [
+    ctx.savedProjectTitle,
+    ctx.projectTitle,
+    ctx.primaryHeading,
+    ctx.businessName,
+    ctx.businessType,
+    ctx.currentPrompt,
+    ...(ctx.promptHistory ?? []).slice(-4),
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+function resolveSiteKind(ctx: SuggestionContext): string | undefined {
+  return (
+    ctx.siteKind ||
+    mapBusinessTypeToKind(ctx.businessType) ||
+    detectSiteKind(collectSubjectText(ctx))
+  );
+}
+
+function hasEstablishedSubject(ctx: SuggestionContext): boolean {
+  if (ctx.isExistingProject) return true;
+  if (ctx.businessName || ctx.savedProjectTitle) return true;
+  const text = collectSubjectText(ctx);
+  return text.trim().length > 24 && detectSiteKind(text) !== undefined;
+}
+
+function rankByRelevance(suggestions: string[], ctx: SuggestionContext): string[] {
+  const needle = [
+    ctx.currentPrompt,
+    ctx.savedProjectTitle,
+    ctx.businessName,
+    ctx.primaryHeading,
+    resolveSiteKind(ctx),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  if (!needle.trim()) return suggestions;
+
+  const tokens = needle.split(/[^a-z0-9]+/i).filter((w) => w.length > 3);
+  const score = (s: string) => {
+    const lower = s.toLowerCase();
+    return tokens.reduce((n, w) => n + (lower.includes(w) ? 2 : 0), 0);
+  };
+
+  return [...suggestions].sort((a, b) => score(b) - score(a));
+}
+
+export function buildContextualSuggestions(ctx: SuggestionContext, max = 4): string[] {
+  if (!hasEstablishedSubject(ctx)) {
+    return PROMPT_SUGGESTIONS.slice(0, max);
+  }
+
   const suggestions: string[] = [];
   const label = pageDisplayLabel(ctx.activePage);
   const key = pageKey(ctx.activePage);
+  const siteKind = resolveSiteKind(ctx);
+  const subjectName =
+    ctx.businessName || ctx.savedProjectTitle || ctx.primaryHeading || ctx.projectTitle;
 
-  if (ctx.isExistingProject) {
+  suggestions.push(
+    `Improve the ${label} page — keep the same design system and navigation`
+  );
+
+  if (subjectName && siteKind) {
     suggestions.push(
-      `Improve the ${label} page — keep the same design system and navigation`
+      `Refine ${label} copy and layout for this ${siteKind.replace(/_/g, ' ')} site (“${subjectName}”)`
     );
+  } else if (subjectName) {
+    suggestions.push(`Tailor the ${label} page for “${subjectName}” with on-brand copy`);
+  }
 
-    if (ctx.allPages.length === 1) {
-      suggestions.push('Add an About page matching this site’s style and nav');
-      suggestions.push('Add a Contact page with form and map');
-      suggestions.push('Add a Services or Pricing page linked from the header');
-    } else {
-      const missing = ['about', 'contact', 'pricing', 'services'].filter(
-        (name) => !ctx.allPages.some((p) => pageKey(p) === name)
-      );
-      if (missing[0]) {
-        suggestions.push(
-          `Create a new ${missing[0].charAt(0).toUpperCase() + missing[0].slice(1)} page consistent with this site`
-        );
-      }
-    }
-
-    if (PAGE_SUGGESTIONS[key]) {
-      suggestions.push(...PAGE_SUGGESTIONS[key].slice(0, 2));
-    }
-
-    if (ctx.siteKind && KIND_SUGGESTIONS[ctx.siteKind]) {
-      suggestions.push(...KIND_SUGGESTIONS[ctx.siteKind].slice(0, 2));
-    }
-
-    if (ctx.businessName) {
+  if (ctx.isExistingProject && ctx.allPages.length === 1) {
+    suggestions.push('Add an About page matching this site’s style and nav');
+    suggestions.push('Add a Contact page with form and map');
+  } else if (ctx.isExistingProject) {
+    const missing = ['about', 'contact', 'pricing', 'services'].filter(
+      (name) => !ctx.allPages.some((p) => pageKey(p) === name)
+    );
+    if (missing[0]) {
       suggestions.push(
-        `Tailor the ${label} page copy for ${ctx.businessName} — local, trustworthy tone`
+        `Create a new ${missing[0].charAt(0).toUpperCase() + missing[0].slice(1)} page consistent with this site`
       );
     }
   }
 
-  if (suggestions.length < max) {
-    suggestions.push(...pick(PROMPT_SUGGESTIONS, max - suggestions.length));
+  if (PAGE_SUGGESTIONS[key]) {
+    suggestions.push(...PAGE_SUGGESTIONS[key].slice(0, 2));
+  }
+
+  if (siteKind && KIND_SUGGESTIONS[siteKind]) {
+    suggestions.push(...KIND_SUGGESTIONS[siteKind].slice(0, 3));
+  }
+
+  if (ctx.businessName) {
+    suggestions.push(
+      `Highlight ${ctx.businessName} reviews, hours, and location on the ${label} page`
+    );
   }
 
   const unique = [...new Set(suggestions)];
-  return unique.slice(0, max);
+  return rankByRelevance(unique, ctx).slice(0, max);
 }

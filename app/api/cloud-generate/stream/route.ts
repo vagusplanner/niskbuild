@@ -5,6 +5,7 @@ import { addCloudCredits, deductCloudCredit } from '@/lib/credits';
 import { canSpendCloudCredits, outOfCreditsMessage } from '@/lib/credits-init';
 import { getGroqClient } from '@/lib/groq-client';
 import { streamBuildNarration } from '@/lib/generate-narration';
+import { derivePromptNarrationFallback } from '@/lib/narration-shared';
 import { canUseOwnApiKeys } from '@/lib/tier-config';
 import { getProviderOrder } from '@/lib/ai-providers';
 import { recordUsageEvent } from '@/lib/usage-events';
@@ -108,7 +109,7 @@ export async function POST(request: NextRequest) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
   }
 
-  const { prompt, projectId } = await request.json();
+  const { prompt, projectId, narrationContext } = await request.json();
   if (!prompt?.trim()) {
     return new Response(JSON.stringify({ error: 'Prompt is required' }), { status: 400 });
   }
@@ -167,11 +168,14 @@ export async function POST(request: NextRequest) {
             'html',
             (accumulated) => {
               send({ kind: 'narration', text: accumulated });
-            }
+            },
+            typeof narrationContext === 'string' ? narrationContext : undefined
           );
         } catch {
-          const fallback =
-            'Understanding your request…\nPlanning the page structure…\nPreparing layout and styles…';
+          const fallback = derivePromptNarrationFallback(
+            prompt,
+            typeof narrationContext === 'string' ? narrationContext : undefined
+          );
           send({ kind: 'narration', text: fallback });
         }
 

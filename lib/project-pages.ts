@@ -45,13 +45,16 @@ function extractTag(html: string, tag: string): string | undefined {
 
 function detectSiteKind(text: string): string | undefined {
   const t = text.toLowerCase();
-  if (/restaurant|menu|cafe|food|dining/.test(t)) return 'restaurant';
-  if (/shop|store|cart|ecommerce|product|checkout/.test(t)) return 'ecommerce';
-  if (/saas|pricing|subscription|dashboard|startup/.test(t)) return 'saas';
-  if (/portfolio|photographer|gallery|creative/.test(t)) return 'portfolio';
-  if (/booking|appointment|calendar|schedule/.test(t)) return 'booking';
-  if (/fitness|gym|workout|health/.test(t)) return 'fitness';
-  if (/blog|article|newsletter/.test(t)) return 'blog';
+  if (/medical|clinic|doctor|dental|patient|healthcare|hospital|physician/.test(t)) return 'medical';
+  if (/restaurant|menu|cafe|food|dining|bakery/.test(t)) return 'restaurant';
+  if (/shop|store|cart|ecommerce|product|checkout|retail/.test(t)) return 'ecommerce';
+  if (/saas|pricing|subscription|dashboard|startup|software/.test(t)) return 'saas';
+  if (/portfolio|photographer|gallery|creative|designer/.test(t)) return 'portfolio';
+  if (/booking|appointment|calendar|schedule|salon|spa/.test(t)) return 'booking';
+  if (/fitness|gym|workout|yoga/.test(t)) return 'fitness';
+  if (/blog|article|newsletter|magazine/.test(t)) return 'blog';
+  if (/law|legal|attorney|lawyer|firm/.test(t)) return 'legal';
+  if (/real estate|property|realtor|listing|rental/.test(t)) return 'real_estate';
   return undefined;
 }
 
@@ -60,7 +63,11 @@ export function inferProjectContext(params: {
   activePage: string;
   generatedCode: string;
   businessName?: string | null;
+  businessType?: string | null;
+  savedProjectTitle?: string | null;
+  currentPrompt?: string;
   lastPrompt?: string;
+  promptHistory?: string[];
 }): ProjectPageContext {
   const pages = listHtmlPages(params.files);
   const indexContent =
@@ -70,7 +77,18 @@ export function inferProjectContext(params: {
     params.files.find((f) => f.path === params.activePage)?.content?.trim() ||
     (params.activePage === 'index.html' ? params.generatedCode : '');
 
-  const sample = `${indexContent}\n${activeContent}\n${params.lastPrompt ?? ''}`;
+  const sample = [
+    indexContent,
+    activeContent,
+    params.savedProjectTitle,
+    params.businessName,
+    params.businessType,
+    params.currentPrompt,
+    params.lastPrompt,
+    ...(params.promptHistory ?? []).slice(-4),
+  ]
+    .filter(Boolean)
+    .join('\n');
   const projectTitle = extractTag(indexContent, 'title') || extractTag(activeContent, 'title');
   const primaryHeading =
     extractTag(indexContent, 'h1') || extractTag(activeContent, 'h1') || projectTitle;
