@@ -70,7 +70,7 @@ function LoginContent() {
           </div>
           <h1 className="text-2xl font-bold text-[var(--foreground)] mb-2 text-center">Sign in to NiskBuild</h1>
           <p className="text-nisk-muted text-sm">
-            Sign in or create an account. After that, choose a plan to unlock the builder and marketplace.
+            Sign in or create an account. You can start building for free (Sandbox) — upgrade anytime for Marketplace, exports, and higher limits.
           </p>
         </div>
 

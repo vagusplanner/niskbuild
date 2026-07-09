@@ -30,9 +30,10 @@ export const PRICING_TIERS: PricingTier[] = [
     features: [
       '1 project',
       'Live preview',
-      'Local AI (Ollama)',
+      '5 cloud AI credits (trial)',
+      'Builder access (after phone verification)',
       'ZIP export locked',
-      'No cloud credits',
+      'No Marketplace access',
     ],
     buttonText: 'Start Free',
     highlighted: false,

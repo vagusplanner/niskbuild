@@ -31,7 +31,7 @@ const STEPS = [
   {
     title: 'Marketplace templates',
     icon: '🏪',
-    body: 'Not sure where to start? Open Marketplace from the top-left menu. Browse community templates — CRM, e-commerce, booking systems — and click "Use Template" to load a ready-made prompt into the builder.',
+    body: 'Not sure where to start? Open Marketplace from the top-left menu. Browse community templates — CRM, e-commerce, booking systems — and click "Use Template" to load a ready-made prompt into the builder.\n\nNote: Marketplace requires a paid plan.',
     tip: 'Templates save hours on client projects.',
   },
   {

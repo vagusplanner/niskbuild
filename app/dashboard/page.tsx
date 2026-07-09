@@ -176,6 +176,19 @@ function DashboardContent() {
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {projects.length === 0 && (
+            <div className="brick-card-top rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-5 sm:col-span-2 lg:col-span-3">
+              <p className="text-sm font-semibold text-[var(--foreground)]">Create your first app</p>
+              <p className="text-xs text-nisk-muted mt-1">
+                Start with a plain-English prompt — NiskBuild will generate working code and a live preview.
+              </p>
+              <div className="mt-4">
+                <Link href="/builder" className="btn-primary px-4 py-2 rounded-lg text-sm inline-flex">
+                  Open Builder →
+                </Link>
+              </div>
+            </div>
+          )}
           {projects.map((project) => {
             const isLive = project.generated_code?.trim().length > 100;
             return (
