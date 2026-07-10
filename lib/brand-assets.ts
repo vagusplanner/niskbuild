@@ -145,6 +145,15 @@ const CREAM_ICON_SIZES: IconSizeOption[] = [
     width: 32,
     height: 32,
   },
+  {
+    id: '16',
+    label: '16×16',
+    previewSrc: '/logo/icon-16.png',
+    pngHref: '/logo/icon-16.png',
+    pngFilename: 'niskbuild-icon-16.png',
+    width: 16,
+    height: 16,
+  },
 ];
 
 const MATTE_ICON_SIZES: IconSizeOption[] = [

@@ -63,18 +63,20 @@ function downscaleIcon(masterName, outName, size) {
   console.log(`Downscale ${outName} (${size}px) from ${masterName}`);
 }
 
-/** Master rasters at 512 — small sizes derived for full bleed */
+/** Master rasters — final mark is niskbuild-icon.svg (dark forge); light variant kept for brand kit */
 try {
-  rasterizeSvg('niskbuild-icon-light.svg', 'icon-512.png', 512);
-  rasterizeSvg('niskbuild-icon.svg', 'icon-matte-512.png', 512);
+  rasterizeSvg('niskbuild-icon.svg', 'icon-512.png', 512);
+  rasterizeSvg('niskbuild-icon-light.svg', 'icon-matte-512.png', 512);
 } catch (err) {
   console.warn('resvg failed, falling back to qlmanage:', err.message);
-  rasterizeSvgQlmanage('niskbuild-icon-light.svg', 'icon-512.png', 512);
-  rasterizeSvgQlmanage('niskbuild-icon.svg', 'icon-matte-512.png', 512);
+  rasterizeSvgQlmanage('niskbuild-icon.svg', 'icon-512.png', 512);
+  rasterizeSvgQlmanage('niskbuild-icon-light.svg', 'icon-matte-512.png', 512);
 }
 
 downscaleIcon('icon-512.png', 'icon-180.png', 180);
+downscaleIcon('icon-512.png', 'icon-192.png', 192);
 downscaleIcon('icon-512.png', 'icon-32.png', 32);
+downscaleIcon('icon-512.png', 'icon-16.png', 16);
 downscaleIcon('icon-matte-512.png', 'icon-matte-180.png', 180);
 downscaleIcon('icon-matte-512.png', 'icon-matte-32.png', 32);
 
@@ -88,11 +90,11 @@ if (existsSync(join(logoDir, 'icon-512.png'))) {
   copyFileSync(join(logoDir, 'icon-512.png'), join(publicDir, 'logo.png'));
   copyFileSync(join(logoDir, 'icon-512.png'), join(publicDir, 'logo-icon.png'));
 }
-const iconLightSvg = join(logoDir, 'niskbuild-icon-light.svg');
-if (existsSync(iconLightSvg)) {
-  copyFileSync(iconLightSvg, join(publicDir, 'logo.svg'));
-  copyFileSync(iconLightSvg, join(publicDir, 'favicon-source.svg'));
-  console.log('Synced logo.svg + favicon-source.svg from icon-light');
+const iconSvg = join(logoDir, 'niskbuild-icon.svg');
+if (existsSync(iconSvg)) {
+  copyFileSync(iconSvg, join(publicDir, 'logo.svg'));
+  copyFileSync(iconSvg, join(publicDir, 'favicon-source.svg'));
+  console.log('Synced logo.svg + favicon-source.svg from niskbuild-icon.svg');
 }
 
 execSync('node scripts/generate-brand-pdfs.mjs', { stdio: 'inherit', cwd: join(__dirname, '..') });

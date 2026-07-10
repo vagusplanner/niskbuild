@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { BRAND_LOGO } from '@/lib/brand-assets';
+import NiskBuildMark from '@/app/components/NiskBuildMark';
 
 type LogoSize = 'micro' | 'sm' | 'md' | 'lg' | 'xl' | 'hero';
 type LogoVariant = 'icon' | 'lockup';
@@ -12,46 +12,24 @@ interface NiskBuildLogoProps {
   className?: string;
 }
 
-const HEIGHT_PX: Record<LogoSize, number> = {
-  micro: 32,
-  sm: 40,
-  md: 52,
-  lg: 68,
-  xl: 96,
-  hero: 128,
+/** Icon square height (px) — wordmark scales beside it in Geist. */
+const ICON_PX: Record<LogoSize, number> = {
+  micro: 28,
+  sm: 32,
+  md: 40,
+  lg: 48,
+  xl: 56,
+  hero: 72,
 };
 
-function LogoImg({
-  src,
-  alt,
-  heightPx,
-  aspectRatio,
-  className = '',
-  priority = false,
-}: {
-  src: string;
-  alt: string;
-  heightPx: number;
-  aspectRatio: number;
-  className?: string;
-  priority?: boolean;
-}) {
-  const widthPx = Math.round(heightPx * aspectRatio);
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={src}
-      alt={alt}
-      width={widthPx}
-      height={heightPx}
-      className={`block max-w-full h-auto object-contain ${className}`}
-      style={{ height: heightPx, width: 'auto', maxWidth: widthPx }}
-      fetchPriority={priority ? 'high' : undefined}
-      decoding="async"
-      draggable={false}
-    />
-  );
-}
+const WORDMARK_CLASS: Record<LogoSize, string> = {
+  micro: 'text-sm font-semibold tracking-tight',
+  sm: 'text-base font-semibold tracking-tight',
+  md: 'text-lg font-semibold tracking-tight',
+  lg: 'text-xl font-bold tracking-tight',
+  xl: 'text-2xl font-bold tracking-tight',
+  hero: 'text-3xl md:text-4xl font-bold tracking-tight',
+};
 
 export default function NiskBuildLogo({
   variant = 'lockup',
@@ -59,33 +37,44 @@ export default function NiskBuildLogo({
   href,
   className = '',
 }: NiskBuildLogoProps) {
-  const h = HEIGHT_PX[size];
-  const asset = variant === 'icon' ? BRAND_LOGO.icon : BRAND_LOGO.lockup;
+  const iconPx = ICON_PX[size];
 
-  const frameClass =
-    variant === 'icon'
-      ? 'rounded-xl overflow-hidden ring-1 ring-[rgba(184,115,51,0.25)] shadow-[0_2px_12px_var(--copper-glow)]'
-      : 'rounded-xl overflow-hidden ring-1 ring-[rgba(184,115,51,0.22)] shadow-[0_4px_20px_var(--copper-glow)]';
-
-  const wrap = (node: ReactNode) =>
-    href ? (
-      <Link
-        href={href}
-        className={`inline-flex shrink-0 hover:opacity-95 transition-opacity ${frameClass} ${className}`}
-      >
-        {node}
-      </Link>
-    ) : (
-      <span className={`inline-flex shrink-0 ${frameClass} ${className}`}>{node}</span>
-    );
-
-  return wrap(
-    <LogoImg
-      src={asset.src}
-      alt={asset.alt}
-      heightPx={h}
-      aspectRatio={asset.aspectRatio}
-      priority
+  const mark = (
+    <NiskBuildMark
+      gradientId={`${variant}-${size}`}
+      className="shrink-0 rounded-[22%] shadow-[0_2px_12px_var(--copper-glow)] ring-1 ring-[rgba(184,115,51,0.22)]"
+      title="NiskBuild"
     />
   );
+
+  const content: ReactNode =
+    variant === 'icon' ? (
+      <span className="inline-flex" style={{ width: iconPx, height: iconPx }}>
+        {mark}
+      </span>
+    ) : (
+      <span className="inline-flex items-center gap-2.5 min-w-0">
+        <span className="inline-flex shrink-0" style={{ width: iconPx, height: iconPx }}>
+          {mark}
+        </span>
+        <span
+          className={`${WORDMARK_CLASS[size]} text-[var(--nisk-color)] leading-none truncate`}
+        >
+          NiskBuild
+        </span>
+      </span>
+    );
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className={`inline-flex shrink-0 items-center hover:opacity-95 transition-opacity focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copper-primary)] rounded-lg ${className}`}
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return <span className={`inline-flex shrink-0 items-center ${className}`}>{content}</span>;
 }
