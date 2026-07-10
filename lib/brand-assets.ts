@@ -36,14 +36,24 @@ export const BRAND_LOGO = {
     aspectRatio: 1,
     alt: 'NiskBuild',
   },
+  wordmarkDark: {
+    src: '/brand/niskbuild-wordmark-dark.svg',
+    aspectRatio: 1189 / 354,
+    alt: 'NiskBuild wordmark on dark plate',
+  },
+  wordmarkTransparent: {
+    src: '/brand/niskbuild-wordmark-transparent.svg',
+    aspectRatio: 1195 / 360,
+    alt: 'NiskBuild wordmark (transparent)',
+  },
   wordmarkLockupDark: {
     src: '/brand/niskbuild-wordmark-lockup-dark.svg',
-    aspectRatio: 1739 / 704,
+    aspectRatio: 1773 / 704,
     alt: 'NiskBuild wordmark lockup on dark plate',
   },
   wordmarkLockupTransparent: {
     src: '/brand/niskbuild-wordmark-lockup-transparent.svg',
-    aspectRatio: 1739 / 704,
+    aspectRatio: 1779 / 710,
     alt: 'NiskBuild wordmark lockup (transparent)',
   },
 } as const;
@@ -90,7 +100,7 @@ export const BRAND_PALETTE_SWATCHES = [
   { name: 'Cream light (preview)', token: 'creamLight', hex: BRAND_COLORS.creamLight, usage: 'Transparent-asset preview surface' },
   { name: 'Copper primary', token: '--copper-primary', hex: BRAND_COLORS.copperPrimary, usage: 'Buttons, borders, logo facets' },
   { name: 'Copper light / melt', token: '--copper-melt', hex: BRAND_COLORS.copperMelt, usage: 'Links on Docs, taglines, highlights' },
-  { name: 'Cream / parchment', token: '--foreground', hex: BRAND_COLORS.parchment, usage: 'Body text + wordmark fill' },
+  { name: 'Cream / parchment', token: '--foreground', hex: BRAND_COLORS.parchment, usage: 'Body text on dark UI / dark-plate wordmarks' },
 ] as const;
 
 function iconSizes(variant: 'dark' | 'transparent'): IconSizeOption[] {
@@ -147,16 +157,53 @@ export const BRAND_ASSET_GROUPS: BrandAssetGroup[] = [
     ],
   },
   {
+    id: 'wordmark-typography',
+    title: 'Wordmark typography',
+    blurb:
+      '“NiskBuild” only — Geist Bold outlined paths, no icon. SVG + PNG at 2048px wide. Transparent uses iron fill + copper outline for contrast on light grounds.',
+    paired: true,
+    assets: [
+      {
+        id: 'wordmark-dark',
+        label: 'Wordmark — dark plate',
+        description: 'Typography only on forge dark (#1a1612). Parchment fill for dark UI and banners.',
+        useCase: 'Nav bars · Footers · Dark social',
+        previewSrc: BRAND_LOGO.wordmarkDark.src,
+        previewBg: 'dark',
+        svgHref: '/brand/niskbuild-wordmark-dark.svg',
+        svgFilename: 'niskbuild-wordmark-dark.svg',
+        pngHref: '/brand/niskbuild-wordmark-dark-2048.png',
+        pngFilename: 'niskbuild-wordmark-dark-2048.png',
+        pngWidth: 2048,
+        pngHeight: 610,
+      },
+      {
+        id: 'wordmark-transparent',
+        label: 'Wordmark — transparent',
+        description: 'Typography only, no background. Iron fill (#1a1612) with copper stroke for legibility on light/neutral surfaces.',
+        useCase: 'Light layouts · Print · Watermarks',
+        previewSrc: BRAND_LOGO.wordmarkTransparent.src,
+        previewBg: 'light',
+        svgHref: '/brand/niskbuild-wordmark-transparent.svg',
+        svgFilename: 'niskbuild-wordmark-transparent.svg',
+        pngHref: '/brand/niskbuild-wordmark-transparent-2048.png',
+        pngFilename: 'niskbuild-wordmark-transparent-2048.png',
+        pngWidth: 2048,
+        pngHeight: 617,
+      },
+    ],
+  },
+  {
     id: 'wordmark-lockups',
     title: 'Wordmark lockup',
     blurb:
-      'Icon + “NiskBuild” in Geist Bold (outlined paths — portable, no font install). SVG vector + PNG at 2048px wide.',
+      'Icon + “NiskBuild” in Geist Bold (outlined paths). SVG vector + PNG at 2048px wide. Dark plate fully padded to the mark contour.',
     paired: true,
     assets: [
       {
         id: 'lockup-dark',
         label: 'Lockup — dark plate',
-        description: 'Icon + Geist wordmark on forge dark (#1a1612). Matches the in-app logo treatment.',
+        description: 'Icon + Geist wordmark on forge dark (#1a1612), plate sized to fully contain the lockup with padding.',
         useCase: 'Press headers · Dark social · Presentations',
         previewSrc: BRAND_LOGO.wordmarkLockupDark.src,
         previewBg: 'dark',
@@ -165,13 +212,13 @@ export const BRAND_ASSET_GROUPS: BrandAssetGroup[] = [
         pngHref: '/brand/niskbuild-wordmark-lockup-dark-2048.png',
         pngFilename: 'niskbuild-wordmark-lockup-dark-2048.png',
         pngWidth: 2048,
-        pngHeight: 829,
+        pngHeight: 813,
       },
       {
         id: 'lockup-transparent',
         label: 'Lockup — transparent',
-        description: 'Same lockup with transparent background. Wordmark fill is parchment (#e8dcc8).',
-        useCase: 'Light or dark layouts · Watermarks · Slide decks',
+        description: 'Same lockup, no plate. Wordmark uses iron fill + copper outline so it stays readable on light backgrounds; icon keeps the copper gradient.',
+        useCase: 'Light layouts · Slide decks · Co-branding',
         previewSrc: BRAND_LOGO.wordmarkLockupTransparent.src,
         previewBg: 'light',
         svgHref: '/brand/niskbuild-wordmark-lockup-transparent.svg',
@@ -179,7 +226,7 @@ export const BRAND_ASSET_GROUPS: BrandAssetGroup[] = [
         pngHref: '/brand/niskbuild-wordmark-lockup-transparent-2048.png',
         pngFilename: 'niskbuild-wordmark-lockup-transparent-2048.png',
         pngWidth: 2048,
-        pngHeight: 829,
+        pngHeight: 817,
       },
     ],
   },
