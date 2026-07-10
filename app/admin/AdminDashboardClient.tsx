@@ -56,6 +56,12 @@ export default function AdminDashboardClient({ data }: Props) {
           📊 Demand Analytics
         </Link>
         <Link
+          href="/admin/demand-analytics"
+          className="px-4 py-2 rounded-lg bg-[var(--surface-elevated)] hover:bg-[var(--card-bg)] text-[var(--foreground)] transition-colors"
+        >
+          🏷️ Prompt categories
+        </Link>
+        <Link
           href="/admin/insights"
           className="px-4 py-2 rounded-lg bg-[var(--surface-elevated)] hover:bg-[var(--card-bg)] text-[var(--foreground)] transition-colors"
         >

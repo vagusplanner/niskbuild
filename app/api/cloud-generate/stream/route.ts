@@ -11,6 +11,7 @@ import { logBuildPerformance } from '@/lib/build-performance-server';
 import { canUseOwnApiKeys } from '@/lib/tier-config';
 import { getProviderOrder } from '@/lib/ai-providers';
 import { recordUsageEvent } from '@/lib/usage-events';
+import { recordPromptCategoryStat } from '@/lib/prompt-category-stats';
 import { touchLastBuildAt } from '@/lib/build-activity';
 import { clientIpFromHeaders } from '@/lib/coarse-town';
 import Anthropic from '@anthropic-ai/sdk';
@@ -338,6 +339,10 @@ export async function POST(request: NextRequest) {
           prompt,
           projectId: typeof projectId === 'string' ? projectId : null,
           clientIp: clientIpFromHeaders(request.headers),
+        });
+        void recordPromptCategoryStat({
+          userId: guard.user!.id,
+          prompt,
         });
         void touchLastBuildAt(guard.user!.id);
 

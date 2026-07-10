@@ -63,6 +63,12 @@ const PLATFORM_ADMIN_NAV: NavItem[] = [
     description: 'Aggregate demand by category and region',
   },
   {
+    href: '/admin/demand-analytics',
+    label: 'Prompt categories',
+    icon: '🏷️',
+    description: 'Internal prompt category trends (k-anonymized)',
+  },
+  {
     href: '/admin',
     label: 'Platform stats',
     icon: '📋',

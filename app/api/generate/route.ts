@@ -8,6 +8,7 @@ import {
   LOCAL_OLLAMA_LOCKED_MESSAGE,
 } from '@/lib/tier-config';
 import { recordUsageEvent } from '@/lib/usage-events';
+import { recordPromptCategoryStat } from '@/lib/prompt-category-stats';
 import { logBuildPerformance } from '@/lib/build-performance-server';
 import { buildOllamaGeneratePrompt } from '@/lib/html-code-system-prompt';
 import { touchLastBuildAt } from '@/lib/build-activity';
@@ -79,6 +80,7 @@ export async function POST(request: NextRequest) {
       projectId: typeof projectId === 'string' ? projectId : null,
       clientIp: clientIpFromHeaders(request.headers),
     });
+    void recordPromptCategoryStat({ userId: guard.user!.id, prompt });
     void touchLastBuildAt(guard.user!.id);
     
     return NextResponse.json({ 

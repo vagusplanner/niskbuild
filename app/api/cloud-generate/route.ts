@@ -7,6 +7,7 @@ import { deductCloudCredit } from '@/lib/credits';
 import { canSpendCloudCredits, outOfCreditsMessage } from '@/lib/credits-init';
 import { recordAnonymousTelemetry } from '@/lib/record-telemetry';
 import { recordUsageEvent } from '@/lib/usage-events';
+import { recordPromptCategoryStat } from '@/lib/prompt-category-stats';
 import { touchLastBuildAt } from '@/lib/build-activity';
 import { clientIpFromHeaders } from '@/lib/coarse-town';
 import { canUseOwnApiKeys } from '@/lib/tier-config';
@@ -88,6 +89,7 @@ export async function POST(request: NextRequest) {
         projectId: typeof projectId === 'string' ? projectId : null,
         clientIp: clientIpFromHeaders(request.headers),
       });
+      void recordPromptCategoryStat({ userId, prompt });
       void touchLastBuildAt(userId);
 
       return NextResponse.json({
