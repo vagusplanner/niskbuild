@@ -87,6 +87,15 @@ export const DOC_CATEGORY_ORDER: DocCategory[] = [
   'Getting Started',
   'Your Plan',
   'Using NiskBuild',
+  'product',
+  'plans',
   'Importing Apps',
   'Exporting to App Store',
 ];
+
+/** Sidebar / UI label for category keys (supports lowercase staging categories). */
+export function docCategoryLabel(category: string): string {
+  if (category === 'product') return 'Product';
+  if (category === 'plans') return 'Plans';
+  return category;
+}

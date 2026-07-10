@@ -4,9 +4,13 @@ export const DOC_CATEGORIES = [
   'Exporting to App Store',
   'Importing Apps',
   'Your Plan',
+  'product',
+  'plans',
 ] as const;
 
 export type DocCategory = (typeof DOC_CATEGORIES)[number];
+
+export type DocArticleStatus = 'draft' | 'published';
 
 export interface DocArticle {
   id: string;
@@ -17,6 +21,8 @@ export interface DocArticle {
   plan_visibility: string[];
   order_index: number;
   updated_at: string;
+  /** Seed articles are treated as published when status is absent. */
+  status?: DocArticleStatus;
 }
 
 export interface DocArticleSummary {
@@ -27,4 +33,5 @@ export interface DocArticleSummary {
   plan_visibility: string[];
   order_index: number;
   updated_at: string;
+  status?: DocArticleStatus;
 }

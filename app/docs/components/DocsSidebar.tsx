@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { DocArticleSummary, DocCategory } from '@/lib/docs/types';
-import { DOC_CATEGORY_ORDER } from '@/lib/docs/utils';
+import { DOC_CATEGORY_ORDER, docCategoryLabel } from '@/lib/docs/utils';
 
 interface DocsSidebarProps {
   articles: DocArticleSummary[];
@@ -42,9 +42,9 @@ export default function DocsSidebar({ articles, currentSlug }: DocsSidebarProps)
           if (!items?.length) return null;
 
           return (
-            <nav key={category} aria-label={category}>
+            <nav key={category} aria-label={docCategoryLabel(category)}>
               <h2 className="text-[10px] uppercase tracking-wider text-nisk-muted font-semibold mb-2 px-1">
-                {category}
+                {docCategoryLabel(category)}
               </h2>
               <ul className="space-y-0.5">
                 {items.map((article) => {

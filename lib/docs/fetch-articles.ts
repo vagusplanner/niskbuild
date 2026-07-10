@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { createClient } from '@/lib/supabase/server';
-import type { DocArticle, DocArticleSummary } from '@/lib/docs/types';
+import type { DocArticle, DocArticleStatus, DocArticleSummary } from '@/lib/docs/types';
 import { SEED_DOC_ARTICLES } from '@/lib/docs/seed-articles';
 import {
   filterArticlesForSidebar,
@@ -9,6 +9,10 @@ import {
   suggestDocSlugsForPath,
   tierForPlanDocs,
 } from '@/lib/docs/utils';
+
+function asStatus(value: unknown): DocArticleStatus {
+  return value === 'draft' ? 'draft' : 'published';
+}
 
 function seedSummaries(): DocArticleSummary[] {
   return SEED_DOC_ARTICLES.map((a) => ({
@@ -19,6 +23,7 @@ function seedSummaries(): DocArticleSummary[] {
     plan_visibility: [...a.plan_visibility],
     order_index: a.order_index,
     updated_at: new Date().toISOString(),
+    status: 'published' as const,
   }));
 }
 
@@ -34,10 +39,19 @@ function seedArticleBySlug(slug: string): DocArticle | null {
     plan_visibility: [...match.plan_visibility],
     order_index: match.order_index,
     updated_at: new Date().toISOString(),
+    status: 'published',
   };
 }
 
-function mergeArticles(
+function isPublished(article: Pick<DocArticleSummary, 'status'>): boolean {
+  return asStatus(article.status) === 'published';
+}
+
+/**
+ * Public merge: seed (published) + DB published only.
+ * Draft DB rows never appear and never override seed for public readers.
+ */
+function mergePublishedArticles(
   dbRows: DocArticleSummary[],
   seeded: DocArticleSummary[],
   tier: string
@@ -50,7 +64,8 @@ function mergeArticles(
   }
 
   for (const article of dbRows) {
-    bySlug.set(article.slug, article);
+    if (!isPublished(article)) continue;
+    bySlug.set(article.slug, { ...article, status: 'published' });
   }
 
   const merged = [...bySlug.values()].sort(
@@ -89,16 +104,36 @@ export async function listDocArticles(userTier?: string): Promise<DocArticleSumm
     const supabase = await createClient();
     const { data, error } = await supabase
       .from('doc_articles')
-      .select('id, slug, title, category, plan_visibility, order_index, updated_at')
+      .select('id, slug, title, category, plan_visibility, order_index, updated_at, status')
+      .eq('status', 'published')
       .order('order_index', { ascending: true });
 
     if (error) {
+      // Older DBs without status column — fall back without status filter
+      if (error.message?.includes('status')) {
+        const fallback = await supabase
+          .from('doc_articles')
+          .select('id, slug, title, category, plan_visibility, order_index, updated_at')
+          .order('order_index', { ascending: true });
+        if (fallback.error) {
+          console.error('listDocArticles:', fallback.error.message);
+          return filterArticlesForSidebar(seeded, planTier);
+        }
+        const rows = ((fallback.data ?? []) as DocArticleSummary[]).map((r) => ({
+          ...r,
+          status: 'published' as const,
+        }));
+        return mergePublishedArticles(rows, seeded, tier);
+      }
       console.error('listDocArticles:', error.message);
       return filterArticlesForSidebar(seeded, planTier);
     }
 
-    const rows = (data ?? []) as DocArticleSummary[];
-    return mergeArticles(rows, seeded, tier);
+    const rows = ((data ?? []) as DocArticleSummary[]).map((r) => ({
+      ...r,
+      status: asStatus(r.status),
+    }));
+    return mergePublishedArticles(rows, seeded, tier);
   } catch (error) {
     console.error('listDocArticles:', error);
     return filterArticlesForSidebar(seeded, planTier);
@@ -107,23 +142,34 @@ export async function listDocArticles(userTier?: string): Promise<DocArticleSumm
 
 export async function getDocArticleBySlug(slug: string): Promise<DocArticle | null> {
   const seed = seedArticleBySlug(slug);
-  if (!seed) return null;
 
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.from('doc_articles').select('*').eq('slug', slug).maybeSingle();
+    const { data, error } = await supabase
+      .from('doc_articles')
+      .select('*')
+      .eq('slug', slug)
+      .maybeSingle();
 
-    if (error || !data) {
+    if (!error && data) {
+      const row = data as DocArticle;
+      const status = asStatus(row.status);
+      // Public readers only get published DB rows (RLS also enforces this for non-owners)
+      if (status === 'published') {
+        return {
+          ...row,
+          status,
+          content: row.content?.trim() ? row.content : seed?.content ?? row.content,
+        };
+      }
+      // Draft in DB: do not expose publicly; fall back to seed if present
       return seed;
     }
-
-    return {
-      ...(data as DocArticle),
-      content: (data as DocArticle).content?.trim() ? (data as DocArticle).content : seed.content,
-    };
   } catch {
-    return seed;
+    // fall through to seed
   }
+
+  return seed;
 }
 
 export async function searchDocArticles(
