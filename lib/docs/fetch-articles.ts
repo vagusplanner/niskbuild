@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { createClient } from '@/lib/supabase/server';
+import { getAdminClientOrNull } from '@/lib/supabase/admin';
 import type { DocArticle, DocArticleStatus, DocArticleSummary } from '@/lib/docs/types';
 import { SEED_DOC_ARTICLES } from '@/lib/docs/seed-articles';
 import {
@@ -43,28 +44,30 @@ function seedArticleBySlug(slug: string): DocArticle | null {
   };
 }
 
-function isPublished(article: Pick<DocArticleSummary, 'status'>): boolean {
-  return asStatus(article.status) === 'published';
-}
-
 /**
- * Public merge: seed (published) + DB published only.
- * Draft DB rows never appear and never override seed for public readers.
+ * Public merge:
+ * - Start from seed (treated as published)
+ * - Remove any slug that has a DB row with status=draft (unpublished seed-backed docs)
+ * - Overlay DB published rows
+ *
+ * Critical: draft rows must suppress seed — not be ignored (which left seed visible).
  */
 function mergePublishedArticles(
-  dbRows: DocArticleSummary[],
+  publishedDbRows: DocArticleSummary[],
   seeded: DocArticleSummary[],
+  unpublishedSlugs: Set<string>,
   tier: string
 ): DocArticleSummary[] {
   const planTier = tierForPlanDocs(tier);
   const bySlug = new Map<string, DocArticleSummary>();
 
   for (const article of seeded) {
+    if (unpublishedSlugs.has(article.slug)) continue;
     bySlug.set(article.slug, article);
   }
 
-  for (const article of dbRows) {
-    if (!isPublished(article)) continue;
+  for (const article of publishedDbRows) {
+    if (unpublishedSlugs.has(article.slug)) continue;
     bySlug.set(article.slug, { ...article, status: 'published' });
   }
 
@@ -75,8 +78,52 @@ function mergePublishedArticles(
   const filtered = filterArticlesForSidebar(merged, planTier);
   if (filtered.length > 0) return filtered;
 
-  const seedOnly = filterArticlesForSidebar(seeded, planTier);
-  return seedOnly.length > 0 ? seedOnly : seeded.filter((a) => a.plan_visibility.includes('all'));
+  const seedOnly = filterArticlesForSidebar(
+    seeded.filter((a) => !unpublishedSlugs.has(a.slug)),
+    planTier
+  );
+  return seedOnly.length > 0
+    ? seedOnly
+    : seeded
+        .filter((a) => !unpublishedSlugs.has(a.slug) && a.plan_visibility.includes('all'));
+}
+
+type StatusRow = { slug: string; status: string };
+
+/**
+ * Load slug→status for ALL doc_articles (including drafts).
+ * Prefers service-role client (bypasses published-only RLS); falls back to RPC.
+ */
+async function loadAllArticleStatuses(
+  userClient: Awaited<ReturnType<typeof createClient>>
+): Promise<StatusRow[]> {
+  const admin = getAdminClientOrNull();
+  if (admin) {
+    const { data, error } = await admin.from('doc_articles').select('slug, status');
+    if (!error && data) {
+      return data as StatusRow[];
+    }
+    if (error && !error.message?.includes('status')) {
+      console.error('loadAllArticleStatuses(admin):', error.message);
+    }
+  }
+
+  const { data: rpcData, error: rpcError } = await userClient.rpc('list_doc_article_statuses');
+  if (!rpcError && Array.isArray(rpcData)) {
+    return rpcData as StatusRow[];
+  }
+  if (rpcError && !rpcError.message?.includes('list_doc_article_statuses')) {
+    console.error('loadAllArticleStatuses(rpc):', rpcError.message);
+  }
+
+  // Last resort: user-scoped select (owners see drafts; regular users only published)
+  const { data, error } = await userClient.from('doc_articles').select('slug, status');
+  if (error) {
+    if (error.message?.includes('status')) return [];
+    console.error('loadAllArticleStatuses(user):', error.message);
+    return [];
+  }
+  return (data ?? []) as StatusRow[];
 }
 
 export async function getUserDocTier(): Promise<string> {
@@ -102,16 +149,23 @@ export async function listDocArticles(userTier?: string): Promise<DocArticleSumm
 
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase
+    const statuses = await loadAllArticleStatuses(supabase);
+    const unpublishedSlugs = new Set(
+      statuses.filter((row) => asStatus(row.status) === 'draft').map((row) => row.slug)
+    );
+
+    const admin = getAdminClientOrNull();
+    const reader = admin ?? supabase;
+
+    const { data, error } = await reader
       .from('doc_articles')
       .select('id, slug, title, category, plan_visibility, order_index, updated_at, status')
       .eq('status', 'published')
       .order('order_index', { ascending: true });
 
     if (error) {
-      // Older DBs without status column — fall back without status filter
       if (error.message?.includes('status')) {
-        const fallback = await supabase
+        const fallback = await reader
           .from('doc_articles')
           .select('id, slug, title, category, plan_visibility, order_index, updated_at')
           .order('order_index', { ascending: true });
@@ -123,17 +177,20 @@ export async function listDocArticles(userTier?: string): Promise<DocArticleSumm
           ...r,
           status: 'published' as const,
         }));
-        return mergePublishedArticles(rows, seeded, tier);
+        return mergePublishedArticles(rows, seeded, new Set(), tier);
       }
       console.error('listDocArticles:', error.message);
-      return filterArticlesForSidebar(seeded, planTier);
+      return filterArticlesForSidebar(
+        seeded.filter((a) => !unpublishedSlugs.has(a.slug)),
+        planTier
+      );
     }
 
     const rows = ((data ?? []) as DocArticleSummary[]).map((r) => ({
       ...r,
       status: asStatus(r.status),
     }));
-    return mergePublishedArticles(rows, seeded, tier);
+    return mergePublishedArticles(rows, seeded, unpublishedSlugs, tier);
   } catch (error) {
     console.error('listDocArticles:', error);
     return filterArticlesForSidebar(seeded, planTier);
@@ -145,7 +202,16 @@ export async function getDocArticleBySlug(slug: string): Promise<DocArticle | nu
 
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase
+    const statuses = await loadAllArticleStatuses(supabase);
+    const statusRow = statuses.find((row) => row.slug === slug);
+    if (statusRow && asStatus(statusRow.status) === 'draft') {
+      // Unpublished (including seed-backed): never fall back to seed content
+      return null;
+    }
+
+    const admin = getAdminClientOrNull();
+    const reader = admin ?? supabase;
+    const { data, error } = await reader
       .from('doc_articles')
       .select('*')
       .eq('slug', slug)
@@ -154,19 +220,17 @@ export async function getDocArticleBySlug(slug: string): Promise<DocArticle | nu
     if (!error && data) {
       const row = data as DocArticle;
       const status = asStatus(row.status);
-      // Public readers only get published DB rows (RLS also enforces this for non-owners)
-      if (status === 'published') {
-        return {
-          ...row,
-          status,
-          content: row.content?.trim() ? row.content : seed?.content ?? row.content,
-        };
+      if (status === 'draft') {
+        return null;
       }
-      // Draft in DB: do not expose publicly; fall back to seed if present
-      return seed;
+      return {
+        ...row,
+        status: 'published',
+        content: row.content?.trim() ? row.content : seed?.content ?? row.content,
+      };
     }
   } catch {
-    // fall through to seed
+    // fall through to seed only when no DB row / status unknown
   }
 
   return seed;

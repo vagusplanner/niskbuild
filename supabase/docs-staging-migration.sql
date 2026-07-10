@@ -70,3 +70,19 @@ create policy "Platform owners manage doc articles"
 
 grant select on public.doc_articles to authenticated;
 grant insert, update, delete on public.doc_articles to authenticated;
+
+-- 5) Status map for seed suppression (draft must hide seed-backed public docs)
+create or replace function public.list_doc_article_statuses()
+returns table (slug text, status text)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select d.slug, d.status
+  from public.doc_articles d;
+$$;
+
+revoke all on function public.list_doc_article_statuses() from public;
+grant execute on function public.list_doc_article_statuses() to authenticated;
+grant execute on function public.list_doc_article_statuses() to service_role;
