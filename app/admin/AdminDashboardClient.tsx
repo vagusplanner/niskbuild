@@ -62,6 +62,12 @@ export default function AdminDashboardClient({ data }: Props) {
           🏷️ Prompt categories
         </Link>
         <Link
+          href="/admin/docs-manager"
+          className="px-4 py-2 rounded-lg bg-[var(--surface-elevated)] hover:bg-[var(--card-bg)] text-[var(--foreground)] transition-colors"
+        >
+          📝 Docs manager
+        </Link>
+        <Link
           href="/admin/insights"
           className="px-4 py-2 rounded-lg bg-[var(--surface-elevated)] hover:bg-[var(--card-bg)] text-[var(--foreground)] transition-colors"
         >

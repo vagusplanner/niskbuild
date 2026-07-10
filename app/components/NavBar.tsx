@@ -69,6 +69,12 @@ const PLATFORM_ADMIN_NAV: NavItem[] = [
     description: 'Internal prompt category trends (k-anonymized)',
   },
   {
+    href: '/admin/docs-manager',
+    label: 'Docs manager',
+    icon: '📝',
+    description: 'Draft and publish in-app documentation',
+  },
+  {
     href: '/admin',
     label: 'Platform stats',
     icon: '📋',
