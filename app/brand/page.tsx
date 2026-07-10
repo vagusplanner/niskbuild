@@ -31,8 +31,8 @@ export default async function BrandPage() {
           </p>
           <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">Brand kit</h1>
           <p className="text-nisk-muted max-w-xl mx-auto text-sm">
-            Cream icons are full-bleed for favicons. Matte iron icons match the lockup — darker iron
-            on a balanced site palette.
+            Official high-res assets: vector SVG plus PNG at 512 / 1024 / 2048. Wordmark lockups use
+            Geist Bold with outlined paths.
           </p>
           <p className="mt-2 text-sm text-[var(--copper-melt)]">{BRAND_TAGLINE}</p>
         </header>

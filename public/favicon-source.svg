@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="NiskBuild icon on dark plate">
   <defs>
     <linearGradient id="fused-body" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#b87333"/>
@@ -11,13 +11,10 @@
     </linearGradient>
   </defs>
   <rect width="512" height="512" fill="#1a1612"/>
-
-  <!-- Left paren: vertical tapered crescent, same construction as noon-fused-v1's blade -->
+  <!-- Left paren -->
   <path d="M200,80 Q100,250 200,420 Q160,250 200,80 Z" fill="url(#fused-body)"/>
-
-  <!-- Right paren: mirrored -->
+  <!-- Right paren -->
   <path d="M312,80 Q412,250 312,420 Q352,250 312,80 Z" fill="url(#fused-body)"/>
-
-  <!-- The dot, same faceted ember as noon-fused-v1, centered between them -->
+  <!-- Faceted ember -->
   <polygon points="256,222 288,254 256,286 224,254" fill="url(#fused-dot)"/>
 </svg>

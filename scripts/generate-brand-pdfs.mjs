@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Build official PDFs from copper PNG rasters (not legacy PDF sources).
+ * Optional: PDF from brand-kit PNG masters.
+ * Prefer SVG/PNG downloads from /brand — PDFs are not linked on the brand page.
  * Run: node scripts/generate-brand-pdfs.mjs
  */
 import { readFileSync, writeFileSync, existsSync } from 'fs';
@@ -9,6 +10,7 @@ import { dirname, join } from 'path';
 import { PDFDocument } from 'pdf-lib';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const brandDir = join(__dirname, '..', 'public', 'brand');
 const logoDir = join(__dirname, '..', 'public', 'logo');
 
 async function pngToPdf(pngPath, pdfPath, maxWidth = 612) {
@@ -16,7 +18,6 @@ async function pngToPdf(pngPath, pdfPath, maxWidth = 612) {
     console.warn(`Skip PDF (missing PNG): ${pngPath}`);
     return;
   }
-
   const pngBytes = readFileSync(pngPath);
   const doc = await PDFDocument.create();
   const image = await doc.embedPng(pngBytes);
@@ -29,30 +30,9 @@ async function pngToPdf(pngPath, pdfPath, maxWidth = 612) {
   console.log(`PDF: ${pdfPath}`);
 }
 
-await pngToPdf(join(logoDir, 'icon-512.png'), join(logoDir, 'niskbuild-icon.pdf'), 400);
-await pngToPdf(join(logoDir, 'icon-matte-512.png'), join(logoDir, 'niskbuild-icon-matte.pdf'), 400);
+await pngToPdf(join(brandDir, 'icon-dark-2048.png'), join(logoDir, 'niskbuild-icon.pdf'), 400);
 await pngToPdf(
-  join(logoDir, 'niskbuild-wordmark-matte-raster.png'),
-  join(logoDir, 'niskbuild-wordmark-matte.pdf'),
-  600
-);
-await pngToPdf(
-  join(logoDir, 'niskbuild-wordmark-matte-wide-raster.png'),
-  join(logoDir, 'niskbuild-wordmark-matte-wide.pdf'),
+  join(brandDir, 'niskbuild-wordmark-lockup-dark-2048.png'),
+  join(brandDir, 'niskbuild-wordmark-lockup-dark.pdf'),
   750
-);
-await pngToPdf(
-  join(logoDir, 'niskbuild-lockup-matte-wide-raster.png'),
-  join(logoDir, 'niskbuild-lockup-matte-wide.pdf'),
-  750
-);
-await pngToPdf(
-  join(logoDir, 'niskbuild-lockup-light-raster.png'),
-  join(logoDir, 'niskbuild-lockup-light.pdf'),
-  750
-);
-await pngToPdf(
-  join(logoDir, 'niskbuild-wordmark-raster.png'),
-  join(logoDir, 'niskbuild-wordmark.pdf'),
-  600
 );

@@ -18,11 +18,10 @@ function DownloadLink({
   label: string;
   primary?: boolean;
 }) {
-  const isApi = href.startsWith('/api/');
   return (
     <a
       href={href}
-      {...(!isApi ? { download: filename } : {})}
+      download={filename}
       className={
         primary
           ? 'inline-flex items-center gap-2 rounded-lg border border-[var(--copper-primary)]/40 bg-[var(--copper-primary)]/10 px-4 py-2 text-sm font-semibold text-[var(--copper-melt)] hover:bg-[var(--copper-primary)]/20 transition-colors'
@@ -53,7 +52,7 @@ function PreviewBox({
   light: boolean;
   iconSquare?: boolean;
 }) {
-  const bg = light ? BRAND_LIGHT_BG : '#3a3530';
+  const bg = light ? BRAND_LIGHT_BG : '#1a1612';
 
   if (iconSquare) {
     return (
@@ -124,10 +123,6 @@ function IconSizePicker({
   );
 }
 
-function pdfApiId(assetId: string): string {
-  return assetId;
-}
-
 export default function BrandAssetCard({ asset }: { asset: BrandAsset }) {
   const defaultSize =
     asset.iconSizes?.find((s) => s.id === asset.defaultIconSize) ?? asset.iconSizes?.[0];
@@ -153,7 +148,7 @@ export default function BrandAssetCard({ asset }: { asset: BrandAsset }) {
         <IconSizePicker
           sizes={asset.iconSizes}
           defaultId={asset.defaultIconSize ?? asset.iconSizes[0].id}
-          label="Choose size to preview"
+          label="Choose PNG size to preview"
           onChange={setSelectedIcon}
         />
       )}
@@ -168,9 +163,9 @@ export default function BrandAssetCard({ asset }: { asset: BrandAsset }) {
 
       <div className="flex flex-wrap gap-2">
         <DownloadLink
-          href={`/api/brand/download/${pdfApiId(asset.id)}`}
-          filename={asset.pdfFilename}
-          label="Download PDF"
+          href={asset.svgHref}
+          filename={asset.svgFilename}
+          label="Download SVG"
           primary
         />
         <DownloadLink href={pngHref} filename={pngFilename} label={pngLabel} />

@@ -9,6 +9,7 @@
     "build": "next build",
     "generate:logo-pdf": "node scripts/generate-logo-pdf.mjs",
     "export:brand-logos": "node scripts/export-brand-logos.mjs",
+    "generate:brand-kit": "node scripts/generate-brand-kit.mjs",
     "generate:favicon": "node scripts/generate-favicon.mjs",
     "generate:brand-pdfs": "node scripts/generate-brand-pdfs.mjs",
     "start": "next start",
@@ -54,6 +55,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "opentype.js": "^2.0.0",
     "pdf-lib": "^1.17.1",
     "tailwindcss": "^4",
     "typescript": "^5"

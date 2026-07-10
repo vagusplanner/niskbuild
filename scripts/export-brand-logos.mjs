@@ -1,102 +1,85 @@
 #!/usr/bin/env node
 /**
- * Export copper brand assets from SVG (source of truth) + PDF aliases.
+ * Sync app favicons / public logo copies from the final forge mark,
+ * then regenerate the high-res brand kit under public/brand/.
+ *
  * Run: npm run export:brand-logos
  */
-import { copyFileSync, existsSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
+import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'fs';
 import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
-import { dirname, join, basename } from 'path';
+import { dirname, join } from 'path';
 import { Resvg } from '@resvg/resvg-js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const logoDir = join(__dirname, '..', 'public', 'logo');
-const publicDir = join(__dirname, '..', 'public');
+const root = join(__dirname, '..');
+const logoDir = join(root, 'public', 'logo');
+const brandDir = join(root, 'public', 'brand');
+const publicDir = join(root, 'public');
 
-function rasterizeSvgResvg(svgName, outName, size) {
-  const svgPath = join(logoDir, svgName);
-  const outPath = join(logoDir, outName);
-
+function rasterizeSvg(svgPath, outPath, size) {
   if (!existsSync(svgPath)) {
-    console.warn(`Skip raster (missing SVG): ${svgName}`);
+    console.warn(`Skip raster (missing SVG): ${svgPath}`);
     return;
   }
-
   const svg = readFileSync(svgPath);
-  const resvg = new Resvg(svg, {
-    fitTo: { mode: 'width', value: size },
-  });
+  const resvg = new Resvg(svg, { fitTo: { mode: 'width', value: size } });
   writeFileSync(outPath, resvg.render().asPng());
-  console.log(`Raster ${outName} (${size}px) from ${svgName}`);
+  console.log(`Raster ${outPath.replace(root + '/', '')} (${size}px)`);
 }
 
-function rasterizeSvgQlmanage(svgName, outName, size) {
-  const svgPath = join(logoDir, svgName);
-  const outPath = join(logoDir, outName);
-  const thumbPath = join(logoDir, `${basename(svgPath)}.png`);
-
-  if (!existsSync(svgPath)) {
-    console.warn(`Skip raster (missing SVG): ${svgName}`);
-    return;
-  }
-
-  if (existsSync(thumbPath)) unlinkSync(thumbPath);
-  execSync(`qlmanage -t -s ${size} -o "${logoDir}" "${svgPath}"`, { stdio: 'pipe' });
-
-  if (!existsSync(thumbPath)) {
-    console.warn(`Skip raster (qlmanage failed): ${svgName}`);
-    return;
-  }
-
-  copyFileSync(thumbPath, outPath);
-  unlinkSync(thumbPath);
-  console.log(`Raster ${outName} (${size}px) from ${svgName} [qlmanage]`);
+function downscaleIcon(masterPath, outPath, size) {
+  if (!existsSync(masterPath)) return;
+  execSync(`sips -z ${size} ${size} "${masterPath}" --out "${outPath}"`, { stdio: 'pipe' });
+  console.log(`Downscale ${outPath.replace(root + '/', '')} (${size}px)`);
 }
 
-const rasterizeSvg = rasterizeSvgResvg;
+// 1) High-res brand kit (also refreshes public/logo/niskbuild-icon.svg)
+execSync('node scripts/generate-brand-kit.mjs', { stdio: 'inherit', cwd: root });
 
-function downscaleIcon(masterName, outName, size) {
-  const src = join(logoDir, masterName);
-  const out = join(logoDir, outName);
-  if (!existsSync(src)) return;
-  execSync(`sips -z ${size} ${size} "${src}" --out "${out}"`, { stdio: 'pipe' });
-  console.log(`Downscale ${outName} (${size}px) from ${masterName}`);
-}
-
-/** Master rasters — final mark is niskbuild-icon.svg (dark forge); light variant kept for brand kit */
-try {
-  rasterizeSvg('niskbuild-icon.svg', 'icon-512.png', 512);
-  rasterizeSvg('niskbuild-icon-light.svg', 'icon-matte-512.png', 512);
-} catch (err) {
-  console.warn('resvg failed, falling back to qlmanage:', err.message);
-  rasterizeSvgQlmanage('niskbuild-icon.svg', 'icon-512.png', 512);
-  rasterizeSvgQlmanage('niskbuild-icon-light.svg', 'icon-matte-512.png', 512);
-}
-
-downscaleIcon('icon-512.png', 'icon-180.png', 180);
-downscaleIcon('icon-512.png', 'icon-192.png', 192);
-downscaleIcon('icon-512.png', 'icon-32.png', 32);
-downscaleIcon('icon-512.png', 'icon-16.png', 16);
-downscaleIcon('icon-matte-512.png', 'icon-matte-180.png', 180);
-downscaleIcon('icon-matte-512.png', 'icon-matte-32.png', 32);
-
-rasterizeSvg('niskbuild-wordmark-matte.svg', 'niskbuild-wordmark-matte-raster.png', 1200);
-rasterizeSvg('niskbuild-wordmark-matte-wide.svg', 'niskbuild-wordmark-matte-wide-raster.png', 1500);
-rasterizeSvg('niskbuild-lockup-matte-wide.svg', 'niskbuild-lockup-matte-wide-raster.png', 1500);
-rasterizeSvg('niskbuild-lockup-light.svg', 'niskbuild-lockup-light-raster.png', 1500);
-rasterizeSvg('niskbuild-wordmark-light.svg', 'niskbuild-wordmark-raster.png', 1200);
-
-if (existsSync(join(logoDir, 'icon-512.png'))) {
-  copyFileSync(join(logoDir, 'icon-512.png'), join(publicDir, 'logo.png'));
-  copyFileSync(join(logoDir, 'icon-512.png'), join(publicDir, 'logo-icon.png'));
-}
+// 2) App favicon / PWA sizes from dark-plate master
+const master512 = join(brandDir, 'icon-dark-512.png');
 const iconSvg = join(logoDir, 'niskbuild-icon.svg');
+
+if (existsSync(master512)) {
+  copyFileSync(master512, join(logoDir, 'icon-512.png'));
+  downscaleIcon(master512, join(logoDir, 'icon-180.png'), 180);
+  downscaleIcon(master512, join(logoDir, 'icon-192.png'), 192);
+  downscaleIcon(master512, join(logoDir, 'icon-32.png'), 32);
+  downscaleIcon(master512, join(logoDir, 'icon-16.png'), 16);
+  copyFileSync(master512, join(publicDir, 'logo.png'));
+  copyFileSync(master512, join(publicDir, 'logo-icon.png'));
+}
+
 if (existsSync(iconSvg)) {
   copyFileSync(iconSvg, join(publicDir, 'logo.svg'));
   copyFileSync(iconSvg, join(publicDir, 'favicon-source.svg'));
   console.log('Synced logo.svg + favicon-source.svg from niskbuild-icon.svg');
 }
 
-execSync('node scripts/generate-brand-pdfs.mjs', { stdio: 'inherit', cwd: join(__dirname, '..') });
-execSync('node scripts/generate-favicon.mjs', { stdio: 'inherit', cwd: join(__dirname, '..') });
-console.log('Brand logo export complete (copper SVG raster).');
+// Optional: keep a single icon PDF for print (from 2048 master)
+const master2048 = join(brandDir, 'icon-dark-2048.png');
+if (existsSync(master2048)) {
+  try {
+    const { PDFDocument } = await import('pdf-lib');
+    const pngBytes = readFileSync(master2048);
+    const doc = await PDFDocument.create();
+    const image = await doc.embedPng(pngBytes);
+    const maxW = 400;
+    const scale = maxW / image.width;
+    const page = doc.addPage([image.width * scale, image.height * scale]);
+    page.drawImage(image, {
+      x: 0,
+      y: 0,
+      width: image.width * scale,
+      height: image.height * scale,
+    });
+    writeFileSync(join(logoDir, 'niskbuild-icon.pdf'), await doc.save());
+    console.log('PDF public/logo/niskbuild-icon.pdf (from 2048 master)');
+  } catch (err) {
+    console.warn('Skip icon PDF:', err.message);
+  }
+}
+
+execSync('node scripts/generate-favicon.mjs', { stdio: 'inherit', cwd: root });
+console.log('Brand logo export complete.');
