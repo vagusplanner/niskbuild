@@ -4,7 +4,6 @@ import { canUseSupportTickets } from '@/lib/support-access';
 import {
   CLOUD_CREDITS_BY_TIER,
   SESSION_LIMITS,
-  TEAM_SEATS_BY_TIER,
   canExportCleanZip,
   canExportMobileProject,
   canExportNative,
@@ -12,18 +11,21 @@ import {
   canImportGooglePlaces,
   canScheduleSocialPosts,
   canUseCompetitorIntel,
-  canUseCustomDomains,
   canUseGameTemplates,
   canUseLocalOllama,
   canUseOwnApiKeys,
-  canUseWhiteLabelBranding,
   isPaidAndActive,
   isSandboxTier,
+  isWhiteLabelOrAbove,
 } from '@/lib/tier-config';
 import { getProjectLimit, isUnlimitedTier } from '@/lib/project-limits';
+import { tierAtLeast } from '@/lib/tier-rank';
 
 /** Active subscription assumed for paid-tier gating in the comparison matrix. */
 const ACTIVE = 'active';
+
+/** Cell label for capabilities sold on the roadmap but not yet functionally shipped. */
+export const COMING_SOON_LABEL = 'Coming soon';
 
 export type CompareCell = string | boolean;
 
@@ -35,18 +37,22 @@ export type CompareRow = {
 
 /**
  * Short column taglines for the comparison page.
- * FLAG FOR REVIEW — marketing copy derived from each tier's feature set.
+ * Honest about what ships today vs enterprise roadmap items.
  */
 export const TIER_COMPARE_TAGLINES: Record<string, string> = {
   Sandbox: 'Try it free — no card, just a quick phone verification.',
   Basic: 'Solo freelancers who need clean exports and PWA',
   'Pro Worker': 'Power users — BYOC, Places AI, games, and 4× credits',
-  'Agency Studio': 'Studios shipping client work with seats and native export',
-  'Scale Team': 'Growing teams that need volume, seats, and scheduled social',
-  'White-Label': 'Resellers who need full rebrand and custom domains',
-  'Team Enterprise': 'Mid-size companies needing SLA-grade support',
-  Sovereign: 'For organizations needing dedicated infrastructure, compliance, and full data isolation.',
+  'Agency Studio': 'Studios shipping client work with native export and ticket support',
+  'Scale Team': 'Growing teams that need volume, credits, and scheduled social',
+  'White-Label': 'Highest reseller credits today — rebrand & domains on the roadmap',
+  'Team Enterprise': 'Mid-size companies — high credits and ticket support today',
+  Sovereign: 'Maximum credits today — dedicated infra and custom SLA on the roadmap',
 };
+
+/** Note shown above the comparison matrix. */
+export const COMPARE_ROADMAP_NOTE =
+  "Enterprise features marked Coming soon are in active development — contact us for current availability and roadmap.";
 
 function formatProjects(tierKey: string | null): string {
   const key = tierKey || 'free';
@@ -67,25 +73,14 @@ function formatCredits(tierKey: string | null): string {
   return n.toLocaleString();
 }
 
-function formatSeats(tierKey: string | null): string {
-  const key = tierKey || 'free';
-  const n = TEAM_SEATS_BY_TIER[key] ?? 0;
-  if (n <= 0) return '—';
-  if (n >= 999999) return 'Unlimited';
-  return String(n);
-}
-
 function formatZip(tierKey: string | null): string {
   if (isSandboxTier(tierKey)) return 'Locked';
   return canExportCleanZip(tierKey, ACTIVE) ? 'Clean ZIP' : '—';
 }
 
+/** Support that is actually enforced: ticket portal (Pro+) or contact form. */
 function formatSupport(tierKey: string | null): string {
-  if (canUseSupportTickets(tierKey, ACTIVE)) {
-    if (tierKey === 'team_enterprise') return 'SLA + Slack + tickets';
-    if (tierKey === 'sovereign') return 'Custom SLA + tickets';
-    return 'Ticket portal';
-  }
+  if (canUseSupportTickets(tierKey, ACTIVE)) return 'Ticket portal';
   return 'Contact form';
 }
 
@@ -97,14 +92,34 @@ function gate(
   return fn(tierKey, ACTIVE);
 }
 
+/** Planned for this tier → Coming soon; otherwise not included. */
+function roadmapCell(
+  tierKey: string | null,
+  planned: (tierKey: string | null) => boolean
+): CompareCell {
+  return planned(tierKey) ? COMING_SOON_LABEL : false;
+}
+
+function isAgencyOrAbove(tierKey: string | null): boolean {
+  return !!tierKey && tierAtLeast(tierKey, 'agency');
+}
+
+function isTeamEnterpriseOrAbove(tierKey: string | null): boolean {
+  return !!tierKey && tierAtLeast(tierKey, 'team_enterprise');
+}
+
+function isSovereign(tierKey: string | null): boolean {
+  return tierKey === 'sovereign';
+}
+
 /** All tiers from PRICING_TIERS — single source of truth for columns. */
 export function getCompareTiers(): PricingTier[] {
   return PRICING_TIERS;
 }
 
 /**
- * Comparison rows derived from tier-config / project-limits / support-access
- * (enforced behavior), plus Marketplace via hasPaidTier path gating.
+ * Comparison rows: enforced entitlements as ✓ / text; unbuilt enterprise
+ * capabilities kept in the matrix as "Coming soon" (not removed).
  */
 export function buildCompareRows(tiers: PricingTier[] = PRICING_TIERS): CompareRow[] {
   const keys = tiers.map((t) => t.tier);
@@ -157,13 +172,36 @@ export function buildCompareRows(tiers: PricingTier[] = PRICING_TIERS): CompareR
     boolRow('App Store / mobile export pipeline', canExportMobileProject),
     boolRow('Native Capacitor export', canExportNative),
     {
-      label: 'Team seats',
-      values: keys.map((k) => formatSeats(k)),
+      // Seat counts existed in config for display only — orgs/invites/roles not shipped.
+      label: 'Team seats (orgs, invites, roles)',
+      values: keys.map((k) => roadmapCell(k, isAgencyOrAbove)),
     },
     boolRow('Competitor intel', canUseCompetitorIntel),
     boolRow('Schedule social posts', (t, s) => canScheduleSocialPosts(t, s, false)),
-    boolRow('Custom domains', canUseCustomDomains),
-    boolRow('White-label rebrand', canUseWhiteLabelBranding),
+    {
+      label: 'Custom domains (self-serve)',
+      values: keys.map((k) =>
+        roadmapCell(k, (key) => isWhiteLabelOrAbove(key, ACTIVE))
+      ),
+    },
+    {
+      label: 'White-label rebrand',
+      values: keys.map((k) =>
+        roadmapCell(k, (key) => isWhiteLabelOrAbove(key, ACTIVE))
+      ),
+    },
+    {
+      label: 'SSO (SAML / OIDC)',
+      values: keys.map((k) => roadmapCell(k, isTeamEnterpriseOrAbove)),
+    },
+    {
+      label: 'SLA contracts',
+      values: keys.map((k) => roadmapCell(k, isTeamEnterpriseOrAbove)),
+    },
+    {
+      label: 'Dedicated infrastructure',
+      values: keys.map((k) => roadmapCell(k, isSovereign)),
+    },
     {
       label: 'Support',
       values: keys.map((k) => formatSupport(k)),

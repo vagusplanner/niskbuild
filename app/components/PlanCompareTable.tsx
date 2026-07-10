@@ -8,6 +8,8 @@ import {
   type PricingTier,
 } from '@/lib/pricing-tiers';
 import {
+  COMING_SOON_LABEL,
+  COMPARE_ROADMAP_NOTE,
   TIER_COMPARE_TAGLINES,
   buildCompareRows,
   type CompareCell,
@@ -33,6 +35,16 @@ function CellValue({ value }: { value: CompareCell }) {
       </span>
     );
   }
+  if (value === COMING_SOON_LABEL) {
+    return (
+      <span
+        className="inline-block rounded-md border border-[var(--copper-primary)]/35 bg-[var(--copper-primary)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--copper-melt)]"
+        aria-label="Coming soon"
+      >
+        Coming soon
+      </span>
+    );
+  }
   return <span className="text-[var(--nisk-color)] text-sm leading-snug">{value}</span>;
 }
 
@@ -53,6 +65,9 @@ export default function PlanCompareTable({
 
   return (
     <>
+      <p className="mb-4 max-w-3xl text-xs md:text-sm text-nisk-muted leading-relaxed">
+        {COMPARE_ROADMAP_NOTE}
+      </p>
       <div className="overflow-x-auto -mx-4 px-4 pb-2">
         <table className="w-full min-w-[1100px] border-collapse text-left">
           <thead>

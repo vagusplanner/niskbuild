@@ -75,8 +75,8 @@ function CompareContent() {
             Every plan, side by side
           </h1>
           <p className="text-nisk-muted max-w-2xl mx-auto text-sm md:text-base">
-            Entitlements match what the product enforces — credits, exports, seats, and gates from
-            the same tier config used in the builder.
+            Credits, exports, BYOC, and ticket support match what the product enforces today.
+            Enterprise roadmap items are labeled Coming soon — not removed from the matrix.
           </p>
         </div>
 
