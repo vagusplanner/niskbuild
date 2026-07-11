@@ -49,10 +49,11 @@ export function isVpDeployBundlePath(pathname: string) {
   return pathname.startsWith('/vp-deploy/');
 }
 
-/** Tenant runtime + offline pages (no auth) */
+/** Tenant runtime + offline pages + branded PWA manifest (no auth) */
 export function isTenantRuntimePath(pathname: string) {
   return (
     pathname === '/system/nodes-offline' ||
+    pathname === '/tenant-manifest' ||
     pathname.startsWith('/app-runtime-engines/')
   );
 }

@@ -2,7 +2,7 @@ import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { GameRuntimeShell } from '@/app/components/GameRuntimeShell';
 import { getCompiledApplicationById, runtimeHtmlFromConfig } from '@/lib/compiled-applications';
-import { resolveTenantBrand, tenantDisplayName } from '@/lib/tenant-brand';
+import { resolveTenantBrand, tenantDisplayName, tenantDocumentTitle } from '@/lib/tenant-brand';
 
 interface GameRuntimePageProps {
   params: Promise<{ id: string }>;
@@ -45,8 +45,11 @@ export async function generateMetadata({ params }: GameRuntimePageProps) {
   const { id } = await params;
   const app = await getCompiledApplicationById(id);
   const brand = await hostBrand();
-  const title =
-    app?.configuration_state?.title || tenantDisplayName(brand, 'Game');
+  const projectTitle =
+    typeof app?.configuration_state?.title === 'string'
+      ? app.configuration_state.title
+      : null;
+  const title = tenantDocumentTitle(brand, projectTitle, 'Game');
   return {
     title,
     applicationName: tenantDisplayName(brand, 'NiskBuild'),

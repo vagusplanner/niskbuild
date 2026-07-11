@@ -2,7 +2,7 @@ import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { TenantRuntimeShell } from '@/app/components/TenantRuntimeShell';
 import { getCompiledApplicationById } from '@/lib/compiled-applications';
-import { resolveTenantBrand, tenantDisplayName } from '@/lib/tenant-brand';
+import { resolveTenantBrand, tenantDocumentTitle, tenantDisplayName } from '@/lib/tenant-brand';
 
 interface WebappRuntimePageProps {
   params: Promise<{ id: string }>;
@@ -30,9 +30,11 @@ export async function generateMetadata({ params }: WebappRuntimePageProps) {
   const { id } = await params;
   const app = await getCompiledApplicationById(id);
   const brand = await hostBrand();
-  const title =
-    app?.configuration_state?.title ||
-    tenantDisplayName(brand, 'Web App');
+  const projectTitle =
+    typeof app?.configuration_state?.title === 'string'
+      ? app.configuration_state.title
+      : null;
+  const title = tenantDocumentTitle(brand, projectTitle, 'Web App');
   return {
     title,
     applicationName: tenantDisplayName(brand, 'NiskBuild'),

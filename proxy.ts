@@ -59,18 +59,25 @@ export async function proxy(request: NextRequest) {
     return NextResponse.rewrite(url);
   }
 
-  // Custom-domain PWA manifest → branded dynamic manifest
+  // Custom-domain PWA manifest → branded dynamic manifest (before auth).
+  // Matcher must include site.webmanifest so this rewrite can run; base
+  // platform keeps the static public/site.webmanifest via next() below.
   if (
-    !isBasePlatform(host) &&
-    (pathname === '/site.webmanifest' || pathname === '/manifest.webmanifest')
+    !isBasePlatform(hostname) &&
+    (pathname === '/site.webmanifest' ||
+      pathname === '/manifest.webmanifest' ||
+      pathname === '/tenant-manifest')
   ) {
+    if (pathname === '/tenant-manifest') {
+      return NextResponse.next();
+    }
     const url = request.nextUrl.clone();
     url.pathname = '/tenant-manifest';
     return NextResponse.rewrite(url);
   }
 
   // Multi-tenant: white-label subdomain or custom domain → compiled app runtime
-  if (!isBasePlatform(host) && !shouldSkipTenantRouting(pathname)) {
+  if (!isBasePlatform(hostname) && !shouldSkipTenantRouting(pathname)) {
     const tenant = await resolveTenantByHostname(host);
 
     if (tenant) {
@@ -156,6 +163,8 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!api/auth|_next/static|_next/image|assets|favicon.ico|site\\.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|webmanifest|ico|json|txt|xml|woff2?)$).*)',
+    // Include site.webmanifest so custom domains can rewrite to /tenant-manifest.
+    // Static NiskBuild manifest still served on base platform via next().
+    '/((?!api/auth|_next/static|_next/image|assets|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|txt|xml|woff2?)$).*)',
   ],
 };

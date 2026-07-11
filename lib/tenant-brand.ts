@@ -6,7 +6,11 @@ import { isBasePlatform, normalizeHost } from '@/lib/tenant-routing';
 import type { TenantBrand } from '@/lib/tenant-brand-types';
 
 export type { TenantBrand } from '@/lib/tenant-brand-types';
-export { tenantDisplayName } from '@/lib/tenant-brand-types';
+export {
+  tenantDisplayName,
+  tenantDocumentTitle,
+  hasCustomTenantBranding,
+} from '@/lib/tenant-brand-types';
 
 function getEdgeAdminClient(): SupabaseClient | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -101,6 +105,7 @@ export async function resolveTenantBrand(
   return {
     orgId: org.id as string,
     appName: brandedName || orgName,
+    customAppName: brandedName,
     logoUrl,
     hideAttribution,
     ownerTier,
