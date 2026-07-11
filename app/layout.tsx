@@ -24,7 +24,7 @@ const geistMono = Geist_Mono({
 });
 
 const siteUrl =
-  process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || "https://niskbuild.com";
+  process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || "https://www.niskbuild.com";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

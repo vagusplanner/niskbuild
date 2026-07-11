@@ -50,16 +50,16 @@ export const SESSION_LIMITS: Record<string, number> = {
   sovereign: 999999,
 };
 
-/** Team seats included per tier (0 = not available) */
+/** Team seats included per tier (0 = not available). Owner counts toward the cap. */
 export const TEAM_SEATS_BY_TIER: Record<string, number> = {
   free: 0,
   basic: 0,
   pro: 0,
   agency: 3,
-  scale: 999999,
-  white_label: 999999,
-  team_enterprise: 999999,
-  sovereign: 999999,
+  scale: 10,
+  white_label: 15,
+  team_enterprise: 25,
+  sovereign: 50,
 };
 
 export function getCloudCreditsForTier(tier: string | null | undefined): number {

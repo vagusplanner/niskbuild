@@ -5,17 +5,21 @@ import { resolvePostAuthPath } from '@/lib/post-auth-redirect';
 import { recordSignupIfNewUser } from '@/lib/usage-events';
 import { sendWelcomeEmail } from '@/lib/email/lifecycle';
 import { clientIpFromHeaders } from '@/lib/coarse-town';
+import { getAuthRedirectOrigin } from '@/lib/canonical-url';
+
+function redirectBase(requestUrl: URL): string {
+  return getAuthRedirectOrigin(requestUrl.origin);
+}
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
   const next = requestUrl.searchParams.get('next');
   const authError = requestUrl.searchParams.get('error');
+  const origin = redirectBase(requestUrl);
 
   if (authError) {
-    return NextResponse.redirect(
-      new URL('/login?error=auth_failed', requestUrl.origin)
-    );
+    return NextResponse.redirect(new URL('/login?error=auth_failed', origin));
   }
 
   let userId: string | null = null;
@@ -26,9 +30,7 @@ export async function GET(request: Request) {
 
     if (error) {
       console.error('Auth callback error:', error.message);
-      return NextResponse.redirect(
-        new URL('/login?error=auth_failed', requestUrl.origin)
-      );
+      return NextResponse.redirect(new URL('/login?error=auth_failed', origin));
     }
 
     userId = data.user?.id ?? null;
@@ -50,7 +52,7 @@ export async function GET(request: Request) {
       .single();
 
     const destinationPath = resolvePostAuthPath(profile ?? {}, next);
-    const destination = new URL(destinationPath, requestUrl.origin);
+    const destination = new URL(destinationPath, origin);
     if (
       destinationPath.startsWith('/builder') ||
       (next && next.startsWith('/builder'))
@@ -60,6 +62,6 @@ export async function GET(request: Request) {
     return NextResponse.redirect(destination);
   }
 
-  const fallback = new URL(resolvePostAuthPath({}, next), requestUrl.origin);
+  const fallback = new URL(resolvePostAuthPath({}, next), origin);
   return NextResponse.redirect(fallback);
 }

@@ -96,6 +96,14 @@ Events: `checkout.session.completed`, `customer.subscription.*`, `invoice.paid`.
 | `CRON_SECRET` | Bearer secret for `/api/cron/email-lifecycle` and VP reminders (Vercel Cron) |
 | `RESEND_WEBHOOK_SECRET` | Resend webhook **Signing secret** (`whsec_...`) from Resend → Webhooks — used for Svix verification on `/api/webhooks/resend` |
 
+Configure the Resend webhook endpoint as:
+
+```
+https://www.niskbuild.com/api/webhooks/resend
+```
+
+Use the **www** host (or `niskbuild.com` after apex platform-redirect is disabled). Do **not** point Resend at a host that 307/308-redirects — webhook POSTs will fail and Resend will disable the endpoint.
+
 ### Optional — Observability & integrations
 
 | Variable | Description |
@@ -130,8 +138,10 @@ In **Supabase → Authentication → URL configuration**:
 
 | Setting | Value |
 |---------|-------|
-| Site URL | `https://<your-domain>` |
-| Redirect URLs | `https://<your-domain>/auth/callback`, `https://<your-domain>/**` |
+| Site URL | `https://www.niskbuild.com` (canonical — apex already redirects here) |
+| Redirect URLs | `https://www.niskbuild.com/auth/callback`, `https://www.niskbuild.com/**`, `https://niskbuild.com/auth/callback`, `https://niskbuild.com/**` |
+
+Do **not** leave Site URL as `https://niskbuild.vercel.app` — that is the usual cause of post-login redirects to the Vercel alias.
 
 ### 2.4 Deploy
 

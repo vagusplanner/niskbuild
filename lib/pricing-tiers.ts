@@ -112,7 +112,7 @@ export const PRICING_TIERS: PricingTier[] = [
       '20 sessions',
       '10,000 credits',
       'BYOC + priority queue',
-      'Unlimited team seats',
+      'Team seats (10 included)',
       'Shared component library',
     ],
     buttonText: 'Choose Scale',
@@ -130,6 +130,7 @@ export const PRICING_TIERS: PricingTier[] = [
       'Unlimited projects',
       'Unlimited sessions',
       '15,000 credits',
+      'Team seats (15 included)',
       'Full rebranding',
       'Custom domain mapping',
       'Remove NiskBuild branding',
@@ -148,6 +149,7 @@ export const PRICING_TIERS: PricingTier[] = [
     features: [
       'Unlimited everything',
       '25,000 credits',
+      'Team seats (25 included)',
       'SLA agreement',
       'Dedicated Slack channel',
       'SOC2 readiness pack',
@@ -166,6 +168,7 @@ export const PRICING_TIERS: PricingTier[] = [
     features: [
       'Unlimited everything',
       '50,000 credits',
+      'Team seats (50 included)',
       'Custom SLA',
       'Dedicated AWS cluster',
       'Zero-data tracking',

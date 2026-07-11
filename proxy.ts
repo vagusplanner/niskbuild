@@ -19,6 +19,32 @@ import {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const host = request.headers.get('host') || '';
+  const hostname = host.split(':')[0].toLowerCase();
+  const canonical = (
+    process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, '') ||
+    'https://www.niskbuild.com'
+  );
+
+  // Never 308 API/webhooks off the production Vercel alias — Resend/Stripe POST
+  // clients often do not re-POST after redirects (endpoint gets disabled).
+  const isApiOrAsset =
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/_next') ||
+    isVpDeployBundlePath(pathname) ||
+    isStaticPublicAsset(pathname);
+
+  if (hostname === 'niskbuild.vercel.app' && !isApiOrAsset) {
+    const url = new URL(pathname + request.nextUrl.search, canonical);
+    return NextResponse.redirect(url, 308);
+  }
+
+  // Apex custom domain: send browsers to www, but keep /api on apex so webhook
+  // providers that still target https://niskbuild.com/... get 2xx (Vercel
+  // platform redirect to www was cleared for this reason).
+  if (hostname === 'niskbuild.com' && !isApiOrAsset) {
+    const url = new URL(pathname + request.nextUrl.search, canonical);
+    return NextResponse.redirect(url, 308);
+  }
 
   // preview.niskbuild.com/abc123 → /preview/abc123
   // /vp-deploy/... must not be rewritten (bundle assets live on preview host).
@@ -57,12 +83,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // Always allow API routes, static assets, and public VP deploy bundles (no auth).
-  if (
-    pathname.startsWith('/api') ||
-    pathname.startsWith('/_next') ||
-    isVpDeployBundlePath(pathname) ||
-    isStaticPublicAsset(pathname)
-  ) {
+  if (isApiOrAsset) {
     return NextResponse.next();
   }
 

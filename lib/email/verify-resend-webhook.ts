@@ -18,8 +18,11 @@ export function verifyResendWebhook(
     svixSignature: string | null;
   }
 ): ResendWebhookEvent {
-  const secret = process.env.RESEND_WEBHOOK_SECRET?.trim();
+  // Trim + strip wrapping quotes — Vercel env UI sometimes preserves them and
+  // Svix verification then fails on every delivery (Resend disables the endpoint).
+  const secret = process.env.RESEND_WEBHOOK_SECRET?.trim().replace(/^["']|["']$/g, '');
   if (!secret) {
+    // Dev / unconfigured: accept payload without signature (never leave empty in prod).
     return JSON.parse(rawBody) as ResendWebhookEvent;
   }
 

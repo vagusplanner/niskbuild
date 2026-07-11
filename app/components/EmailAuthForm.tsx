@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { signInWithEmail, signUpWithEmail, requestPasswordReset } from '@/lib/auth';
 import { AGE_RANGE_OPTIONS, AGE_RANGE_LABELS } from '@/lib/age-range';
+import { getAuthRedirectOrigin } from '@/lib/canonical-url';
 
 interface EmailAuthFormProps {
   nextPath?: string;
@@ -58,6 +59,17 @@ function PasswordInput({
   );
 }
 
+function navigateAfterAuth(nextPath: string) {
+  const path = nextPath.startsWith('/') ? nextPath : `/${nextPath}`;
+  const origin = getAuthRedirectOrigin(window.location.origin);
+  // Relative nav is fine on the custom domain; force absolute when on vercel.app alias.
+  if (origin !== window.location.origin) {
+    window.location.href = `${origin}${path}`;
+  } else {
+    window.location.href = path;
+  }
+}
+
 export default function EmailAuthForm({ nextPath = '/pricing', onSuccess }: EmailAuthFormProps) {
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signin');
   const [email, setEmail] = useState('');
@@ -87,7 +99,7 @@ export default function EmailAuthForm({ nextPath = '/pricing', onSuccess }: Emai
       if (mode === 'signin') {
         await signInWithEmail(email, password);
         onSuccess?.();
-        window.location.href = nextPath;
+        navigateAfterAuth(nextPath);
       } else {
         const data = await signUpWithEmail(email, password);
         if (data.session) {
@@ -101,7 +113,7 @@ export default function EmailAuthForm({ nextPath = '/pricing', onSuccess }: Emai
             }),
           });
           onSuccess?.();
-          window.location.href = nextPath;
+          navigateAfterAuth(nextPath);
         } else {
           setMessage('Check your email to confirm your account, then sign in.');
         }

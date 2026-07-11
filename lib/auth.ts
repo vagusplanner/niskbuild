@@ -1,7 +1,11 @@
 import { createClient } from '@/lib/supabase/client';
+import { getAuthRedirectOrigin } from '@/lib/canonical-url';
 
 function getOrigin() {
-  return typeof window !== 'undefined' ? window.location.origin : '';
+  if (typeof window === 'undefined') return getAuthRedirectOrigin(null);
+  // Prefer the custom domain for OAuth/email redirectTo so Supabase does not
+  // leave users on niskbuild.vercel.app when Site URL / allow-list is mis-set.
+  return getAuthRedirectOrigin(window.location.origin);
 }
 
 export async function signInWithGoogle(nextPath = '/pricing') {
