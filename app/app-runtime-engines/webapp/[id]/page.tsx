@@ -1,9 +1,17 @@
+import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { TenantRuntimeShell } from '@/app/components/TenantRuntimeShell';
 import { getCompiledApplicationById } from '@/lib/compiled-applications';
+import { resolveTenantBrand, tenantDisplayName } from '@/lib/tenant-brand';
 
 interface WebappRuntimePageProps {
   params: Promise<{ id: string }>;
+}
+
+async function hostBrand() {
+  const h = await headers();
+  const host = h.get('x-forwarded-host') || h.get('host') || '';
+  return resolveTenantBrand(host.split(':')[0] || '');
 }
 
 export default async function WebappRuntimePage({ params }: WebappRuntimePageProps) {
@@ -14,15 +22,22 @@ export default async function WebappRuntimePage({ params }: WebappRuntimePagePro
     notFound();
   }
 
-  return <TenantRuntimeShell app={app} variant="webapp" />;
+  const brand = await hostBrand();
+  return <TenantRuntimeShell app={app} variant="webapp" brand={brand} />;
 }
 
 export async function generateMetadata({ params }: WebappRuntimePageProps) {
   const { id } = await params;
   const app = await getCompiledApplicationById(id);
-  const title = app?.configuration_state?.title || 'Web App';
+  const brand = await hostBrand();
+  const title =
+    app?.configuration_state?.title ||
+    tenantDisplayName(brand, 'Web App');
   return {
     title,
+    applicationName: tenantDisplayName(brand, 'NiskBuild'),
+    icons: brand?.logoUrl ? [{ url: brand.logoUrl }] : undefined,
     robots: 'noindex',
+    manifest: brand ? '/tenant-manifest' : undefined,
   };
 }

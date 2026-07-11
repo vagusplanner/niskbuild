@@ -39,6 +39,7 @@ export function shouldSkipTenantRouting(pathname: string): boolean {
   if (pathname.startsWith('/_next')) return true;
   if (pathname.startsWith('/api/internal')) return true;
   if (pathname.startsWith('/system/nodes-offline')) return true;
+  if (pathname.startsWith('/tenant-manifest')) return true;
   if (pathname.startsWith('/app-runtime-engines')) return true;
   if (pathname.startsWith('/preview/')) return true;
   if (pathname.startsWith('/vp-deploy/')) return true;

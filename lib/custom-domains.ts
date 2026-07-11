@@ -10,6 +10,10 @@ import {
   vercelDnsCnameTarget,
   vercelDomainEnvConfigured,
 } from '@/lib/vercel-domains';
+import {
+  ensureSoloOrganizationForUser,
+  getPrimaryOrgIdForBillingOwner,
+} from '@/lib/ensure-organization';
 
 export type CustomDomainStatus = 'pending_dns' | 'dns_verified' | 'active' | 'failed';
 
@@ -24,6 +28,7 @@ export type CustomDomainRow = {
   verification_token: string;
   status: CustomDomainStatus;
   compiled_application_id: string | null;
+  org_id: string | null;
   vercel_attached: boolean;
   last_error: string | null;
   verified_at: string | null;
@@ -151,7 +156,7 @@ async function ensureCompiledAppForDomain(
   const html =
     typeof project?.generated_code === 'string' && project.generated_code.trim()
       ? project.generated_code
-      : `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${hostname}</title></head><body style="font-family:system-ui;padding:2rem"><h1>NiskBuild</h1><p>Custom domain <strong>${hostname}</strong> is connected. Publish an app from the builder to replace this placeholder.</p></body></html>`;
+      : await buildDomainPlaceholderHtml(ownerId, hostname);
 
   const { data: created, error } = await admin
     .from('compiled_applications')
@@ -172,6 +177,28 @@ async function ensureCompiledAppForDomain(
   return created.id as string;
 }
 
+async function buildDomainPlaceholderHtml(
+  ownerId: string,
+  hostname: string
+): Promise<string> {
+  // Prefer brand from owner's primary org when placeholder is first generated
+  const orgId = await getPrimaryOrgIdForBillingOwner(ownerId);
+  let brandName = 'App';
+  if (orgId) {
+    const admin = createAdminClient();
+    const { data: org } = await admin
+      .from('organizations')
+      .select('name, brand_app_name')
+      .eq('id', orgId)
+      .maybeSingle();
+    brandName =
+      (org?.brand_app_name as string)?.trim() ||
+      (org?.name as string)?.trim() ||
+      'App';
+  }
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${hostname}</title></head><body style="font-family:system-ui;padding:2rem"><h1>${brandName}</h1><p>Custom domain <strong>${hostname}</strong> is connected. Publish an app from the builder to replace this placeholder.</p></body></html>`;
+}
+
 export async function claimCustomDomain(params: {
   ownerId: string;
   tier: string | null | undefined;
@@ -190,6 +217,15 @@ export async function claimCustomDomain(params: {
   const admin = createAdminClient();
   const token = newVerificationToken();
 
+  // Ensure org exists for WL+ and attach org_id for brand resolution
+  const ensured = await ensureSoloOrganizationForUser({
+    userId: params.ownerId,
+    tier: params.tier,
+    status: params.status,
+  });
+  const orgId =
+    ensured?.orgId || (await getPrimaryOrgIdForBillingOwner(params.ownerId));
+
   const { data, error } = await admin
     .from('custom_domains')
     .insert({
@@ -198,6 +234,7 @@ export async function claimCustomDomain(params: {
       verification_token: token,
       status: 'pending_dns',
       last_error: null,
+      ...(orgId ? { org_id: orgId } : {}),
     })
     .select('*')
     .single();

@@ -10,6 +10,9 @@ export type OrganizationRow = {
   id: string;
   name: string;
   billing_owner_id: string;
+  brand_app_name?: string | null;
+  brand_logo_url?: string | null;
+  hide_niskbuild_attribution?: boolean;
   created_at: string;
   updated_at: string;
 };

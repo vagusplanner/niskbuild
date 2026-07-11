@@ -4,7 +4,7 @@ import type { PostgrestError } from '@supabase/supabase-js';
 import { captureApiException } from '@/lib/api-error';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { addCloudCredits } from '@/lib/credits';
-import { canUseOwnApiKeys, getCloudCreditsForTier } from '@/lib/tier-config';
+import { canUseOwnApiKeys, canUseWhiteLabelBranding, getCloudCreditsForTier, isAgencyStudioOrAbove } from '@/lib/tier-config';
 import {
   deactivatePreviewsByEmail,
   deactivatePreviewsForUser,
@@ -19,6 +19,7 @@ import {
 } from '@/lib/email/lifecycle';
 import { resolveTierFromSubscription } from '@/lib/stripe-price-ids';
 import { notifyOrgsAfterBillingOwnerPlanChange } from '@/lib/org-billing-lifecycle';
+import { ensureSoloOrganizationForUser } from '@/lib/ensure-organization';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -109,7 +110,7 @@ async function handleSubscriptionActivated(
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('subscription_tier, subscription_status')
+    .select('subscription_tier, subscription_status, email')
     .eq('id', uid)
     .maybeSingle();
 
@@ -118,6 +119,39 @@ async function handleSubscriptionActivated(
     profile?.subscription_tier,
     profile?.subscription_status
   );
+
+  // Phase 0: Agency+ (incl. White-Label+) get a solo org if missing
+  if (
+    isAgencyStudioOrAbove(profile?.subscription_tier, profile?.subscription_status)
+  ) {
+    const ensured = await ensureSoloOrganizationForUser({
+      userId: uid,
+      email: (profile?.email as string) || email,
+      tier: profile?.subscription_tier as string,
+      status: profile?.subscription_status as string,
+    }).catch((err) => {
+      console.error('ensureSoloOrganizationForUser failed:', err);
+      return null;
+    });
+
+    // Option B: on first WL+ activation, enable attribution removal if still default false
+    // and no branding customized yet (do not clobber an explicit user preference later).
+    if (
+      ensured &&
+      canUseWhiteLabelBranding(
+        profile?.subscription_tier,
+        profile?.subscription_status
+      )
+    ) {
+      await supabase
+        .from('organizations')
+        .update({ hide_niskbuild_attribution: true })
+        .eq('id', ensured.orgId)
+        .eq('hide_niskbuild_attribution', false)
+        .is('brand_app_name', null)
+        .is('brand_logo_url', null);
+    }
+  }
 }
 
 async function handleSubscriptionEnded(
@@ -379,6 +413,12 @@ async function processStripeEvent(
       await resetCreditAlertFlags(profile.id);
       await resetBuildsThisPeriod(profile.id);
       await reactivatePreviewsIfPaidAndActive(profile.id, resolvedTier, 'active');
+      await ensureSoloOrganizationForUser({
+        userId: profile.id,
+        email: customer.email,
+        tier: resolvedTier,
+        status: 'active',
+      }).catch((err) => console.error('ensureSoloOrganizationForUser:', err));
       notifyOrgPlanSideEffects(customer.email, profile.id);
     }
 

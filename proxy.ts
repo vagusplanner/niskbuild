@@ -59,6 +59,16 @@ export async function proxy(request: NextRequest) {
     return NextResponse.rewrite(url);
   }
 
+  // Custom-domain PWA manifest → branded dynamic manifest
+  if (
+    !isBasePlatform(host) &&
+    (pathname === '/site.webmanifest' || pathname === '/manifest.webmanifest')
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/tenant-manifest';
+    return NextResponse.rewrite(url);
+  }
+
   // Multi-tenant: white-label subdomain or custom domain → compiled app runtime
   if (!isBasePlatform(host) && !shouldSkipTenantRouting(pathname)) {
     const tenant = await resolveTenantByHostname(host);

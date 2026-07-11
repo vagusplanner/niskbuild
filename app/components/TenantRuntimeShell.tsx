@@ -1,13 +1,22 @@
 import type { AppType, CompiledApplication } from '@/lib/compiled-applications';
 import { runtimeHtmlFromConfig } from '@/lib/compiled-applications';
+import type { TenantBrand } from '@/lib/tenant-brand-types';
+import { tenantDisplayName } from '@/lib/tenant-brand-types';
 
 type TenantRuntimeShellProps = {
   app: CompiledApplication;
   variant: AppType;
+  brand?: TenantBrand | null;
 };
 
-export function TenantRuntimeShell({ app, variant }: TenantRuntimeShellProps) {
-  const title = app.configuration_state?.title || 'NiskBuild App';
+export function TenantRuntimeShell({
+  app,
+  variant,
+  brand = null,
+}: TenantRuntimeShellProps) {
+  const title =
+    app.configuration_state?.title ||
+    tenantDisplayName(brand, 'App');
   const html = runtimeHtmlFromConfig(app);
   const bundleUrl =
     typeof app.configuration_state?.bundle_url === 'string'
@@ -84,7 +93,7 @@ export function TenantRuntimeShell({ app, variant }: TenantRuntimeShellProps) {
           />
         ) : (
           <div className="h-full flex items-center justify-center text-[#94A3B8] text-sm px-6 text-center">
-            Game runtime ready — publish your build to activate this domain.
+            Runtime ready — publish your build to activate this domain.
           </div>
         )}
       </div>

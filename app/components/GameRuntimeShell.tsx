@@ -1,14 +1,22 @@
 "use client";
 
 import { useCallback, useRef, useState } from 'react';
+import type { TenantBrand } from '@/lib/tenant-brand-types';
+import { tenantDisplayName } from '@/lib/tenant-brand-types';
 
 type GameRuntimeShellProps = {
   title: string;
   html: string | null;
   bundleUrl: string | null;
+  brand?: TenantBrand | null;
 };
 
-export function GameRuntimeShell({ title, html, bundleUrl }: GameRuntimeShellProps) {
+export function GameRuntimeShell({
+  title,
+  html,
+  bundleUrl,
+  brand = null,
+}: GameRuntimeShellProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [frameKey, setFrameKey] = useState(0);
 
@@ -27,13 +35,27 @@ export function GameRuntimeShell({ title, html, bundleUrl }: GameRuntimeShellPro
   }, []);
 
   const hasContent = !!(html || bundleUrl);
+  const productLabel = tenantDisplayName(brand, 'NiskBuild');
+  const showAttribution = !brand?.hideAttribution;
 
   return (
     <div className="min-h-screen bg-[#0B0F19] flex flex-col">
       <header className="shrink-0 border-b border-white/10 px-4 py-3 flex items-center justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-[10px] uppercase tracking-wider text-[#64748B]">NiskBuild Game</p>
-          <h1 className="text-white font-semibold truncate">{title}</h1>
+        <div className="min-w-0 flex items-center gap-3">
+          {brand?.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={brand.logoUrl}
+              alt=""
+              className="h-8 w-8 rounded object-contain bg-white/5"
+            />
+          ) : null}
+          <div className="min-w-0">
+            <p className="text-[10px] uppercase tracking-wider text-[#64748B]">
+              {productLabel} Game
+            </p>
+            <h1 className="text-white font-semibold truncate">{title}</h1>
+          </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button
@@ -85,9 +107,15 @@ export function GameRuntimeShell({ title, html, bundleUrl }: GameRuntimeShellPro
         </div>
       </div>
 
-      <footer className="shrink-0 py-3 text-center text-[10px] text-[#64748B]">
-        Powered by NiskBuild · Phaser.js
-      </footer>
+      {showAttribution ? (
+        <footer className="shrink-0 py-3 text-center text-[10px] text-[#64748B]">
+          Powered by NiskBuild · Phaser.js
+        </footer>
+      ) : (
+        <footer className="shrink-0 py-3 text-center text-[10px] text-[#64748B]">
+          Phaser.js
+        </footer>
+      )}
     </div>
   );
 }

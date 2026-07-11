@@ -15,10 +15,10 @@ import {
   canUseGameTemplates,
   canUseLocalOllama,
   canUseOwnApiKeys,
+  canUseWhiteLabelBranding,
   getTeamSeats,
   isPaidAndActive,
   isSandboxTier,
-  isWhiteLabelOrAbove,
 } from '@/lib/tier-config';
 import { getProjectLimit, isUnlimitedTier } from '@/lib/project-limits';
 import { tierAtLeast } from '@/lib/tier-rank';
@@ -47,8 +47,8 @@ export const TIER_COMPARE_TAGLINES: Record<string, string> = {
   'Pro Worker': 'Power users — BYOC, Places AI, games, and 4× credits',
   'Agency Studio': 'Studios shipping client work with native export and ticket support',
   'Scale Team': 'Growing teams that need volume, credits, and scheduled social',
-  'White-Label': 'Highest reseller credits today — rebrand & domains on the roadmap',
-  'Team Enterprise': 'Mid-size companies — high credits and ticket support today',
+  'White-Label': 'Resellers — custom domains, white-label rebrand, and high credits',
+  'Team Enterprise': 'Mid-size companies — high credits, seats, and white-label',
   Sovereign: 'Maximum credits today — dedicated infra and custom SLA on the roadmap',
 };
 
@@ -188,9 +188,7 @@ export function buildCompareRows(tiers: PricingTier[] = PRICING_TIERS): CompareR
     },
     {
       label: 'White-label rebrand',
-      values: keys.map((k) =>
-        roadmapCell(k, (key) => isWhiteLabelOrAbove(key, ACTIVE))
-      ),
+      values: keys.map((k) => gate(k, canUseWhiteLabelBranding)),
     },
     {
       label: 'SSO (SAML / OIDC)',
