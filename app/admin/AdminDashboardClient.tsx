@@ -79,6 +79,18 @@ export default function AdminDashboardClient({ data }: Props) {
         >
           👑 Manage Users
         </Link>
+        <Link
+          href="/admin/status"
+          className="px-4 py-2 rounded-lg bg-[var(--surface-elevated)] hover:bg-[var(--card-bg)] text-[var(--foreground)] transition-colors"
+        >
+          🟢 Status
+        </Link>
+        <Link
+          href="/admin/organizations"
+          className="px-4 py-2 rounded-lg bg-[var(--surface-elevated)] hover:bg-[var(--card-bg)] text-[var(--foreground)] transition-colors"
+        >
+          🏢 Orgs
+        </Link>
       </div>
 
       {activeTab === 'overview' && (

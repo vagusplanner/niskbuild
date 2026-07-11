@@ -99,10 +99,15 @@ export async function POST(request: NextRequest, context: RouteContext) {
       body: reply,
     });
 
-    await supabase
-      .from('support_tickets')
-      .update({ status: newStatus, updated_at: new Date().toISOString() })
-      .eq('id', id);
+    const ticketUpdates: Record<string, unknown> = {
+      status: newStatus,
+      updated_at: new Date().toISOString(),
+    };
+    if (!ticket.first_response_at) {
+      ticketUpdates.first_response_at = new Date().toISOString();
+    }
+
+    await supabase.from('support_tickets').update(ticketUpdates).eq('id', id);
 
     let appliedDiscount = 0;
     if (ticket.user_id && discountPercent > 0) {

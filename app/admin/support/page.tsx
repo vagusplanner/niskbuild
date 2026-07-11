@@ -6,6 +6,7 @@ import { getSafeSession } from '@/lib/supabaseSession';
 import { isPlatformOwnerClient } from '@/lib/platform-owner-client';
 import Layout from '@/app/components/Layout';
 import { statusLabel, type SupportTicketStatus } from '@/lib/support-access';
+import { formatTimeToFirstResponse } from '@/lib/support-response-time';
 
 type Ticket = {
   id: string;
@@ -20,6 +21,7 @@ type Ticket = {
   source: string;
   created_at: string;
   updated_at: string;
+  first_response_at?: string | null;
 };
 
 type Message = {
@@ -44,6 +46,7 @@ export default function AdminSupportPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [filter, setFilter] = useState('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [reply, setReply] = useState('');
@@ -80,6 +83,7 @@ export default function AdminSupportPage() {
     const res = await fetch(`/api/admin/support/tickets/${id}`, { credentials: 'include' });
     const data = await res.json();
     if (res.ok) {
+      setSelectedTicket(data.ticket || null);
       setMessages(data.messages || []);
       setUser(data.user || null);
       setDiscountPercent(data.user?.admin_discount_percent ?? 0);
@@ -209,11 +213,21 @@ export default function AdminSupportPage() {
             ) : (
               <>
                 <div className="mb-4 pb-4 border-b border-[var(--border)]">
-                  <h2 className="font-semibold">{tickets.find((t) => t.id === selectedId)?.subject}</h2>
+                  <h2 className="font-semibold">
+                    {selectedTicket?.subject || tickets.find((t) => t.id === selectedId)?.subject}
+                  </h2>
                   <p className="text-xs text-nisk-muted mt-1">
-                    {tickets.find((t) => t.id === selectedId)?.email} ·{' '}
-                    {tickets.find((t) => t.id === selectedId)?.category}
+                    {selectedTicket?.email || tickets.find((t) => t.id === selectedId)?.email} ·{' '}
+                    {selectedTicket?.category || tickets.find((t) => t.id === selectedId)?.category}
                   </p>
+                  {selectedTicket?.created_at && (
+                    <p className="text-xs mt-2 text-[var(--copper-melt)]">
+                      {formatTimeToFirstResponse(
+                        selectedTicket.created_at,
+                        selectedTicket.first_response_at
+                      )}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2 max-h-64 overflow-y-auto mb-4">
