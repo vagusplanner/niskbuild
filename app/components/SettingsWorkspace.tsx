@@ -33,6 +33,7 @@ import { planBadgeClass, planDisplayName } from '@/lib/plan-display';
 import CustomDomainSettingsPanel from '@/app/components/CustomDomainSettingsPanel';
 import TeamSettingsPanel from '@/app/components/TeamSettingsPanel';
 import WhiteLabelBrandingPanel from '@/app/components/WhiteLabelBrandingPanel';
+import OrgSsoSettingsPanel from '@/app/components/OrgSsoSettingsPanel';
 
 type TabId = 'profile' | 'billing' | 'team' | 'domains' | 'security' | 'danger';
 
@@ -725,6 +726,7 @@ export default function SettingsWorkspace() {
             <div className="space-y-5">
               <CustomDomainSettingsPanel />
               <WhiteLabelBrandingPanel />
+              <OrgSsoSettingsPanel />
             </div>
           )}
 

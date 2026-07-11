@@ -47,6 +47,11 @@ type CheckoutBanner = {
   text: string;
 } | null;
 
+type SsoBanner = {
+  kind: 'success' | 'warn' | 'info';
+  text: string;
+} | null;
+
 function DashboardContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -57,6 +62,7 @@ function DashboardContent() {
   const [loading, setLoading] = useState(true);
   const [projectsError, setProjectsError] = useState<string | null>(null);
   const [checkoutBanner, setCheckoutBanner] = useState<CheckoutBanner>(null);
+  const [ssoBanner, setSsoBanner] = useState<SsoBanner>(null);
 
   const loadDashboardData = useCallback(async (sessionUser: { id: string; email?: string }) => {
     setUser(sessionUser);
@@ -123,6 +129,34 @@ function DashboardContent() {
     document.addEventListener('visibilitychange', refreshOnFocus);
     return () => document.removeEventListener('visibilitychange', refreshOnFocus);
   }, [user, loadDashboardData]);
+
+  useEffect(() => {
+    const notice = searchParams.get('sso_notice');
+    if (!notice) return;
+
+    const orgName = searchParams.get('sso_org')?.trim() || 'your organization';
+    if (notice === 'no_invite') {
+      setSsoBanner({
+        kind: 'warn',
+        text:
+          orgName !== 'your organization'
+            ? `Your organization (${orgName}) uses SSO, but you haven't been invited yet — contact your org admin.`
+            : "Your organization uses SSO, but you haven't been invited yet — contact your org admin.",
+      });
+    } else if (notice === 'joined') {
+      setSsoBanner({
+        kind: 'success',
+        text: `You're in — your invite to ${orgName} is complete.`,
+      });
+    } else if (notice === 'duplicate_account') {
+      setSsoBanner({
+        kind: 'info',
+        text: 'You already have a NiskBuild account with this email (Google or password). SSO creates a separate login identity. Contact support to link or migrate — we do not merge accounts automatically.',
+      });
+    }
+
+    router.replace('/dashboard');
+  }, [searchParams, router]);
 
   useEffect(() => {
     if (searchParams.get('success') !== 'true') return;
@@ -201,6 +235,19 @@ function DashboardContent() {
             }`}
           >
             {checkoutBanner.text}
+          </p>
+        )}
+        {ssoBanner && (
+          <p
+            className={`mt-3 text-sm rounded-lg px-4 py-2 border ${
+              ssoBanner.kind === 'success'
+                ? 'text-[var(--success)] bg-[var(--success)]/10 border-[var(--success)]/30'
+                : ssoBanner.kind === 'warn'
+                  ? 'text-amber-200 bg-amber-500/10 border-amber-500/30'
+                  : 'text-nisk-muted bg-[var(--surface)] border-[var(--border)]'
+            }`}
+          >
+            {ssoBanner.text}
           </p>
         )}
       </div>

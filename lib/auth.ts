@@ -22,6 +22,37 @@ export async function signInWithGoogle(nextPath = '/pricing') {
   if (error) throw error;
 }
 
+export async function signInWithSso(params: {
+  domain?: string;
+  providerId?: string;
+  nextPath?: string;
+}) {
+  const supabase = createClient();
+  const nextPath = params.nextPath || '/dashboard';
+  const callbackUrl = `${getOrigin()}/auth/callback?next=${encodeURIComponent(nextPath)}&sso=1`;
+
+  const options = {
+    redirectTo: callbackUrl,
+  };
+
+  const { data, error } = params.providerId
+    ? await supabase.auth.signInWithSSO({
+        providerId: params.providerId,
+        options,
+      })
+    : await supabase.auth.signInWithSSO({
+        domain: params.domain!,
+        options,
+      });
+
+  if (error) throw error;
+  if (data?.url) {
+    window.location.href = data.url;
+    return;
+  }
+  throw new Error('SSO redirect URL was not returned. Check that SAML is enabled for this project.');
+}
+
 export async function signInWithEmail(email: string, password: string) {
   const supabase = createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });

@@ -8,6 +8,7 @@ import { getSafeSession } from '@/lib/supabaseSession';
 import AppTopNav from '@/app/components/AppTopNav';
 import GoogleSignInButton from '@/app/components/GoogleSignInButton';
 import EmailAuthForm from '@/app/components/EmailAuthForm';
+import SsoSignInForm from '@/app/components/SsoSignInForm';
 import NiskBuildLogo from '@/app/components/NiskBuildLogo';
 import { sanitizeNextPath } from '@/lib/post-auth-redirect';
 
@@ -75,6 +76,8 @@ function LoginContent() {
         </div>
 
         <GoogleSignInButton onClick={handleGoogleSignIn} loading={loading} label="Sign in with Google" />
+
+        <SsoSignInForm nextPath={next} />
 
         {error && <p className="mt-4 text-sm text-center text-[var(--error)]">{error}</p>}
 

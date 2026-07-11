@@ -15,13 +15,14 @@ import {
   canUseGameTemplates,
   canUseLocalOllama,
   canUseOwnApiKeys,
+  canUseOrgSso,
   canUseWhiteLabelBranding,
   getTeamSeats,
   isPaidAndActive,
   isSandboxTier,
+  isTeamEnterpriseOrAbove,
 } from '@/lib/tier-config';
 import { getProjectLimit, isUnlimitedTier } from '@/lib/project-limits';
-import { tierAtLeast } from '@/lib/tier-rank';
 
 /** Active subscription assumed for paid-tier gating in the comparison matrix. */
 const ACTIVE = 'active';
@@ -109,10 +110,6 @@ function roadmapCell(
   return planned(tierKey) ? COMING_SOON_LABEL : false;
 }
 
-function isTeamEnterpriseOrAbove(tierKey: string | null): boolean {
-  return !!tierKey && tierAtLeast(tierKey, 'team_enterprise');
-}
-
 function isSovereign(tierKey: string | null): boolean {
   return tierKey === 'sovereign';
 }
@@ -191,12 +188,14 @@ export function buildCompareRows(tiers: PricingTier[] = PRICING_TIERS): CompareR
       values: keys.map((k) => gate(k, canUseWhiteLabelBranding)),
     },
     {
-      label: 'SSO (SAML / OIDC)',
-      values: keys.map((k) => roadmapCell(k, isTeamEnterpriseOrAbove)),
+      label: 'SSO (SAML)',
+      values: keys.map((k) => gate(k, canUseOrgSso)),
     },
     {
       label: 'SLA contracts',
-      values: keys.map((k) => roadmapCell(k, isTeamEnterpriseOrAbove)),
+      values: keys.map((k) =>
+        roadmapCell(k, (key) => isTeamEnterpriseOrAbove(key, ACTIVE))
+      ),
     },
     {
       label: 'Dedicated infrastructure',

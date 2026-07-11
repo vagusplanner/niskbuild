@@ -296,6 +296,22 @@ export function canUseWhiteLabelBranding(
   return isWhiteLabelOrAbove(tier, status);
 }
 
+/** Team Enterprise tier and above */
+export function isTeamEnterpriseOrAbove(
+  tier: string | null | undefined,
+  status: string | null | undefined
+): boolean {
+  return isPaidAndActive(tier, status) && tierAtLeast(tier, 'team_enterprise');
+}
+
+/** Org SAML SSO configuration — Team Enterprise and Sovereign */
+export function canUseOrgSso(
+  tier: string | null | undefined,
+  status: string | null | undefined
+): boolean {
+  return isTeamEnterpriseOrAbove(tier, status);
+}
+
 /** Coming-soon integration notify — Agency Studio and above */
 export function canNotifyComingSoonIntegrations(
   tier: string | null | undefined,
