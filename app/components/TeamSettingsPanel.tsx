@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { redirectToStripe } from '@/lib/checkout-redirect';
 
 type SeatUsage = {
   used: number;
@@ -50,6 +51,7 @@ export default function TeamSettingsPanel() {
   const [error, setError] = useState<string | null>(null);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'member' | 'admin'>('member');
+  const [portalLoading, setPortalLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -68,6 +70,28 @@ export default function TeamSettingsPanel() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const openBillingPortal = async () => {
+    setPortalLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/billing/portal', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          returnUrl: `${window.location.origin}/dashboard/settings?tab=team`,
+        }),
+      });
+      const data = await res.json();
+      if (data.url) redirectToStripe(data.url);
+      else throw new Error(data.error || 'Portal unavailable');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not open billing portal');
+    } finally {
+      setPortalLoading(false);
+    }
+  };
 
   const post = async (body: Record<string, unknown>, busyKey: string) => {
     setBusy(busyKey);
@@ -158,9 +182,14 @@ export default function TeamSettingsPanel() {
             {isOwner ? (
               <p className="text-xs text-nisk-muted">
                 Team billing uses your personal Agency+ subscription.{' '}
-                <Link href="/dashboard/settings?tab=billing" className="text-[var(--copper-melt)] hover:underline">
-                  Manage billing →
-                </Link>
+                <button
+                  type="button"
+                  onClick={() => void openBillingPortal()}
+                  disabled={portalLoading}
+                  className="text-[var(--copper-melt)] hover:underline disabled:opacity-50"
+                >
+                  {portalLoading ? 'Opening billing…' : 'Manage billing →'}
+                </button>
               </p>
             ) : (
               <p className="text-xs text-nisk-muted">
