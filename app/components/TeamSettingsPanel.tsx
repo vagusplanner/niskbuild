@@ -10,6 +10,7 @@ type SeatUsage = {
   pendingInvites: number;
   remaining: number;
   atCapacity: boolean;
+  overCapacity?: boolean;
   label: string;
 };
 
@@ -36,6 +37,7 @@ type Org = {
   name: string;
   role: string;
   seats: SeatUsage;
+  teamsEligible: boolean;
   members: Member[];
   invites: Invite[];
 };
@@ -125,6 +127,7 @@ export default function TeamSettingsPanel() {
 
       {orgs.map((org) => {
         const canManage = org.role === 'owner' || org.role === 'admin';
+        const isOwner = org.role === 'owner';
         return (
           <article key={org.id} className="rounded-xl border border-nisk bg-nisk-card p-5 space-y-4">
             <div className="flex flex-wrap items-start justify-between gap-2">
@@ -135,6 +138,36 @@ export default function TeamSettingsPanel() {
                 </p>
               </div>
             </div>
+
+            {!org.teamsEligible && (
+              <p className="text-sm rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-100">
+                {isOwner
+                  ? 'Your plan no longer includes multi-seat teams. Members have read-only access to team projects until you restore Agency Studio or higher under Billing.'
+                  : 'This team’s plan no longer includes multi-seat access. You can view team projects, but generation is paused. Contact the organization owner — only they can manage the team subscription.'}
+              </p>
+            )}
+
+            {org.seats.overCapacity && (
+              <p className="text-sm rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-100">
+                {isOwner
+                  ? `Seat overage: ${org.seats.members} members on a plan capped at ${org.seats.limit}. Existing members keep access; new invites are blocked until you remove seats or upgrade.`
+                  : `This team is over its seat cap (${org.seats.members}/${org.seats.limit}). New invites are paused until the owner reduces seats or upgrades.`}
+              </p>
+            )}
+
+            {isOwner ? (
+              <p className="text-xs text-nisk-muted">
+                Team billing uses your personal Agency+ subscription.{' '}
+                <Link href="/dashboard/settings?tab=billing" className="text-[var(--copper-melt)] hover:underline">
+                  Manage billing →
+                </Link>
+              </p>
+            ) : (
+              <p className="text-xs text-nisk-muted">
+                Only the organization owner can manage the team plan and Stripe billing. Admins can
+                invite and manage members, but cannot open the billing portal for this subscription.
+              </p>
+            )}
 
             <section className="space-y-2">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-nisk-muted">Members</h3>
@@ -266,10 +299,11 @@ export default function TeamSettingsPanel() {
                   Invite teammate
                 </h3>
                 <p className="text-xs text-nisk-muted">{org.seats.label}</p>
-                {org.seats.atCapacity ? (
+                {org.seats.atCapacity || org.seats.overCapacity ? (
                   <p className="text-xs text-amber-200">
-                    Seat limit reached ({org.seats.label}). Remove a member or revoke a pending invite
-                    before inviting someone else.
+                    {org.seats.overCapacity
+                      ? `Seat overage (${org.seats.label}). Remove members or upgrade before inviting.`
+                      : `Seat limit reached (${org.seats.label}). Remove a member or revoke a pending invite before inviting someone else.`}
                   </p>
                 ) : (
                   <div className="flex flex-col sm:flex-row gap-2">

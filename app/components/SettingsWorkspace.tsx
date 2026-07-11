@@ -697,6 +697,11 @@ export default function SettingsWorkspace() {
 
               <section className="bg-nisk-card border border-nisk rounded-xl p-6">
                 <h2 className="text-lg font-semibold text-white mb-3">Manage Subscription</h2>
+                <p className="text-xs text-nisk-muted mb-3">
+                  This portal manages your personal NiskBuild subscription. Organization owners use this
+                  same billing account for team seats and shared credits; teammates cannot manage the
+                  org plan from their own accounts.
+                </p>
                 {tier !== 'free' ? (
                   <div className="flex flex-wrap gap-3">
                     <button type="button" onClick={openBillingPortal} disabled={portalLoading} className="btn-primary px-4 py-2 rounded-lg text-sm disabled:opacity-50">

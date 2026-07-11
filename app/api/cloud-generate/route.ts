@@ -3,8 +3,12 @@ import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { generateCode } from '@/lib/ai-providers';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { deductCloudCredit } from '@/lib/credits';
 import { canSpendCloudCredits, outOfCreditsMessage } from '@/lib/credits-init';
+import {
+  deductCloudCreditForContext,
+  refundCloudCreditsForContext,
+  resolveCreditChargeContext,
+} from '@/lib/org-credits';
 import { recordAnonymousTelemetry } from '@/lib/record-telemetry';
 import { recordUsageEvent } from '@/lib/usage-events';
 import { recordPromptCategoryStat } from '@/lib/prompt-category-stats';
@@ -36,11 +40,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
 
+    const chargeResolved = await resolveCreditChargeContext({
+      actingUserId: userId,
+      projectId: typeof projectId === 'string' ? projectId : null,
+    });
+    if (!chargeResolved.ok) {
+      return NextResponse.json(
+        { error: chargeResolved.error },
+        { status: chargeResolved.status }
+      );
+    }
+    const chargeContext = chargeResolved.context;
+
     const profile = await getUserProfile(userId);
     const tier = profile?.subscription_tier || 'free';
     const status = profile?.subscription_status || 'inactive';
 
-    if (!canSpendCloudCredits(tier, status)) {
+    if (!chargeContext.isOrgPool && !canSpendCloudCredits(tier, status)) {
       return NextResponse.json(
         { error: outOfCreditsMessage(tier, status) },
         { status: 403 }
@@ -53,9 +69,10 @@ export async function POST(request: NextRequest) {
     const skipCredits = useOwnKeys && hasUserKeys;
 
     let creditsRemaining: number | undefined;
+    let didDeduct = false;
 
     if (!skipCredits) {
-      const creditResult = await deductCloudCredit(userId);
+      const creditResult = await deductCloudCreditForContext(chargeContext);
       if (!creditResult.ok) {
         return NextResponse.json(
           { error: creditResult.error || 'Insufficient cloud credits' },
@@ -63,6 +80,7 @@ export async function POST(request: NextRequest) {
         );
       }
       creditsRemaining = creditResult.remaining;
+      didDeduct = true;
     }
 
     const result = await generateCode(prompt, tier, {
@@ -100,6 +118,10 @@ export async function POST(request: NextRequest) {
         usedOwnKeys: skipCredits,
         byocAllowed,
       });
+    }
+
+    if (didDeduct) {
+      await refundCloudCreditsForContext(chargeContext, 1).catch(() => {});
     }
 
     await recordAnonymousTelemetry(

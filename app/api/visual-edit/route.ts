@@ -2,13 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { generateCode } from '@/lib/ai-providers';
-import { deductCloudCredits } from '@/lib/credits';
 import { logVisualEdit } from '@/lib/log-visual-edit';
 import { buildVisualEditPrompt } from '@/lib/visual-editor-prompt';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { canUseOwnApiKeys, isPaidAndActive } from '@/lib/tier-config';
 import type { StyleChanges } from '@/lib/visual-editor-types';
 import { VISUAL_EDIT_CREDIT_COST } from '@/lib/visual-editor-types';
+import {
+  deductCloudCreditsForContext,
+  resolveCreditChargeContext,
+} from '@/lib/org-credits';
 
 async function getUserProfile(userId: string) {
   const supabase = createAdminClient();
@@ -36,16 +39,30 @@ export async function POST(request: NextRequest) {
     const styles = (body.styles || {}) as StyleChanges;
     const isMobile = body.isMobile === true;
     const sessionId = typeof body.sessionId === 'string' ? body.sessionId : userId;
+    const projectId = typeof body.projectId === 'string' ? body.projectId : null;
 
     if (!currentCode || !selector) {
       return NextResponse.json({ error: 'currentCode and selector are required' }, { status: 400 });
     }
 
+    const chargeResolved = await resolveCreditChargeContext({
+      actingUserId: userId,
+      projectId,
+    });
+    if (!chargeResolved.ok) {
+      return NextResponse.json(
+        { error: chargeResolved.error },
+        { status: chargeResolved.status }
+      );
+    }
+    const chargeContext = chargeResolved.context;
+
     const profile = await getUserProfile(userId);
     const tier = profile?.subscription_tier || 'free';
     const status = profile?.subscription_status || 'inactive';
 
-    if (!isPaidAndActive(tier, status)) {
+    // Org pool: members may be Free; eligibility is the billing owner's paid plan (checked on deduct).
+    if (!chargeContext.isOrgPool && !isPaidAndActive(tier, status)) {
       return NextResponse.json(
         {
           error: 'Visual edits that persist to code require an active Pro plan or higher.',
@@ -63,10 +80,16 @@ export async function POST(request: NextRequest) {
     let creditsRemaining: number | undefined;
 
     if (!skipCredits) {
-      const creditResult = await deductCloudCredits(userId, VISUAL_EDIT_CREDIT_COST);
+      const creditResult = await deductCloudCreditsForContext(
+        chargeContext,
+        VISUAL_EDIT_CREDIT_COST
+      );
       if (!creditResult.ok) {
         return NextResponse.json(
-          { error: creditResult.error || 'Insufficient cloud credits', upgrade: true },
+          {
+            error: creditResult.error || 'Insufficient cloud credits',
+            upgrade: !chargeContext.isOrgPool,
+          },
           { status: 402 }
         );
       }

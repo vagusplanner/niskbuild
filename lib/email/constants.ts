@@ -15,6 +15,8 @@ export const EMAIL_TEMPLATE = {
   PAYMENT_FAILED: 'payment_failed',
   UPGRADE_CONFIRMED: 'upgrade_confirmed',
   TEAM_INVITE: 'team_invite',
+  TEAM_PLAN_LAPSED: 'team_plan_lapsed',
+  TEAM_SEAT_OVERAGE: 'team_seat_overage',
 } as const;
 
 export type EmailTemplateKey = (typeof EMAIL_TEMPLATE)[keyof typeof EMAIL_TEMPLATE];

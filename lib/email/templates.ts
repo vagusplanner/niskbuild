@@ -213,3 +213,46 @@ export function teamInviteHtml(params: {
     </p>`
   );
 }
+
+export function teamPlanLapsedHtml(params: {
+  orgName: string;
+  ownerName: string;
+  settingsUrl: string;
+}): string {
+  return shell(
+    `${params.orgName}: team generation paused`,
+    `<p style="color:#94a3b8;line-height:1.6;">
+      The plan for <strong style="color:#fff;">${params.orgName}</strong> no longer includes
+      multi-seat teams (Agency Studio or higher). You can still open and view team projects,
+      but generation and edits are paused for members.
+    </p>
+    <p style="color:#94a3b8;line-height:1.6;">
+      Ask <strong style="color:#fff;">${params.ownerName}</strong> (the organization owner) to
+      restore an Agency Studio or higher plan. You cannot upgrade the team subscription yourself.
+    </p>
+    <p style="margin:24px 0;">${cta(params.settingsUrl, 'Open team settings')}</p>`
+  );
+}
+
+export function teamSeatOverageHtml(params: {
+  orgName: string;
+  members: number;
+  limit: number;
+  tierName: string;
+  settingsUrl: string;
+}): string {
+  return shell(
+    `${params.orgName}: seat limit exceeded`,
+    `<p style="color:#94a3b8;line-height:1.6;">
+      Your <strong style="color:#fff;">${params.tierName}</strong> plan allows
+      <strong style="color:#fff;">${params.limit}</strong> seat${params.limit === 1 ? '' : 's'},
+      but <strong style="color:#fff;">${params.orgName}</strong> currently has
+      <strong style="color:#fff;">${params.members}</strong> members.
+    </p>
+    <p style="color:#94a3b8;line-height:1.6;">
+      Existing members keep access. New invites are blocked until you remove members or
+      upgrade to a plan with a higher seat cap. Nobody was removed automatically.
+    </p>
+    <p style="margin:24px 0;">${cta(params.settingsUrl, 'Manage team seats')}</p>`
+  );
+}

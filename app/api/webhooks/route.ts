@@ -18,6 +18,7 @@ import {
   sendUpgradeConfirmedEmail,
 } from '@/lib/email/lifecycle';
 import { resolveTierFromSubscription } from '@/lib/stripe-price-ids';
+import { notifyOrgsAfterBillingOwnerPlanChange } from '@/lib/org-billing-lifecycle';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -81,6 +82,19 @@ async function resolveUserIdByEmail(
 ): Promise<string | null> {
   const { data } = await supabase.from('profiles').select('id').eq('email', email).maybeSingle();
   return data?.id ?? null;
+}
+
+async function notifyOrgPlanSideEffects(email: string, userId?: string | null) {
+  const ownerId = userId || null;
+  const supabase = createAdminClient();
+  const uid = ownerId || (await resolveUserIdByEmail(supabase, email));
+  if (!uid) return;
+  void notifyOrgsAfterBillingOwnerPlanChange({
+    ownerId: uid,
+    ownerEmail: email,
+  }).catch((err) => {
+    console.error('org billing lifecycle notify failed:', err);
+  });
 }
 
 async function handleSubscriptionActivated(
@@ -179,6 +193,7 @@ async function processStripeEvent(
               `Upgrade confirmation email not sent for user ${userId} (${customerEmail})`
             );
           }
+          notifyOrgPlanSideEffects(customerEmail, userId);
         }
         console.log(`✅ User ${userId} upgraded to ${tier} (${updates.cloud_credits_remaining} credits)`);
       } else if (customerEmail) {
@@ -198,6 +213,7 @@ async function processStripeEvent(
               `Upgrade confirmation email not sent for user ${profile.id} (${customerEmail})`
             );
           }
+          notifyOrgPlanSideEffects(customerEmail, profile.id);
         }
         console.log(`✅ User ${customerEmail} upgraded to ${tier} (${updates.cloud_credits_remaining} credits)`);
       }
@@ -254,6 +270,7 @@ async function processStripeEvent(
             void sendCancelWarningEmail(profile.id, customer.email);
           }
         }
+        notifyOrgPlanSideEffects(customer.email);
       } else if (status === 'past_due') {
         await requireProfileUpdate(
           supabase
@@ -286,6 +303,7 @@ async function processStripeEvent(
         );
         await handleSubscriptionEnded(supabase, customer.email);
         console.log(`📉 Previews deactivated for ${customer.email} (subscription ${status})`);
+        notifyOrgPlanSideEffects(customer.email);
       }
     }
     return;
@@ -313,6 +331,7 @@ async function processStripeEvent(
 
       await handleSubscriptionEnded(supabase, customer.email);
       console.log(`📉 User ${customer.email} downgraded — preview links expired`);
+      notifyOrgPlanSideEffects(customer.email);
     }
     return;
   }
@@ -360,6 +379,7 @@ async function processStripeEvent(
       await resetCreditAlertFlags(profile.id);
       await resetBuildsThisPeriod(profile.id);
       await reactivatePreviewsIfPaidAndActive(profile.id, resolvedTier, 'active');
+      notifyOrgPlanSideEffects(customer.email, profile.id);
     }
 
     console.log(`🔄 Credits refreshed for ${customer.email} on invoice.paid (tier: ${resolvedTier})`);

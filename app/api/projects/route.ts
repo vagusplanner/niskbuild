@@ -3,7 +3,7 @@ import { guardApiRequest } from '@/lib/api-auth';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
 import { getProjectLimit } from '@/lib/project-limits';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { assertCanUseOrg, userOrgIds } from '@/lib/organization-team';
+import { assertCanUseOrg, assertCanWriteOrg, userOrgIds } from '@/lib/organization-team';
 
 const PROJECT_SELECT =
   'id, title, prompt, generated_code, files_json, project_context, org_id, user_id, created_at, project_seo(seo_score)';
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
     typeof orgIdRaw === 'string' && orgIdRaw.trim() ? orgIdRaw.trim() : null;
   if (orgId) {
     try {
-      await assertCanUseOrg(user.id, orgId);
+      await assertCanWriteOrg(user.id, orgId);
     } catch (err) {
       return NextResponse.json(
         { error: err instanceof Error ? err.message : 'Not a team member' },
@@ -264,7 +264,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'This project is already on a team.' }, { status: 400 });
     }
     try {
-      await assertCanUseOrg(user.id, orgId);
+      await assertCanWriteOrg(user.id, orgId);
     } catch (err) {
       return NextResponse.json(
         { error: err instanceof Error ? err.message : 'Not a team member' },

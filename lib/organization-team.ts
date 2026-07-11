@@ -6,7 +6,7 @@ import { sendEmail } from '@/lib/send-email';
 import { appUrl } from '@/lib/email/app-url';
 import { EMAIL_TEMPLATE } from '@/lib/email/constants';
 import { teamInviteHtml } from '@/lib/email/templates';
-import { tierDisplayName } from '@/lib/tier-config';
+import { tierDisplayName, isAgencyStudioOrAbove } from '@/lib/tier-config';
 import {
   getOrgSeatLimitForOwnerTier,
   listOrganizationsForUser,
@@ -36,6 +36,8 @@ export type SeatUsage = {
   pendingInvites: number;
   remaining: number;
   atCapacity: boolean;
+  /** True when member count alone exceeds the plan seat cap (soft overage after downgrade). */
+  overCapacity: boolean;
   label: string;
 };
 
@@ -119,6 +121,7 @@ export async function getOrgSeatUsage(orgId: string): Promise<SeatUsage> {
   const used = members + pendingInvites;
   const remaining = Math.max(0, limit - used);
   const atCapacity = used >= limit;
+  const overCapacity = members > limit;
   const tierLabel = tierDisplayName(tier);
 
   return {
@@ -128,9 +131,12 @@ export async function getOrgSeatUsage(orgId: string): Promise<SeatUsage> {
     pendingInvites,
     remaining,
     atCapacity,
-    label: `${used} of ${limit >= 999999 ? 'unlimited' : limit} seats used${
-      limit < 999999 ? ` (${tierLabel})` : ''
-    }`,
+    overCapacity,
+    label: overCapacity
+      ? `${members} members on a ${tierLabel} plan capped at ${limit} — remove members or upgrade to invite again`
+      : `${used} of ${limit >= 999999 ? 'unlimited' : limit} seats used${
+          limit < 999999 ? ` (${tierLabel})` : ''
+        }`,
   };
 }
 
@@ -139,6 +145,7 @@ export async function getTeamDashboard(userId: string): Promise<{
     OrganizationRow & {
       role: OrgMemberRole;
       seats: SeatUsage;
+      teamsEligible: boolean;
       members: Array<{
         id: string;
         user_id: string;
@@ -165,6 +172,16 @@ export async function getTeamDashboard(userId: string): Promise<{
   for (const org of orgs) {
     const seats = await getOrgSeatUsage(org.id);
 
+    const { data: ownerProfile } = await admin
+      .from('profiles')
+      .select('subscription_tier, subscription_status')
+      .eq('id', org.billing_owner_id)
+      .maybeSingle();
+    const teamsEligible = isAgencyStudioOrAbove(
+      ownerProfile?.subscription_tier,
+      ownerProfile?.subscription_status
+    );
+
     const { data: members, error: memErr } = await admin
       .from('organization_members')
       .select('id, user_id, role, joined_at')
@@ -190,6 +207,7 @@ export async function getTeamDashboard(userId: string): Promise<{
     result.push({
       ...org,
       seats,
+      teamsEligible,
       members: (members ?? []).map((m) => {
         const p = profileById.get(m.user_id);
         return {
@@ -232,10 +250,35 @@ export async function createOrganizationInvite(params: {
   }
 
   const admin = createAdminClient();
+  const { data: orgRow } = await admin
+    .from('organizations')
+    .select('billing_owner_id')
+    .eq('id', params.orgId)
+    .maybeSingle();
+  if (orgRow?.billing_owner_id) {
+    const { data: ownerProfile } = await admin
+      .from('profiles')
+      .select('subscription_tier, subscription_status')
+      .eq('id', orgRow.billing_owner_id)
+      .maybeSingle();
+    if (
+      !isAgencyStudioOrAbove(
+        ownerProfile?.subscription_tier,
+        ownerProfile?.subscription_status
+      )
+    ) {
+      throw new Error(
+        'This team’s plan no longer includes multi-seat access. Restore Agency Studio or higher before inviting teammates.'
+      );
+    }
+  }
+
   const seats = await getOrgSeatUsage(params.orgId);
-  if (seats.atCapacity) {
+  if (seats.overCapacity || seats.atCapacity) {
     throw new Error(
-      `Seat limit reached (${seats.label}). Remove a member or revoke a pending invite before inviting someone else.`
+      seats.overCapacity
+        ? `Seat overage (${seats.label}). Remove members until you are under the plan cap, or upgrade — existing members keep access.`
+        : `Seat limit reached (${seats.label}). Remove a member or revoke a pending invite before inviting someone else.`
     );
   }
 
@@ -519,6 +562,29 @@ export async function acceptOrganizationInvite(params: {
   }
 
   const admin = createAdminClient();
+  const { data: orgForAccept } = await admin
+    .from('organizations')
+    .select('billing_owner_id, name')
+    .eq('id', invite.org_id)
+    .maybeSingle();
+  if (orgForAccept?.billing_owner_id) {
+    const { data: ownerProfile } = await admin
+      .from('profiles')
+      .select('subscription_tier, subscription_status')
+      .eq('id', orgForAccept.billing_owner_id)
+      .maybeSingle();
+    if (
+      !isAgencyStudioOrAbove(
+        ownerProfile?.subscription_tier,
+        ownerProfile?.subscription_status
+      )
+    ) {
+      throw new Error(
+        'This team’s plan no longer includes multi-seat access. Ask the owner to restore Agency Studio or higher before joining.'
+      );
+    }
+  }
+
   const { data: existing } = await admin
     .from('organization_members')
     .select('id')
@@ -541,13 +607,10 @@ export async function acceptOrganizationInvite(params: {
     .eq('id', invite.id);
   if (updErr) throw new Error(updErr.message);
 
-  const { data: org } = await admin
-    .from('organizations')
-    .select('name')
-    .eq('id', invite.org_id)
-    .maybeSingle();
-
-  return { orgId: invite.org_id, orgName: (org?.name as string) || 'team' };
+  return {
+    orgId: invite.org_id,
+    orgName: (orgForAccept?.name as string) || 'team',
+  };
 }
 
 export async function userOrgIds(userId: string): Promise<string[]> {
@@ -558,4 +621,41 @@ export async function userOrgIds(userId: string): Promise<string[]> {
 export async function assertCanUseOrg(userId: string, orgId: string): Promise<void> {
   const m = await getMembership(orgId, userId);
   if (!m) throw new Error('You are not a member of that team.');
+}
+
+/**
+ * Write access to org resources (create/move projects, invites already gated separately).
+ * When Agency+ lapses: owner may still write; members are read-only.
+ */
+export async function assertCanWriteOrg(userId: string, orgId: string): Promise<void> {
+  const m = await getMembership(orgId, userId);
+  if (!m) throw new Error('You are not a member of that team.');
+
+  const admin = createAdminClient();
+  const { data: org } = await admin
+    .from('organizations')
+    .select('billing_owner_id')
+    .eq('id', orgId)
+    .maybeSingle();
+  if (!org?.billing_owner_id) throw new Error('Organization not found');
+
+  const { data: ownerProfile } = await admin
+    .from('profiles')
+    .select('subscription_tier, subscription_status')
+    .eq('id', org.billing_owner_id)
+    .maybeSingle();
+
+  const eligible = isAgencyStudioOrAbove(
+    ownerProfile?.subscription_tier,
+    ownerProfile?.subscription_status
+  );
+  if (eligible) return;
+
+  const isOwner =
+    m.role === 'owner' || org.billing_owner_id === userId;
+  if (!isOwner) {
+    throw new Error(
+      'This team’s plan no longer includes multi-seat access. You can still view team projects, but generation is paused. Ask the organization owner to restore an Agency Studio (or higher) plan.'
+    );
+  }
 }

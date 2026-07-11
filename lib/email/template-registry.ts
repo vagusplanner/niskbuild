@@ -118,6 +118,20 @@ export const EMAIL_TEMPLATE_CATALOG: EmailTemplateCatalogEntry[] = [
     description: 'Sent when an org owner/admin invites a teammate.',
     category: 'onboarding',
   },
+  {
+    key: EMAIL_TEMPLATE.TEAM_PLAN_LAPSED,
+    label: 'Team plan lapsed',
+    subject: 'Team generation paused',
+    description: 'Sent to non-owner members when the org billing owner drops below Agency+.',
+    category: 'billing',
+  },
+  {
+    key: EMAIL_TEMPLATE.TEAM_SEAT_OVERAGE,
+    label: 'Team seat overage',
+    subject: 'Seat limit exceeded after plan change',
+    description: 'Sent to the org owner when member count exceeds the new plan seat cap.',
+    category: 'billing',
+  },
 ];
 
 const SAMPLE_CREDIT = {
@@ -178,6 +192,26 @@ export function renderTemplateHtml(
           role: 'member',
           acceptUrl: 'https://niskbuild.com/invite/example',
           expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
+        }),
+      };
+    case EMAIL_TEMPLATE.TEAM_PLAN_LAPSED:
+      return {
+        subject: entry!.subject,
+        html: T.teamPlanLapsedHtml({
+          orgName: 'Acme Studio',
+          ownerName: 'Alex',
+          settingsUrl: 'https://www.niskbuild.com/dashboard/settings?tab=team',
+        }),
+      };
+    case EMAIL_TEMPLATE.TEAM_SEAT_OVERAGE:
+      return {
+        subject: entry!.subject,
+        html: T.teamSeatOverageHtml({
+          orgName: 'Acme Studio',
+          members: 10,
+          limit: 3,
+          tierName: 'Agency Studio',
+          settingsUrl: 'https://www.niskbuild.com/dashboard/settings?tab=team',
         }),
       };
     default:

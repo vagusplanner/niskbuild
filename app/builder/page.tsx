@@ -773,6 +773,7 @@ function BuilderContent() {
           styles,
           isMobile: visualMobilePreview && canUseVisualEditorFull(subscriptionTier, subscriptionStatus),
           sessionId: user?.id || 'builder',
+          projectId: activeProjectId,
         }),
       });
       const data = await res.json();

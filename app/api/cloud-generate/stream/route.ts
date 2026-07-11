@@ -1,8 +1,13 @@
 import { NextRequest } from 'next/server';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { addCloudCredits, deductCloudCredit } from '@/lib/credits';
 import { canSpendCloudCredits, outOfCreditsMessage } from '@/lib/credits-init';
+import {
+  deductCloudCreditForContext,
+  refundCloudCreditsForContext,
+  resolveCreditChargeContext,
+} from '@/lib/org-credits';
+
 import { getGroqClient } from '@/lib/groq-client';
 import { streamBuildNarration } from '@/lib/generate-narration';
 import { derivePromptNarrationFallback } from '@/lib/narration-shared';
@@ -110,11 +115,24 @@ export async function POST(request: NextRequest) {
     return new Response(JSON.stringify({ error: 'Prompt is required' }), { status: 400 });
   }
 
+  const chargeResolved = await resolveCreditChargeContext({
+    actingUserId: guard.user.id,
+    projectId: typeof projectId === 'string' ? projectId : null,
+  });
+  if (!chargeResolved.ok) {
+    return new Response(JSON.stringify({ error: chargeResolved.error }), {
+      status: chargeResolved.status,
+    });
+  }
+  const chargeContext = chargeResolved.context;
+
   const profile = await getUserProfile(guard.user.id);
   const tier = profile?.subscription_tier || 'free';
   const status = profile?.subscription_status || 'inactive';
 
-  if (!canSpendCloudCredits(tier, status)) {
+  // Personal projects: gate on acting user. Org projects: payer checked on deduct
+  // (members may be on Free while the org pool is Agency+).
+  if (!chargeContext.isOrgPool && !canSpendCloudCredits(tier, status)) {
     return new Response(JSON.stringify({ error: outOfCreditsMessage(tier, status) }), {
       status: 403,
     });
@@ -127,7 +145,7 @@ export async function POST(request: NextRequest) {
 
   const didDeduct = !skipCredits;
   if (!skipCredits) {
-    const creditResult = await deductCloudCredit(guard.user.id);
+    const creditResult = await deductCloudCreditForContext(chargeContext);
     if (!creditResult.ok) {
       return new Response(JSON.stringify({ error: creditResult.error || 'Insufficient credits' }), {
         status: 402,
@@ -350,7 +368,7 @@ export async function POST(request: NextRequest) {
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Stream failed';
         if (didDeduct) {
-          await addCloudCredits(guard.user!.id, 1).catch(() => {});
+          await refundCloudCreditsForContext(chargeContext, 1).catch(() => {});
         }
         send({ error: message });
       } finally {
