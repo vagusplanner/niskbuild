@@ -111,6 +111,13 @@ export const EMAIL_TEMPLATE_CATALOG: EmailTemplateCatalogEntry[] = [
     description: 'Sent after successful subscription checkout.',
     category: 'billing',
   },
+  {
+    key: EMAIL_TEMPLATE.TEAM_INVITE,
+    label: 'Team invite',
+    subject: 'Join a team on NiskBuild',
+    description: 'Sent when an org owner/admin invites a teammate.',
+    category: 'onboarding',
+  },
 ];
 
 const SAMPLE_CREDIT = {
@@ -162,6 +169,17 @@ export function renderTemplateHtml(
       };
     case EMAIL_TEMPLATE.PAYMENT_FAILED:
       return { subject: entry!.subject, html: T.paymentFailedHtml() };
+    case EMAIL_TEMPLATE.TEAM_INVITE:
+      return {
+        subject: entry!.subject,
+        html: T.teamInviteHtml({
+          orgName: 'Acme Studio',
+          inviterName: 'Alex',
+          role: 'member',
+          acceptUrl: 'https://niskbuild.com/invite/example',
+          expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
+        }),
+      };
     default:
       if (templateKey.startsWith(`${EMAIL_TEMPLATE.UPGRADE_CONFIRMED}_`)) {
         const tier = options?.tier ?? templateKey.split('_').pop() ?? 'pro';

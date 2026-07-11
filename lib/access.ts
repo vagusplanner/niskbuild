@@ -39,6 +39,11 @@ export function isPreviewPath(pathname: string) {
   return pathname.startsWith('/preview/');
 }
 
+/** Team invite accept links (public so email recipients can open before login) */
+export function isInvitePath(pathname: string) {
+  return pathname === '/invite' || pathname.startsWith('/invite/');
+}
+
 /** VP deploy bundle proxy (public Storage-backed assets, no auth) */
 export function isVpDeployBundlePath(pathname: string) {
   return pathname.startsWith('/vp-deploy/');
@@ -84,6 +89,7 @@ export function isPublicPath(pathname: string) {
   return (
     PUBLIC_PATHS.includes(pathname) ||
     isPreviewPath(pathname) ||
+    isInvitePath(pathname) ||
     isVpDeployBundlePath(pathname)
   );
 }
@@ -103,6 +109,7 @@ export function isAuthExemptPath(pathname: string) {
   return (
     isPublicPath(pathname) ||
     isPreviewPath(pathname) ||
+    isInvitePath(pathname) ||
     isTenantRuntimePath(pathname) ||
     isVpDeployBundlePath(pathname) ||
     isStaticPublicAsset(pathname)

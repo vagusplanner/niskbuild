@@ -184,3 +184,32 @@ export function monthlyReportHtml(params: {
     <p style="margin:24px 0;">${cta(appUrl('/dashboard'), 'View Dashboard')}</p>`
   );
 }
+
+export function teamInviteHtml(params: {
+  orgName: string;
+  inviterName: string;
+  role: string;
+  acceptUrl: string;
+  expiresAt: string;
+}): string {
+  const expiresLabel = new Date(params.expiresAt).toLocaleString(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+  const roleLabel = params.role === 'admin' ? 'Admin' : 'Member';
+  return shell(
+    `You're invited to ${params.orgName}`,
+    `<p style="color:#94a3b8;line-height:1.6;">
+      <strong style="color:#fff;">${params.inviterName}</strong> invited you to join
+      <strong style="color:#fff;">${params.orgName}</strong> on NiskBuild as
+      <strong style="color:#fff;">${roleLabel}</strong>.
+    </p>
+    <p style="color:#94a3b8;line-height:1.6;">
+      Accept with the same email this invite was sent to. This link expires on ${expiresLabel}.
+    </p>
+    <p style="margin:24px 0;">${cta(params.acceptUrl, 'Accept invite')}</p>
+    <p style="color:#64748b;font-size:12px;">If the button does not work, open:<br/>
+      <a href="${params.acceptUrl}" style="color:#818cf8;word-break:break-all;">${params.acceptUrl}</a>
+    </p>`
+  );
+}

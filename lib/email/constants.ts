@@ -14,6 +14,7 @@ export const EMAIL_TEMPLATE = {
   WINBACK_30D: 'winback_30d',
   PAYMENT_FAILED: 'payment_failed',
   UPGRADE_CONFIRMED: 'upgrade_confirmed',
+  TEAM_INVITE: 'team_invite',
 } as const;
 
 export type EmailTemplateKey = (typeof EMAIL_TEMPLATE)[keyof typeof EMAIL_TEMPLATE];

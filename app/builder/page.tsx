@@ -156,6 +156,7 @@ function BuilderContent() {
   const [streamingCode, setStreamingCode] = useState('');
   const [streamingNarration, setStreamingNarration] = useState('');
   const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
+  const [teamOrgs, setTeamOrgs] = useState<Array<{ id: string; name: string; role: string }>>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [showProjects, setShowProjects] = useState(false);
   const [projectSearch, setProjectSearch] = useState('');
@@ -361,6 +362,7 @@ function BuilderContent() {
     const data = await res.json();
     const projects: SavedProject[] = data.projects || [];
     setSavedProjects(projects);
+    setTeamOrgs(Array.isArray(data.orgs) ? data.orgs : []);
 
     const pendingId = localStorage.getItem('niskbuild_load_project_id');
     if (pendingId) {
@@ -1525,6 +1527,20 @@ function BuilderContent() {
     const title = window.prompt('Project name:', prompt.substring(0, 50) || 'Untitled Project');
     if (!title) return;
 
+    let org_id: string | null = null;
+    if (teamOrgs.length > 0) {
+      const lines = teamOrgs.map((o, i) => `${i + 1}) Team: ${o.name}`).join('\n');
+      const pick = window.prompt(
+        `Save location:\n0) Personal (only you)\n${lines}\n\nEnter 0 or a number:`,
+        '0'
+      );
+      if (pick === null) return;
+      const n = Number.parseInt(pick.trim(), 10);
+      if (Number.isFinite(n) && n >= 1 && n <= teamOrgs.length) {
+        org_id = teamOrgs[n - 1].id;
+      }
+    }
+
     const syncedFiles = projectFiles.map((f) =>
       f.path === 'index.html' ? { ...f, content: generatedCode } : f
     );
@@ -1539,6 +1555,7 @@ function BuilderContent() {
         generated_code: generatedCode,
         files_json: filesPayload,
         project_context: projectContext,
+        org_id,
       }),
     });
     const data = await res.json();

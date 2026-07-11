@@ -15,6 +15,7 @@ import {
   canUseGameTemplates,
   canUseLocalOllama,
   canUseOwnApiKeys,
+  getTeamSeats,
   isPaidAndActive,
   isSandboxTier,
   isWhiteLabelOrAbove,
@@ -74,6 +75,13 @@ function formatCredits(tierKey: string | null): string {
   return n.toLocaleString();
 }
 
+function formatTeamSeats(tierKey: string | null): CompareCell {
+  const n = getTeamSeats(tierKey);
+  if (n <= 0) return false;
+  if (n >= 999999) return 'Unlimited';
+  return String(n);
+}
+
 function formatZip(tierKey: string | null): string {
   if (isSandboxTier(tierKey)) return 'Locked';
   return canExportCleanZip(tierKey, ACTIVE) ? 'Clean ZIP' : '—';
@@ -99,10 +107,6 @@ function roadmapCell(
   planned: (tierKey: string | null) => boolean
 ): CompareCell {
   return planned(tierKey) ? COMING_SOON_LABEL : false;
-}
-
-function isAgencyOrAbove(tierKey: string | null): boolean {
-  return !!tierKey && tierAtLeast(tierKey, 'agency');
 }
 
 function isTeamEnterpriseOrAbove(tierKey: string | null): boolean {
@@ -173,9 +177,8 @@ export function buildCompareRows(tiers: PricingTier[] = PRICING_TIERS): CompareR
     boolRow('App Store / mobile export pipeline', canExportMobileProject),
     boolRow('Native Capacitor export', canExportNative),
     {
-      // Seat counts existed in config for display only — orgs/invites/roles not shipped.
       label: 'Team seats (orgs, invites, roles)',
-      values: keys.map((k) => roadmapCell(k, isAgencyOrAbove)),
+      values: keys.map((k) => formatTeamSeats(k)),
     },
     boolRow('Competitor intel', canUseCompetitorIntel),
     boolRow('Schedule social posts', (t, s) => canScheduleSocialPosts(t, s, false)),
