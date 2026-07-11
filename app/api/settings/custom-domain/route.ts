@@ -101,6 +101,9 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({
         domain: result.domain,
         vercel: result.vercel,
+        vercelConfig: result.vercelConfig,
+        trafficDns: result.trafficDns,
+        message: result.message,
         instructions: result.instructions,
         meta: customDomainPublicMeta(),
       });

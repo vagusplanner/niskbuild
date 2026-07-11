@@ -30,7 +30,7 @@ function statusLabel(status: string) {
       return { text: 'Active', className: 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10' };
     case 'dns_verified':
       return {
-        text: 'DNS verified',
+        text: 'Ownership verified',
         className: 'text-[var(--copper-melt)] border-[var(--copper-primary)]/35 bg-[var(--copper-primary)]/10',
       };
     case 'failed':
@@ -48,6 +48,7 @@ export default function CustomDomainSettingsPanel() {
   const [hostname, setHostname] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [messageTone, setMessageTone] = useState<'success' | 'info'>('success');
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -85,7 +86,8 @@ export default function CustomDomainSettingsPanel() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to add domain');
       setHostname('');
-      setMessage('Domain added — create the TXT record below, then click Verify.');
+      setMessageTone('info');
+      setMessage('Domain added — create the TXT record below, then click Verify DNS.');
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add domain');
@@ -108,16 +110,19 @@ export default function CustomDomainSettingsPanel() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Verification failed');
       if (data.domain?.status === 'failed') {
-        setError(data.domain.last_error || 'DNS verification failed');
+        setError(data.domain.last_error || data.message || 'DNS verification failed');
       } else if (data.domain?.status === 'active') {
-        setMessage('Domain verified and active. SSL attach succeeded (or domain already on Vercel).');
+        setMessageTone('success');
+        setMessage(data.message || 'Domain is active and ready to serve traffic.');
       } else if (data.domain?.status === 'dns_verified') {
+        setMessageTone('info');
         setMessage(
-          data.vercel?.reason ||
-            'DNS ownership verified. Add the CNAME (and Vercel project domain) for traffic + SSL.'
+          data.message ||
+            'Ownership confirmed — add the CNAME record shown below to finish activation'
         );
       } else {
-        setMessage('Updated.');
+        setMessageTone('info');
+        setMessage(data.message || 'Updated.');
       }
       await load();
     } catch (err) {
@@ -138,6 +143,7 @@ export default function CustomDomainSettingsPanel() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Remove failed');
+      setMessageTone('success');
       setMessage('Domain removed.');
       await load();
     } catch (err) {
@@ -171,13 +177,14 @@ export default function CustomDomainSettingsPanel() {
       <div className="rounded-xl border border-nisk bg-nisk-card p-5 space-y-3">
         <h2 className="text-lg font-semibold text-[var(--foreground)]">Custom domain</h2>
         <p className="text-sm text-nisk-muted">
-          Prove ownership with a TXT record, then point the hostname at Vercel so SSL and traffic work.
-          Domains are not activated until DNS verification succeeds.
+          Prove ownership with a TXT record, then point the hostname at Vercel with a CNAME. The domain
+          only becomes Active once both the traffic DNS record and Vercel readiness are confirmed.
         </p>
         {!meta?.vercelConfigured && (
           <p className="text-xs text-amber-200/90 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2">
-            Automatic Vercel SSL attach is not configured on this deployment yet. After DNS verifies, a
-            platform admin may still need to add the domain in the Vercel project for certificates.
+            Automatic Vercel SSL attach is not configured on this deployment yet. After ownership
+            verifies, a platform admin may still need to add the domain in the Vercel project for
+            certificates.
           </p>
         )}
         <div className="flex flex-col sm:flex-row gap-2">
@@ -199,7 +206,13 @@ export default function CustomDomainSettingsPanel() {
       </div>
 
       {message && (
-        <p className="text-sm rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-emerald-200">
+        <p
+          className={`text-sm rounded-lg border px-3 py-2 ${
+            messageTone === 'success'
+              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
+              : 'border-[var(--copper-primary)]/35 bg-[var(--copper-primary)]/10 text-[var(--copper-melt)]'
+          }`}
+        >
           {message}
         </p>
       )}
@@ -216,6 +229,10 @@ export default function CustomDomainSettingsPanel() {
           {domains.map((domain) => {
             const badge = statusLabel(domain.status);
             const instr = domain.instructions;
+            const canRecheck =
+              domain.status === 'dns_verified' ||
+              domain.status === 'active' ||
+              domain.status === 'failed';
             return (
               <article key={domain.id} className="rounded-xl border border-nisk bg-nisk-card p-5 space-y-3">
                 <div className="flex flex-wrap items-start justify-between gap-2">
@@ -223,7 +240,7 @@ export default function CustomDomainSettingsPanel() {
                     <h3 className="font-semibold text-[var(--foreground)] font-mono">{domain.hostname}</h3>
                     <p className="text-xs text-nisk-muted mt-1">
                       Vercel attached: {domain.vercel_attached ? 'yes' : 'no'}
-                      {domain.verified_at ? ` · Verified ${new Date(domain.verified_at).toLocaleString()}` : ''}
+                      {domain.verified_at ? ` · Checked ${new Date(domain.verified_at).toLocaleString()}` : ''}
                     </p>
                   </div>
                   <span
@@ -232,6 +249,12 @@ export default function CustomDomainSettingsPanel() {
                     {badge.text}
                   </span>
                 </div>
+
+                {domain.status === 'dns_verified' && (
+                  <p className="text-xs text-[var(--copper-melt)]">
+                    Ownership confirmed — add the CNAME record shown below to finish activation
+                  </p>
+                )}
 
                 <div className="rounded-lg border border-nisk bg-[var(--iron-dark)] p-3 text-xs space-y-2 font-mono">
                   <p className="text-nisk-muted font-sans text-[11px] uppercase tracking-wide">1. Ownership TXT</p>
@@ -247,8 +270,11 @@ export default function CustomDomainSettingsPanel() {
                   </p>
                 </div>
 
-                {domain.last_error && (
+                {domain.last_error && domain.status !== 'dns_verified' && (
                   <p className="text-xs text-red-300/90">{domain.last_error}</p>
+                )}
+                {domain.last_error && domain.status === 'dns_verified' && (
+                  <p className="text-xs text-nisk-muted">{domain.last_error}</p>
                 )}
 
                 <div className="flex flex-wrap gap-2">
@@ -258,7 +284,11 @@ export default function CustomDomainSettingsPanel() {
                     onClick={() => void verify(domain.id)}
                     className="rounded-lg border border-[var(--copper-primary)]/40 bg-[var(--copper-primary)]/10 px-3 py-1.5 text-xs font-semibold text-[var(--copper-melt)] disabled:opacity-50"
                   >
-                    {busy === `verify-${domain.id}` ? 'Checking DNS…' : 'Verify DNS'}
+                    {busy === `verify-${domain.id}`
+                      ? 'Checking…'
+                      : canRecheck
+                        ? 'Recheck'
+                        : 'Verify DNS'}
                   </button>
                   <button
                     type="button"

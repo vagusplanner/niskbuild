@@ -6,11 +6,16 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { canUseCustomDomains } from '@/lib/tier-config';
 import {
   attachDomainToVercelProject,
+  getVercelDomainConfig,
   vercelDnsCnameTarget,
   vercelDomainEnvConfigured,
 } from '@/lib/vercel-domains';
 
 export type CustomDomainStatus = 'pending_dns' | 'dns_verified' | 'active' | 'failed';
+
+/** Shown when TXT ownership is proven but traffic DNS / Vercel readiness is incomplete. */
+export const OWNERSHIP_CONFIRMED_ADD_CNAME =
+  'Ownership confirmed — add the CNAME record shown below to finish activation';
 
 export type CustomDomainRow = {
   id: string;
@@ -225,6 +230,46 @@ export async function lookupTxtChallenge(hostname: string): Promise<string[]> {
   }
 }
 
+/**
+ * Confirm the hostname has a traffic record (CNAME and/or A) — not ownership TXT alone.
+ */
+export async function lookupHostnameTrafficRecords(hostname: string): Promise<{
+  cnames: string[];
+  aRecords: string[];
+  hasTrafficRecord: boolean;
+}> {
+  let cnames: string[] = [];
+  let aRecords: string[] = [];
+
+  try {
+    cnames = await dns.resolveCname(hostname);
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException)?.code;
+    if (code !== 'ENOTFOUND' && code !== 'ENODATA' && code !== 'ENOENT') {
+      throw err;
+    }
+  }
+
+  try {
+    aRecords = await dns.resolve4(hostname);
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException)?.code;
+    if (code !== 'ENOTFOUND' && code !== 'ENODATA' && code !== 'ENOENT') {
+      throw err;
+    }
+  }
+
+  return {
+    cnames,
+    aRecords,
+    hasTrafficRecord: cnames.length > 0 || aRecords.length > 0,
+  };
+}
+
+function emptyDnsLookupError(code: string | undefined): boolean {
+  return code === 'ENOTFOUND' || code === 'ENODATA' || code === 'ENOENT';
+}
+
 export async function verifyCustomDomainDns(params: {
   ownerId: string;
   domainId: string;
@@ -233,6 +278,9 @@ export async function verifyCustomDomainDns(params: {
 }): Promise<{
   domain: CustomDomainRow;
   vercel: Awaited<ReturnType<typeof attachDomainToVercelProject>>;
+  vercelConfig: Awaited<ReturnType<typeof getVercelDomainConfig>>;
+  trafficDns: Awaited<ReturnType<typeof lookupHostnameTrafficRecords>>;
+  message: string;
   instructions: ReturnType<typeof dnsInstructions>;
 }> {
   if (!canUseCustomDomains(params.tier, params.status)) {
@@ -282,6 +330,13 @@ export async function verifyCustomDomainDns(params: {
         skipped: true,
         reason: 'DNS not verified yet',
       },
+      vercelConfig: {
+        ok: true,
+        skipped: true,
+        reason: 'DNS not verified yet',
+      },
+      trafficDns: { cnames: [], aRecords: [], hasTrafficRecord: false },
+      message: msg,
       instructions: dnsInstructions(domain.hostname, domain.verification_token),
     };
   }
@@ -289,22 +344,88 @@ export async function verifyCustomDomainDns(params: {
   const compiledId = await ensureCompiledAppForDomain(params.ownerId, domain.hostname);
   const vercel = await attachDomainToVercelProject(domain.hostname);
 
-  const nextStatus: CustomDomainStatus =
-    vercel.ok && 'attached' in vercel && vercel.attached ? 'active' : 'dns_verified';
+  let trafficDns: Awaited<ReturnType<typeof lookupHostnameTrafficRecords>> = {
+    cnames: [],
+    aRecords: [],
+    hasTrafficRecord: false,
+  };
+  try {
+    trafficDns = await lookupHostnameTrafficRecords(domain.hostname);
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException)?.code;
+    if (!emptyDnsLookupError(code)) {
+      const message = err instanceof Error ? err.message : 'Traffic DNS lookup failed';
+      await admin
+        .from('custom_domains')
+        .update({
+          status: 'dns_verified',
+          compiled_application_id: compiledId,
+          vercel_attached: Boolean(vercel.ok && 'attached' in vercel && vercel.attached),
+          verified_at: new Date().toISOString(),
+          last_error: message,
+        })
+        .eq('id', domain.id);
+      throw new Error(`Traffic DNS lookup failed: ${message}`);
+    }
+  }
+
+  const vercelConfig = await getVercelDomainConfig(domain.hostname);
+
+  const vercelReady =
+    vercelConfig.ok &&
+    !('skipped' in vercelConfig && vercelConfig.skipped) &&
+    'misconfigured' in vercelConfig &&
+    vercelConfig.misconfigured === false;
+
+  const vercelAttached = Boolean(vercel.ok && 'attached' in vercel && vercel.attached);
+  const readyForActive = trafficDns.hasTrafficRecord && vercelReady;
+
+  let nextStatus: CustomDomainStatus = readyForActive ? 'active' : 'dns_verified';
+  let message: string;
+  let lastError: string | null = null;
+
+  if (readyForActive) {
+    message = 'Domain is active — DNS points at Vercel and Vercel reports the hostname as correctly configured.';
+  } else if (!trafficDns.hasTrafficRecord) {
+    message = OWNERSHIP_CONFIRMED_ADD_CNAME;
+    lastError = null;
+  } else if (vercelConfig.ok && 'skipped' in vercelConfig && vercelConfig.skipped) {
+    message = OWNERSHIP_CONFIRMED_ADD_CNAME;
+    lastError = vercelConfig.reason;
+  } else if (vercelConfig.ok && 'misconfigured' in vercelConfig && vercelConfig.misconfigured) {
+    message =
+      'Ownership confirmed and a DNS record was found — Vercel still reports the domain as misconfigured. Wait for propagation, then Recheck.';
+    lastError = vercelConfig.detail;
+  } else if (!vercelConfig.ok) {
+    message = OWNERSHIP_CONFIRMED_ADD_CNAME;
+    lastError = vercelConfig.error;
+  } else if (vercel.ok && 'skipped' in vercel && vercel.skipped) {
+    message = OWNERSHIP_CONFIRMED_ADD_CNAME;
+    lastError = vercel.reason;
+  } else if (!vercel.ok) {
+    message = OWNERSHIP_CONFIRMED_ADD_CNAME;
+    lastError = vercel.error;
+  } else {
+    message = OWNERSHIP_CONFIRMED_ADD_CNAME;
+  }
+
+  const recommendedTarget =
+    vercelConfig.ok && 'recommendedCNAME' in vercelConfig && vercelConfig.recommendedCNAME
+      ? vercelConfig.recommendedCNAME
+      : undefined;
+  const instructions = dnsInstructions(domain.hostname, domain.verification_token);
+  if (recommendedTarget) {
+    instructions.cnameTarget = recommendedTarget;
+  }
 
   const { data: updated, error: updErr } = await admin
     .from('custom_domains')
     .update({
       status: nextStatus,
       compiled_application_id: compiledId,
-      vercel_attached: Boolean(vercel.ok && 'attached' in vercel && vercel.attached),
+      vercel_attached: vercelAttached,
       verified_at: new Date().toISOString(),
-      last_error:
-        vercel.ok && 'skipped' in vercel && vercel.skipped
-          ? vercel.reason
-          : vercel.ok
-            ? null
-            : vercel.error,
+      last_error: lastError,
     })
     .eq('id', domain.id)
     .select('*')
@@ -315,7 +436,10 @@ export async function verifyCustomDomainDns(params: {
   return {
     domain: updated as CustomDomainRow,
     vercel,
-    instructions: dnsInstructions(domain.hostname, domain.verification_token),
+    vercelConfig,
+    trafficDns,
+    message,
+    instructions,
   };
 }
 
