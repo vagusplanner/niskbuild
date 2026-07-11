@@ -75,6 +75,12 @@ const PLATFORM_ADMIN_NAV: NavItem[] = [
     description: 'Draft and publish in-app documentation',
   },
   {
+    href: '/admin/custom-domains',
+    label: 'Custom domains',
+    icon: '🌐',
+    description: 'Pending vs active customer hostnames',
+  },
+  {
     href: '/admin',
     label: 'Platform stats',
     icon: '📋',

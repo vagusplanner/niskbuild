@@ -30,8 +30,9 @@ import {
   validatePassword,
 } from '@/lib/password-strength';
 import { planBadgeClass, planDisplayName } from '@/lib/plan-display';
+import CustomDomainSettingsPanel from '@/app/components/CustomDomainSettingsPanel';
 
-type TabId = 'profile' | 'billing' | 'security' | 'danger';
+type TabId = 'profile' | 'billing' | 'domains' | 'security' | 'danger';
 
 type Toast = { message: string; type: 'success' | 'error' } | null;
 
@@ -70,6 +71,7 @@ const TIMEZONES = [
 const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'profile', label: 'Profile', icon: '👤' },
   { id: 'billing', label: 'Billing', icon: '💳' },
+  { id: 'domains', label: 'Domains', icon: '🌐' },
   { id: 'security', label: 'Security', icon: '🔒' },
   { id: 'danger', label: 'Danger Zone', icon: '⚠️' },
 ];
@@ -708,6 +710,8 @@ export default function SettingsWorkspace() {
               </section>
             </>
           )}
+
+          {activeTab === 'domains' && <CustomDomainSettingsPanel />}
 
           {activeTab === 'security' && (
             <>

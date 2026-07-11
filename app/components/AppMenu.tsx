@@ -43,6 +43,7 @@ const ADMIN_NAV = [
   { href: '/admin/analytics', label: 'Demand Analytics' },
   { href: '/admin/demand-analytics', label: 'Prompt categories' },
   { href: '/admin/docs-manager', label: 'Docs manager' },
+  { href: '/admin/custom-domains', label: 'Custom domains' },
   { href: '/admin', label: 'Platform stats' },
   { href: '/admin/revenue', label: 'Revenue' },
   { href: '/admin/emails', label: 'Email hub' },

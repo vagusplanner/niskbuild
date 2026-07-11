@@ -64,17 +64,52 @@ export async function resolveTenantByHostname(
   const host = normalizeHost(hostname);
   const slug = extractSubdomainSlug(host);
 
-  let query = supabase
-    .from('compiled_applications')
-    .select('id, owner_id, app_type, configuration_state, status');
-
   if (slug) {
-    query = query.eq('subdomain_slug', slug);
-  } else {
-    query = query.eq('custom_production_domain', host);
+    const { data, error } = await supabase
+      .from('compiled_applications')
+      .select('id, owner_id, app_type, configuration_state, status')
+      .eq('subdomain_slug', slug)
+      .maybeSingle();
+    if (error) {
+      console.error('Tenant lookup error:', error.message);
+      return null;
+    }
+    return data as TenantAppRecord | null;
   }
 
-  const { data, error } = await query.maybeSingle();
+  // Self-serve custom domains: only route when DNS-verified or active
+  const { data: customDomain, error: domainError } = await supabase
+    .from('custom_domains')
+    .select('compiled_application_id, status')
+    .eq('hostname', host)
+    .in('status', ['dns_verified', 'active'])
+    .maybeSingle();
+
+  if (domainError) {
+    // Table may not exist yet on older deploys — fall through to legacy column
+    if (!/custom_domains|does not exist/i.test(domainError.message)) {
+      console.error('Custom domain lookup error:', domainError.message);
+    }
+  } else if (customDomain?.compiled_application_id) {
+    const { data, error } = await supabase
+      .from('compiled_applications')
+      .select('id, owner_id, app_type, configuration_state, status')
+      .eq('id', customDomain.compiled_application_id)
+      .maybeSingle();
+    if (error) {
+      console.error('Tenant lookup error:', error.message);
+      return null;
+    }
+    return data as TenantAppRecord | null;
+  }
+
+  // Legacy manual SQL mapping on compiled_applications
+  const { data, error } = await supabase
+    .from('compiled_applications')
+    .select('id, owner_id, app_type, configuration_state, status')
+    .eq('custom_production_domain', host)
+    .maybeSingle();
+
   if (error) {
     console.error('Tenant lookup error:', error.message);
     return null;

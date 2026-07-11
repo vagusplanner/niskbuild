@@ -26,6 +26,20 @@ const articles = [
     file: 'plans-explained.md',
     order_index: 101,
   },
+  {
+    slug: 'product-overview',
+    title: 'Product Overview',
+    category: 'product',
+    file: 'marketing-summary.md',
+    order_index: 102,
+  },
+  {
+    slug: 'niskbuild-for-companies',
+    title: 'NiskBuild for Companies',
+    category: 'product',
+    file: 'enterprise-companies.md',
+    order_index: 103,
+  },
 ];
 
 function dollarQuote(content) {

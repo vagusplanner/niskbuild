@@ -11,6 +11,7 @@ import {
   canImportGooglePlaces,
   canScheduleSocialPosts,
   canUseCompetitorIntel,
+  canUseCustomDomains,
   canUseGameTemplates,
   canUseLocalOllama,
   canUseOwnApiKeys,
@@ -180,9 +181,7 @@ export function buildCompareRows(tiers: PricingTier[] = PRICING_TIERS): CompareR
     boolRow('Schedule social posts', (t, s) => canScheduleSocialPosts(t, s, false)),
     {
       label: 'Custom domains (self-serve)',
-      values: keys.map((k) =>
-        roadmapCell(k, (key) => isWhiteLabelOrAbove(key, ACTIVE))
-      ),
+      values: keys.map((k) => gate(k, canUseCustomDomains)),
     },
     {
       label: 'White-label rebrand',
