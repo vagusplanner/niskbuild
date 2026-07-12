@@ -117,6 +117,11 @@ export default function PlanCompareTable({
                   className="sticky left-0 z-10 bg-[var(--iron-dark)] p-3 text-sm font-medium text-[var(--nisk-color)] border-r border-[var(--border)]/50"
                 >
                   {row.label}
+                  {row.note ? (
+                    <p className="mt-1.5 text-[10px] font-normal normal-case tracking-normal leading-snug text-nisk-muted max-w-[200px]">
+                      {row.note}
+                    </p>
+                  ) : null}
                 </th>
                 {row.values.map((value, i) => (
                   <td

@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { guardApiRequest } from '@/lib/api-auth';
-import { buildBufferAuthorizeUrl } from '@/lib/buffer/client';
-import { storeOAuthState } from '@/lib/buffer/oauth-state';
-import { apiErrorResponse } from '@/lib/api-error';
+import {
+  CUSTOMER_BUFFER_COMING_SOON_CODE,
+  CUSTOMER_BUFFER_COMING_SOON_MESSAGE,
+} from '@/lib/buffer/customer-coming-soon';
 
-/** Start Buffer OAuth — stores random state server-side, never passes user ID as state */
+/**
+ * Customer Buffer OAuth start — deferred.
+ * Legacy app registrations are closed; do not redirect users into a broken OAuth flow.
+ */
 export async function GET(request: NextRequest) {
   const guard = await guardApiRequest(request);
   if (!guard.ok) return guard.response;
@@ -12,11 +16,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  try {
-    const state = await storeOAuthState(guard.user.id, 'buffer');
-    const authorizeUrl = buildBufferAuthorizeUrl(state);
-    return NextResponse.redirect(authorizeUrl);
-  } catch (error) {
-    return apiErrorResponse(error, 'Failed to start Buffer authorization');
+  const accept = request.headers.get('accept') || '';
+  if (accept.includes('text/html')) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const dest = new URL('/builder', appUrl);
+    dest.searchParams.set('social', 'coming-soon');
+    return NextResponse.redirect(dest.toString());
   }
+
+  return NextResponse.json(
+    {
+      error: CUSTOMER_BUFFER_COMING_SOON_MESSAGE,
+      code: CUSTOMER_BUFFER_COMING_SOON_CODE,
+      comingSoon: true,
+    },
+    { status: 503 }
+  );
 }

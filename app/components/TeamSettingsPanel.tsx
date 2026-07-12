@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { redirectToStripe } from '@/lib/checkout-redirect';
+import {
+  extraSeatMailtoHref,
+} from '@/lib/extra-seats';
 
 type SeatUsage = {
   used: number;
@@ -176,6 +179,26 @@ export default function TeamSettingsPanel() {
                 {isOwner
                   ? `Seat overage: ${org.seats.members} members on a plan capped at ${org.seats.limit}. Existing members keep access; new invites are blocked until you remove seats or upgrade.`
                   : `This team is over its seat cap (${org.seats.members}/${org.seats.limit}). New invites are paused until the owner reduces seats or upgrades.`}
+                {isOwner ? (
+                  <>
+                    {' '}
+                    Need more seats? Additional seats are $39/month each —{' '}
+                    <a
+                      href={extraSeatMailtoHref()}
+                      className="text-[var(--copper-melt)] underline underline-offset-2 hover:text-[var(--copper-light)]"
+                    >
+                      contact us
+                    </a>{' '}
+                    to add more, or use{' '}
+                    <Link
+                      href="/dashboard/support"
+                      className="text-[var(--copper-melt)] underline underline-offset-2 hover:text-[var(--copper-light)]"
+                    >
+                      Support
+                    </Link>
+                    .
+                  </>
+                ) : null}
               </p>
             )}
 
@@ -332,7 +355,22 @@ export default function TeamSettingsPanel() {
                   <p className="text-xs text-amber-200">
                     {org.seats.overCapacity
                       ? `Seat overage (${org.seats.label}). Remove members or upgrade before inviting.`
-                      : `Seat limit reached (${org.seats.label}). Remove a member or revoke a pending invite before inviting someone else.`}
+                      : `Seat limit reached (${org.seats.label}). Remove a member or revoke a pending invite before inviting someone else.`}{' '}
+                    Need more seats? Additional seats are $39/month each —{' '}
+                    <a
+                      href={extraSeatMailtoHref()}
+                      className="text-[var(--copper-melt)] underline underline-offset-2 hover:text-[var(--copper-light)]"
+                    >
+                      contact us
+                    </a>{' '}
+                    to add more, or open{' '}
+                    <Link
+                      href="/dashboard/support"
+                      className="text-[var(--copper-melt)] underline underline-offset-2 hover:text-[var(--copper-light)]"
+                    >
+                      Support
+                    </Link>
+                    .
                   </p>
                 ) : (
                   <div className="flex flex-col sm:flex-row gap-2">

@@ -1,3 +1,4 @@
+import { EXTRA_SEAT_PRICING_NOTE } from '@/lib/extra-seats';
 import { PRICING_TIERS, type PricingTier } from '@/lib/pricing-tiers';
 import { hasPaidTier } from '@/lib/access';
 import { canUseSupportTickets } from '@/lib/support-access';
@@ -36,6 +37,8 @@ export type CompareRow = {
   label: string;
   /** Values aligned with PRICING_TIERS column order */
   values: CompareCell[];
+  /** Optional footnote under the feature label (e.g. extra-seat pricing). */
+  note?: string;
 };
 
 /**
@@ -176,6 +179,7 @@ export function buildCompareRows(tiers: PricingTier[] = PRICING_TIERS): CompareR
     {
       label: 'Team seats (orgs, invites, roles)',
       values: keys.map((k) => formatTeamSeats(k)),
+      note: EXTRA_SEAT_PRICING_NOTE,
     },
     boolRow('Competitor intel', canUseCompetitorIntel),
     {

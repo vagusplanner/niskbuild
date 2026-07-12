@@ -277,8 +277,8 @@ export async function createOrganizationInvite(params: {
   if (seats.overCapacity || seats.atCapacity) {
     throw new Error(
       seats.overCapacity
-        ? `Seat overage (${seats.label}). Remove members until you are under the plan cap, or upgrade — existing members keep access.`
-        : `Seat limit reached (${seats.label}). Remove a member or revoke a pending invite before inviting someone else.`
+        ? `Seat overage (${seats.label}). Remove members until you are under the plan cap, or upgrade — existing members keep access. Need more seats? Additional seats are $39/month each — contact us at support@niskbuild.com to add more.`
+        : `Seat limit reached (${seats.label}). Remove a member or revoke a pending invite before inviting someone else. Need more seats? Additional seats are $39/month each — contact us at support@niskbuild.com to add more.`
     );
   }
 
