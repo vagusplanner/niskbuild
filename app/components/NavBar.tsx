@@ -105,6 +105,12 @@ const PLATFORM_ADMIN_NAV: NavItem[] = [
     description: 'Lifecycle send log, templates, resend',
   },
   {
+    href: '/admin/social/company',
+    label: 'Company social',
+    icon: '📣',
+    description: 'Post as NiskBuild via Buffer personal API key',
+  },
+  {
     href: '/admin/churn',
     label: 'Churn risk',
     icon: '⚠️',

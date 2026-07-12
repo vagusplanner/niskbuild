@@ -15,13 +15,15 @@ insert into public.doc_articles (
 
 NiskBuild is an AI app builder: describe what you want in plain English, and NiskBuild generates real, working code — HTML, CSS, and JavaScript — that you can preview instantly, refine, and export. Unlike platforms that keep your app locked inside their system, NiskBuild gives you the actual source code, so what you build is genuinely yours.
 
+You don't need to know how to code. You don't need a technical team. You describe what you need the way you'd describe it to a person, and NiskBuild builds it.
+
 ## The build process
 
 **1. You describe your app**
-Type a prompt describing what you want — a business website, a booking page, a dashboard. The more specific you are, the more tailored the result, but even a short prompt is enough to get started.
+Type a prompt describing what you want — a business website, a booking page, a dashboard for tracking deliveries, an internal tool for your staff. The more specific you are, the more tailored the result, but even a short prompt is enough to get started.
 
 **2. AI generates real code**
-NiskBuild streams working code live as it's generated, so you can watch your app take shape. Generation runs on cloud AI by default, with automatic fallback across multiple providers if one is temporarily unavailable — so your build doesn't fail just because one provider is having issues.
+NiskBuild streams working code live as it's generated, so you can watch your app take shape. Generation runs on cloud AI by default, with automatic backup across multiple AI providers if one is temporarily unavailable — so your build doesn't fail just because one provider is having issues.
 
 **3. You get a live preview**
 As code streams in, a live preview updates so you can see your app rendering in real time, not just read code.
@@ -30,39 +32,47 @@ As code streams in, a live preview updates so you can see your app rendering in 
 Add pages, request changes, or start over. Each successful save creates a version, so you can always go back to an earlier point if you want.
 
 **5. You export or deploy**
-When you're ready, export your code as a ZIP, deploy a shareable live preview link, or take it further with App Store/native app export options (see "Exporting Your App" below for exactly what each option includes).
+When you're ready, export your code as a downloadable package, publish a shareable live link, or take it further with app store export options.
 
 ## What "own your code forever" actually means
 
-When you export a NiskBuild project, you get:
-- A complete, cleaned HTML/CSS/JavaScript codebase
-- A `niskbuild.config.json` file recording your project's prompt history and file structure
-- A README explaining how to re-import the project back into NiskBuild if needed
-- All pages of a multi-page project, not just the homepage
+When you export a NiskBuild project, you get a complete, working codebase — not a locked file you can only open inside NiskBuild. This includes:
+- All your app's actual code, ready to run in any web browser or hosting service
+- A record of your project's history and structure
+- Instructions for bringing the project back into NiskBuild later if needed
+- Every page of a multi-page project, not just the homepage
 
-This is real, standalone code — it will run in any browser or web host, independent of NiskBuild, whether or not you keep your subscription.
+This means: if you ever stop paying for NiskBuild, or decide to move to a different provider, you keep everything you built. It doesn't disappear.
 
-*(Free/Sandbox tier exports include a visible watermark; paid tiers export a clean, unwatermarked version.)*
+*(Free trial exports include a small watermark; paid plans export a clean version with no watermark.)*
 
 ## Multi-page projects
 
-NiskBuild supports multi-page apps — add a Contact page, an About page, or custom pages as your project grows. Once you save a project, all pages are stored together and restored exactly as you left them when you reopen the project. Version history also captures every page, not just the one you were last editing, so restoring an older version brings back your whole project as it was.
+NiskBuild supports apps with multiple pages — add a Contact page, an About page, or custom pages as your project grows. Once you save a project, all pages are stored together and restored exactly as you left them. Version history also captures every page, not just the one you were last editing.
 
-**One important note:** version history and multi-page saving apply after you've saved a project at least once. Before that first save, unsaved drafts may not fully persist if you leave and come back — save early if a project matters to you.
+## Understanding a few technical terms
+
+We try to avoid jargon, but a few terms come up when discussing plans and setup. Here's what they actually mean:
+
+**SSL (the padlock icon in your browser)** — this is what encrypts the connection between your visitors and your website, protecting information they enter. Every domain on NiskBuild, including your own custom domain if you use one, gets this automatically — you don't need to set anything up yourself.
+
+**SSO (Single Sign-On)** — a way for your employees to log into NiskBuild using the same company account they already use for email or other work tools (like Microsoft or Google Workspace), instead of a separate password. This matters mainly for larger companies with IT departments managing employee access centrally.
+
+**SLA (Service Level Agreement)** — a formal, written commitment about how reliable and responsive our support is — for example, a guarantee of how quickly we respond to a support request. This is typically something larger companies request as part of a contract, and we work these out individually for that reason.
+
+**API / Integration** — a way for two pieces of software to talk to each other automatically. If your company uses a system like Stripe for payments, NiskBuild can connect a generated app directly to it.
 
 ## Exporting your app
 
 | Export type | What you get | Available on |
 |---|---|---|
-| Code ZIP | Full HTML/CSS/JS, config file, README, all pages | All tiers (watermarked on free; clean on paid) |
-| PWA ZIP | Installable web-app package (manifest, service worker, offline support) | Paid tiers |
-| Native starter ZIP | PWA package plus Capacitor configuration for wrapping as a mobile app | Agency tier and above |
-
-*(Native starter ZIPs provide the configuration and instructions to build a native app yourself using standard developer tools — they are a starting point, not a finished App Store submission package.)*
+| Code package | Full source code, all pages, ready to host anywhere | All plans (watermarked on free trial; clean on paid plans) |
+| Installable web app | A version of your app that can be installed like an app, works offline | Paid plans |
+| Mobile app starter | The starting files needed to turn your app into an iOS/Android app | Higher-tier plans |
 
 ## Version history
 
-Every saved project keeps a version history you can browse, preview, and restore from. How many past versions are kept depends on your plan — higher tiers retain more history. Restoring an older version takes a snapshot of your current state first, so you never lose your latest work by going back.
+Every saved project keeps a history you can browse and restore from at any time. How far back your history goes depends on your plan — higher tiers keep more history. Restoring an older version never loses your latest work — it's saved first, automatically.
 $md$,
   '{all}'::text[],
   100,
@@ -74,42 +84,45 @@ $md$,
   'product',
   $md$# Plans Explained
 
+Every plan includes the full AI builder. As you move up, you get more monthly usage, more advanced export options, and — starting at Agency Studio — the ability to bring your whole team onto one account.
+
 ## Sandbox — Free
-**What's included:** 5 cloud AI credits (trial), 1 project, builder access after phone verification, watermarked ZIP export.
-**Who it's for:** Anyone who wants to try NiskBuild before committing — no card required.
+**What's included:** A limited free trial (5 AI generations), 1 project, builder access after a quick phone verification, watermarked export.
+**Who it's for:** Anyone who wants to try NiskBuild before paying anything. No card required.
 
 ## Basic — $69/mo
-**What's included:** 150 cloud AI credits, 5 projects, 2 sessions, clean (unwatermarked) ZIP export, PWA export, marketplace access, live preview deploy.
-**Who it's for:** Solo freelancers and hobbyists who need real exports without a large volume of builds.
+**What's included:** 150 AI generations/month, 5 projects, clean (no watermark) code export, installable web app export, access to the app marketplace, instant shareable preview links.
+**Who it's for:** Solo freelancers and small businesses that need a real, working website or tool without a large monthly volume of builds.
 
 ## Pro Worker — $129/mo
-**What's included:** 600 cloud AI credits, 15 projects, 5 sessions, everything in Basic, plus BYOC (bring your own AI provider keys), local Ollama support, Google Places business data import, game templates, native mobile export pipeline.
-**Who it's for:** Power users building regularly, who want more control over which AI provider generates their code.
+**What's included:** 600 AI generations/month, 15 projects, everything in Basic, plus the option to use your own AI provider account if you have one, offline/local building, importing real business details automatically (like your Google Business listing), and a mobile app export starting point.
+**Who it's for:** People building regularly — freelancers with steady client work, or a small business building multiple internal tools.
 
 ## Agency Studio — $299/mo
-**What's included:** 2,500 cloud AI credits, 25 projects, 10 sessions, everything in Pro Worker, plus native Capacitor export and competitor intelligence tools.
-**Who it's for:** Studios and small teams shipping client work who need higher volume and native app export.
-**Note:** Multi-seat team access is planned but not yet available — this tier is currently single-user, same as lower tiers.
+**What's included:** 2,500 AI generations/month, 25 projects, everything in Pro Worker, plus mobile app export tools and competitor research tools. **Team accounts start here** — up to 3 people (including you) can share one account and one subscription.
+**Who it's for:** Small agencies and studios building for multiple clients, or a small internal team that wants to build together.
 
 ## Scale Team — $799/mo
-**What's included:** 10,000 cloud AI credits, unlimited projects, 20 sessions, everything in Agency Studio, plus scheduled social posting.
-**Who it's for:** Growing teams with high build volume.
-**Note:** Multi-seat team access is planned but not yet available.
+**What's included:** 10,000 AI generations/month, unlimited projects, everything in Agency Studio, plus scheduled social media posting. **Up to 10 team members.**
+**Who it's for:** Growing teams and businesses with regular, high-volume building needs.
 
 ## White-Label — $1,199/mo
-**What's included:** 15,000 cloud AI credits, unlimited projects, unlimited sessions, everything in Scale Team, high-priority support tickets.
-**Who it's for:** Resellers and agencies wanting to offer NiskBuild-powered building under their own brand.
-**Note:** Self-serve custom domains and white-label rebranding are in active development — not yet available today. Multi-seat team access is also planned but not yet available.
+**What's included:** 15,000 AI generations/month, unlimited projects, everything in Scale Team, plus the ability to connect your own domain name (yourcompany.com instead of a NiskBuild address), and remove all NiskBuild branding from what you publish — your customers see your company's name, not ours. **Up to 15 team members.**
+**Who it's for:** Agencies, resellers, and larger companies who want to offer building services under their own brand, or simply want a fully private, professional presence with no third-party branding.
 
 ## Team Enterprise — $1,999/mo
-**What's included:** 25,000 cloud AI credits, unlimited projects and sessions, everything in White-Label, ticket-based support.
-**Who it's for:** Mid-size companies needing high volume and dedicated support relationships.
-**Note:** SSO, formal SLA contracts, and multi-seat team access are in active development — not yet available today.
+**What's included:** 25,000 AI generations/month, unlimited projects, everything in White-Label, plus company login (SSO) so your staff can sign in with their existing work accounts, and priority support. **Up to 25 team members.**
+**Who it's for:** Mid-size companies with an IT department, who need centralized control over who has access and a higher level of support.
 
 ## Sovereign — From $3,999/mo + setup fee
-**What's included:** 50,000 cloud AI credits, unlimited projects and sessions, everything in Team Enterprise, custom support arrangements.
-**Who it's for:** Large organizations with the highest volume needs.
-**Note:** Dedicated infrastructure, SSO, custom SLA contracts, and multi-seat team access are in active development — not yet available today.
+**What's included:** 50,000 AI generations/month, unlimited projects, everything in Team Enterprise, plus custom support arrangements discussed individually. **Up to 50 team members.**
+**Who it's for:** Large organizations with the highest volume needs and the most specific requirements — we work with you directly to shape this tier around what your company actually needs.
+
+---
+
+## A note on formal support commitments and dedicated infrastructure
+
+For companies that need a formally guaranteed response time (a Service Level Agreement, or "SLA") or their own fully separate, isolated technical environment, we're actively building toward offering this for Team Enterprise and Sovereign customers. If this is something your company needs, get in touch — we'll work through exactly what you need and what we can commit to.
 $md$,
   '{all}'::text[],
   101,
@@ -162,69 +175,65 @@ $md$,
   'NiskBuild for Companies',
   'product',
   $md$# NiskBuild for Companies
-### White-Label · Team Enterprise · Sovereign
+### For teams and organizations of any kind — technical or not
 
 ---
 
-## Why companies need NiskBuild now
+## The problem we solve
 
-Every company has more app ideas than engineering hours to build them. Internal tools, client prototypes, landing pages, booking systems — the backlog grows faster than the team can clear it.
+Every company — whether you're a software startup or a food distribution business running on spreadsheets and phone calls — has more things you need built than you have people to build them. A booking page. An internal tool to track deliveries. A dashboard your managers actually want to use. A branded portal for your resellers.
 
-NiskBuild removes the bottleneck. Describe what you need, get real working code in minutes, and — critically — **own that code outright**. No dependency on a platform holding your work hostage. No "AI-generated but unusable without us" lock-in. Your team gets speed; your company keeps the output.
+Traditionally, that means hiring developers, waiting weeks or months, and paying a lot of money — for something that might need to change again in three months anyway.
 
-For companies operating at volume — running many projects, many prompts, many builds a month — the higher-tier plans exist specifically to remove the friction of hitting limits designed for individual users.
+NiskBuild removes that bottleneck. Anyone on your team describes what they need, in plain English, and gets a real, working piece of software back in minutes. And critically: **you own what gets built.** It's not trapped inside our platform — it's real code you can take anywhere, forever.
 
----
+## What your team actually gets
 
-## What's real today
+- **No coding required.** If someone on your team can describe what they want clearly, they can build it.
+- **Real ownership.** Every app comes with exportable code — not a demo, not a locked preview. You can hand it to a developer, host it yourselves, or keep building on NiskBuild. Your choice, always.
+- **Your whole team, one place.** Starting at our Agency Studio plan, multiple people from your company share one account, working on shared projects together.
+- **Your brand, not ours.** On our White-Label plan and above, you can connect your own website address and remove all NiskBuild branding — your customers and staff never see our name.
+- **Fits into how you already work.** Connect your own payment processor, sync generated projects to your own code storage, or use your own AI provider account if your company already has one.
 
-These enterprise tiers currently and reliably provide:
+## Plain-English glossary (for non-technical decision-makers)
 
-- **High-volume cloud AI credits** — from 15,000/month (White-Label) up to 50,000/month (Sovereign)
-- **Unlimited projects and sessions** — no per-seat or per-project ceiling
-- **Clean code export** — full HTML/CSS/JS, ready to deploy anywhere, no watermark
-- **PWA and native mobile export** — installable web-app packages and a Capacitor-based mobile app starting point
-- **Ticket-based support**, with priority handling on higher tiers
-- **BYOC (Bring Your Own AI Provider)** — use your own LLM API keys if you have specific compliance or vendor requirements
-- **GitHub sync** — push generated projects directly to your own repository
-- **Stripe inject** — connect your own Stripe account to a generated app for real payment processing
-- **Figma import** — bring existing design files into the builder as a starting point
+You don't need to understand these to use NiskBuild — but if your IT team or a technical advisor asks about them, here's what they mean:
 
----
+- **SSL** — the security that protects any information entered on your website (already included automatically, no setup needed on your part)
+- **SSO (Single Sign-On)** — lets your employees log in with their existing work email/account instead of a separate password (available on Team Enterprise and above)
+- **Custom domain** — using your own website address (like www.yourcompany.com) instead of a NiskBuild one (available on White-Label and above)
+- **API / Integration** — a way to automatically connect NiskBuild to other software your company already uses
+- **SLA (Service Level Agreement)** — a formal written promise about response times and reliability, typically arranged individually for larger contracts
 
-## On the roadmap (not yet available)
+## What's available today, by plan level
 
-We believe in being direct about where these tiers are heading versus where they are today. The following are in active development and **not yet functional**:
-
-- Single sign-on (SSO / SAML / OIDC)
-- Multi-seat team accounts with roles and invites
-- Self-serve custom domain configuration
-- White-label rebranding of the builder interface
-- Formal SLA contracts
-- Dedicated infrastructure isolation
-
-If any of these are a hard requirement for your organization today, talk to us directly about timeline — we'd rather tell you honestly than have you discover a gap after signing up.
-
----
+| | White-Label | Team Enterprise | Sovereign |
+|---|---|---|---|
+| Team members included | Up to 15 | Up to 25 | Up to 50 |
+| Your own domain name | ✓ | ✓ | ✓ |
+| Remove our branding entirely | ✓ | ✓ | ✓ |
+| Staff login with company account (SSO) | — | ✓ | ✓ |
+| Priority support | — | ✓ | ✓ |
+| Formal support guarantees & dedicated setup | In development — talk to us | In development — talk to us | In development — talk to us |
 
 ## What you'll need on your side
 
-- **Individual accounts per team member** — since multi-seat organization accounts aren't built yet, each person who needs builder access needs their own NiskBuild login today
-- **A GitHub account**, if you want generated projects synced to your own repository
-- **A Stripe account**, if you want to connect real payment processing to a generated app
-- **Your own LLM provider API key(s)**, if you want to use BYOC instead of NiskBuild's default cloud AI
-- **A domain you control**, for when self-serve custom domains become available (not required today)
-
----
+- **One account per team member.** Right now, each person needs their own login — we don't yet support one shared login for the whole team logging in as themselves (this is standard for now, similar to most business software).
+- **A domain name you own**, if you want your own web address instead of a NiskBuild one.
+- **Your company's identity provider details** (like Microsoft 365 or Google Workspace), if you want staff logging in with their existing work accounts.
+- **A payment processor account**, if you want a generated app to accept real payments directly.
 
 ## The process, start to finish
 
-1. **Sign up** and select your tier
-2. **Describe your first project** in plain English — NiskBuild generates real working code with a live preview
-3. **Iterate** — add pages, request changes, review version history as the project evolves
-4. **Connect what you need** — sync to GitHub, inject your Stripe account, or bring your own AI provider keys
-5. **Export or deploy** — clean ZIP, PWA package, native mobile starter, or a live shareable preview link
-6. **Repeat across your team** — each team member builds independently on their own account today; true shared team workspaces are coming
+1. **Sign up and choose your plan** based on team size and needs.
+2. **Invite your team.** Send invitations by email; each person accepts and joins your shared workspace.
+3. **Start building.** Anyone on the team describes what they need — no technical skill required — and gets real, working software back.
+4. **Make it yours.** Connect your own domain name, remove our branding, and connect any other tools your company already uses.
+5. **Keep everything.** Export any project's full code at any time — it's yours, whether or not you continue with NiskBuild.
+
+---
+
+Have questions, or need something not listed here? Contact us directly — larger commitments like guaranteed response times or fully dedicated technical infrastructure are worked out individually, because every company's needs are different.
 $md$,
   '{all}'::text[],
   103,

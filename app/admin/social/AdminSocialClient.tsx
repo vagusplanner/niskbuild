@@ -136,6 +136,21 @@ export default function AdminSocialClient() {
         </p>
       )}
 
+      <div className="mb-6 rounded-xl border border-[var(--copper-primary)]/35 bg-[var(--copper-primary)]/10 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-white">Company Buffer posting</p>
+          <p className="text-xs text-nisk-muted mt-0.5">
+            Admin-only: personal API key → GraphQL publish for NiskBuild&apos;s own channels
+          </p>
+        </div>
+        <Link
+          href="/admin/social/company"
+          className="rounded-lg border border-[var(--copper-primary)]/40 bg-[var(--copper-primary)]/15 px-4 py-2 text-sm font-semibold text-[var(--copper-melt)] hover:bg-[var(--copper-primary)]/25"
+        >
+          Open company composer →
+        </Link>
+      </div>
+
       <section className="glass-panel rounded-2xl border border-nisk p-5 mb-6">
         <h2 className="text-lg font-semibold text-white mb-3">Content plan</h2>
         <div className="grid sm:grid-cols-3 gap-3 mb-4">

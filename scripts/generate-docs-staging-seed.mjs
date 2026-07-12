@@ -16,14 +16,14 @@ const articles = [
     slug: 'how-niskbuild-works',
     title: 'How NiskBuild Works',
     category: 'product',
-    file: 'how-niskbuild-works.md',
+    file: 'how-niskbuild-works-v2.md',
     order_index: 100,
   },
   {
     slug: 'plans-explained',
     title: 'Plans Explained',
     category: 'product',
-    file: 'plans-explained.md',
+    file: 'plans-explained-v2.md',
     order_index: 101,
   },
   {
@@ -37,7 +37,7 @@ const articles = [
     slug: 'niskbuild-for-companies',
     title: 'NiskBuild for Companies',
     category: 'product',
-    file: 'enterprise-companies.md',
+    file: 'enterprise-companies-v2.md',
     order_index: 103,
   },
 ];
