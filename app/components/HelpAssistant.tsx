@@ -40,7 +40,7 @@ interface HelpAssistantProps {
 const STARTERS_USER = [
   'How do I build a todo app?',
   'Import a Google Business listing into the builder',
-  'Connect Buffer and schedule social posts',
+  'Buffer social publishing (Coming soon)',
   'Download logos from the Brand kit',
   'How do I export my code to GitHub or ZIP?',
   'What can Agency vs Pro do?',

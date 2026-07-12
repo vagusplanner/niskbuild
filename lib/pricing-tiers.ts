@@ -114,6 +114,7 @@ export const PRICING_TIERS: PricingTier[] = [
       'BYOC + priority queue',
       'Team seats (10 included)',
       'Shared component library',
+      'Scheduled social posting (Coming soon)',
     ],
     buttonText: 'Choose Scale',
     highlighted: false,

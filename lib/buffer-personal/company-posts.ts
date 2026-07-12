@@ -15,10 +15,75 @@ import {
   listAllBufferChannels,
   type CreateCompanyPostMode,
   type BufferGraphqlChannel,
+  type BufferPostAsset,
+  type InstagramPostType,
 } from '@/lib/buffer-personal/graphql-client';
 
 export const COMPANY_POST_SOURCE = 'company_buffer';
 export const REMINDER_DAYS = 3;
+export const COMPANY_SOCIAL_MEDIA_BUCKET = 'project-assets';
+
+const INSTAGRAM_TYPES = new Set<InstagramPostType>(['post', 'story', 'reel']);
+
+export function isInstagramPlatform(platform: string | null | undefined, service?: string | null): boolean {
+  if (platform === 'instagram') return true;
+  return Boolean(service && service.toLowerCase().includes('instagram'));
+}
+
+export function parseInstagramType(value: unknown): InstagramPostType | null {
+  if (typeof value !== 'string') return null;
+  const v = value.trim().toLowerCase() as InstagramPostType;
+  return INSTAGRAM_TYPES.has(v) ? v : null;
+}
+
+function mapDraftRow(row: {
+  id: string;
+  platform: string;
+  body: string;
+  status: string;
+  scheduled_at: string | null;
+  created_at: string;
+  metadata: unknown;
+}): CompanyDraftRow {
+  const meta = (row.metadata || {}) as Record<string, unknown>;
+  const mediaKind =
+    meta.mediaKind === 'video' ? 'video' : meta.mediaKind === 'image' ? 'image' : null;
+  return {
+    id: row.id as string,
+    platform: row.platform as string,
+    body: row.body as string,
+    status: row.status as string,
+    scheduledAt: (row.scheduled_at as string) || null,
+    createdAt: row.created_at as string,
+    channelId: typeof meta.channelId === 'string' ? meta.channelId : null,
+    channelName: typeof meta.channelName === 'string' ? meta.channelName : null,
+    service: typeof meta.service === 'string' ? meta.service : null,
+    mediaUrl: typeof meta.mediaUrl === 'string' ? meta.mediaUrl : null,
+    mediaKind,
+    instagramType: parseInstagramType(meta.instagramType),
+  };
+}
+
+export function validateInstagramDraftForPublish(draft: {
+  platform: string;
+  service?: string | null;
+  mediaUrl?: string | null;
+  mediaKind?: 'image' | 'video' | null;
+  instagramType?: InstagramPostType | null;
+}): string | null {
+  if (!isInstagramPlatform(draft.platform, draft.service)) return null;
+
+  if (!draft.instagramType) {
+    return 'Instagram requires a type (post, story, or reel) before publishing.';
+  }
+  if (!draft.mediaUrl?.trim()) {
+    return 'Instagram posts require an image or video attachment.';
+  }
+  if (draft.instagramType === 'reel' && draft.mediaKind !== 'video') {
+    return 'Instagram reels require a video attachment.';
+  }
+  return null;
+}
 
 /** Map Buffer channel.service → AI post key (and social_posts.platform). */
 export function serviceToPlatformKey(service: string): SocialPostKey | null {
@@ -125,6 +190,9 @@ export type CompanyDraftRow = {
   channelId: string | null;
   channelName: string | null;
   service: string | null;
+  mediaUrl: string | null;
+  mediaKind: 'image' | 'video' | null;
+  instagramType: InstagramPostType | null;
 };
 
 export async function listCompanyDrafts(): Promise<CompanyDraftRow[]> {
@@ -140,20 +208,7 @@ export async function listCompanyDrafts(): Promise<CompanyDraftRow[]> {
 
   if (error) throw new Error(error.message);
 
-  return (data ?? []).map((row) => {
-    const meta = (row.metadata || {}) as Record<string, unknown>;
-    return {
-      id: row.id as string,
-      platform: row.platform as string,
-      body: row.body as string,
-      status: row.status as string,
-      scheduledAt: (row.scheduled_at as string) || null,
-      createdAt: row.created_at as string,
-      channelId: typeof meta.channelId === 'string' ? meta.channelId : null,
-      channelName: typeof meta.channelName === 'string' ? meta.channelName : null,
-      service: typeof meta.service === 'string' ? meta.service : null,
-    };
-  });
+  return (data ?? []).map((row) => mapDraftRow(row as Parameters<typeof mapDraftRow>[0]));
 }
 
 export async function saveCompanyDraft(params: {
@@ -177,6 +232,7 @@ export async function saveCompanyDraft(params: {
         channelName: params.channel.displayName || params.channel.name,
         service: params.channel.service,
         organizationId: params.channel.organizationId ?? null,
+        ...(params.platform === 'instagram' ? { instagramType: 'post' as const } : {}),
       },
     })
     .select('id, platform, body, status, scheduled_at, created_at, metadata')
@@ -184,18 +240,7 @@ export async function saveCompanyDraft(params: {
 
   if (error) throw new Error(error.message);
 
-  const meta = (data.metadata || {}) as Record<string, unknown>;
-  return {
-    id: data.id as string,
-    platform: data.platform as string,
-    body: data.body as string,
-    status: data.status as string,
-    scheduledAt: (data.scheduled_at as string) || null,
-    createdAt: data.created_at as string,
-    channelId: typeof meta.channelId === 'string' ? meta.channelId : null,
-    channelName: typeof meta.channelName === 'string' ? meta.channelName : null,
-    service: typeof meta.service === 'string' ? meta.service : null,
-  };
+  return mapDraftRow(data as Parameters<typeof mapDraftRow>[0]);
 }
 
 export async function updateCompanyDraftBody(
@@ -216,24 +261,160 @@ export async function updateCompanyDraftBody(
   if (error) throw new Error(error.message);
   if (!data) throw new Error('Draft not found');
 
-  const meta = (data.metadata || {}) as Record<string, unknown>;
-  return {
-    id: data.id as string,
-    platform: data.platform as string,
-    body: data.body as string,
-    status: data.status as string,
-    scheduledAt: (data.scheduled_at as string) || null,
-    createdAt: data.created_at as string,
-    channelId: typeof meta.channelId === 'string' ? meta.channelId : null,
-    channelName: typeof meta.channelName === 'string' ? meta.channelName : null,
-    service: typeof meta.service === 'string' ? meta.service : null,
+  return mapDraftRow(data as Parameters<typeof mapDraftRow>[0]);
+}
+
+export async function updateCompanyDraftMeta(
+  draftId: string,
+  patch: {
+    body?: string;
+    instagramType?: InstagramPostType | null;
+    mediaUrl?: string | null;
+    mediaKind?: 'image' | 'video' | null;
+    clearMedia?: boolean;
+  }
+): Promise<CompanyDraftRow> {
+  const admin = createAdminClient();
+  const { data: existing, error: loadErr } = await admin
+    .schema('firstparty')
+    .from('social_posts')
+    .select('id, platform, body, status, scheduled_at, created_at, metadata')
+    .eq('id', draftId)
+    .contains('metadata', { source: COMPANY_POST_SOURCE })
+    .eq('status', 'draft')
+    .maybeSingle();
+
+  if (loadErr) throw new Error(loadErr.message);
+  if (!existing) throw new Error('Draft not found');
+
+  const meta = { ...((existing.metadata || {}) as Record<string, unknown>) };
+
+  if (patch.instagramType !== undefined) {
+    if (patch.instagramType === null) delete meta.instagramType;
+    else meta.instagramType = patch.instagramType;
+  }
+  if (patch.clearMedia) {
+    delete meta.mediaUrl;
+    delete meta.mediaKind;
+    delete meta.mediaStoragePath;
+  } else {
+    if (patch.mediaUrl !== undefined) {
+      if (patch.mediaUrl === null) delete meta.mediaUrl;
+      else meta.mediaUrl = patch.mediaUrl;
+    }
+    if (patch.mediaKind !== undefined) {
+      if (patch.mediaKind === null) delete meta.mediaKind;
+      else meta.mediaKind = patch.mediaKind;
+    }
+  }
+
+  const update: Record<string, unknown> = {
+    metadata: meta,
+    updated_at: new Date().toISOString(),
   };
+  if (typeof patch.body === 'string') {
+    update.body = patch.body.trim();
+  }
+
+  const { data, error } = await admin
+    .schema('firstparty')
+    .from('social_posts')
+    .update(update)
+    .eq('id', draftId)
+    .contains('metadata', { source: COMPANY_POST_SOURCE })
+    .eq('status', 'draft')
+    .select('id, platform, body, status, scheduled_at, created_at, metadata')
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error('Draft not found');
+
+  return mapDraftRow(data as Parameters<typeof mapDraftRow>[0]);
+}
+
+export async function attachCompanyDraftMedia(params: {
+  draftId: string;
+  buffer: Buffer;
+  contentType: string;
+  fileName?: string;
+}): Promise<CompanyDraftRow> {
+  const admin = createAdminClient();
+  const { data: existing, error: loadErr } = await admin
+    .schema('firstparty')
+    .from('social_posts')
+    .select('id, metadata')
+    .eq('id', params.draftId)
+    .contains('metadata', { source: COMPANY_POST_SOURCE })
+    .eq('status', 'draft')
+    .maybeSingle();
+
+  if (loadErr) throw new Error(loadErr.message);
+  if (!existing) throw new Error('Draft not found');
+
+  const isVideo = params.contentType.startsWith('video/');
+  const isImage = params.contentType.startsWith('image/');
+  if (!isImage && !isVideo) {
+    throw new Error('Media must be an image or video');
+  }
+
+  const extFromName = params.fileName?.includes('.')
+    ? params.fileName.slice(params.fileName.lastIndexOf('.') + 1).toLowerCase()
+    : '';
+  const ext =
+    extFromName ||
+    (params.contentType === 'image/png'
+      ? 'png'
+      : params.contentType === 'image/webp'
+        ? 'webp'
+        : params.contentType === 'image/gif'
+          ? 'gif'
+          : params.contentType.startsWith('video/')
+            ? 'mp4'
+            : 'jpg');
+
+  const objectPath = `company-social/${params.draftId}/${Date.now()}.${ext}`;
+  const { error: uploadError } = await admin.storage
+    .from(COMPANY_SOCIAL_MEDIA_BUCKET)
+    .upload(objectPath, params.buffer, {
+      contentType: params.contentType,
+      upsert: true,
+    });
+
+  if (uploadError) {
+    throw new Error(
+      `Media upload failed — ensure the ${COMPANY_SOCIAL_MEDIA_BUCKET} bucket exists and is public: ${uploadError.message}`
+    );
+  }
+
+  const { data: pub } = admin.storage.from(COMPANY_SOCIAL_MEDIA_BUCKET).getPublicUrl(objectPath);
+  const mediaUrl = pub.publicUrl;
+  const meta = { ...((existing.metadata || {}) as Record<string, unknown>) };
+  meta.mediaUrl = mediaUrl;
+  meta.mediaKind = isVideo ? 'video' : 'image';
+  meta.mediaStoragePath = objectPath;
+
+  const { data, error } = await admin
+    .schema('firstparty')
+    .from('social_posts')
+    .update({
+      metadata: meta,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', params.draftId)
+    .select('id, platform, body, status, scheduled_at, created_at, metadata')
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error('Draft not found after media upload');
+
+  return mapDraftRow(data as Parameters<typeof mapDraftRow>[0]);
 }
 
 export async function publishCompanyDraft(params: {
   draftId: string;
   mode: CreateCompanyPostMode;
   dueAt?: string | null;
+  instagramType?: InstagramPostType | null;
 }): Promise<{ draftId: string; bufferPostId: string; status: string; dueAt: string | null }> {
   const admin = createAdminClient();
   const { data: draft, error } = await admin
@@ -252,11 +433,60 @@ export async function publishCompanyDraft(params: {
   const channelId = typeof meta.channelId === 'string' ? meta.channelId : '';
   if (!channelId) throw new Error('Draft is missing Buffer channelId');
 
+  const mapped = mapDraftRow(draft as Parameters<typeof mapDraftRow>[0]);
+  const instagramType = params.instagramType ?? mapped.instagramType;
+
+  const igError = validateInstagramDraftForPublish({
+    platform: mapped.platform,
+    service: mapped.service,
+    mediaUrl: mapped.mediaUrl,
+    mediaKind: mapped.mediaKind,
+    instagramType,
+  });
+  if (igError) throw new Error(igError);
+
+  // Soft-check paused queues so addToQueue fails with a clear message
+  if (params.mode === 'addToQueue' && isBufferPersonalConfigured()) {
+    try {
+      const channels = await listAllBufferChannels();
+      const ch = channels.find((c) => c.id === channelId);
+      if (ch?.isQueuePaused) {
+        throw new Error(
+          `Buffer queue is paused for ${ch.displayName || ch.name}. Resume the queue in Buffer, or use Publish now / Schedule at time.`
+        );
+      }
+    } catch (e) {
+      if (e instanceof Error && e.message.includes('queue is paused')) throw e;
+      // Ignore channel-list failures — Buffer will still validate on createPost
+    }
+  }
+
+  if (params.mode === 'customScheduled') {
+    if (!params.dueAt) throw new Error('dueAt is required for custom schedule');
+    const dueMs = new Date(params.dueAt).getTime();
+    if (Number.isNaN(dueMs)) throw new Error('Invalid schedule time (dueAt)');
+    if (dueMs <= Date.now() + 60_000) {
+      throw new Error('Schedule time must be at least 1 minute in the future');
+    }
+  }
+
+  const assets: BufferPostAsset[] = [];
+  if (mapped.mediaUrl) {
+    assets.push({
+      kind: mapped.mediaKind === 'video' ? 'video' : 'image',
+      url: mapped.mediaUrl,
+    });
+  }
+
   const result = await createBufferCompanyPost({
     channelId,
     text: draft.body as string,
     mode: params.mode,
     dueAt: params.dueAt,
+    assets,
+    instagramType: isInstagramPlatform(mapped.platform, mapped.service)
+      ? instagramType
+      : null,
   });
 
   const status =
@@ -272,6 +502,7 @@ export async function publishCompanyDraft(params: {
       updated_at: new Date().toISOString(),
       metadata: {
         ...meta,
+        ...(instagramType ? { instagramType } : {}),
         bufferMode: params.mode,
         bufferStatus: result.status,
       },

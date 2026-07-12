@@ -47,7 +47,7 @@ export const TIER_COMPARE_TAGLINES: Record<string, string> = {
   Basic: 'Solo freelancers who need clean exports and PWA',
   'Pro Worker': 'Power users — BYOC, Places AI, games, and 4× credits',
   'Agency Studio': 'Studios shipping client work with native export and ticket support',
-  'Scale Team': 'Growing teams that need volume, credits, and scheduled social',
+  'Scale Team': 'Growing teams that need volume, credits, and seats',
   'White-Label': 'Resellers — custom domains, white-label rebrand, and high credits',
   'Team Enterprise': 'Mid-size companies — high credits, seats, and white-label',
   Sovereign: 'Maximum credits today — dedicated infra and custom SLA on the roadmap',
@@ -178,7 +178,12 @@ export function buildCompareRows(tiers: PricingTier[] = PRICING_TIERS): CompareR
       values: keys.map((k) => formatTeamSeats(k)),
     },
     boolRow('Competitor intel', canUseCompetitorIntel),
-    boolRow('Schedule social posts', (t, s) => canScheduleSocialPosts(t, s, false)),
+    {
+      label: 'Schedule social posts',
+      values: keys.map((k) =>
+        roadmapCell(k, (key) => canScheduleSocialPosts(key, ACTIVE, false))
+      ),
+    },
     {
       label: 'Custom domains (self-serve)',
       values: keys.map((k) => gate(k, canUseCustomDomains)),

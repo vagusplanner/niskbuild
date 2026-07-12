@@ -19,7 +19,7 @@ Every plan includes the full AI builder. As you move up, you get more monthly us
 **Who it's for:** Small agencies and studios building for multiple clients, or a small internal team that wants to build together.
 
 ## Scale Team — $799/mo
-**What's included:** 10,000 AI generations/month, unlimited projects, everything in Agency Studio, plus scheduled social media posting. **Up to 10 team members.**
+**What's included:** 10,000 AI generations/month, unlimited projects, everything in Agency Studio, plus scheduled social media posting (Coming soon). **Up to 10 team members.**
 **Who it's for:** Growing teams and businesses with regular, high-volume building needs.
 
 ## White-Label — $1,199/mo

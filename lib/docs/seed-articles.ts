@@ -305,7 +305,7 @@ Move to **Agency Studio** when you need App Store export, competitor intel, team
 
 - **10,000 cloud credits** monthly
 - Everything in Agency Studio, plus:
-- **Scheduled social posts** (or with Social Pro add-on)
+- **Scheduled social posts** (Coming soon — or with Social Pro add-on when available)
 - **Unlimited team seats**
 - Up to **20 concurrent sessions**
 
@@ -479,7 +479,7 @@ Every company — from solo founders to enterprise — gets the same core workfl
 - **2,500+ credits**, team seats
 - **Live preview links** for client review
 - **App Store / Xcode export** (Capacitor)
-- Social publishing (Buffer), SEO schema tools
+- Social publishing drafts (Buffer connect Coming soon), SEO schema tools
 - Higher session limits
 
 **Best for:** Agencies delivering multiple client apps per month.

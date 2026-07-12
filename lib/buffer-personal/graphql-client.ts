@@ -23,6 +23,13 @@ export type BufferGraphqlOrganization = {
 
 export type CreateCompanyPostMode = 'shareNow' | 'addToQueue' | 'customScheduled';
 
+/** Instagram PostType enum values required by Buffer GraphQL. */
+export type InstagramPostType = 'post' | 'story' | 'reel';
+
+export type BufferPostAsset =
+  | { kind: 'image'; url: string }
+  | { kind: 'video'; url: string };
+
 export class BufferPersonalApiError extends Error {
   constructor(message: string) {
     super(message);
@@ -151,12 +158,48 @@ export type CreateCompanyPostResult = {
   status: string | null;
 };
 
+function buildAssetsLiteral(assets: BufferPostAsset[] | undefined): string {
+  const list = assets ?? [];
+  if (list.length === 0) return 'assets: []';
+
+  const entries = list.map((asset) => {
+    const url = JSON.stringify(asset.url);
+    if (asset.kind === 'video') {
+      return `{ video: { url: ${url} } }`;
+    }
+    return `{ image: { url: ${url} } }`;
+  });
+
+  return `assets: [${entries.join(', ')}]`;
+}
+
+function buildMetadataLiteral(params: {
+  instagramType?: InstagramPostType | null;
+  shouldShareToFeed?: boolean;
+}): string {
+  if (!params.instagramType) return '';
+
+  // shouldShareToFeed is required on InstagramPostMetadataInput
+  const shareToFeed = params.shouldShareToFeed ?? params.instagramType === 'post';
+  return `metadata: {
+        instagram: {
+          type: ${params.instagramType}
+          shouldShareToFeed: ${shareToFeed}
+        }
+      }`;
+}
+
 export async function createBufferCompanyPost(params: {
   channelId: string;
   text: string;
   mode: CreateCompanyPostMode;
   /** ISO datetime — required when mode is customScheduled */
   dueAt?: string | null;
+  /** Public HTTPS media URLs Buffer can fetch (required for Instagram). */
+  assets?: BufferPostAsset[];
+  /** Required when posting to an Instagram channel. */
+  instagramType?: InstagramPostType | null;
+  shouldShareToFeed?: boolean;
 }): Promise<CreateCompanyPostResult> {
   const text = params.text.trim();
   if (!text) throw new BufferPersonalApiError('Post text is required');
@@ -172,6 +215,12 @@ export async function createBufferCompanyPost(params: {
     params.mode === 'customScheduled' && params.dueAt
       ? `dueAt: "${params.dueAt}"`
       : '';
+
+  const assetsLiteral = buildAssetsLiteral(params.assets);
+  const metadataLiteral = buildMetadataLiteral({
+    instagramType: params.instagramType,
+    shouldShareToFeed: params.shouldShareToFeed,
+  });
 
   // Inline enum values — GraphQL enums are not quoted strings.
   const data = await bufferGraphql<{
@@ -189,6 +238,8 @@ export async function createBufferCompanyPost(params: {
         schedulingType: automatic
         mode: ${params.mode}
         ${dueAtLiteral}
+        ${assetsLiteral}
+        ${metadataLiteral}
         source: "niskbuild_admin"
         aiAssisted: true
       }) {

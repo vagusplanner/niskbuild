@@ -287,7 +287,7 @@ export function runHtmlProjectAudit(input: HtmlProjectAuditInput): HtmlProjectAu
     'Builder',
     'Social publisher',
     isPaidAndActive(tier, status) ? 'pass' : 'info',
-    'Share to Social panel in builder menu (Buffer on connected plans)'
+    'Share to Social panel in builder menu (AI drafts + copy; Buffer publish Coming soon)'
   );
 
   const exportNotes = [

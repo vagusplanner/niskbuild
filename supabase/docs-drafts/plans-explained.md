@@ -18,7 +18,7 @@
 **Note:** Multi-seat team access is planned but not yet available — this tier is currently single-user, same as lower tiers.
 
 ## Scale Team — $799/mo
-**What's included:** 10,000 cloud AI credits, unlimited projects, 20 sessions, everything in Agency Studio, plus scheduled social posting.
+**What's included:** 10,000 cloud AI credits, unlimited projects, 20 sessions, everything in Agency Studio, plus scheduled social posting (Coming soon).
 **Who it's for:** Growing teams with high build volume.
 **Note:** Multi-seat team access is planned but not yet available.
 
