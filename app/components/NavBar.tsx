@@ -75,6 +75,12 @@ const PLATFORM_ADMIN_NAV: NavItem[] = [
     description: 'Draft and publish in-app documentation',
   },
   {
+    href: '/admin/status',
+    label: 'System status',
+    icon: '🟢',
+    description: 'Manual Operational / Degraded / Down + incident updates',
+  },
+  {
     href: '/admin/custom-domains',
     label: 'Custom domains',
     icon: '🌐',
