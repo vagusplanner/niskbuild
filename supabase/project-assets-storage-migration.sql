@@ -1,13 +1,23 @@
--- Project assets bucket (Figma screenshot imports, app icons, etc.)
--- Run in Supabase SQL editor, then confirm bucket under Storage.
+-- Project assets bucket (Figma screenshot imports, company social Instagram media, etc.)
+-- Run in Supabase SQL editor (production + staging), then confirm under Storage → project-assets.
+-- Must be public: Buffer (and Figma vision) fetch media via getPublicUrl.
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
   'project-assets',
   'project-assets',
   true,
-  5242880,
-  array['image/jpeg', 'image/png', 'image/webp']
+  -- 50MB — Instagram reels / company social video; Figma screenshots are well under this
+  52428800,
+  array[
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/gif',
+    'video/mp4',
+    'video/quicktime',
+    'video/webm'
+  ]
 )
 on conflict (id) do update set
   public = excluded.public,
