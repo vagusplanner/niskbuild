@@ -5,6 +5,12 @@ import { guardApiRequest } from '@/lib/api-auth';
 import { sendGoodbyeEmail } from '@/lib/goodbye-email';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { purgeVagusPlannerUserData } from '@/lib/vp-gdpr/purge-user-data';
+import { purgeNiskBuildUserData } from '@/lib/nisk-gdpr/purge-user-data';
+import {
+  getOrgDeletionBlockers,
+  ORG_CASCADE_CONFIRM_PHRASE,
+} from '@/lib/org-deletion-blockers';
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY?.trim();
 const stripe = stripeSecret ? new Stripe(stripeSecret) : null;
@@ -41,6 +47,23 @@ async function cancelStripeSubscriptionForAccountDelete(
   }
 }
 
+/** Prefetch blockers for the Danger Zone UI. */
+export async function GET(request: NextRequest) {
+  const guard = await guardApiRequest(request);
+  if (!guard.ok) return guard.response;
+
+  try {
+    const blockers = await getOrgDeletionBlockers(guard.user!.id);
+    return NextResponse.json({
+      blocked: blockers.length > 0,
+      blockers,
+      cascadeConfirmPhrase: ORG_CASCADE_CONFIRM_PHRASE,
+    });
+  } catch (error) {
+    return apiErrorResponse(error, 'Failed to load account deletion status');
+  }
+}
+
 export async function POST(request: NextRequest) {
   const guard = await guardApiRequest(request);
   if (!guard.ok) return guard.response;
@@ -48,13 +71,44 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
     const user = guard.user!;
-    const { email } = await request.json().catch(() => ({}));
+    const body = await request.json().catch(() => ({}));
+    const email = typeof body.email === 'string' ? body.email : '';
+    const confirmOrgCascade = body.confirmOrgCascade === true;
+    const orgCascadeConfirmText =
+      typeof body.orgCascadeConfirmText === 'string' ? body.orgCascadeConfirmText.trim() : '';
 
     if (!email || email !== user.email) {
       return NextResponse.json(
         { error: 'Email confirmation required — type your account email to delete' },
         { status: 400 }
       );
+    }
+
+    const blockers = await getOrgDeletionBlockers(user.id);
+    if (blockers.length > 0) {
+      if (!confirmOrgCascade) {
+        return NextResponse.json(
+          {
+            error:
+              'You own one or more organizations that still have other members. Transfer ownership, remove other members, or explicitly confirm organization deletion.',
+            code: 'ORG_OWNER_BLOCKED',
+            blockers,
+            cascadeConfirmPhrase: ORG_CASCADE_CONFIRM_PHRASE,
+          },
+          { status: 409 }
+        );
+      }
+      if (orgCascadeConfirmText !== ORG_CASCADE_CONFIRM_PHRASE) {
+        return NextResponse.json(
+          {
+            error: `Type ${ORG_CASCADE_CONFIRM_PHRASE} to confirm deleting your organizations and all members' org-scoped projects.`,
+            code: 'ORG_CASCADE_CONFIRM_REQUIRED',
+            cascadeConfirmPhrase: ORG_CASCADE_CONFIRM_PHRASE,
+            blockers,
+          },
+          { status: 400 }
+        );
+      }
     }
 
     const userEmail = user.email;
@@ -83,6 +137,48 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Immediate hard-delete (no grace period) — confirmed product decision.
+    // Purge NiskBuild leftovers that would survive SET NULL / leave storage orphans.
+    let niskPurge: Awaited<ReturnType<typeof purgeNiskBuildUserData>> | null = null;
+    try {
+      const adminForNisk = createAdminClient();
+      if (!userEmail) {
+        return NextResponse.json({ error: 'Account email is required' }, { status: 400 });
+      }
+      niskPurge = await purgeNiskBuildUserData(adminForNisk, {
+        id: user.id,
+        email: userEmail,
+      });
+      console.log('NiskBuild GDPR purge complete for', user.id, niskPurge);
+    } catch (err) {
+      console.error('NiskBuild GDPR purge failed during account delete:', err);
+      return NextResponse.json(
+        {
+          error:
+            'Could not delete account personal data. Account was not deleted — try again or contact support.',
+        },
+        { status: 502 }
+      );
+    }
+
+    // Purge all firstparty.vp_* personal data + uploads BEFORE auth wipe.
+    let vpPurge: Awaited<ReturnType<typeof purgeVagusPlannerUserData>> | null = null;
+    try {
+      const adminForVp = createAdminClient();
+      vpPurge = await purgeVagusPlannerUserData(adminForVp, user.id);
+      console.log('VP GDPR purge complete for', user.id, vpPurge);
+    } catch (err) {
+      console.error('VP GDPR purge failed during account delete:', err);
+      return NextResponse.json(
+        {
+          error:
+            'Could not delete Vagus Planner personal data. Account was not deleted — try again or contact support.',
+        },
+        { status: 502 }
+      );
+    }
+
+    // Profile delete cascades organizations where this user is billing_owner_id.
     await supabase.from('projects').delete().eq('user_id', user.id);
     await supabase.from('profiles').delete().eq('id', user.id);
 
@@ -109,7 +205,12 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      org_cascade: blockers.length > 0,
+      nisk_purge: niskPurge,
+      vp_purge: vpPurge,
+    });
   } catch (error) {
     return apiErrorResponse(error, 'Failed to delete account');
   }

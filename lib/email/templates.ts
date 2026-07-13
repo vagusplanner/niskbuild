@@ -207,6 +207,14 @@ export function teamInviteHtml(params: {
     <p style="color:#94a3b8;line-height:1.6;">
       Accept with the same email this invite was sent to. This link expires on ${expiresLabel}.
     </p>
+    <p style="color:#94a3b8;line-height:1.6;font-size:13px;">
+      Joining this organization gives its owners and admins visibility into projects created
+      within it — including their prompts and generated code. Personal projects outside this
+      organization stay private to you.
+    </p>
+    <p style="color:#64748b;font-size:11px;line-height:1.5;">
+      (Wording subject to final legal review.)
+    </p>
     <p style="margin:24px 0;">${cta(params.acceptUrl, 'Accept invite')}</p>
     <p style="color:#64748b;font-size:12px;">If the button does not work, open:<br/>
       <a href="${params.acceptUrl}" style="color:#818cf8;word-break:break-all;">${params.acceptUrl}</a>

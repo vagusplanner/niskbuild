@@ -29,6 +29,7 @@ export default function AcceptInvitePage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [visibilityAcknowledged, setVisibilityAcknowledged] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -54,6 +55,10 @@ export default function AcceptInvitePage() {
   }, [token, load]);
 
   const accept = async () => {
+    if (!visibilityAcknowledged) {
+      setError('Please acknowledge the team visibility notice before accepting.');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -162,14 +167,32 @@ export default function AcceptInvitePage() {
             )}
 
             {signedIn && emailMatches && !success && (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void accept()}
-                className="rounded-lg btn-primary px-4 py-2 text-sm font-semibold disabled:opacity-50"
-              >
-                {busy ? 'Joining…' : 'Accept invite'}
-              </button>
+              <div className="space-y-3">
+                <label className="flex items-start gap-3 rounded-lg border border-nisk bg-[var(--iron-dark)] p-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={visibilityAcknowledged}
+                    onChange={(e) => setVisibilityAcknowledged(e.target.checked)}
+                    className="mt-0.5 rounded border-nisk"
+                  />
+                  <span className="text-xs text-nisk-muted leading-relaxed">
+                    Joining this organization gives its owners and admins visibility into projects
+                    created within it — including their prompts and generated code. Personal
+                    projects outside this organization stay private to you.
+                    <span className="block mt-1 opacity-70">
+                      (Wording subject to final legal review.)
+                    </span>
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  disabled={busy || !visibilityAcknowledged}
+                  onClick={() => void accept()}
+                  className="rounded-lg btn-primary px-4 py-2 text-sm font-semibold disabled:opacity-50"
+                >
+                  {busy ? 'Joining…' : 'Accept invite'}
+                </button>
+              </div>
             )}
           </div>
         )}

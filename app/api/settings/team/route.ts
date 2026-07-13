@@ -6,8 +6,10 @@ import {
   acceptOrganizationInvite,
   createOrganizationInvite,
   getTeamDashboard,
+  removeAllOtherOrganizationMembers,
   removeOrganizationMember,
   revokeOrganizationInvite,
+  transferOrganizationOwnership,
   updateMemberRole,
   type InviteRole,
 } from '@/lib/organization-team';
@@ -92,6 +94,24 @@ export async function POST(request: NextRequest) {
         actorId: user.id,
       });
       return NextResponse.json({ ok: true });
+    }
+
+    if (action === 'transfer_ownership') {
+      const newOwnerUserId = typeof body.newOwnerUserId === 'string' ? body.newOwnerUserId : '';
+      await transferOrganizationOwnership({
+        orgId,
+        actorId: user.id,
+        newOwnerUserId,
+      });
+      return NextResponse.json({ ok: true });
+    }
+
+    if (action === 'remove_all_other_members') {
+      const result = await removeAllOtherOrganizationMembers({
+        orgId,
+        actorId: user.id,
+      });
+      return NextResponse.json({ ok: true, ...result });
     }
 
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 });

@@ -39,6 +39,7 @@ import Layout from '@/app/components/Layout';
 import WelcomeAssistant from '@/app/components/WelcomeAssistant';
 import HelpAssistant from '@/app/components/HelpAssistant';
 import DemographicOnboarding from '@/app/components/DemographicOnboarding';
+import AgeGateModal from '@/app/components/AgeGateModal';
 import type { DemographicTier } from '@/lib/demographic-tiers';
 import InspectPicker, { injectInspectScript, type InspectTarget } from '@/app/components/InspectPicker';
 import SubscriptionGuard from '@/app/components/SubscriptionGuard';
@@ -147,6 +148,7 @@ function BuilderContent() {
   const [promptHistory, setPromptHistory] = useState<NiskBuildPromptEntry[]>([]);
   const [showWelcome, setShowWelcome] = useState(false);
   const [showDemographic, setShowDemographic] = useState(false);
+  const [showAgeGate, setShowAgeGate] = useState(false);
   const [activeEditorTab, setActiveEditorTab] = useState<'chat' | 'preview' | 'inspector'>('preview');
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>('code');
@@ -263,6 +265,11 @@ function BuilderContent() {
 
       const privacyRes = await fetch('/api/settings/privacy').catch(() => null);
       const privacy = privacyRes?.ok ? await privacyRes.json() : null;
+
+      if (privacy && privacy.ageMinimumAttested === false) {
+        setShowAgeGate(true);
+        return;
+      }
 
       const fromLogin = searchParams.get('welcome') === '1';
       const needsOnboarding = fromLogin || !hasCompletedOnboarding(session.user.id);
@@ -890,6 +897,22 @@ function BuilderContent() {
     }
     applyGeneratedCode(mainCode, '📂 Project restored from local ZIP sync');
     setActiveFile(config.activeFile || 'index.html');
+  };
+
+  const handleAgeGateComplete = () => {
+    setShowAgeGate(false);
+    const fromLogin = searchParams.get('welcome') === '1';
+    const needsOnboarding = fromLogin || (user ? !hasCompletedOnboarding(user.id) : false);
+    // After age attestation, continue optional demographic / welcome onboarding.
+    void (async () => {
+      const privacyRes = await fetch('/api/settings/privacy').catch(() => null);
+      const privacy = privacyRes?.ok ? await privacyRes.json() : null;
+      if (needsOnboarding && privacy?.demographicTier === 'unspecified') {
+        setShowDemographic(true);
+      } else if (needsOnboarding) {
+        setShowWelcome(true);
+      }
+    })();
   };
 
   const handleDemographicComplete = (_tier: DemographicTier) => {
@@ -1698,6 +1721,7 @@ function BuilderContent() {
   return (
     <SubscriptionGuard>
     <Layout variant="builder">
+      <AgeGateModal open={showAgeGate} onComplete={handleAgeGateComplete} />
       <DemographicOnboarding open={showDemographic} onComplete={handleDemographicComplete} />
       <WelcomeAssistant open={showWelcome} onComplete={handleWelcomeComplete} userName={userName} />
       <HelpAssistant mode="user" projectId={activeProjectId} />

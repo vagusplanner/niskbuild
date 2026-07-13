@@ -239,6 +239,32 @@ export default function TeamSettingsPanel() {
                     </div>
                     {canManage && m.role !== 'owner' && (
                       <div className="flex flex-wrap gap-2">
+                        {isOwner && (
+                          <button
+                            type="button"
+                            disabled={busy === `xfer-${m.user_id}`}
+                            onClick={() => {
+                              if (
+                                !confirm(
+                                  `Transfer organization ownership and team billing to ${m.email || 'this member'}? You will become an admin.`
+                                )
+                              ) {
+                                return;
+                              }
+                              void post(
+                                {
+                                  action: 'transfer_ownership',
+                                  orgId: org.id,
+                                  newOwnerUserId: m.user_id,
+                                },
+                                `xfer-${m.user_id}`
+                              );
+                            }}
+                            className="text-xs text-[var(--copper-melt)] hover:underline disabled:opacity-50"
+                          >
+                            Transfer ownership
+                          </button>
+                        )}
                         {m.role === 'member' ? (
                           <button
                             type="button"

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { signInWithEmail, signUpWithEmail, requestPasswordReset } from '@/lib/auth';
 import { AGE_RANGE_OPTIONS, AGE_RANGE_LABELS } from '@/lib/age-range';
+import { meetsMinimumAge, NISK_MINIMUM_AGE } from '@/lib/age-gate';
 import { getAuthRedirectOrigin } from '@/lib/canonical-url';
 
 interface EmailAuthFormProps {
@@ -62,7 +63,6 @@ function PasswordInput({
 function navigateAfterAuth(nextPath: string) {
   const path = nextPath.startsWith('/') ? nextPath : `/${nextPath}`;
   const origin = getAuthRedirectOrigin(window.location.origin);
-  // Relative nav is fine on the custom domain; force absolute when on vercel.app alias.
   if (origin !== window.location.origin) {
     window.location.href = `${origin}${path}`;
   } else {
@@ -74,6 +74,7 @@ export default function EmailAuthForm({ nextPath = '/pricing', onSuccess }: Emai
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [ageRange, setAgeRange] = useState('');
   const [town, setTown] = useState('');
   const [loading, setLoading] = useState(false);
@@ -101,8 +102,32 @@ export default function EmailAuthForm({ nextPath = '/pricing', onSuccess }: Emai
         onSuccess?.();
         navigateAfterAuth(nextPath);
       } else {
+        if (!dateOfBirth) {
+          throw new Error('Date of birth is required to create an account.');
+        }
+        if (!meetsMinimumAge(dateOfBirth)) {
+          throw new Error(
+            `[LEGAL REVIEW NEEDED] You must be at least ${NISK_MINIMUM_AGE} years old to use NiskBuild.`
+          );
+        }
+
         const data = await signUpWithEmail(email, password);
         if (data.session) {
+          const ageRes = await fetch('/api/settings/age-gate', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dateOfBirth }),
+          });
+          if (!ageRes.ok) {
+            const ageData = await ageRes.json().catch(() => ({}));
+            throw new Error(
+              typeof ageData.error === 'string'
+                ? ageData.error
+                : 'Age verification failed'
+            );
+          }
+
           void fetch('/api/analytics/record-signup', {
             method: 'POST',
             credentials: 'include',
@@ -115,7 +140,9 @@ export default function EmailAuthForm({ nextPath = '/pricing', onSuccess }: Emai
           onSuccess?.();
           navigateAfterAuth(nextPath);
         } else {
-          setMessage('Check your email to confirm your account, then sign in.');
+          setMessage(
+            'Check your email to confirm your account, then sign in. You may be asked to confirm your age again after confirming email.'
+          );
         }
       }
     } catch (err) {
@@ -190,6 +217,24 @@ export default function EmailAuthForm({ nextPath = '/pricing', onSuccess }: Emai
       {mode === 'signup' && (
         <>
           <div>
+            <label htmlFor="signup-dob" className="text-[10px] text-nisk-muted block mb-1">
+              Date of birth <span className="text-[var(--error)]">*</span>
+            </label>
+            <input
+              id="signup-dob"
+              type="date"
+              value={dateOfBirth}
+              onChange={(e) => setDateOfBirth(e.target.value)}
+              max={new Date().toISOString().slice(0, 10)}
+              required
+              className="w-full px-4 py-2.5 rounded-lg glass-input text-sm"
+            />
+            <p className="text-[10px] text-nisk-muted mt-1 leading-snug">
+              [LEGAL REVIEW NEEDED] You must be at least {NISK_MINIMUM_AGE}. We check your date of
+              birth to enforce this and do not store your exact birthdate.
+            </p>
+          </div>
+          <div>
             <label className="text-[10px] text-nisk-muted block mb-1">
               Age range <span className="opacity-70">(optional — helps anonymous demand trends)</span>
             </label>
@@ -220,8 +265,8 @@ export default function EmailAuthForm({ nextPath = '/pricing', onSuccess }: Emai
             />
           </div>
           <p className="text-[10px] text-nisk-muted leading-snug">
-            We store age range buckets only — never your exact birthdate. Town is used for
-            aggregate analytics, not precise tracking.
+            Optional analytics use age-range buckets only — never your exact birthdate. Town is
+            used for aggregate analytics, not precise tracking.
           </p>
         </>
       )}

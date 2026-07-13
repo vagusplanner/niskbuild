@@ -395,6 +395,164 @@ export async function revokeOrganizationInvite(params: {
   if (!data) throw new Error('Invite not found or already closed.');
 }
 
+export async function transferOrganizationOwnership(params: {
+  orgId: string;
+  actorId: string;
+  newOwnerUserId: string;
+}): Promise<void> {
+  if (params.actorId === params.newOwnerUserId) {
+    throw new Error('Choose a different member to receive ownership.');
+  }
+
+  const admin = createAdminClient();
+
+  const { data: org, error: orgErr } = await admin
+    .from('organizations')
+    .select('id, billing_owner_id, name')
+    .eq('id', params.orgId)
+    .maybeSingle();
+  if (orgErr) throw new Error(orgErr.message);
+  if (!org) throw new Error('Organization not found.');
+  if (org.billing_owner_id !== params.actorId) {
+    throw new Error('Only the organization billing owner can transfer ownership.');
+  }
+
+  const { data: target, error: targetErr } = await admin
+    .from('organization_members')
+    .select('role')
+    .eq('org_id', params.orgId)
+    .eq('user_id', params.newOwnerUserId)
+    .maybeSingle();
+  if (targetErr) throw new Error(targetErr.message);
+  if (!target) {
+    throw new Error('The new owner must already be a member of this organization.');
+  }
+
+  const { data: actorProfile, error: actorProfErr } = await admin
+    .from('profiles')
+    .select(
+      'subscription_tier, subscription_status, subscription_id, stripe_customer_id, cloud_credits_remaining'
+    )
+    .eq('id', params.actorId)
+    .maybeSingle();
+  if (actorProfErr) throw new Error(actorProfErr.message);
+
+  // Promote new owner first (unique one-owner-per-org index requires demoting actor).
+  const { error: demoteErr } = await admin
+    .from('organization_members')
+    .update({ role: 'admin' })
+    .eq('org_id', params.orgId)
+    .eq('user_id', params.actorId);
+  if (demoteErr) throw new Error(demoteErr.message);
+
+  const { error: promoteErr } = await admin
+    .from('organization_members')
+    .update({ role: 'owner' })
+    .eq('org_id', params.orgId)
+    .eq('user_id', params.newOwnerUserId);
+  if (promoteErr) {
+    // Best-effort rollback of demotion
+    await admin
+      .from('organization_members')
+      .update({ role: 'owner' })
+      .eq('org_id', params.orgId)
+      .eq('user_id', params.actorId);
+    throw new Error(promoteErr.message);
+  }
+
+  const { error: orgUpdateErr } = await admin
+    .from('organizations')
+    .update({ billing_owner_id: params.newOwnerUserId })
+    .eq('id', params.orgId);
+  if (orgUpdateErr) {
+    await admin
+      .from('organization_members')
+      .update({ role: 'owner' })
+      .eq('org_id', params.orgId)
+      .eq('user_id', params.actorId);
+    await admin
+      .from('organization_members')
+      .update({ role: target.role })
+      .eq('org_id', params.orgId)
+      .eq('user_id', params.newOwnerUserId);
+    throw new Error(orgUpdateErr.message);
+  }
+
+  // Move team plan billing onto the new owner's profile so the org stays funded.
+  if (actorProfile) {
+    const { error: newOwnerBillErr } = await admin
+      .from('profiles')
+      .update({
+        subscription_tier: actorProfile.subscription_tier,
+        subscription_status: actorProfile.subscription_status,
+        subscription_id: actorProfile.subscription_id,
+        stripe_customer_id: actorProfile.stripe_customer_id,
+        cloud_credits_remaining: actorProfile.cloud_credits_remaining,
+      })
+      .eq('id', params.newOwnerUserId);
+    if (newOwnerBillErr) {
+      console.error('Ownership transfer: failed to move billing fields:', newOwnerBillErr);
+      throw new Error(
+        'Ownership role updated, but billing could not be moved to the new owner. Contact support before deleting your account.'
+      );
+    }
+
+    const { error: clearActorErr } = await admin
+      .from('profiles')
+      .update({
+        subscription_tier: 'free',
+        subscription_status: 'inactive',
+        subscription_id: null,
+        stripe_customer_id: null,
+        cloud_credits_remaining: 0,
+      })
+      .eq('id', params.actorId);
+    if (clearActorErr) {
+      console.error('Ownership transfer: failed to clear former owner billing:', clearActorErr);
+    }
+  }
+}
+
+export async function removeAllOtherOrganizationMembers(params: {
+  orgId: string;
+  actorId: string;
+}): Promise<{ removedMembers: number; revokedInvites: number }> {
+  const admin = createAdminClient();
+
+  const { data: org, error: orgErr } = await admin
+    .from('organizations')
+    .select('billing_owner_id')
+    .eq('id', params.orgId)
+    .maybeSingle();
+  if (orgErr) throw new Error(orgErr.message);
+  if (!org) throw new Error('Organization not found.');
+  if (org.billing_owner_id !== params.actorId) {
+    throw new Error('Only the organization billing owner can remove all other members.');
+  }
+
+  const { data: removed, error: remErr } = await admin
+    .from('organization_members')
+    .delete()
+    .eq('org_id', params.orgId)
+    .neq('user_id', params.actorId)
+    .select('id');
+  if (remErr) throw new Error(remErr.message);
+
+  const { data: revoked, error: revErr } = await admin
+    .from('organization_invites')
+    .update({ revoked_at: new Date().toISOString() })
+    .eq('org_id', params.orgId)
+    .is('accepted_at', null)
+    .is('revoked_at', null)
+    .select('id');
+  if (revErr) throw new Error(revErr.message);
+
+  return {
+    removedMembers: removed?.length ?? 0,
+    revokedInvites: revoked?.length ?? 0,
+  };
+}
+
 export async function updateMemberRole(params: {
   orgId: string;
   memberUserId: string;
@@ -416,7 +574,9 @@ export async function updateMemberRole(params: {
   if (error) throw new Error(error.message);
   if (!target) throw new Error('Member not found.');
   if (target.role === 'owner') {
-    throw new Error('Ownership transfer is not available yet. Contact support if you need to change the billing owner.');
+    throw new Error(
+      'Use Transfer ownership to change the organization owner — you cannot demote the owner via role update.'
+    );
   }
 
   const { error: updErr } = await admin

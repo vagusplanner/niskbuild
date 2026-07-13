@@ -100,7 +100,6 @@ export default function SettingsWorkspace() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [timezone, setTimezone] = useState('Europe/London');
   const [language, setLanguage] = useState('en');
-  const [metadataOptIn, setMetadataOptIn] = useState(true);
   const [profileSaving, setProfileSaving] = useState(false);
   const [projectCount, setProjectCount] = useState(0);
 
@@ -119,6 +118,19 @@ export default function SettingsWorkspace() {
   const [deletingProjects, setDeletingProjects] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [exportingData, setExportingData] = useState(false);
+  const [orgDeleteBlockers, setOrgDeleteBlockers] = useState<
+    Array<{
+      orgId: string;
+      orgName: string;
+      otherMemberCount: number;
+      members: Array<{ userId: string; email: string | null; fullName: string | null; role: string }>;
+    }>
+  >([]);
+  const [cascadeConfirmPhrase, setCascadeConfirmPhrase] = useState('DELETE ORGANIZATION');
+  const [orgCascadeConfirmText, setOrgCascadeConfirmText] = useState('');
+  const [transferSelections, setTransferSelections] = useState<Record<string, string>>({});
+  const [orgDeleteBusy, setOrgDeleteBusy] = useState<string | null>(null);
+  const [orgDeleteLoading, setOrgDeleteLoading] = useState(false);
 
   const [demographicTier, setDemographicTier] = useState<DemographicTier>('unspecified');
   const [analyticsOptIn, setAnalyticsOptIn] = useState(true);
@@ -170,7 +182,6 @@ export default function SettingsWorkspace() {
       setAvatarUrl(p.avatar_url || '');
       setTimezone(p.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/London');
       setLanguage(p.language || 'en');
-      setMetadataOptIn(p.metadata_opt_in !== false);
       setPhoneVerified(p.phone_verified ?? true);
       setBilling(billRes);
       if (!histRes.ok) {
@@ -208,7 +219,6 @@ export default function SettingsWorkspace() {
       form.append('fullName', fullName);
       form.append('timezone', timezone);
       form.append('language', language);
-      form.append('metadataOptIn', String(metadataOptIn));
       if (avatarFile) form.append('avatar', avatarFile);
 
       const res = await fetch('/api/settings/profile', {
@@ -310,9 +320,113 @@ export default function SettingsWorkspace() {
     }
   };
 
-  const deleteAccount = async () => {
+  useEffect(() => {
+    if (activeTab !== 'danger' || !user) return;
+    let cancelled = false;
+    const loadDeletionStatus = async () => {
+      setOrgDeleteLoading(true);
+      try {
+        const res = await fetch('/api/account/delete', { credentials: 'include' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to load deletion status');
+        if (cancelled) return;
+        setOrgDeleteBlockers(data.blockers ?? []);
+        if (typeof data.cascadeConfirmPhrase === 'string') {
+          setCascadeConfirmPhrase(data.cascadeConfirmPhrase);
+        }
+      } catch {
+        if (!cancelled) setOrgDeleteBlockers([]);
+      } finally {
+        if (!cancelled) setOrgDeleteLoading(false);
+      }
+    };
+    void loadDeletionStatus();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, user]);
+
+  const refreshOrgDeleteBlockers = async () => {
+    const res = await fetch('/api/account/delete', { credentials: 'include' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to refresh deletion status');
+    setOrgDeleteBlockers(data.blockers ?? []);
+    if (typeof data.cascadeConfirmPhrase === 'string') {
+      setCascadeConfirmPhrase(data.cascadeConfirmPhrase);
+    }
+  };
+
+  const transferOrgOwnership = async (orgId: string) => {
+    const newOwnerUserId = transferSelections[orgId];
+    if (!newOwnerUserId) {
+      showToast('Select a member to transfer ownership to', 'error');
+      return;
+    }
+    setOrgDeleteBusy(`transfer-${orgId}`);
+    try {
+      const res = await fetch('/api/settings/team', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'transfer_ownership',
+          orgId,
+          newOwnerUserId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Transfer failed');
+      await refreshOrgDeleteBlockers();
+      showToast('Ownership transferred. You can delete your account when no blockers remain.', 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Transfer failed', 'error');
+    } finally {
+      setOrgDeleteBusy(null);
+    }
+  };
+
+  const removeAllOtherMembers = async (orgId: string, orgName: string) => {
+    if (
+      !confirm(
+        `Remove all other members from "${orgName}" and revoke pending invites? You will remain as the only member.`
+      )
+    ) {
+      return;
+    }
+    setOrgDeleteBusy(`remove-all-${orgId}`);
+    try {
+      const res = await fetch('/api/settings/team', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'remove_all_other_members',
+          orgId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not remove members');
+      await refreshOrgDeleteBlockers();
+      showToast('Other members removed. You can delete your account normally.', 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not remove members', 'error');
+    } finally {
+      setOrgDeleteBusy(null);
+    }
+  };
+
+  const deleteAccount = async (opts?: { cascade?: boolean }) => {
     if (emailConfirmText !== user?.email) {
       showToast('Email address does not match', 'error');
+      return;
+    }
+    const cascade = opts?.cascade === true;
+    if (cascade && orgCascadeConfirmText !== cascadeConfirmPhrase) {
+      showToast(`Type ${cascadeConfirmPhrase} to confirm organization deletion`, 'error');
+      return;
+    }
+    if (!cascade && orgDeleteBlockers.length > 0) {
+      showToast('Resolve organization ownership first, or use the cascade confirmation option', 'error');
       return;
     }
     setDeletingAccount(true);
@@ -320,10 +434,23 @@ export default function SettingsWorkspace() {
       const res = await fetch('/api/account/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: emailConfirmText }),
+        body: JSON.stringify({
+          email: emailConfirmText,
+          ...(cascade
+            ? {
+                confirmOrgCascade: true,
+                orgCascadeConfirmText,
+              }
+            : {}),
+        }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Delete failed');
+      if (!res.ok) {
+        if (data.code === 'ORG_OWNER_BLOCKED' && Array.isArray(data.blockers)) {
+          setOrgDeleteBlockers(data.blockers);
+        }
+        throw new Error(data.error || 'Delete failed');
+      }
       await signOut();
       window.location.href = '/landing-v2';
     } catch (err) {
@@ -544,7 +671,8 @@ export default function SettingsWorkspace() {
                     <span className="text-nisk-muted leading-relaxed">
                       We use anonymized app-category and region data to understand demand and
                       improve the platform. No names, exact locations, or prompt text are ever
-                      stored for this. You can turn this off anytime.
+                      stored for this. Turning this off stops future tracking only — past
+                      anonymous aggregate rows are not erased automatically.
                     </span>
                   </span>
                 </label>
@@ -758,11 +886,17 @@ export default function SettingsWorkspace() {
                 <button type="button" onClick={() => showToast("We'll notify you when 2FA is available.", 'success')} className="btn-secondary px-3 py-1.5 rounded-lg text-xs">Notify Me</button>
               </section>
               <section className="bg-nisk-card border border-nisk rounded-xl p-6">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input type="checkbox" checked={metadataOptIn} onChange={(e) => setMetadataOptIn(e.target.checked)} className="rounded border-nisk" />
-                  <span className="text-sm text-gray-300">Help improve NiskBuild anonymously</span>
-                </label>
-                <button type="button" onClick={saveProfile} className="mt-3 btn-secondary px-4 py-2 rounded-lg text-sm">Save preference</button>
+                <h2 className="text-lg font-semibold text-white mb-2">Analytics preference</h2>
+                <p className="text-sm text-nisk-muted mb-3">
+                  Analytics opt-in/out lives in one place so preferences cannot desync.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('profile')}
+                  className="btn-secondary px-4 py-2 rounded-lg text-sm"
+                >
+                  Open Privacy &amp; Analytics
+                </button>
               </section>
             </>
           )}
@@ -783,12 +917,158 @@ export default function SettingsWorkspace() {
                   {deletingProjects ? 'Deleting…' : 'Delete All Projects'}
                 </button>
               </div>
-              <div className="border-t border-red-900/50 pt-6">
-                <h3 className="text-white font-medium mb-2">Delete Account</h3>
-                <input type="email" value={emailConfirmText} onChange={(e) => setEmailConfirmText(e.target.value)} placeholder={`Type "${user?.email}" to confirm`} className="w-full md:w-64 bg-nisk border border-nisk rounded-lg px-3 py-2 text-white text-sm mb-3" />
-                <button type="button" onClick={deleteAccount} disabled={deletingAccount} className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm disabled:opacity-50">
-                  {deletingAccount ? 'Deleting…' : 'Delete Account'}
-                </button>
+              <div className="border-t border-red-900/50 pt-6 space-y-4">
+                <h3 className="text-white font-medium">Delete Account</h3>
+                <p className="text-sm text-nisk-muted">
+                  Permanently deletes your account, personal projects, and related data. This cannot
+                  be undone.
+                </p>
+
+                {orgDeleteLoading && (
+                  <p className="text-xs text-nisk-muted">Checking organization ownership…</p>
+                )}
+
+                {!orgDeleteLoading && orgDeleteBlockers.length > 0 && (
+                  <div className="space-y-4 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4">
+                    <p className="text-sm text-amber-100 font-medium">
+                      You own {orgDeleteBlockers.length === 1 ? 'an organization' : 'organizations'}{' '}
+                      with other members. Choose one path before account deletion can proceed:
+                    </p>
+
+                    {orgDeleteBlockers.map((org) => (
+                      <div
+                        key={org.orgId}
+                        className="rounded-lg border border-nisk bg-nisk-card/80 p-3 space-y-3"
+                      >
+                        <p className="text-sm text-white">
+                          <span className="font-semibold">{org.orgName}</span>
+                          <span className="text-nisk-muted">
+                            {' '}
+                            · {org.otherMemberCount} other member
+                            {org.otherMemberCount === 1 ? '' : 's'}
+                          </span>
+                        </p>
+
+                        <div className="space-y-2">
+                          <p className="text-xs font-medium text-gray-200">1. Transfer ownership</p>
+                          <p className="text-[11px] text-nisk-muted">
+                            Move billing ownership to an existing member. Team plan billing moves
+                            with ownership. Then delete your account as a non-owner.
+                          </p>
+                          <div className="flex flex-wrap gap-2 items-center">
+                            <select
+                              value={transferSelections[org.orgId] || ''}
+                              onChange={(e) =>
+                                setTransferSelections((prev) => ({
+                                  ...prev,
+                                  [org.orgId]: e.target.value,
+                                }))
+                              }
+                              className="bg-nisk border border-nisk rounded-lg px-3 py-2 text-white text-sm min-w-[12rem]"
+                            >
+                              <option value="">Select member…</option>
+                              {org.members.map((m) => (
+                                <option key={m.userId} value={m.userId}>
+                                  {m.fullName || m.email || m.userId} ({m.role})
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              disabled={orgDeleteBusy === `transfer-${org.orgId}`}
+                              onClick={() => void transferOrgOwnership(org.orgId)}
+                              className="btn-secondary px-3 py-2 rounded-lg text-sm disabled:opacity-50"
+                            >
+                              {orgDeleteBusy === `transfer-${org.orgId}`
+                                ? 'Transferring…'
+                                : 'Transfer ownership'}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 border-t border-nisk pt-3">
+                          <p className="text-xs font-medium text-gray-200">
+                            2. Remove all other members
+                          </p>
+                          <p className="text-[11px] text-nisk-muted">
+                            Makes the org solo (you only). Pending invites are revoked. Then delete
+                            proceeds normally.
+                          </p>
+                          <button
+                            type="button"
+                            disabled={orgDeleteBusy === `remove-all-${org.orgId}`}
+                            onClick={() => void removeAllOtherMembers(org.orgId, org.orgName)}
+                            className="btn-secondary px-3 py-2 rounded-lg text-sm disabled:opacity-50"
+                          >
+                            {orgDeleteBusy === `remove-all-${org.orgId}`
+                              ? 'Removing…'
+                              : 'Remove all other members'}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+
+                    <div className="space-y-3 border-t border-amber-500/30 pt-4">
+                      <p className="text-xs font-medium text-red-200">
+                        3. Delete account and entire organization(s)
+                      </p>
+                      <p className="text-[11px] text-amber-100/90 leading-relaxed">
+                        This permanently deletes your owned organization
+                        {orgDeleteBlockers.length === 1 ? '' : 's'} and all members&apos; org-scoped
+                        projects (prompts and code in those orgs). Members lose team access. This is
+                        irreversible.
+                      </p>
+                      <input
+                        value={orgCascadeConfirmText}
+                        onChange={(e) => setOrgCascadeConfirmText(e.target.value)}
+                        placeholder={`Type "${cascadeConfirmPhrase}" to confirm`}
+                        className="w-full bg-nisk border border-red-500/40 rounded-lg px-3 py-2 text-white text-sm"
+                        autoComplete="off"
+                      />
+                      <input
+                        type="email"
+                        value={emailConfirmText}
+                        onChange={(e) => setEmailConfirmText(e.target.value)}
+                        placeholder={`Type "${user?.email}" to confirm`}
+                        className="w-full bg-nisk border border-nisk rounded-lg px-3 py-2 text-white text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void deleteAccount({ cascade: true })}
+                        disabled={
+                          deletingAccount ||
+                          orgCascadeConfirmText !== cascadeConfirmPhrase ||
+                          emailConfirmText !== user?.email
+                        }
+                        className="px-4 py-2 bg-red-700 hover:bg-red-600 text-white rounded-lg text-sm disabled:opacity-50"
+                      >
+                        {deletingAccount
+                          ? 'Deleting…'
+                          : 'Delete account and organization(s)'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {!orgDeleteLoading && orgDeleteBlockers.length === 0 && (
+                  <>
+                    <input
+                      type="email"
+                      value={emailConfirmText}
+                      onChange={(e) => setEmailConfirmText(e.target.value)}
+                      placeholder={`Type "${user?.email}" to confirm`}
+                      className="w-full md:w-64 bg-nisk border border-nisk rounded-lg px-3 py-2 text-white text-sm mb-3"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void deleteAccount()}
+                      disabled={deletingAccount}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm disabled:opacity-50"
+                    >
+                      {deletingAccount ? 'Deleting…' : 'Delete Account'}
+                    </button>
+                  </>
+                )}
               </div>
             </section>
           )}

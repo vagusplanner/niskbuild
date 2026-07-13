@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
+import { analyticsPreferenceUpdate } from '@/lib/analytics-prefs';
 
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
   const { data, error } = await supabase
     .from('profiles')
     .select(
-      'full_name, avatar_url, timezone, language, metadata_opt_in, subscription_tier, subscription_status, cloud_credits_remaining'
+      'full_name, avatar_url, timezone, language, subscription_tier, subscription_status, cloud_credits_remaining'
     )
     .eq('id', user.id)
     .single();
@@ -47,7 +48,6 @@ export async function POST(request: NextRequest) {
     const fullName = String(form.get('fullName') || '');
     const timezone = String(form.get('timezone') || 'Europe/London');
     const language = String(form.get('language') || 'en');
-    const metadataOptIn = form.get('metadataOptIn') !== 'false';
 
     let avatarUrl: string | undefined;
     if (file && file.size > 0) {
@@ -83,8 +83,6 @@ export async function POST(request: NextRequest) {
       full_name: fullName.trim(),
       timezone,
       language,
-      metadata_opt_in: metadataOptIn,
-      telemetry_opt_out: !metadataOptIn,
     };
     if (avatarUrl) update.avatar_url = avatarUrl;
 
@@ -103,9 +101,12 @@ export async function POST(request: NextRequest) {
   if (body.fullName !== undefined) update.full_name = String(body.fullName).trim();
   if (body.timezone !== undefined) update.timezone = String(body.timezone);
   if (body.language !== undefined) update.language = String(body.language);
+  // Legacy clients may still send metadataOptIn — route to the single analytics SoT.
   if (body.metadataOptIn !== undefined) {
-    update.metadata_opt_in = !!body.metadataOptIn;
-    update.telemetry_opt_out = !body.metadataOptIn;
+    Object.assign(update, analyticsPreferenceUpdate(!!body.metadataOptIn));
+  }
+  if (body.analyticsOptIn !== undefined) {
+    Object.assign(update, analyticsPreferenceUpdate(!!body.analyticsOptIn));
   }
 
   const { error } = await admin.from('profiles').update(update).eq('id', userId);

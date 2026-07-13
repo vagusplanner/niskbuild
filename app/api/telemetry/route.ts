@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createClient } from '@/lib/supabase/server';
+import { resolveAnalyticsOptIn } from '@/lib/analytics-prefs';
 import { normalizeDemographicTier } from '@/lib/demographic-tiers';
 import { recordAnonymousTelemetry } from '@/lib/record-telemetry';
 import { stripPersonalAttributes } from '@/lib/telemetry';
@@ -30,11 +31,13 @@ export async function POST(request: NextRequest) {
     if (user) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('demographic_tier, telemetry_opt_out')
+        .select(
+          'demographic_tier, analytics_opt_in, telemetry_opt_out, metadata_opt_in'
+        )
         .eq('id', user.id)
         .single();
 
-      if (profile?.telemetry_opt_out) {
+      if (!resolveAnalyticsOptIn(profile)) {
         return NextResponse.json({ message: 'Telemetry opted out' });
       }
 

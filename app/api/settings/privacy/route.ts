@@ -3,6 +3,10 @@ import { guardApiRequest } from '@/lib/api-auth';
 import { createClient } from '@/lib/supabase/server';
 import { normalizeDemographicTier, type DemographicTier } from '@/lib/demographic-tiers';
 import { normalizeAnalyticsRegion } from '@/lib/user-region';
+import {
+  analyticsPreferenceUpdate,
+  resolveAnalyticsOptIn,
+} from '@/lib/analytics-prefs';
 
 export async function GET(request: NextRequest) {
   const guard = await guardApiRequest(request);
@@ -11,19 +15,42 @@ export async function GET(request: NextRequest) {
   const supabase = await createClient();
   const user = guard.user!;
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('demographic_tier, analytics_opt_in, telemetry_opt_out, analytics_region')
+    .select(
+      'demographic_tier, analytics_opt_in, telemetry_opt_out, metadata_opt_in, analytics_region, age_minimum_attested_at'
+    )
     .eq('id', user.id)
     .single();
 
-  const analyticsOptIn = profile?.analytics_opt_in !== false;
+  // Column may be missing until age-minimum-attested-migration.sql is applied.
+  let ageMinimumAttested = true;
+  let resolved = profile;
+  if (
+    profileError?.message?.includes('age_minimum_attested') ||
+    profileError?.code === '42703'
+  ) {
+    const { data: fallback } = await supabase
+      .from('profiles')
+      .select(
+        'demographic_tier, analytics_opt_in, telemetry_opt_out, metadata_opt_in, analytics_region'
+      )
+      .eq('id', user.id)
+      .single();
+    resolved = fallback as typeof profile;
+    ageMinimumAttested = true;
+  } else {
+    ageMinimumAttested = Boolean(profile?.age_minimum_attested_at);
+  }
+
+  const analyticsOptIn = resolveAnalyticsOptIn(resolved);
 
   return NextResponse.json({
-    demographicTier: normalizeDemographicTier(profile?.demographic_tier),
+    demographicTier: normalizeDemographicTier(resolved?.demographic_tier),
     analyticsOptIn,
-    telemetryOptOut: profile?.telemetry_opt_out ?? !analyticsOptIn,
-    analyticsRegion: normalizeAnalyticsRegion(profile?.analytics_region),
+    telemetryOptOut: !analyticsOptIn,
+    analyticsRegion: normalizeAnalyticsRegion(resolved?.analytics_region),
+    ageMinimumAttested,
   });
 }
 
@@ -42,11 +69,9 @@ export async function POST(request: NextRequest) {
   }
 
   if (analyticsOptIn !== undefined) {
-    update.analytics_opt_in = !!analyticsOptIn;
-    update.telemetry_opt_out = !analyticsOptIn;
+    Object.assign(update, analyticsPreferenceUpdate(!!analyticsOptIn));
   } else if (telemetryOptOut !== undefined) {
-    update.telemetry_opt_out = !!telemetryOptOut;
-    update.analytics_opt_in = !telemetryOptOut;
+    Object.assign(update, analyticsPreferenceUpdate(!telemetryOptOut));
   }
 
   if (analyticsRegion !== undefined) {
