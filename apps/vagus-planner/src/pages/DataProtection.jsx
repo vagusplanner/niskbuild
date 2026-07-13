@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Shield, Download, Trash2, Eye, Lock, AlertTriangle, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -17,10 +16,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import AccountDeletionDialog from '@/components/profile/AccountDeletionDialog';
+import ConsentPreferencesPanel from '@/components/legal/ConsentPreferencesPanel';
+import { supabase } from '@/api/base44Client';
 
 export default function DataProtectionPage() {
   const [exporting, setExporting] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
@@ -30,37 +32,25 @@ export default function DataProtectionPage() {
   const exportMyData = async () => {
     setExporting(true);
     try {
-      // Fetch all user data
-      const [events, tasks, prayerLogs, settings, goals] = await Promise.all([
-        base44.entities.Event.list(),
-        base44.entities.Task.list(),
-        base44.entities.PrayerLog.list(),
-        base44.entities.UserSettings.list(),
-        base44.entities.Goal.list()
-      ]);
-
-      const userData = {
-        user_profile: {
-          email: user.email,
-          full_name: user.full_name,
-          created_date: user.created_date
-        },
-        events: events,
-        tasks: tasks,
-        prayer_logs: prayerLogs,
-        settings: settings,
-        goals: goals,
-        export_date: new Date().toISOString(),
-        export_type: 'GDPR_Data_Export'
-      };
-
-      // Create downloadable JSON file
+      const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      const res = await fetch(`${apiBase}/api/vagus-planner/gdpr/export`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Export failed');
+      }
+      const userData = await res.json();
       const dataStr = JSON.stringify(userData, null, 2);
       const dataBlob = new Blob([dataStr], { type: 'application/json' });
       const url = URL.createObjectURL(dataBlob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `MyAssistant_Data_Export_${new Date().toISOString().split('T')[0]}.json`;
+      link.download = `VagusPlanner_Data_Export_${new Date().toISOString().split('T')[0]}.json`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -68,47 +58,16 @@ export default function DataProtectionPage() {
 
       toast.success('Data exported successfully!');
     } catch (error) {
-      toast.error('Failed to export data');
+      console.error(error);
+      toast.error(error.message || 'Failed to export data');
     } finally {
       setExporting(false);
-    }
-  };
-
-  const deleteMyAccount = async () => {
-    setDeleting(true);
-    try {
-      // Delete all user data
-      const [events, tasks, prayerLogs, settings] = await Promise.all([
-        base44.entities.Event.list(),
-        base44.entities.Task.list(),
-        base44.entities.PrayerLog.list(),
-        base44.entities.UserSettings.list()
-      ]);
-
-      // Delete all records
-      await Promise.all([
-        ...events.map(e => base44.entities.Event.delete(e.id)),
-        ...tasks.map(t => base44.entities.Task.delete(t.id)),
-        ...prayerLogs.map(p => base44.entities.PrayerLog.delete(p.id)),
-        ...settings.map(s => base44.entities.UserSettings.delete(s.id))
-      ]);
-
-      toast.success('All data deleted. Logging out...');
-      
-      setTimeout(() => {
-        base44.auth.logout();
-      }, 2000);
-    } catch (error) {
-      toast.error('Failed to delete account');
-    } finally {
-      setDeleting(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-cyan-50 py-12 px-4">
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* GDPR Rights Overview */}
         <Card className="shadow-xl">
           <CardHeader className="bg-gradient-to-r from-cyan-600 to-teal-600 text-white">
             <div className="flex items-center gap-3">
@@ -116,7 +75,7 @@ export default function DataProtectionPage() {
               <div>
                 <CardTitle className="text-2xl">Your Data Protection Rights</CardTitle>
                 <CardDescription className="text-cyan-100">
-                  GDPR Compliance & Data Management
+                  [LEGAL REVIEW NEEDED] Infrastructure for access, portability, consent, and erasure
                 </CardDescription>
               </div>
             </div>
@@ -126,28 +85,29 @@ export default function DataProtectionPage() {
               <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <Eye className="w-5 h-5 text-blue-600 mb-2" />
                 <h3 className="font-semibold text-blue-900 mb-1">Right to Access</h3>
-                <p className="text-sm text-slate-600">View and download all your personal data</p>
+                <p className="text-sm text-slate-600">View and download your personal data</p>
               </div>
               <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
                 <Download className="w-5 h-5 text-emerald-600 mb-2" />
                 <h3 className="font-semibold text-emerald-900 mb-1">Data Portability</h3>
-                <p className="text-sm text-slate-600">Export your data in JSON format</p>
+                <p className="text-sm text-slate-600">Export JSON across known Vagus Planner tables</p>
               </div>
               <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
                 <Lock className="w-5 h-5 text-purple-600 mb-2" />
                 <h3 className="font-semibold text-purple-900 mb-1">Right to Erasure</h3>
-                <p className="text-sm text-slate-600">Delete your account and all data</p>
+                <p className="text-sm text-slate-600">Delete your account and firstparty.vp_* data</p>
               </div>
               <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
                 <Shield className="w-5 h-5 text-amber-600 mb-2" />
-                <h3 className="font-semibold text-amber-900 mb-1">Data Protection</h3>
-                <p className="text-sm text-slate-600">Your data is encrypted and secure</p>
+                <h3 className="font-semibold text-amber-900 mb-1">Consent controls</h3>
+                <p className="text-sm text-slate-600">Withdraw Article 9 AI processing consents</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Export Data */}
+        <ConsentPreferencesPanel userEmail={user?.email} />
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -155,20 +115,19 @@ export default function DataProtectionPage() {
               Export Your Data
             </CardTitle>
             <CardDescription>
-              Download a complete copy of all your personal data (GDPR Article 20)
+              Complete JSON export of known personal data stores (Article 20 infrastructure)
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="p-4 bg-teal-50 rounded-lg border border-teal-200">
-              <p className="text-sm text-slate-700 mb-3">
-                Your export will include:
-              </p>
+              <p className="text-sm text-slate-700 mb-3">Your export includes (where present):</p>
               <ul className="text-sm text-slate-600 space-y-1 ml-4">
-                <li>✓ Profile information</li>
-                <li>✓ Calendar events and tasks</li>
-                <li>✓ Prayer logs and spiritual tracking</li>
-                <li>✓ Goals and settings</li>
-                <li>✓ All timestamps and metadata</li>
+                <li>✓ Profile + consent records</li>
+                <li>✓ Calendar events, tasks, goals, holidays</li>
+                <li>✓ Prayer logs, hadith SRS, reflections, chats</li>
+                <li>✓ Expenses, notifications, reminders, device tokens</li>
+                <li>✓ Live location history, billing metadata (Stripe IDs)</li>
+                <li>✓ Upload object paths (binaries not embedded)</li>
               </ul>
             </div>
             <Button
@@ -188,7 +147,6 @@ export default function DataProtectionPage() {
           </CardContent>
         </Card>
 
-        {/* View Data Summary */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -216,7 +174,6 @@ export default function DataProtectionPage() {
           </CardContent>
         </Card>
 
-        {/* Delete Account */}
         <Card className="border-red-200">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-red-600">
@@ -224,7 +181,7 @@ export default function DataProtectionPage() {
               Delete Account
             </CardTitle>
             <CardDescription>
-              Permanently delete your account and all associated data
+              Permanently delete your account and all associated Vagus Planner data
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -234,11 +191,10 @@ export default function DataProtectionPage() {
                 <div>
                   <h4 className="font-semibold text-red-900 mb-2">Warning: This action is irreversible</h4>
                   <ul className="text-sm text-red-800 space-y-1">
-                    <li>• All your events, tasks, and calendar data will be deleted</li>
-                    <li>• Prayer logs and spiritual tracking will be removed</li>
-                    <li>• Settings and preferences will be lost</li>
-                    <li>• You will be immediately logged out</li>
-                    <li>• This cannot be undone</li>
+                    <li>• All firstparty.vp_* personal rows for your user are deleted immediately</li>
+                    <li>• Uploads under your storage prefix are removed</li>
+                    <li>• Auth account is deleted after purge</li>
+                    <li>• Immediate delete satisfies the policy “within 30 days” outer bound</li>
                   </ul>
                 </div>
               </div>
@@ -246,29 +202,24 @@ export default function DataProtectionPage() {
 
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button
-                  variant="destructive"
-                  className="w-full"
-                  disabled={deleting}
-                >
-                  {deleting ? 'Deleting...' : 'Delete My Account Permanently'}
+                <Button variant="destructive" className="w-full">
+                  Delete My Account Permanently
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                  <AlertDialogDescription className="space-y-2">
-                    <p>This will permanently delete your account and all your data.</p>
-                    <p className="font-semibold text-red-600">This action cannot be undone.</p>
+                  <AlertDialogTitle>Continue to confirmation?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    You will be asked to type your email and DELETE to confirm.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction
-                    onClick={deleteMyAccount}
+                    onClick={() => setShowDeleteDialog(true)}
                     className="bg-red-600 hover:bg-red-700"
                   >
-                    Yes, Delete Everything
+                    Continue
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -276,7 +227,6 @@ export default function DataProtectionPage() {
           </CardContent>
         </Card>
 
-        {/* Security Information */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -289,35 +239,20 @@ export default function DataProtectionPage() {
               <div className="flex items-start gap-3">
                 <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
                 <div>
-                  <h4 className="font-semibold text-slate-800 mb-1">End-to-End Encryption</h4>
-                  <p className="text-sm text-slate-600">All data transmitted is encrypted using TLS 1.3</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="font-semibold text-slate-800 mb-1">Secure Authentication</h4>
-                  <p className="text-sm text-slate-600">Industry-standard OAuth and session management</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="font-semibold text-slate-800 mb-1">Regular Backups</h4>
-                  <p className="text-sm text-slate-600">Your data is backed up daily with encryption at rest</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="font-semibold text-slate-800 mb-1">Access Controls</h4>
-                  <p className="text-sm text-slate-600">Role-based permissions and audit logs</p>
+                  <h4 className="font-semibold text-slate-800 mb-1">Encryption in transit</h4>
+                  <p className="text-sm text-slate-600">[LEGAL REVIEW NEEDED] Confirm security claims before publishing.</p>
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      <AccountDeletionDialog
+        isOpen={showDeleteDialog}
+        onClose={() => setShowDeleteDialog(false)}
+        userEmail={user?.email}
+      />
     </div>
   );
 }

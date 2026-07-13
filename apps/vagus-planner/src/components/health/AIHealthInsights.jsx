@@ -66,6 +66,7 @@ Provide:
 3. Health risk warnings if any concerning patterns
 4. Personalized recommendations for improvement
 5. Specific action items for the next week`,
+        gdpr_categories: ['health'],
         response_json_schema: {
           type: 'object',
           properties: {

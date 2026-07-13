@@ -4,7 +4,7 @@ import { base44, supabase } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import ExternalCalendarManager from '@/components/integrations/ExternalCalendarManager';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Settings, CreditCard, Trash2, ArrowLeft, Bell, Calendar, Brain, Heart, Moon, Sparkles } from 'lucide-react';
+import { User, Settings, CreditCard, Trash2, ArrowLeft, Bell, Calendar, Brain, Heart, Moon, Sparkles, Shield } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,7 +25,7 @@ import NotificationPreferencesPanel from '@/components/notifications/Notificatio
 import JournalReminderSettings from '@/components/settings/JournalReminderSettings';
 import PersonalPreferencesPanel from '@/components/profile/PersonalPreferencesPanel';
 import AccountDeletionDialog from '@/components/profile/AccountDeletionDialog';
-
+import ConsentPreferencesPanel from '@/components/legal/ConsentPreferencesPanel';
 const DEFAULT_SETTINGS = {
   theme: 'light',
   notifications: true,
@@ -234,6 +234,7 @@ export default function Account() {
   const SECTIONS = [
     { id: 'profile', icon: User, label: 'Profile', sub: 'Your account info', gradient: 'from-[#1D6FB8] to-[#29ABE2]', glow: 'shadow-blue-400/30' },
     { id: 'settings', icon: Settings, label: 'Settings', sub: 'Notifications & preferences', gradient: 'from-[#2D4A65] to-[#4A6E8A]', glow: 'shadow-slate-400/30' },
+    { id: 'privacy', icon: Shield, label: 'Privacy & Consent', sub: 'GDPR consents & export', gradient: 'from-teal-600 to-cyan-700', glow: 'shadow-teal-400/30' },
     { id: 'billing', icon: CreditCard, label: 'Billing', sub: 'Subscription & invoices', gradient: 'from-[#4A55A2] to-[#1D6FB8]', glow: 'shadow-indigo-400/30' },
     { id: 'preferences', icon: Heart, label: 'Preferences', sub: 'Dietary & theme', gradient: 'from-[#0D4F6C] to-[#2980B9]', glow: 'shadow-blue-400/30' },
     { id: 'danger', icon: Trash2, label: 'Delete Account', sub: 'Permanently remove data', gradient: 'from-red-600 to-red-700', glow: 'shadow-red-400/30' },
@@ -383,6 +384,10 @@ export default function Account() {
                   <JournalReminderSettings settingsData={settingsData} />
                 </div>
               )
+            )}
+
+            {activeSection === 'privacy' && (
+              <ConsentPreferencesPanel userEmail={user?.email} />
             )}
 
             {activeSection === 'billing' && (

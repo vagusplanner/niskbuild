@@ -51,6 +51,7 @@ Provide:
 7. **Weekly Goal**: Specific achievable goal for next week
 
 Be encouraging, specific, and Islamic in tone.`,
+        gdpr_categories: ['religious'],
         response_json_schema: {
           type: "object",
           properties: {

@@ -453,6 +453,24 @@ export const base44 = {
       if (error) throw error
       return { success: true }
     },
+    /** Alias used by older UI — same as signOut */
+    logout: async () => {
+      const { error } = await supabase.auth.signOut()
+      if (error) throw error
+      return { success: true }
+    },
+    /**
+     * GDPR erasure entry point used by AccountDeletionDialog historically.
+     * Delegates to deleteUserAccount → /api/account/delete (full vp_* purge).
+     */
+    deleteMe: async () => {
+      const result = await base44.functions.invoke('deleteUserAccount', {})
+      const payload = result?.data ?? result
+      if (payload && payload.success === false) {
+        throw new Error(payload.error || payload.message || 'Account deletion failed')
+      }
+      return payload
+    },
     onAuthStateChange: (callback) => {
       return supabase.auth.onAuthStateChange(callback)
     },
@@ -626,6 +644,10 @@ export const base44 = {
         }
         if (normalized.model) {
           requestBody.model = normalized.model
+        }
+        // Optional GDPR Art.9 categories — server blocks if user withdrew consent
+        if (Array.isArray(normalized.gdpr_categories) && normalized.gdpr_categories.length > 0) {
+          requestBody.gdpr_categories = normalized.gdpr_categories
         }
 
         console.log('🤖 InvokeLLM:', requestBody)

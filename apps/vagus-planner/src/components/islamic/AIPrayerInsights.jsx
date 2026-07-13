@@ -64,6 +64,7 @@ Recent Prayer Pattern:
 ${JSON.stringify(stats.recent_logs, null, 2)}
 
 Provide your analysis in a structured, warm, and encouraging tone. Be specific about patterns you notice.`,
+        gdpr_categories: ['religious'],
         response_json_schema: {
           type: 'object',
           properties: {
@@ -104,7 +105,8 @@ Provide a clear, concise answer based on mainstream Islamic scholarship. Include
 2. Brief supporting evidence (Quran/Hadith if applicable)
 3. Practical advice for their situation
 
-Keep the tone warm, supportive, and educational.`
+Keep the tone warm, supportive, and educational.`,
+        gdpr_categories: ['religious'],
       });
 
       return response;

@@ -57,7 +57,7 @@ import { AISchedulingProvider } from '@/components/assistant/AISchedulingBridge'
         Sparkles
       } from 'lucide-react';
       import { cn } from '@/lib/utils';
-      import { Toaster } from 'sonner';
+      import { Toaster, toast } from 'sonner';
       import { base44 } from '@/api/base44Client';
       import { useQuery } from '@tanstack/react-query';
 import { useRoleAccess } from '@/components/auth/useRoleAccess';
@@ -81,6 +81,12 @@ import SidebarTools from '@/components/sidebar/SidebarTools';
       import CapacitorPushRegistration from '@/components/notifications/CapacitorPushRegistration';
 import CapacitorStatusBarSetup from '@/components/mobile/CapacitorStatusBarSetup';
 import { filterNavItems, isPageHiddenFromNav } from '@/lib/nav-v1-scope';
+import {
+  hasCompletedLegalConsent,
+  parseConsentsFromSettings,
+  readLocalConsentMirror,
+  saveGdprConsents,
+} from '@/lib/gdpr-consent';
 
       // Non-critical: lazy loaded after paint
       const KeyboardShortcutsModal = React.lazy(() => import('@/components/shared/KeyboardShortcutsModal'));
@@ -315,16 +321,29 @@ export default function Layout({ children, currentPageName }) {
   // Check legal consent on first visit (only once per user)
   useEffect(() => {
     if (!user?.email) return;
-    
-    const consentKey = `legal_consent_accepted_${user.email}`;
-    const legalConsent = localStorage.getItem(consentKey);
-    
-    // Only show if never accepted AND not already showing
-    if (!legalConsent && !showLegalConsent) {
-      const timer = setTimeout(() => setShowLegalConsent(true), 1000);
+
+    const mirror = readLocalConsentMirror(user.email);
+    if (mirror && hasCompletedLegalConsent(mirror)) return;
+
+    const fromSettings = parseConsentsFromSettings(userSettings ?? settings[0]);
+    if (hasCompletedLegalConsent(fromSettings)) {
+      try {
+        localStorage.setItem(`legal_consent_accepted_${user.email}`, '1');
+        localStorage.setItem(
+          `legal_consent_accepted_${user.email}_payload`,
+          JSON.stringify(fromSettings)
+        );
+      } catch {
+        // ignore
+      }
+      return;
+    }
+
+    if (!showLegalConsent) {
+      const timer = setTimeout(() => setShowLegalConsent(true), 800);
       return () => clearTimeout(timer);
     }
-  }, [user?.email]);
+  }, [user?.email, userSettings, settings, showLegalConsent]);
 
   const isRootPage = ROOT_PAGES.includes(currentPageName);
   
@@ -777,6 +796,32 @@ export default function Layout({ children, currentPageName }) {
       <ServiceWorkerManager />
       <CapacitorPushRegistration />
       <CapacitorStatusBarSetup />
+
+      {/* GDPR legal consent — must mount (was previously imported but never rendered) */}
+      <React.Suspense fallback={null}>
+        {showLegalConsent && (
+          <LegalConsentFlow
+            isOpen={showLegalConsent}
+            onDecline={() => {
+              setShowLegalConsent(false);
+              toast.error(
+                '[LEGAL REVIEW NEEDED] You must accept required terms to use Vagus Planner.'
+              );
+            }}
+            onAccept={async (payload) => {
+              try {
+                await saveGdprConsents(payload, { email: user?.email });
+                setShowLegalConsent(false);
+                queryClient.invalidateQueries({ queryKey: ['userSettings'] });
+                toast.success('Preferences saved');
+              } catch (err) {
+                console.error(err);
+                toast.error('Could not save consent preferences');
+              }
+            }}
+          />
+        )}
+      </React.Suspense>
 
       {/* Lazy non-critical components */}
       <React.Suspense fallback={null}>
