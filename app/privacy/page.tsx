@@ -33,12 +33,58 @@ export default function PrivacyPage() {
               <li>Optional coarse town or city grouping where statistically safe — never street-level location</li>
               <li>Subscription tier and usage statistics</li>
             </ul>
-            <h3 className="text-xl font-medium text-white mb-2 mt-4">What We DO NOT Collect</h3>
-            <ul className="list-disc pl-6 space-y-2 text-emerald-400">
-              <li>Your generated source code (stays on your machine)</li>
-              <li>Your AI prompts (processed locally or via cloud API, not stored)</li>
-              <li>Your client data or intellectual property</li>
+
+            <h3 className="text-xl font-medium text-white mb-2 mt-4">What we store</h3>
+            <p className="mb-3">
+              To provide the NiskBuild service, we store:
+            </p>
+            <ul className="list-disc pl-6 space-y-2 mb-4">
+              <li>The prompts you submit to generate apps</li>
+              <li>
+                The code your prompts generate, including all saved versions and all pages of
+                multi-page projects
+              </li>
+              <li>Project metadata (titles, timestamps, configuration)</li>
             </ul>
+            <p className="mb-4">
+              This data is stored securely using our infrastructure provider (Supabase) and is
+              retained for as long as your account and projects exist, or as described in our data
+              retention practices below.
+            </p>
+
+            <h3 className="text-xl font-medium text-white mb-2 mt-4">
+              Where your prompts and code go
+            </h3>
+            <p className="mb-4">
+              When you generate an app, your prompt is sent to an AI provider (by default, Groq;
+              other providers may be used as automatic backup, or if you&apos;ve connected your own
+              AI provider account) in order to generate your code. We do not control how long these
+              providers retain this data beyond what&apos;s needed to process your request — please
+              review the relevant AI provider&apos;s own privacy practices if you have concerns about
+              specific content in your prompts.
+            </p>
+
+            <h3 className="text-xl font-medium text-white mb-2 mt-4">
+              A note on sensitive content in prompts
+            </h3>
+            <p className="mb-4">
+              Please avoid including real personal information about yourself or others (such as
+              names, contact details, or sensitive personal data) directly in your prompts, since
+              this content is processed by third-party AI providers and stored as part of your
+              project. If you&apos;re building an application that will itself handle real user data
+              (e.g., a customer database), that&apos;s a normal and supported use of NiskBuild — the
+              caution here is specifically about what you type into the prompt itself.
+            </p>
+
+            <h3 className="text-xl font-medium text-white mb-2 mt-4">
+              Team/organization visibility
+            </h3>
+            <p>
+              If you&apos;re a member of a team organization on NiskBuild, projects created within
+              that organization (including their prompts and generated code) are visible to other
+              members and administrators of that organization. Personal projects (not created within
+              a team context) remain private to you.
+            </p>
           </section>
 
           <section>
@@ -95,7 +141,12 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-2xl font-semibold text-white mb-4">5. Data Storage and Security</h2>
-            <p>Your data is stored securely using Supabase (PostgreSQL). We implement industry-standard security measures including encryption at rest and in transit. Your generated code never touches our servers — it runs locally on your machine.</p>
+            <p>
+              Your data is stored securely using Supabase (PostgreSQL). We implement
+              industry-standard security measures including encryption at rest and in transit.
+              Project prompts and generated code are stored as described in Section 2 so we can
+              provide generation, version history, and project saving.
+            </p>
           </section>
 
           <section>
