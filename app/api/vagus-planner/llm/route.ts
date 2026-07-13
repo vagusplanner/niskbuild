@@ -14,6 +14,12 @@ import {
   vpApiJson,
   withVpApiCors,
 } from '@/lib/vp-api-cors';
+import { createAdminClient } from '@/lib/supabase/admin';
+import {
+  canSendArt9CategoryToAi,
+  parseVpGdprConsents,
+  type VpArt9Category,
+} from '@/lib/vp-gdpr/tables';
 
 const MAX_PROMPT_CHARS = 32_000;
 
@@ -54,6 +60,48 @@ export async function POST(request: NextRequest) {
     // add_context_from_internet and model are accepted for API compatibility; ignored in Phase 1.
     void body.add_context_from_internet;
     void body.model;
+
+    // Article 9 gate: callers may declare gdpr_categories: ['religious'|'health'].
+    // If consent was withdrawn (or never given), refuse before forwarding to Groq.
+    const rawCategories = Array.isArray(body.gdpr_categories)
+      ? (body.gdpr_categories as unknown[])
+      : [];
+    const categories = rawCategories.filter(
+      (c): c is VpArt9Category => c === 'religious' || c === 'health'
+    );
+    if (categories.length > 0) {
+      try {
+        const admin = createAdminClient();
+        const { data: settingsRows } = await admin
+          .schema('firstparty')
+          .from('vp_user_settings')
+          .select('preferences')
+          .eq('user_id', guard.user!.id)
+          .limit(1);
+        const consents = parseVpGdprConsents(settingsRows?.[0]?.preferences);
+        for (const cat of categories) {
+          if (!canSendArt9CategoryToAi(consents, cat)) {
+            return vpApiJson(
+              request,
+              {
+                error:
+                  'AI processing of this data category is blocked because Article 9 consent is not active. You can update consents in Account → Privacy & Consent.',
+                code: 'GDPR_ART9_CONSENT_REQUIRED',
+                category: cat,
+              },
+              { status: 403 }
+            );
+          }
+        }
+      } catch (err) {
+        console.error('VP GDPR consent check failed:', err);
+        return vpApiJson(
+          request,
+          { error: 'Unable to verify privacy consents for this AI request' },
+          { status: 503 }
+        );
+      }
+    }
 
     if (schema) {
       const schemaHint = JSON.stringify(schema);
