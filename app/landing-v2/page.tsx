@@ -9,6 +9,7 @@ import NiskBuildLogo from '@/app/components/NiskBuildLogo';
 import LandingV2HeroDemo from '@/app/components/LandingV2HeroDemo';
 import ContactForm from '@/app/components/ContactForm';
 import { FOOTER_LINKS } from '@/lib/landing-nav';
+import FollowUsLinks from '@/app/components/FollowUsLinks';
 import { PRICING_FAQ, PRICING_TIERS } from '@/lib/pricing-tiers';
 
 const COMPARISON_ROWS = [
@@ -442,6 +443,7 @@ export default function LandingV2Page() {
               </Link>
             ))}
           </div>
+          <FollowUsLinks className="mb-4" />
           <p className="text-nisk-muted text-xs">© 2026 NiskBuild. All rights reserved.</p>
         </div>
       </footer>

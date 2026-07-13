@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import NiskBuildLogo from './NiskBuildLogo';
+import FollowUsLinks from './FollowUsLinks';
 import { FOOTER_LINKS } from '@/lib/landing-nav';
 
 export default function Footer() {
@@ -21,7 +22,8 @@ export default function Footer() {
             </Link>
           ))}
         </div>
-        <p className="mt-3 text-xs text-nisk-muted">© 2026 NiskBuild. All rights reserved.</p>
+        <FollowUsLinks compact className="mt-5" />
+        <p className="mt-4 text-xs text-nisk-muted">© 2026 NiskBuild. All rights reserved.</p>
       </div>
     </footer>
   );

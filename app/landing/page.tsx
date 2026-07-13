@@ -10,6 +10,7 @@ import TryItNowDemo from '@/app/components/TryItNowDemo';
 import LandingWaitlist from '@/app/components/LandingWaitlist';
 import ContactForm from '@/app/components/ContactForm';
 import { FOOTER_LINKS } from '@/lib/landing-nav';
+import FollowUsLinks from '@/app/components/FollowUsLinks';
 import { PRICING_FAQ } from '@/lib/pricing-tiers';
 import { complexityLabel, formatTemplatePrice } from '@/lib/marketplace-types';
 
@@ -277,6 +278,7 @@ export default function LandingPage() {
               </Link>
             ))}
           </div>
+          <FollowUsLinks className="mb-4" />
           <p className="text-nisk-muted text-xs">© 2026 NiskBuild. All rights reserved.</p>
         </div>
       </footer>
