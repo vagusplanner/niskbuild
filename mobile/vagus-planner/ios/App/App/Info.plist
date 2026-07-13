@@ -49,5 +49,9 @@
 	<string>Vagus Planner uses your location to show nearby mosques, calculate accurate prayer times, and find halal restaurants near you.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Vagus Planner uses your microphone for voice journaling and voice commands.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Vagus Planner uses the camera to scan product barcodes for your grocery list.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Vagus Planner uses speech recognition for voice commands, voice journaling, and voice task capture.</string>
 </dict>
 </plist>

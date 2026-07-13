@@ -1,22 +1,45 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Users, Ban, AlertTriangle, Scale, ArrowLeft } from 'lucide-react';
+import { FileText, ArrowLeft } from 'lucide-react';
+import { createPageUrl } from '@/utils';
 
-const LOGO = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6965607bc386491646bad6e8/10b500d37_IMG_6630.png";
+const LOGO =
+  'https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6965607bc386491646bad6e8/10b500d37_IMG_6630.png';
+const LAST_UPDATED = 'July 13, 2026';
+const SUPPORT_EMAIL = 'support@vagusplanner.com';
+const PUBLIC_TERMS_URL = 'https://niskbuild.com/vagus-planner/terms';
 
+/**
+ * In-app Terms — aligned with /vagus-planner/terms interim draft.
+ * [LEGAL REVIEW NEEDED] markers stay visible.
+ */
 export default function TermsOfServicePage() {
   return (
     <div className="min-h-screen py-12 px-4" style={{ background: '#060f1e' }}>
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <Link to="/" className="flex items-center gap-2 text-[#E8B84B] hover:opacity-80 transition-opacity">
+        <div className="flex items-center justify-between mb-6">
+          <Link
+            to="/"
+            className="flex items-center gap-2 text-[#E8B84B] hover:opacity-80 transition-opacity"
+          >
             <ArrowLeft className="w-4 h-4" />
             <img src={LOGO} alt="Vagus Planner" className="w-7 h-7 rounded-lg object-cover" />
             <span className="font-bold text-sm">Vagus Planner</span>
           </Link>
-          <span className="text-white/40 text-xs">Effective: March 2026</span>
+          <span className="text-white/40 text-xs">Last updated: {LAST_UPDATED}</span>
         </div>
+
+        <p className="text-white/45 text-xs mb-4">
+          Canonical public URL:{' '}
+          <a
+            href={PUBLIC_TERMS_URL}
+            className="text-[#38bdf8] hover:underline"
+            target="_blank"
+            rel="noreferrer"
+          >
+            {PUBLIC_TERMS_URL}
+          </a>
+        </p>
 
         <div className="bg-white/[0.03] border border-white/10 rounded-2xl overflow-hidden">
           <div className="bg-gradient-to-r from-[#2a1a6e] to-[#1a4a8e] px-8 py-7 flex items-center gap-4">
@@ -24,136 +47,166 @@ export default function TermsOfServicePage() {
               <FileText className="w-6 h-6 text-[#E8B84B]" />
             </div>
             <div>
-              <h1 className="text-2xl font-black text-white">Terms of Service</h1>
-              <p className="text-white/60 text-sm">Please read these terms carefully before using Vagus Planner</p>
+              <h1 className="text-2xl font-black text-white">
+                Terms of Service (Interim, Accurate Version)
+              </h1>
+              <p className="text-white/60 text-sm">
+                Please read these terms carefully before using Vagus Planner
+              </p>
             </div>
           </div>
 
           <div className="p-8 space-y-8 text-white/80">
+            <p className="text-sm leading-relaxed text-amber-200/90 border border-amber-500/30 bg-amber-500/10 rounded-lg px-3 py-2">
+              <strong className="text-amber-100">[LEGAL REVIEW NEEDED]</strong> — this is an
+              interim draft replacing a placeholder summary. Final legal language, entity
+              name/details, governing law, and dispute resolution terms should be confirmed by
+              counsel before this is treated as final.
+            </p>
 
             <section>
-              <h2 className="text-lg font-bold text-white mb-3">1. Acceptance of Terms</h2>
+              <h2 className="text-lg font-bold text-white mb-3">1. Acceptance of terms</h2>
               <p className="text-white/65 text-sm leading-relaxed">
-                By accessing or using Vagus Planner ("the Service"), you agree to be bound by these Terms of Service and our Privacy Policy. If you do not agree, please do not use the Service.
+                By creating an account or using Vagus Planner, you agree to these Terms of Service
+                and our Privacy Policy. If you do not agree, please do not use the app.
               </p>
             </section>
 
             <section>
-              <h2 className="text-lg font-bold text-white mb-3">2. Description of Service</h2>
-              <p className="text-white/65 text-sm mb-3">Vagus Planner provides:</p>
+              <h2 className="text-lg font-bold text-white mb-3">2. Eligibility</h2>
+              <p className="text-white/65 text-sm leading-relaxed">
+                You must be at least 13 years old to use Vagus Planner. By using the app, you
+                confirm you meet this requirement.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-lg font-bold text-white mb-3">3. Description of service</h2>
+              <p className="text-white/65 text-sm leading-relaxed">
+                Vagus Planner is a personal planning application offering calendar and task
+                management, goal tracking, an optional Islamic edition (prayer times, Quran/hadith
+                tools, Zakat calculations), optional wellness tracking features, and AI-assisted
+                planning insights (where enabled and consented to).
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-lg font-bold text-white mb-3">4. Your account</h2>
+              <p className="text-white/65 text-sm leading-relaxed">
+                You&apos;re responsible for maintaining the confidentiality of your account
+                credentials and for all activity under your account. Notify us promptly if you
+                suspect unauthorized access.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-lg font-bold text-white mb-3">5. Subscriptions and payments</h2>
+              <p className="text-white/65 text-sm leading-relaxed">
+                Some features require a paid subscription, processed via Stripe. Subscriptions renew
+                automatically unless cancelled. You can manage or cancel your subscription in
+                Settings. Refunds are handled in accordance with applicable app store policies
+                (Apple App Store) where relevant.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-lg font-bold text-white mb-3">6. Acceptable use</h2>
+              <p className="text-white/65 text-sm mb-2">You agree not to:</p>
               <ul className="list-disc ml-5 text-white/65 space-y-1 text-sm">
-                <li>AI-powered calendar and smart scheduling</li>
-                <li>Islamic living tools (prayer times, Quran, Zakat, Hajj guide)</li>
-                <li>Health, wellness, sleep and mood tracking</li>
-                <li>Finance tracking and Zakat calculation</li>
-                <li>Travel planning and itinerary management</li>
-                <li>Goals, habits and productivity tools</li>
-                <li>Team and family collaboration features</li>
+                <li>Use the app for any unlawful purpose</li>
+                <li>
+                  Attempt to gain unauthorized access to our systems or other users&apos; data
+                </li>
+                <li>
+                  Reverse-engineer, decompile, or attempt to extract the app&apos;s source code
+                </li>
+                <li>Use the app in a way that could harm, disable, or overburden our services</li>
               </ul>
             </section>
 
             <section>
-              <h2 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
-                <Users className="w-4 h-4 text-[#38bdf8]" /> 3. User Accounts
-              </h2>
-              <div className="space-y-2 text-white/65 text-sm">
-                <p><strong className="text-white/80">3.1 Registration:</strong> You must provide accurate, complete information and keep it updated.</p>
-                <p><strong className="text-white/80">3.2 Account Security:</strong> You are responsible for maintaining the confidentiality of your credentials.</p>
-                <p><strong className="text-white/80">3.3 Age Requirement:</strong> You must be at least 13 years old to use this Service.</p>
-                <p><strong className="text-white/80">3.4 Termination:</strong> We reserve the right to suspend accounts that violate these terms.</p>
-              </div>
-            </section>
-
-            <section>
-              <h2 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
-                <Ban className="w-4 h-4 text-rose-400" /> 4. Prohibited Conduct
-              </h2>
-              <p className="text-white/65 text-sm mb-3">You agree NOT to:</p>
-              <ul className="list-disc ml-5 text-white/65 space-y-1 text-sm">
-                <li>Use the Service for illegal purposes</li>
-                <li>Infringe on intellectual property rights</li>
-                <li>Upload malicious code or viruses</li>
-                <li>Harass, abuse, or harm other users</li>
-                <li>Attempt unauthorised access to our systems</li>
-                <li>Share offensive, discriminatory, or inappropriate content</li>
-              </ul>
-            </section>
-
-            <section>
-              <h2 className="text-lg font-bold text-white mb-3">5. Intellectual Property</h2>
-              <div className="space-y-2 text-white/65 text-sm">
-                <p><strong className="text-white/80">5.1 Our Content:</strong> All features and functionality are owned by Vagus Planner and protected by intellectual property laws.</p>
-                <p><strong className="text-white/80">5.2 Your Content:</strong> You retain ownership of content you create. You grant us a licence to store and display it solely to provide the Service.</p>
-                <p><strong className="text-white/80">5.3 Islamic Content:</strong> Quranic verses and Hadiths are presented respectfully with proper attribution.</p>
-              </div>
-            </section>
-
-            <section>
-              <h2 className="text-lg font-bold text-white mb-3">6. Subscriptions &amp; Payments</h2>
-              <div className="space-y-2 text-white/65 text-sm">
-                <p><strong className="text-white/80">6.1 Free Plan:</strong> Basic features are provided free of charge with no time limit.</p>
-                <p><strong className="text-white/80">6.2 Paid Plans:</strong> Premium features require a monthly or annual subscription billed via Stripe.</p>
-                <p><strong className="text-white/80">6.3 Cancellation:</strong> You may cancel your subscription at any time from your Billing settings. Access continues until the end of the current billing period. No partial refunds for unused time.</p>
-                <p><strong className="text-white/80">6.4 Refunds:</strong> Refunds may be issued within 14 days of initial purchase if you have not used premium features. Contact us via our <Link to="/Contact" className="text-[#38bdf8] hover:underline">Contact page</Link>.</p>
-                <p><strong className="text-white/80">6.5 Price Changes:</strong> We will give at least 30 days' notice of any price changes before they affect your subscription.</p>
-              </div>
-            </section>
-
-            <section>
-              <h2 className="text-lg font-bold text-white mb-3">7. Third-Party Services</h2>
+              <h2 className="text-lg font-bold text-white mb-3">7. Your content</h2>
               <p className="text-white/65 text-sm leading-relaxed">
-                We integrate with Google Calendar, Gmail, and other services. Your use of these integrations is subject to their respective terms. We are not responsible for third-party service availability or content.
+                You retain ownership of the data you enter into Vagus Planner (calendar entries,
+                notes, prayer logs, etc.). We process this data as described in our Privacy Policy
+                to provide the service to you.
               </p>
             </section>
 
             <section>
-              <h2 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-400" /> 8. Disclaimers
-              </h2>
-              <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 space-y-2 text-sm text-white/65">
-                <p><strong className="text-white/80">Prayer Times:</strong> We strive for accuracy but recommend verifying with local Islamic authorities.</p>
-                <p><strong className="text-white/80">Religious Guidance:</strong> AI-generated Islamic content is for informational purposes. Consult qualified scholars for rulings.</p>
-                <p><strong className="text-white/80">Health Information:</strong> Wellness tracking is not medical advice. Consult healthcare professionals for medical concerns.</p>
-                <p><strong className="text-white/80">"As Is" Service:</strong> The Service is provided "as is" without warranties of any kind.</p>
-              </div>
-            </section>
-
-            <section>
-              <h2 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
-                <Scale className="w-4 h-4 text-[#38bdf8]" /> 9. Limitation of Liability
-              </h2>
+              <h2 className="text-lg font-bold text-white mb-3">8. AI features</h2>
               <p className="text-white/65 text-sm leading-relaxed">
-                To the maximum extent permitted by law, Vagus Planner shall not be liable for any indirect, incidental, special, or consequential damages arising from your use of the Service.
+                Some features use AI to generate suggestions or insights. AI-generated content is
+                provided for informational and planning purposes only and should not be relied upon
+                as professional, medical, financial, or religious advice. Use of AI features
+                involving sensitive data (religious practice, health/wellness) requires your
+                explicit separate consent, as described in our Privacy Policy.
               </p>
             </section>
 
             <section>
-              <h2 className="text-lg font-bold text-white mb-3">10. Governing Law</h2>
+              <h2 className="text-lg font-bold text-white mb-3">9. Termination</h2>
               <p className="text-white/65 text-sm leading-relaxed">
-                These Terms are governed by and construed in accordance with the laws of England and Wales. Any disputes shall be subject to the exclusive jurisdiction of the courts of England and Wales.
+                You may delete your account at any time in Settings, which immediately and
+                permanently removes your data as described in our Privacy Policy. We may suspend or
+                terminate accounts that violate these terms.
               </p>
             </section>
 
             <section>
-              <h2 className="text-lg font-bold text-white mb-3">11. Changes to Terms</h2>
+              <h2 className="text-lg font-bold text-white mb-3">10. Disclaimer</h2>
               <p className="text-white/65 text-sm leading-relaxed">
-                We may modify these Terms at any time. We will notify users of material changes via email or in-app notification at least 30 days before they take effect. Continued use after changes constitutes acceptance.
+                Vagus Planner is provided &quot;as is.&quot; We do not guarantee the accuracy of
+                prayer time calculations, AI-generated content, or any other feature for any
+                specific purpose, and recommend verifying critical information (such as prayer
+                times) independently where accuracy is essential.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-lg font-bold text-white mb-3">11. Limitation of liability</h2>
+              <p className="text-sm text-amber-100/90 border border-amber-500/30 bg-amber-500/10 rounded-lg px-3 py-2">
+                <strong>[LEGAL REVIEW NEEDED]</strong> — standard limitation of liability clause to
+                be added by counsel, appropriate to applicable jurisdiction.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-lg font-bold text-white mb-3">12. Changes to these terms</h2>
+              <p className="text-white/65 text-sm leading-relaxed">
+                We may update these terms from time to time. Continued use of the app after changes
+                constitutes acceptance of the updated terms.
               </p>
             </section>
 
             <section className="pt-6 border-t border-white/10">
-              <h2 className="text-lg font-bold text-white mb-3">12. Contact</h2>
-              <p className="text-white/65 text-sm">For questions about these Terms, please use our <Link to="/Contact" className="text-[#38bdf8] hover:underline">Contact page</Link>. We aim to respond within 72 hours.</p>
+              <h2 className="text-lg font-bold text-white mb-3">13. Contact</h2>
+              <p className="text-white/65 text-sm">
+                Questions about these terms can be directed to{' '}
+                <a href={`mailto:${SUPPORT_EMAIL}`} className="text-[#38bdf8] hover:underline">
+                  {SUPPORT_EMAIL}
+                </a>
+                .{' '}
+                <span className="text-white/45">
+                  [LEGAL REVIEW NEEDED] Confirm support contact address.
+                </span>
+              </p>
             </section>
-
-            <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4 text-center">
-              <p className="text-white/50 text-xs">By using Vagus Planner, you acknowledge you have read, understood, and agree to be bound by these Terms.</p>
-            </div>
           </div>
         </div>
 
         <div className="text-center mt-8 text-white/30 text-xs">
-          © 2026 Vagus Planner · <Link to="/PrivacyPolicy" className="hover:text-white/60 transition-colors">Privacy Policy</Link> · <Link to="/" className="hover:text-white/60 transition-colors">Back to Home</Link>
+          © 2026 Vagus Planner ·{' '}
+          <Link
+            to={createPageUrl('PrivacyPolicy')}
+            className="hover:text-white/60 transition-colors"
+          >
+            Privacy Policy
+          </Link>{' '}
+          ·{' '}
+          <Link to="/" className="hover:text-white/60 transition-colors">
+            Back to Home
+          </Link>
         </div>
       </div>
     </div>
