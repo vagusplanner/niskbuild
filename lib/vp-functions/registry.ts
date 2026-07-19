@@ -17,6 +17,7 @@ import {
 import { hadithSRSChallenge } from './handlers/hadith-srs';
 import { globalSearch } from './handlers/search';
 import {
+  aiEventSummary,
   aiMeetingAssistant,
   aiSchedulePlanner,
   aiSchedulingSuggestions,
@@ -28,7 +29,7 @@ import {
   suggestPrayerAwareMeetingTimes,
 } from './handlers/calendar-ai';
 import { transcribeAudio } from './handlers/transcribe-audio';
-import { aiEventSummary, onNewUserWelcome, trackAnalytics } from './handlers/stubs';
+import { onNewUserWelcome, trackAnalytics } from './handlers/stubs';
 
 export const VP_FUNCTION_REGISTRY = new Map<string, VpFunctionHandler>([
   ['createStripeCheckout', createStripeCheckout],

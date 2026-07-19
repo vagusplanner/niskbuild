@@ -26,6 +26,7 @@ import JournalReminderSettings from '@/components/settings/JournalReminderSettin
 import PersonalPreferencesPanel from '@/components/profile/PersonalPreferencesPanel';
 import AccountDeletionDialog from '@/components/profile/AccountDeletionDialog';
 import ConsentPreferencesPanel from '@/components/legal/ConsentPreferencesPanel';
+import { useIslamicEdition } from '@/hooks/useIslamicEdition';
 const DEFAULT_SETTINGS = {
   theme: 'light',
   notifications: true,
@@ -88,6 +89,7 @@ export default function Account() {
   const settingsRecord = settingsData && settingsData.length > 0 ? settingsData[0] : null;
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [savingEdition, setSavingEdition] = useState(false);
+  const { hasPaidIslamicAccess, isLoading: islamicAccessLoading } = useIslamicEdition();
 
   useEffect(() => {
     if (settingsRecord) {
@@ -95,7 +97,10 @@ export default function Account() {
     }
   }, [settingsRecord]);
 
-  const currentEdition = resolveEdition(settingsRecord ?? settings);
+  // Preference only surfaces as Islamic when the server confirms a paid Islamic plan.
+  const preferredEdition = resolveEdition(settingsRecord ?? settings);
+  const currentEdition =
+    hasPaidIslamicAccess && preferredEdition === 'islamic' ? 'islamic' : 'standard';
 
   const saveEdition = async (edition) => {
     setSavingEdition(true);
@@ -108,7 +113,7 @@ export default function Account() {
       const { data, error } = await supabase
         .schema('firstparty')
         .from('vp_user_settings')
-        .update({ edition })
+        .update({ edition, islamic_mode: edition === 'islamic' })
         .eq('user_id', user.id)
         .select('id');
 
@@ -118,12 +123,12 @@ export default function Account() {
         const { error: insertError } = await supabase
           .schema('firstparty')
           .from('vp_user_settings')
-          .insert({ user_id: user.id, edition });
+          .insert({ user_id: user.id, edition, islamic_mode: edition === 'islamic' });
 
         if (insertError) throw insertError;
       }
 
-      setSettings((prev) => ({ ...prev, edition }));
+      setSettings((prev) => ({ ...prev, edition, islamic_mode: edition === 'islamic' }));
       console.log('✅ Edition saved:', edition);
       return true;
     } catch (err) {
@@ -137,6 +142,11 @@ export default function Account() {
 
   const handleEditionToggle = async (checked) => {
     const edition = checked ? 'islamic' : 'standard';
+    if (edition === 'islamic' && !hasPaidIslamicAccess) {
+      toast.error('Islamic Edition requires an active Islamic plan. Upgrade in Billing.');
+      window.location.href = '/Billing';
+      return;
+    }
     const saved = await saveEdition(edition);
     if (!saved) return;
 
@@ -147,6 +157,7 @@ export default function Account() {
       // ignore
     }
     queryClient.invalidateQueries({ queryKey: ['userSettings'] });
+    queryClient.invalidateQueries({ queryKey: ['islamicAccess'] });
     toast.success(
       edition === 'islamic'
         ? 'Islamic Edition enabled! Reloading…'
@@ -333,7 +344,9 @@ export default function Account() {
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                               {currentEdition === 'islamic'
                                 ? 'Prayer times, Quran, Hajj & Islamic calendar features'
-                                : 'Calendar, health, travel & productivity focus'}
+                                : hasPaidIslamicAccess
+                                  ? 'Calendar, health, travel & productivity focus'
+                                  : 'Islamic Edition features require an active Islamic plan'}
                             </p>
                           </div>
                         </div>
@@ -345,22 +358,28 @@ export default function Account() {
                             id="islamic-edition-toggle"
                             checked={currentEdition === 'islamic'}
                             onCheckedChange={handleEditionToggle}
-                            disabled={savingEdition || !user?.id}
+                            disabled={savingEdition || islamicAccessLoading || !user?.id}
                             className="data-[state=checked]:bg-indigo-600"
                           />
                         </div>
                       </div>
+                      {!hasPaidIslamicAccess && !islamicAccessLoading && (
+                        <p className="text-xs text-amber-700 dark:text-amber-300 mt-2">
+                          Unlock Islamic Edition from Billing — the toggle alone cannot enable paid features.
+                        </p>
+                      )}
                       <div className="grid grid-cols-2 gap-2 mt-3">
                         {[
                           { id: 'standard', label: 'Standard', icon: Calendar, active: currentEdition === 'standard' },
                           { id: 'islamic', label: 'Islamic', icon: Moon, active: currentEdition === 'islamic' },
                         ].map((opt) => {
                           const Icon = opt.icon;
+                          const islamicLocked = opt.id === 'islamic' && !hasPaidIslamicAccess;
                           return (
                             <button
                               key={opt.id}
                               type="button"
-                              disabled={savingEdition || !user?.id}
+                              disabled={savingEdition || islamicAccessLoading || !user?.id}
                               onClick={() => {
                                 if (currentEdition !== opt.id) handleEditionToggle(opt.id === 'islamic');
                               }}
@@ -369,11 +388,13 @@ export default function Account() {
                                   ? opt.id === 'islamic'
                                     ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300'
                                     : 'border-teal-500 bg-teal-50 dark:bg-teal-950/30 text-teal-700 dark:text-teal-300'
-                                  : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-300'
+                                  : islamicLocked
+                                    ? 'border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300'
+                                    : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-300'
                               }`}
                             >
                               <Icon className="w-4 h-4 flex-shrink-0" />
-                              <span className="font-medium">{opt.label}</span>
+                              <span className="font-medium">{opt.label}{islamicLocked ? ' (upgrade)' : ''}</span>
                             </button>
                           );
                         })}

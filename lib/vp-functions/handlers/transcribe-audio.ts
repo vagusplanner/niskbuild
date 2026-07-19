@@ -1,5 +1,7 @@
 import { getGroqClient } from '@/lib/groq-client';
 import { withGroqTimeout } from '@/lib/shift-ai/groq-json';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { requireFeatureUsage } from '@/lib/vp-usage-meter';
 import type { VpFunctionHandler } from '../types';
 
 const WHISPER_MODEL = 'whisper-large-v3-turbo';
@@ -54,7 +56,17 @@ function guessFilename(url: string, contentType: string | null): string {
 }
 
 /** Download audio from signed URL (client or server-generated) and transcribe via Groq Whisper. */
-export const transcribeAudio: VpFunctionHandler = async ({ payload }) => {
+export const transcribeAudio: VpFunctionHandler = async ({ user, payload }) => {
+  const admin = createAdminClient();
+  const gate = await requireFeatureUsage(admin, {
+    userId: user.id,
+    email: user.email,
+    feature: 'ai_requests',
+  });
+  if (!gate.ok) {
+    return { ok: false, error: gate.error, status: gate.status };
+  }
+
   const resolved = await resolveAudioDownloadUrl(payload);
   if (!resolved) {
     return {

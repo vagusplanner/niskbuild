@@ -20,6 +20,8 @@ import {
   parseVpGdprConsents,
   type VpArt9Category,
 } from '@/lib/vp-gdpr/tables';
+import { loadUserPlanContext, requireFeatureUsage } from '@/lib/vp-usage-meter';
+import { resolvePaidIslamicAccess } from '@/lib/vp-islamic-access';
 
 const MAX_PROMPT_CHARS = 32_000;
 
@@ -93,6 +95,23 @@ export async function POST(request: NextRequest) {
             );
           }
         }
+
+        // Religious AI also requires a paid Islamic Edition plan (server-verified).
+        if (categories.includes('religious')) {
+          const { subscriptions, profile } = await loadUserPlanContext(admin, guard.user!.id);
+          const islamic = resolvePaidIslamicAccess({ subscriptions, profile });
+          if (!islamic.hasPaidIslamicAccess) {
+            return vpApiJson(
+              request,
+              {
+                error:
+                  'Islamic AI features require an active Islamic Edition subscription. Upgrade in Billing.',
+                code: 'ISLAMIC_PLAN_REQUIRED',
+              },
+              { status: 402 }
+            );
+          }
+        }
       } catch (err) {
         console.error('VP GDPR consent check failed:', err);
         return vpApiJson(
@@ -101,6 +120,37 @@ export async function POST(request: NextRequest) {
           { status: 503 }
         );
       }
+    }
+
+    // Meter general AI requests against the user's plan (featureGating ai_requests).
+    try {
+      const admin = createAdminClient();
+      const gate = await requireFeatureUsage(admin, {
+        userId: guard.user!.id,
+        email: guard.user!.email,
+        feature: 'ai_requests',
+      });
+      if (!gate.ok) {
+        return vpApiJson(
+          request,
+          {
+            error:
+              gate.usage.deniedCode === 'FEATURE_LOCKED'
+                ? 'AI requests are not available on your plan. Upgrade in Billing.'
+                : 'Monthly AI request limit reached. Upgrade in Billing for a higher quota.',
+            code: gate.usage.deniedCode || 'QUOTA_EXCEEDED',
+            usage: gate.usage,
+          },
+          { status: 402 }
+        );
+      }
+    } catch (err) {
+      console.error('VP AI usage metering failed:', err);
+      return vpApiJson(
+        request,
+        { error: 'Unable to verify AI usage quota' },
+        { status: 503 }
+      );
     }
 
     if (schema) {

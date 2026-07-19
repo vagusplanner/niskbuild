@@ -2,31 +2,36 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { base44 } from '@/api/base44Client';
 import { Sparkles, Loader2, Calendar, TrendingUp, Clock, Lightbulb } from 'lucide-react';
 import UpgradeGate from '@/components/billing/UpgradeGate';
 import { toast } from 'sonner';
-import { startOfDay, endOfDay, startOfWeek, endOfWeek, format } from 'date-fns';
+import { startOfDay, endOfDay, startOfWeek, endOfWeek } from 'date-fns';
+import { usePlanAccess } from '@/hooks/usePlanAccess';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function AICalendarSummaryCard() {
+  const queryClient = useQueryClient();
+  const { aiCalendarSummary, isLoading: planLoading, refetch: refetchPlan } = usePlanAccess();
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState(null);
   const [period, setPeriod] = useState('daily');
+  const [quotaBlocked, setQuotaBlocked] = useState(false);
 
-  // Soft gate: free users see one summary then get upgrade nudge
-  const [usageCount, setUsageCount] = useState(() =>
-    parseInt(localStorage.getItem('ai_summary_uses') || '0', 10)
-  );
+  const usageLocked =
+    quotaBlocked ||
+    (aiCalendarSummary && !aiCalendarSummary.unlimited && !aiCalendarSummary.allowed);
 
   const generateSummary = async (selectedPeriod) => {
+    if (usageLocked) return;
     setLoading(true);
     try {
       const today = new Date();
-      const start_date = selectedPeriod === 'daily' 
+      const start_date = selectedPeriod === 'daily'
         ? startOfDay(today).toISOString()
         : startOfWeek(today, { weekStartsOn: 1 }).toISOString();
-      
+
       const end_date = selectedPeriod === 'daily'
         ? endOfDay(today).toISOString()
         : endOfWeek(today, { weekStartsOn: 1 }).toISOString();
@@ -37,22 +42,32 @@ export default function AICalendarSummaryCard() {
         end_date
       });
 
-      if (data.success) {
+      if (data?.success) {
         setSummary(data.summary);
-        const n = usageCount + 1;
-        setUsageCount(n);
-        localStorage.setItem('ai_summary_uses', String(n));
+        setQuotaBlocked(false);
+        queryClient.invalidateQueries({ queryKey: ['planAccess'] });
+        await refetchPlan();
       }
     } catch (error) {
-      toast.error('Failed to generate summary');
+      const message = error?.message ?? String(error);
+      if (/limit|upgrade|402|quota/i.test(message)) {
+        setQuotaBlocked(true);
+        toast.error(message || 'Free AI summary limit reached — upgrade for unlimited refreshes.');
+        queryClient.invalidateQueries({ queryKey: ['planAccess'] });
+      } else {
+        toast.error('Failed to generate summary');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    if (planLoading) return;
+    if (usageLocked) return;
     generateSummary(period);
-  }, [period]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [period, planLoading, usageLocked]);
 
   const workloadColors = {
     light: 'bg-emerald-100 text-emerald-800',
@@ -77,13 +92,21 @@ export default function AICalendarSummaryCard() {
           </TabsList>
         </Tabs>
 
-        {loading ? (
+        {loading || planLoading ? (
            <div className="flex items-center justify-center py-8">
              <Loader2 className="w-6 h-6 animate-spin text-teal-600" />
            </div>
+         ) : usageLocked && !summary ? (
+           <UpgradeGate
+             locked={true}
+             feature="AI Calendar Summary"
+             requiredPlan="Basic"
+             description="You've used your free AI calendar summaries. Upgrade for unlimited refreshes."
+           >
+             <span />
+           </UpgradeGate>
          ) : summary && typeof summary === 'object' && Object.keys(summary).length > 0 ? (
            <div className="space-y-4">
-            {/* Overview */}
             {summary.overview && (
               <div className="p-4 bg-white rounded-lg border border-teal-200">
                 <div className="flex items-center gap-2 mb-2">
@@ -91,27 +114,25 @@ export default function AICalendarSummaryCard() {
                   <h4 className="font-semibold text-slate-800">Overview</h4>
                 </div>
                 <p className="text-sm text-slate-600">
-                  {typeof summary.overview === 'string' 
-                    ? summary.overview 
+                  {typeof summary.overview === 'string'
+                    ? summary.overview
                     : JSON.stringify(summary.overview)}
                 </p>
               </div>
             )}
 
-            {/* Workload */}
             {summary.workload && (
               <div className="flex items-center gap-3">
                 <TrendingUp className="w-4 h-4 text-slate-500" />
                 <span className="text-sm text-slate-600">Workload:</span>
                 <Badge className={workloadColors[summary.workload] || 'bg-slate-100 text-slate-800'}>
-                  {typeof summary.workload === 'string' 
+                  {typeof summary.workload === 'string'
                     ? summary.workload.replace('_', ' ').toUpperCase()
                     : 'MODERATE'}
                 </Badge>
               </div>
             )}
 
-            {/* Statistics */}
             {summary.statistics && typeof summary.statistics === 'object' && (
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 bg-white rounded-lg border border-slate-200">
@@ -129,7 +150,6 @@ export default function AICalendarSummaryCard() {
               </div>
             )}
 
-            {/* Key Events */}
             {summary.key_events && Array.isArray(summary.key_events) && summary.key_events.length > 0 && (
               <div className="space-y-2">
                 <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
@@ -144,7 +164,7 @@ export default function AICalendarSummaryCard() {
                       </div>
                     );
                   }
-                  
+
                   if (typeof event === 'object' && event !== null) {
                     return (
                       <div key={idx} className="p-3 bg-white rounded-lg border border-slate-200">
@@ -166,13 +186,12 @@ export default function AICalendarSummaryCard() {
                       </div>
                     );
                   }
-                  
+
                   return null;
                 })}
               </div>
             )}
 
-            {/* AI Advice */}
             {summary.advice && (
               <div className="p-4 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-200">
                 <div className="flex items-start gap-2">
@@ -180,9 +199,9 @@ export default function AICalendarSummaryCard() {
                   <div>
                     <h4 className="font-semibold text-purple-900 text-sm mb-1">AI Tip</h4>
                     <p className="text-xs text-slate-700">
-                      {typeof summary.advice === 'string' 
-                        ? summary.advice 
-                        : Array.isArray(summary.advice) 
+                      {typeof summary.advice === 'string'
+                        ? summary.advice
+                        : Array.isArray(summary.advice)
                           ? summary.advice.join(', ')
                           : JSON.stringify(summary.advice)}
                     </p>
@@ -191,13 +210,13 @@ export default function AICalendarSummaryCard() {
               </div>
             )}
 
-            {usageCount >= 2 ? (
+            {usageLocked ? (
               <UpgradeGate
                 locked={true}
                 minimal={true}
                 feature="AI Calendar Summary"
-                requiredPlan="Pro"
-                description="Upgrade to refresh summaries unlimited times with real-time AI insights."
+                requiredPlan="Basic"
+                description="Upgrade for unlimited AI calendar summary refreshes."
               >
                 <span />
               </UpgradeGate>

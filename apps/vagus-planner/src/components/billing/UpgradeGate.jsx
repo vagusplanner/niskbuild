@@ -6,10 +6,14 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 /**
- * UpgradeGate — wraps any feature with a blur overlay + upgrade CTA.
+ * UpgradeGate — UX-only blur overlay + upgrade CTA.
+ *
+ * `locked` must reflect server-verified plan/usage (usePlanAccess).
+ * This component is NOT authorization — enforce paid actions in
+ * VP functions / LLM / plan-access APIs.
  *
  * Usage:
- *   <UpgradeGate locked={plan === 'free'} feature="AI Scheduling" requiredPlan="Pro">
+ *   <UpgradeGate locked={!usage.allowed} feature="AI Scheduling" requiredPlan="Pro">
  *     <MyFeatureComponent />
  *   </UpgradeGate>
  *

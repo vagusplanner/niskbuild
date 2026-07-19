@@ -4,6 +4,7 @@ import type { VpFunctionHandler } from '../types';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
 import { normalizePriceInterval } from '@/lib/stripe-price-ids';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY?.trim();
 const stripe = stripeSecret ? new Stripe(stripeSecret) : null;
@@ -136,7 +137,9 @@ export const cancelStripeSubscription: VpFunctionHandler = async ({ user, payloa
   try {
     await stripe.subscriptions.update(subscriptionId, { cancel_at_period_end: true });
 
-    await supabase
+    // Writes require service_role after select-only RLS hardening
+    const admin = createAdminClient();
+    await admin
       .schema('firstparty')
       .from('vp_subscriptions')
       .update({

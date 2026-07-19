@@ -17,7 +17,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '')
 
 /** Bearer token for cross-origin VP API calls (e.g. Capacitor). Web preview still uses cookies. */
-async function getVpApiFetchHeaders() {
+export async function getVpApiFetchHeaders() {
   const headers = { 'Content-Type': 'application/json' }
   try {
     const { data: { session } } = await supabase.auth.getSession()

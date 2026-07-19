@@ -1,6 +1,14 @@
 /**
  * featureGating.js
- * Centralised plan feature limits & access checks.
+ * Client-side plan feature limits & access checks (UX / display helpers).
+ *
+ * AUTHORITATIVE enforcement lives on the server:
+ *   - lib/vp-feature-limits.ts + lib/vp-usage-meter.ts
+ *   - GET /api/vagus-planner/plan-access (UpgradeGate UX snapshots)
+ *   - VP AI functions (calendar-ai, transcribeAudio) + POST /api/vagus-planner/llm
+ *   - Islamic paid features: GET /api/vagus-planner/islamic-access
+ *
+ * Keep numeric AI limits aligned with lib/vp-feature-limits.ts.
  *
  * Standard plans:  free → basic → pro → enterprise
  * Islamic plans:   free → basic_islamic → pro_islamic → enterprise_islamic
@@ -16,11 +24,12 @@ const PLAN_FEATURES = {
     api_calls:        { limit: 0,       name: 'API Calls' },
     // Feature flags
     guest_links:      { limit: 0,       name: 'Guest Sharing Links' },
-    ai_scheduler:     { limit: 0,       name: 'AI Auto-Scheduler' },
+    ai_scheduler:     { limit: 1,       name: 'AI Auto-Scheduler' }, // 1 free soft-trial; server enforces
     advanced_analytics:{ limit: 0,     name: 'Advanced Analytics' },
     travel_automation:{ limit: 0,       name: 'Travel Automation' },
     workspace_chat:   { limit: 0,       name: 'Workspace Chat' },
     workflow_automations:{ limit: 0,    name: 'Workflow Automations' },
+    ai_calendar_summary:{ limit: 2,     name: 'AI Calendar Summary' }, // server-metered soft trial
     // Islamic flags
     full_prayer:      { limit: 0,       name: 'Full Prayer Times' },
     full_quran:       { limit: 0,       name: 'Full Quran' },
@@ -41,11 +50,12 @@ const PLAN_FEATURES = {
     integrations:     { limit: 5,       name: 'Calendar Integrations' },
     api_calls:        { limit: 0,       name: 'API Calls' },
     guest_links:      { limit: 0,       name: 'Guest Sharing Links' },
-    ai_scheduler:     { limit: 0,       name: 'AI Auto-Scheduler' },
+    ai_scheduler:     { limit: 1,       name: 'AI Auto-Scheduler' }, // soft-trial; server enforces
     advanced_analytics:{ limit: 0,     name: 'Advanced Analytics' },
     travel_automation:{ limit: 0,       name: 'Travel Automation' },
     workspace_chat:   { limit: 0,       name: 'Workspace Chat' },
     workflow_automations:{ limit: 0,    name: 'Workflow Automations' },
+    ai_calendar_summary:{ limit: 999999, name: 'AI Calendar Summary' },
     // Islamic (not available on standard basic)
     full_prayer:      { limit: 0,       name: 'Full Prayer Times' },
     full_quran:       { limit: 0,       name: 'Full Quran' },
@@ -66,11 +76,12 @@ const PLAN_FEATURES = {
     integrations:     { limit: 999999,  name: 'Calendar Integrations' },
     api_calls:        { limit: 10000,   name: 'API Calls' },
     guest_links:      { limit: 999999,  name: 'Guest Sharing Links' },
-    ai_scheduler:     { limit: 1,       name: 'AI Auto-Scheduler' },
+    ai_scheduler:     { limit: 999999,  name: 'AI Auto-Scheduler' },
     advanced_analytics:{ limit: 1,     name: 'Advanced Analytics' },
     travel_automation:{ limit: 1,       name: 'Travel Automation' },
     workspace_chat:   { limit: 0,       name: 'Workspace Chat' },      // Enterprise only
     workflow_automations:{ limit: 0,    name: 'Workflow Automations' }, // Enterprise only
+    ai_calendar_summary:{ limit: 999999, name: 'AI Calendar Summary' },
     full_prayer:      { limit: 0,       name: 'Full Prayer Times' },
     full_quran:       { limit: 0,       name: 'Full Quran' },
     zakat:            { limit: 0,       name: 'Zakat Calculator' },
@@ -90,11 +101,12 @@ const PLAN_FEATURES = {
     integrations:     { limit: 999999,  name: 'Calendar Integrations' },
     api_calls:        { limit: 999999,  name: 'API Calls' },
     guest_links:      { limit: 999999,  name: 'Guest Sharing Links' },
-    ai_scheduler:     { limit: 1,       name: 'AI Auto-Scheduler' },
+    ai_scheduler:     { limit: 999999,  name: 'AI Auto-Scheduler' },
     advanced_analytics:{ limit: 1,     name: 'Advanced Analytics' },
     travel_automation:{ limit: 1,       name: 'Travel Automation' },
     workspace_chat:   { limit: 1,       name: 'Workspace Chat' },
     workflow_automations:{ limit: 1,    name: 'Workflow Automations' },
+    ai_calendar_summary:{ limit: 999999, name: 'AI Calendar Summary' },
     full_prayer:      { limit: 0,       name: 'Full Prayer Times' },
     full_quran:       { limit: 0,       name: 'Full Quran' },
     zakat:            { limit: 0,       name: 'Zakat Calculator' },
@@ -115,11 +127,12 @@ const PLAN_FEATURES = {
     integrations:     { limit: 5,       name: 'Calendar Integrations' },
     api_calls:        { limit: 0,       name: 'API Calls' },
     guest_links:      { limit: 0,       name: 'Guest Sharing Links' },
-    ai_scheduler:     { limit: 0,       name: 'AI Auto-Scheduler' },
+    ai_scheduler:     { limit: 1,       name: 'AI Auto-Scheduler' },
     advanced_analytics:{ limit: 0,     name: 'Advanced Analytics' },
     travel_automation:{ limit: 0,       name: 'Travel Automation' },
     workspace_chat:   { limit: 0,       name: 'Workspace Chat' },
     workflow_automations:{ limit: 0,    name: 'Workflow Automations' },
+    ai_calendar_summary:{ limit: 999999, name: 'AI Calendar Summary' },
     full_prayer:      { limit: 1,       name: 'Full Prayer Times' },
     full_quran:       { limit: 1,       name: 'Full Quran' },
     zakat:            { limit: 1,       name: 'Zakat Calculator' },
@@ -139,11 +152,12 @@ const PLAN_FEATURES = {
     integrations:     { limit: 999999,  name: 'Calendar Integrations' },
     api_calls:        { limit: 10000,   name: 'API Calls' },
     guest_links:      { limit: 999999,  name: 'Guest Sharing Links' },
-    ai_scheduler:     { limit: 1,       name: 'AI Auto-Scheduler' },
+    ai_scheduler:     { limit: 999999,  name: 'AI Auto-Scheduler' },
     advanced_analytics:{ limit: 1,     name: 'Advanced Analytics' },
     travel_automation:{ limit: 1,       name: 'Travel Automation' },
     workspace_chat:   { limit: 0,       name: 'Workspace Chat' },
     workflow_automations:{ limit: 0,    name: 'Workflow Automations' },
+    ai_calendar_summary:{ limit: 999999, name: 'AI Calendar Summary' },
     full_prayer:      { limit: 1,       name: 'Full Prayer Times' },
     full_quran:       { limit: 1,       name: 'Full Quran' },
     zakat:            { limit: 1,       name: 'Zakat Calculator' },
@@ -163,11 +177,12 @@ const PLAN_FEATURES = {
     integrations:     { limit: 999999,  name: 'Calendar Integrations' },
     api_calls:        { limit: 999999,  name: 'API Calls' },
     guest_links:      { limit: 999999,  name: 'Guest Sharing Links' },
-    ai_scheduler:     { limit: 1,       name: 'AI Auto-Scheduler' },
+    ai_scheduler:     { limit: 999999,  name: 'AI Auto-Scheduler' },
     advanced_analytics:{ limit: 1,     name: 'Advanced Analytics' },
     travel_automation:{ limit: 1,       name: 'Travel Automation' },
     workspace_chat:   { limit: 0,       name: 'Workspace Chat' },
     workflow_automations:{ limit: 1,    name: 'Workflow Automations' },
+    ai_calendar_summary:{ limit: 999999, name: 'AI Calendar Summary' },
     full_prayer:      { limit: 1,       name: 'Full Prayer Times' },
     full_quran:       { limit: 1,       name: 'Full Quran' },
     zakat:            { limit: 1,       name: 'Zakat Calculator' },
@@ -188,11 +203,12 @@ const PLAN_FEATURES = {
     integrations:     { limit: 999999,  name: 'Calendar Integrations' },
     api_calls:        { limit: 999999,  name: 'API Calls' },
     guest_links:      { limit: 999999,  name: 'Guest Sharing Links' },
-    ai_scheduler:     { limit: 1,       name: 'AI Auto-Scheduler' },
+    ai_scheduler:     { limit: 999999,  name: 'AI Auto-Scheduler' },
     advanced_analytics:{ limit: 1,     name: 'Advanced Analytics' },
     travel_automation:{ limit: 1,       name: 'Travel Automation' },
     workspace_chat:   { limit: 1,       name: 'Workspace Chat' },
     workflow_automations:{ limit: 1,    name: 'Workflow Automations' },
+    ai_calendar_summary:{ limit: 999999, name: 'AI Calendar Summary' },
     full_prayer:      { limit: 1,       name: 'Full Prayer Times' },
     full_quran:       { limit: 1,       name: 'Full Quran' },
     zakat:            { limit: 1,       name: 'Zakat Calculator' },

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { base44, getVpApiFetchHeaders } from '@/api/base44Client';
 
-function readLocalEdition() {
+function readLocalEditionPreference() {
   try {
     const stored = localStorage.getItem('vagus_edition');
     if (stored === 'islamic' || stored === 'standard') return stored;
@@ -12,45 +12,42 @@ function readLocalEdition() {
   return null;
 }
 
-function resolveEditionFromRecord(userSettings) {
-  if (!userSettings) return 'standard';
-  if (userSettings.edition === 'islamic' || userSettings.edition === 'standard') {
+function resolveEditionPreference(userSettings) {
+  if (userSettings?.edition === 'islamic' || userSettings?.edition === 'standard') {
     return userSettings.edition;
   }
-  const prefs = userSettings.preferences;
+  const prefs = userSettings?.preferences;
   if (prefs && typeof prefs === 'object' && (prefs.edition === 'islamic' || prefs.edition === 'standard')) {
     return prefs.edition;
   }
-  if (userSettings.islamic_mode === true) return 'islamic';
-  return 'standard';
+  if (userSettings?.islamic_mode === true) return 'islamic';
+  const local = readLocalEditionPreference();
+  return local === 'islamic' ? 'islamic' : 'standard';
+}
+
+async function fetchIslamicAccess() {
+  const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+  const res = await fetch(`${apiBase}/api/vagus-planner/islamic-access`, {
+    credentials: 'include',
+    headers: await getVpApiFetchHeaders(),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || 'Could not verify Islamic Edition access');
+  }
+  return res.json();
 }
 
 /**
- * Edition for nav/UI. Local Account toggle (vagus_edition) wins over a stale
- * server "standard" so the Islam tab does not vanish when settings sync lags.
- */
-function resolveEdition(userSettings) {
-  const localEdition = readLocalEdition();
-  const serverEdition = resolveEditionFromRecord(userSettings);
-
-  if (localEdition === 'islamic' && serverEdition === 'standard') {
-    return 'islamic';
-  }
-  if (localEdition === 'standard' && serverEdition === 'islamic') {
-    return 'standard';
-  }
-  if (serverEdition === 'islamic' || serverEdition === 'standard') {
-    return serverEdition;
-  }
-  return localEdition === 'islamic' ? 'islamic' : 'standard';
-}
-
-/**
- * Returns whether the current user has Islamic Edition enabled.
- * Checks edition field, islamic_mode flag, and Islamic subscription plans.
+ * Islamic Edition entitlement.
+ *
+ * Paid access is ONLY granted via server-verified subscription
+ * (GET /api/vagus-planner/islamic-access). localStorage / edition preference
+ * never unlocks Islamic Edition features by themselves — they only choose UI
+ * mode for users who already have paid access.
  */
 export function useIslamicEdition() {
-  const { data, isLoading, error } = useQuery({
+  const settingsQuery = useQuery({
     queryKey: ['userSettings'],
     queryFn: async () => {
       try {
@@ -61,33 +58,37 @@ export function useIslamicEdition() {
         return [];
       }
     },
-    staleTime: 30000
+    staleTime: 30000,
   });
 
-  if (!data || data.length === 0) {
-    const localEdition = readLocalEdition() ?? 'standard';
-    return {
-      isIslamicEdition: localEdition === 'islamic',
-      edition: localEdition,
-      isLoading,
-      userSettings: null,
-      islamicMode: localEdition === 'islamic',
-      error: error ?? null,
-    };
-  }
+  const accessQuery = useQuery({
+    queryKey: ['islamicAccess'],
+    queryFn: fetchIslamicAccess,
+    staleTime: 30000,
+    retry: 1,
+  });
 
-  const userSettings = data[0];
+  const isLoading = settingsQuery.isLoading || accessQuery.isLoading;
+  const userSettings = settingsQuery.data?.[0] ?? null;
+  const hasPaidIslamicAccess = accessQuery.data?.hasPaidIslamicAccess === true;
 
-  const islamicPlans = [
-    'basic islamic', 'pro islamic', 'enterprise islamic',
-    'basic_islamic', 'pro_islamic', 'enterprise_islamic',
-  ];
+  const editionPreference = resolveEditionPreference(userSettings);
+  // Preference only applies when entitled — otherwise force standard for UI.
+  const edition = hasPaidIslamicAccess ? editionPreference : 'standard';
+  const isIslamicEdition = hasPaidIslamicAccess;
+  const islamicMode = hasPaidIslamicAccess && edition === 'islamic';
 
-  const planName = (userSettings?.subscription_plan || '').toLowerCase().trim();
-  const hasIslamicPlan = islamicPlans.some(p => planName.includes(p.replace('_', ' ')) || planName === p);
-  const edition = resolveEdition(userSettings);
-  const isIslamicEdition = hasIslamicPlan || edition === 'islamic';
-  const islamicMode = edition === 'islamic';
-
-  return { isIslamicEdition, edition, isLoading, userSettings, islamicMode, error: error ?? null };
+  return {
+    isIslamicEdition,
+    hasPaidIslamicAccess,
+    edition,
+    editionPreference,
+    isLoading,
+    userSettings,
+    islamicMode,
+    subscriptionPlan: accessQuery.data?.plan ?? null,
+    subscriptionStatus: accessQuery.data?.status ?? null,
+    accessSource: accessQuery.data?.source ?? null,
+    error: accessQuery.error ?? settingsQuery.error ?? null,
+  };
 }

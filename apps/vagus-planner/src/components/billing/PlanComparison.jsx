@@ -4,8 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
 
 const STANDARD_PLANS = [
   {
@@ -336,14 +334,11 @@ function PlanCard({ plan, currentPlan, billingCycle, onUpgrade, isProcessing, se
 export default function PlanComparison({ currentPlan, onUpgrade, isProcessing = false }) {
   const [billingCycle, setBillingCycle] = useState('monthly');
   const [selectedPlan, setSelectedPlan] = useState(null);
+  const currentIsIslamic =
+    typeof currentPlan === 'string' && currentPlan.toLowerCase().includes('islamic');
+  const [showIslamicCatalog, setShowIslamicCatalog] = useState(currentIsIslamic);
 
-  const { data: settings = [] } = useQuery({
-    queryKey: ['userSettings'],
-    queryFn: () => base44.entities.UserSettings.list()
-  });
-  const islamicMode = settings.length > 0 ? (settings[0].islamic_mode ?? false) : false;
-
-  const plans = islamicMode ? ISLAMIC_PLANS : STANDARD_PLANS;
+  const plans = showIslamicCatalog ? ISLAMIC_PLANS : STANDARD_PLANS;
 
   const handleUpgrade = (planId, billingCycle, priceId) => {
     setSelectedPlan(planId);
@@ -352,18 +347,39 @@ export default function PlanComparison({ currentPlan, onUpgrade, isProcessing = 
 
   return (
     <div className="space-y-6">
-      {/* Edition badge */}
-      <div className="flex items-center justify-center gap-2">
-        <div className={cn(
-          'flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border',
-          islamicMode
-            ? 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/30 dark:border-indigo-800 dark:text-indigo-300'
-            : 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/30 dark:border-teal-800 dark:text-teal-300'
-        )}>
-          {islamicMode ? <Moon className="w-4 h-4" /> : <Calendar className="w-4 h-4" />}
-          {islamicMode ? 'Islamic Edition Plans' : 'Standard Edition Plans'}
+      {/* Catalog switch — browsing only; does not unlock features without a paid plan */}
+      <div className="flex flex-col items-center gap-2">
+        <div className="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
+          <button
+            type="button"
+            onClick={() => setShowIslamicCatalog(false)}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all',
+              !showIslamicCatalog
+                ? 'bg-white dark:bg-slate-700 shadow text-teal-700 dark:text-teal-300'
+                : 'text-slate-500'
+            )}
+          >
+            <Calendar className="w-4 h-4" />
+            Standard plans
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowIslamicCatalog(true)}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all',
+              showIslamicCatalog
+                ? 'bg-white dark:bg-slate-700 shadow text-indigo-700 dark:text-indigo-300'
+                : 'text-slate-500'
+            )}
+          >
+            <Moon className="w-4 h-4" />
+            Islamic plans
+          </button>
         </div>
-        <p className="text-xs text-slate-400">Switch editions in Settings → Preferences</p>
+        <p className="text-xs text-slate-400 text-center max-w-md">
+          Choose a catalog to compare prices. Islamic Edition features unlock only after an active Islamic subscription.
+        </p>
       </div>
 
       {/* Billing toggle */}
@@ -400,7 +416,7 @@ export default function PlanComparison({ currentPlan, onUpgrade, isProcessing = 
             onUpgrade={handleUpgrade}
             isProcessing={isProcessing}
             selectedPlan={selectedPlan}
-            islamicMode={islamicMode}
+            islamicMode={showIslamicCatalog}
           />
         ))}
       </div>

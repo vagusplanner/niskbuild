@@ -6,7 +6,28 @@ import {
   parseGroqJsonContent,
   withGroqTimeout,
 } from '@/lib/shift-ai/groq-json';
-import type { VpFunctionHandler } from '../types';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { requireFeatureUsage } from '@/lib/vp-usage-meter';
+import type { VpFunctionHandler, VpFunctionResult } from '../types';
+
+async function gateFeature(
+  user: { id: string; email?: string | null },
+  feature: string
+): Promise<{ ok: true } | { ok: false; result: VpFunctionResult }> {
+  const admin = createAdminClient();
+  const gate = await requireFeatureUsage(admin, {
+    userId: user.id,
+    email: user.email,
+    feature,
+  });
+  if (!gate.ok) {
+    return {
+      ok: false,
+      result: { ok: false, error: gate.error, status: gate.status },
+    };
+  }
+  return { ok: true };
+}
 
 async function groqJson<T extends Record<string, unknown>>(
   system: string,
@@ -52,7 +73,10 @@ function normalizeIsoDate(value: unknown): string | null {
 }
 
 /** Natural-language → calendar event (NaturalLanguageInput, EventGroupChat). */
-export const parseNaturalLanguageEvent: VpFunctionHandler = async ({ payload }) => {
+export const parseNaturalLanguageEvent: VpFunctionHandler = async ({ user, payload }) => {
+  const gate = await gateFeature(user, 'ai_requests');
+  if (!gate.ok) return gate.result;
+
   const text = readText(payload);
   if (!text) {
     return { ok: false, error: 'text or input is required', status: 400 };
@@ -123,7 +147,10 @@ If you cannot parse it, return { "success": false, "event": null }.`,
 };
 
 /** Full schedule plan (AISchedulePlanner). */
-export const aiSchedulePlanner: VpFunctionHandler = async ({ payload }) => {
+export const aiSchedulePlanner: VpFunctionHandler = async ({ user, payload }) => {
+  const gate = await gateFeature(user, 'ai_scheduler');
+  if (!gate.ok) return gate.result;
+
   const period = typeof payload.period === 'string' ? payload.period : 'week';
   const style = typeof payload.style === 'string' ? payload.style : 'balanced';
   const today = typeof payload.today === 'string' ? payload.today : new Date().toISOString().split('T')[0];
@@ -190,7 +217,10 @@ Generate 4–8 suggested_events for the period and 2–3 alternatives.`,
 };
 
 /** Quick scheduling suggestions (AIScheduleSuggestions). */
-export const aiSchedulingSuggestions: VpFunctionHandler = async ({ payload }) => {
+export const aiSchedulingSuggestions: VpFunctionHandler = async ({ user, payload }) => {
+  const gate = await gateFeature(user, 'ai_requests');
+  if (!gate.ok) return gate.result;
+
   const rangeStart =
     typeof payload.date_range_start === 'string'
       ? payload.date_range_start
@@ -234,7 +264,10 @@ Return JSON:
 };
 
 /** Optimal meeting slots (AdvancedMeetingScheduler). */
-export const advancedMeetingScheduler: VpFunctionHandler = async ({ payload }) => {
+export const advancedMeetingScheduler: VpFunctionHandler = async ({ user, payload }) => {
+  const gate = await gateFeature(user, 'ai_requests');
+  if (!gate.ok) return gate.result;
+
   const constraints =
     typeof payload.constraints === 'string' ? payload.constraints.trim() : '';
   const duration =
@@ -286,7 +319,10 @@ Return 3–5 suggestions.`,
 };
 
 /** Post-meeting analysis and follow-ups (AIMeetingAssistant). */
-export const aiMeetingAssistant: VpFunctionHandler = async ({ payload }) => {
+export const aiMeetingAssistant: VpFunctionHandler = async ({ user, payload }) => {
+  const gate = await gateFeature(user, 'ai_requests');
+  if (!gate.ok) return gate.result;
+
   const action = typeof payload.action === 'string' ? payload.action : 'analyze';
   const meetingId = payload.meeting_id;
   const transcript =
@@ -418,7 +454,10 @@ function normalizeMeetingSlots(slots: MeetingSlot[]) {
 }
 
 /** SmartMeetingScheduler — find optimal meeting windows. */
-export const findOptimalMeetingTimes: VpFunctionHandler = async ({ payload }) => {
+export const findOptimalMeetingTimes: VpFunctionHandler = async ({ user, payload }) => {
+  const gate = await gateFeature(user, 'ai_requests');
+  if (!gate.ok) return gate.result;
+
   const participants = Array.isArray(payload.participants) ? payload.participants : [];
   const duration =
     typeof payload.duration === 'number' && payload.duration > 0 ? payload.duration : 60;
@@ -448,7 +487,10 @@ Today: ${today}`
 };
 
 /** SmartMeetingTimeSelector — single best meeting time suggestions. */
-export const suggestOptimalMeetingTime: VpFunctionHandler = async ({ payload }) => {
+export const suggestOptimalMeetingTime: VpFunctionHandler = async ({ user, payload }) => {
+  const gate = await gateFeature(user, 'ai_requests');
+  if (!gate.ok) return gate.result;
+
   const title = typeof payload.meeting_title === 'string' ? payload.meeting_title : 'Meeting';
   const attendees = Array.isArray(payload.attendee_emails) ? payload.attendee_emails : [];
   const duration =
@@ -478,7 +520,10 @@ Attendees: ${attendees.length ? attendees.join(', ') : 'organizer only'}`
 };
 
 /** AICollaborationTools — lightweight meeting time suggestions. */
-export const suggestMeetingTimes: VpFunctionHandler = async ({ payload }) => {
+export const suggestMeetingTimes: VpFunctionHandler = async ({ user, payload }) => {
+  const gate = await gateFeature(user, 'ai_requests');
+  if (!gate.ok) return gate.result;
+
   const duration =
     typeof payload.duration === 'number' && payload.duration > 0 ? payload.duration : 60;
   const attendees = Array.isArray(payload.attendees) ? payload.attendees : [];
@@ -497,7 +542,10 @@ Attendees: ${attendees.length ? attendees.join(', ') : 'team'}`
 };
 
 /** PrayerAwareScheduler — slots that avoid prayer times. */
-export const suggestPrayerAwareMeetingTimes: VpFunctionHandler = async ({ payload }) => {
+export const suggestPrayerAwareMeetingTimes: VpFunctionHandler = async ({ user, payload }) => {
+  const gate = await gateFeature(user, 'ai_requests');
+  if (!gate.ok) return gate.result;
+
   const duration =
     typeof payload.duration_minutes === 'number' && payload.duration_minutes > 0
       ? payload.duration_minutes
@@ -524,4 +572,103 @@ ${JSON.stringify(prayerTimes)}`
   }
 
   return { ok: true, data: { suggestions: normalizeMeetingSlots(slots) } };
+};
+
+/**
+ * Calendar / event AI summary.
+ * Period summaries (AICalendarSummaryCard) consume `ai_calendar_summary` quota.
+ * Single-event insights consume monthly `ai_requests`.
+ */
+export const aiEventSummary: VpFunctionHandler = async ({ user, payload }) => {
+  const isPeriodSummary =
+    typeof payload.period === 'string' ||
+    typeof payload.start_date === 'string' ||
+    typeof payload.end_date === 'string';
+
+  const feature = isPeriodSummary ? 'ai_calendar_summary' : 'ai_requests';
+  const gate = await gateFeature(user, feature);
+  if (!gate.ok) return gate.result;
+
+  if (isPeriodSummary) {
+    const period = typeof payload.period === 'string' ? payload.period : 'daily';
+    const start = typeof payload.start_date === 'string' ? payload.start_date : '';
+    const end = typeof payload.end_date === 'string' ? payload.end_date : '';
+
+    const result = await groqJson<{
+      overview?: string;
+      workload?: string;
+      statistics?: Record<string, unknown>;
+      key_events?: unknown[];
+      advice?: string | string[];
+    }>(
+      'You summarize a user calendar period for Vagus Planner. Be concise and practical.',
+      `Create a ${period} calendar summary for the range ${start || 'today'} to ${end || 'today'}.
+
+Return JSON:
+{
+  "overview": "2-3 sentence overview",
+  "workload": "light|moderate|busy|very_busy",
+  "statistics": { "total_events": 0, "high_priority": 0 },
+  "key_events": [{ "title": "string", "time": "string", "importance": "high|medium|low" }],
+  "advice": "one short productivity tip"
+}
+
+If no event details were provided, still return a helpful generic summary for the period.`,
+      'vp-aiEventSummary-period'
+    );
+
+    if (!result) {
+      return { ok: false, error: 'AI is temporarily unavailable', status: 503 };
+    }
+
+    return {
+      ok: true,
+      data: {
+        success: true,
+        summary: {
+          overview: result.overview ?? `Your ${period} calendar summary.`,
+          workload: result.workload ?? 'moderate',
+          statistics: result.statistics ?? { total_events: 0, high_priority: 0 },
+          key_events: Array.isArray(result.key_events) ? result.key_events : [],
+          advice: result.advice ?? 'Block focus time for your highest-priority work.',
+        },
+      },
+    };
+  }
+
+  const eventData =
+    payload.event_data && typeof payload.event_data === 'object'
+      ? (payload.event_data as Record<string, unknown>)
+      : {};
+  const title = typeof eventData.title === 'string' ? eventData.title : 'this event';
+
+  const result = await groqJson<{
+    overview?: string;
+    suggestions?: string[];
+  }>(
+    'You provide short AI insights for a single calendar event in Vagus Planner.',
+    `Summarize this event and suggest 2–3 prep tips.
+
+Event: ${JSON.stringify(eventData)}
+
+Return JSON:
+{
+  "overview": "1-2 sentence summary of ${title}",
+  "suggestions": ["string"]
+}`,
+    'vp-aiEventSummary-event'
+  );
+
+  return {
+    ok: true,
+    data: {
+      success: true,
+      summary: {
+        overview:
+          result?.overview ??
+          `Summary for "${title}" — review agenda and prep materials ahead of time.`,
+        suggestions: Array.isArray(result?.suggestions) ? result.suggestions : [],
+      },
+    },
+  };
 };

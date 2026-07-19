@@ -30,6 +30,7 @@ export default function BillingPage() {
     if (params.get('success') === 'true') {
       toast.success('Payment successful! Your subscription is being activated.');
       queryClient.invalidateQueries({ queryKey: ['subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['islamicAccess'] });
       // Clean URL
       window.history.replaceState({}, '', window.location.pathname);
     } else if (params.get('canceled') === 'true') {

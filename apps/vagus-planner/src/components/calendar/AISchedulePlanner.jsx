@@ -12,6 +12,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import UpgradeGate from '@/components/billing/UpgradeGate';
+import { usePlanAccess } from '@/hooks/usePlanAccess';
 
 const PERIOD_OPTIONS = [
   { id: 'day',   label: 'Today',      icon: Calendar,     desc: 'Plan just today' },
@@ -92,11 +94,17 @@ function AlternativeSchedule({ alt, index, onSelect }) {
 
 export default function AISchedulePlanner({ isOpen, onClose, onEventsCreated }) {
   const queryClient = useQueryClient();
+  const { aiScheduler, isLoading: planLoading, refetch: refetchPlan } = usePlanAccess();
   const [step, setStep] = useState('select'); // select | generating | review | alternatives | applying | done
   const [period, setPeriod] = useState('week');
   const [result, setResult] = useState(null);
   const [selectedAlt, setSelectedAlt] = useState(null);
   const [notifyEnabled, setNotifyEnabled] = useState(true);
+  const [quotaBlocked, setQuotaBlocked] = useState(false);
+
+  const schedulerLocked =
+    quotaBlocked ||
+    (aiScheduler && !aiScheduler.unlimited && !aiScheduler.allowed);
 
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
   const { data: events = [] } = useQuery({
@@ -116,6 +124,10 @@ export default function AISchedulePlanner({ isOpen, onClose, onEventsCreated }) 
   });
 
   const generate = async (overrideStyle = null) => {
+    if (schedulerLocked) {
+      toast.error('AI Scheduling requires a Pro plan (or your free trial use is used up).');
+      return;
+    }
     setStep('generating');
     setResult(null);
 
@@ -147,7 +159,6 @@ export default function AISchedulePlanner({ isOpen, onClose, onEventsCreated }) 
     const userPrefs = settings[0] || {};
     const islamicMode = userPrefs.islamic_mode;
 
-    const periodLabel = period === 'day' ? 'today' : period === 'week' ? 'this week' : 'this month';
     const style = overrideStyle || 'balanced';
 
     try {
@@ -167,8 +178,18 @@ export default function AISchedulePlanner({ isOpen, onClose, onEventsCreated }) 
 
       setResult(res.data);
       setStep('review');
+      setQuotaBlocked(false);
+      queryClient.invalidateQueries({ queryKey: ['planAccess'] });
+      await refetchPlan();
     } catch (err) {
-      toast.error('Failed to generate schedule — please try again');
+      const message = err?.message ?? String(err);
+      if (/limit|upgrade|402|quota|paid plan/i.test(message)) {
+        setQuotaBlocked(true);
+        toast.error(message);
+        queryClient.invalidateQueries({ queryKey: ['planAccess'] });
+      } else {
+        toast.error('Failed to generate schedule — please try again');
+      }
       setStep('select');
     }
   };
@@ -242,6 +263,16 @@ export default function AISchedulePlanner({ isOpen, onClose, onEventsCreated }) 
             {/* STEP: SELECT PERIOD */}
             {step === 'select' && (
               <div className="p-5 space-y-5">
+                {(schedulerLocked) && (
+                  <UpgradeGate
+                    locked={true}
+                    feature="AI Schedule Planner"
+                    requiredPlan="Pro"
+                    description="Free accounts get one AI schedule generation. Upgrade to Pro for unlimited smart scheduling."
+                  >
+                    <span />
+                  </UpgradeGate>
+                )}
                 <div>
                   <p className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3">What would you like to plan?</p>
                   <div className="grid grid-cols-3 gap-2">
@@ -302,7 +333,8 @@ export default function AISchedulePlanner({ isOpen, onClose, onEventsCreated }) 
 
                 <Button
                   onClick={() => generate()}
-                  className="w-full h-12 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white font-black text-base gap-2 rounded-2xl shadow-lg shadow-violet-500/25"
+                  disabled={schedulerLocked || planLoading}
+                  className="w-full h-12 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white font-black text-base gap-2 rounded-2xl shadow-lg shadow-violet-500/25 disabled:opacity-50"
                 >
                   <Zap className="w-5 h-5" />
                   Generate My {period === 'day' ? 'Daily' : period === 'week' ? 'Weekly' : 'Monthly'} Plan

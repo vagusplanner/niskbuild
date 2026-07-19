@@ -118,7 +118,8 @@ function UpgradePrompt({ compact = false }) {
 }
 
 export default function IslamicEditionGate({ children, compact = false, page = false }) {
-  const { isIslamicEdition, isLoading } = useIslamicEdition();
+  const { hasPaidIslamicAccess, isIslamicEdition, isLoading } = useIslamicEdition();
+  const entitled = hasPaidIslamicAccess === true || isIslamicEdition === true;
 
   if (isLoading) {
     return compact ? null : (
@@ -128,7 +129,7 @@ export default function IslamicEditionGate({ children, compact = false, page = f
     );
   }
 
-  if (!isIslamicEdition) {
+  if (!entitled) {
     return <UpgradePrompt compact={compact} />;
   }
 
