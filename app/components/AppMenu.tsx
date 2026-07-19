@@ -36,8 +36,6 @@ const ADMIN_NAV = [
   { href: '/admin/tenants', label: 'Tenants' },
   { href: '/admin/apps', label: 'Apps' },
   { href: '/admin/apps/import', label: 'Import app' },
-  { href: '/admin/vp-deploy', label: 'VP Deploy' },
-  { href: '/admin/shift-ai/curriculum-packs', label: 'Curriculum packs' },
   { href: '/admin/marketplace', label: 'Listings' },
   { href: '/admin/insights', label: 'Privacy & Analytics' },
   { href: '/admin/analytics', label: 'Demand Analytics' },
@@ -51,7 +49,6 @@ const ADMIN_NAV = [
   { href: '/admin/social', label: 'Social Hub' },
   { href: '/admin/social/company', label: 'Company social' },
   { href: '/admin/churn', label: 'Churn risk' },
-  { href: '/builder/vagus-planner', label: 'VP Studio' },
   { href: '/admin/users', label: 'Users' },
   { href: '/admin/support', label: 'Support' },
 ];

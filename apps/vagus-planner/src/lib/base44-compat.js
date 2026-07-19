@@ -64,6 +64,7 @@ const ENTITY_TABLES = {
   Notification: 'vp_notifications',
   Chat: 'vp_chats',
   LiveLocation: 'vp_live_locations',
+  Hadith: 'vp_saved_hadiths',
 }
 
 function tableFrom(tableName) {
@@ -191,6 +192,40 @@ function mapPayloadToRow(entityName, payload, userId) {
     return row
   }
 
+  if (entityName === 'Hadith') {
+    const english =
+      p.english_translation ?? p.translation ?? p.english ?? p.text ?? ''
+    const row = {
+      english_translation: typeof english === 'string' ? english : String(english ?? ''),
+    }
+    if (userId) row.user_id = userId
+    const arabic = p.arabic_text ?? p.arabic
+    if (arabic != null) row.arabic_text = arabic
+    if (p.narrator != null) row.narrator = p.narrator
+    if (p.source != null) row.source = p.source
+    if (p.reference != null) row.reference = p.reference
+    if (p.collection != null) row.collection = p.collection
+    else if (p.source != null && !p.collection) row.collection = p.source
+    if (p.category != null) row.category = p.category
+    if (p.grade != null) row.grade = p.grade
+    if (p.title != null) row.title = p.title
+    if (p.notes != null) row.notes = typeof p.notes === 'string' ? p.notes : JSON.stringify(p.notes)
+    if (p.hadith_number != null || p.hadithNumber != null) {
+      const n = Number(p.hadith_number ?? p.hadithNumber)
+      if (Number.isFinite(n)) row.hadith_number = n
+    }
+    if (p.is_favorite != null) row.is_favorite = p.is_favorite !== false
+    else row.is_favorite = true
+    if (p.ai_context != null) {
+      row.ai_context =
+        typeof p.ai_context === 'object' && !Array.isArray(p.ai_context)
+          ? p.ai_context
+          : { value: p.ai_context }
+    }
+    row.updated_at = new Date().toISOString()
+    return row
+  }
+
   const row = { ...p }
   if (userId && row.user_id == null) row.user_id = userId
   return row
@@ -294,6 +329,18 @@ function mapRowFromDb(entityName, row) {
       ...row,
       title: row.name ?? row.title,
       start_date: row.holiday_date ?? row.start_date,
+    }
+  }
+
+  if (entityName === 'Hadith') {
+    return {
+      ...row,
+      english_translation: row.english_translation ?? row.translation ?? '',
+      arabic_text: row.arabic_text ?? row.arabic ?? '',
+      created_date: row.created_at ?? row.created_date,
+      updated_date: row.updated_at ?? row.updated_date,
+      hadithNumber: row.hadith_number ?? row.hadithNumber ?? null,
+      is_favorite: row.is_favorite !== false,
     }
   }
 

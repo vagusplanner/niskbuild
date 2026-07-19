@@ -16,6 +16,7 @@ export const VP_GDPR_CORE_TABLES = [
   'vp_prayer_logs',
   'vp_chats',
   'vp_hadith_srs_cards',
+  'vp_saved_hadiths',
   'vp_live_locations',
   'vp_reminders',
   'vp_device_tokens',

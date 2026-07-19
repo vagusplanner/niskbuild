@@ -74,6 +74,12 @@ export default async function AdminLayerOverview() {
             Apps
           </Link>
           <Link
+            href="/admin/shift-ai/curriculum-packs"
+            className="px-3 py-1.5 text-xs rounded-lg border border-nisk text-nisk-muted hover:text-[var(--foreground)] hover:bg-[var(--surface-elevated)]"
+          >
+            Curriculum packs
+          </Link>
+          <Link
             href="/admin/vp-deploy"
             className="px-3 py-1.5 text-xs rounded-lg border border-nisk text-nisk-muted hover:text-[var(--foreground)] hover:bg-[var(--surface-elevated)]"
           >

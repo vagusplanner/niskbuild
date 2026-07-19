@@ -672,3 +672,79 @@ Return JSON:
     },
   };
 };
+
+/**
+ * Schedule conflict resolution suggestions (ConflictResolutionModal).
+ * Returns real AI suggestions or a clear failure — never fabricates client-side fallbacks.
+ */
+export const detectConflicts: VpFunctionHandler = async ({ user, payload }) => {
+  const gate = await gateFeature(user, 'ai_requests');
+  if (!gate.ok) return gate.result;
+
+  const event1Id = payload.event1_id;
+  const event2Id = payload.event2_id;
+  const event1 =
+    payload.event1 && typeof payload.event1 === 'object'
+      ? (payload.event1 as Record<string, unknown>)
+      : {};
+  const event2 =
+    payload.event2 && typeof payload.event2 === 'object'
+      ? (payload.event2 as Record<string, unknown>)
+      : {};
+
+  const result = await groqJson<{
+    suggestions?: Array<Record<string, unknown>>;
+  }>(
+    'You resolve calendar scheduling conflicts for Vagus Planner. Propose practical, realistic alternatives only.',
+    `Two events conflict. Propose 2–3 resolution options.
+
+Event 1 id: ${String(event1Id ?? '')}
+Event 1: ${JSON.stringify(event1)}
+Event 2 id: ${String(event2Id ?? '')}
+Event 2: ${JSON.stringify(event2)}
+
+Return JSON:
+{
+  "suggestions": [
+    {
+      "type": "reschedule|alternative|delegate",
+      "action": "short imperative label",
+      "rationale": "1-2 sentence explanation",
+      "event_id": "id of event to change (or null for delegate)",
+      "new_start_date": "ISO datetime or null",
+      "new_end_date": "ISO datetime or null"
+    }
+  ]
+}
+
+Only include suggestions you can justify from the event data. Do not invent attendees or constraints.`,
+    'vp-detectConflicts'
+  );
+
+  if (!result) {
+    return { ok: false, error: 'Could not check for conflicts right now', status: 503 };
+  }
+
+  const suggestions = Array.isArray(result.suggestions) ? result.suggestions : [];
+  if (suggestions.length === 0) {
+    return {
+      ok: false,
+      error: 'No conflict resolution suggestions available right now',
+      status: 502,
+    };
+  }
+
+  return {
+    ok: true,
+    data: {
+      suggestions: suggestions.map((s) => ({
+        type: typeof s.type === 'string' ? s.type : 'reschedule',
+        action: typeof s.action === 'string' ? s.action : 'Adjust schedule',
+        rationale: typeof s.rationale === 'string' ? s.rationale : '',
+        event_id: s.event_id ?? null,
+        new_start_date: s.new_start_date ?? null,
+        new_end_date: s.new_end_date ?? null,
+      })),
+    },
+  };
+};

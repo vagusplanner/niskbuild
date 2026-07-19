@@ -103,23 +103,29 @@ function ConflictEventChip({ title, time, category }) {
 
 export default function ConflictResolutionModal({ conflict, onClose, onResolve, events = [] }) {
   const [selectedSuggestion, setSelectedSuggestion] = useState(null);
-  const [aiSuggestions, setAiSuggestions] = useState(conflict?.ai_suggestions || []);
+  const [aiSuggestions, setAiSuggestions] = useState([]);
   const [loadingAI, setLoadingAI] = useState(false);
+  const [aiError, setAiError] = useState(null);
   const queryClient = useQueryClient();
 
-  // Enrich suggestions with type info if not present
+  // Only show suggestions that were previously stored on the conflict record (server-authored).
+  // Never invent client-side "AI" options.
   useEffect(() => {
+    setSelectedSuggestion(null);
+    setAiError(null);
     if (conflict?.ai_suggestions?.length) {
       setAiSuggestions(conflict.ai_suggestions.map((s, i) => ({
         ...s,
         type: s.type || (['reschedule', 'alternative', 'delegate'][i % 3]),
       })));
+    } else {
+      setAiSuggestions([]);
     }
   }, [conflict]);
 
-  // Generate fresh AI suggestions if none exist
   const generateAISuggestions = async () => {
     setLoadingAI(true);
+    setAiError(null);
     try {
       const event1 = events.find(e => e.id === conflict.event1_id);
       const event2 = events.find(e => e.id === conflict.event2_id);
@@ -127,45 +133,44 @@ export default function ConflictResolutionModal({ conflict, onClose, onResolve, 
       const { data } = await base44.functions.invoke('detectConflicts', {
         event1_id: conflict.event1_id,
         event2_id: conflict.event2_id,
+        event1: event1
+          ? {
+              id: event1.id,
+              title: event1.title,
+              start_date: event1.start_date,
+              end_date: event1.end_date,
+              category: event1.category,
+            }
+          : { title: conflict.event1_title },
+        event2: event2
+          ? {
+              id: event2.id,
+              title: event2.title,
+              start_date: event2.start_date,
+              end_date: event2.end_date,
+              category: event2.category,
+            }
+          : { title: conflict.event2_title },
         generate_suggestions_only: true,
       });
 
       if (data?.suggestions?.length) {
         setAiSuggestions(data.suggestions.map((s, i) => ({
           ...s,
-          type: ['reschedule', 'alternative', 'delegate'][i % 3],
+          type: s.type || (['reschedule', 'alternative', 'delegate'][i % 3]),
         })));
+        setSelectedSuggestion(null);
       } else {
-        // Fallback client-side suggestions
-        const now = new Date(conflict.conflict_date);
-        const suggestions = [
-          {
-            type: 'reschedule',
-            action: `Move "${conflict.event2_title}" to later in the day`,
-            rationale: `Reschedule the second event to avoid the overlap. Morning slots are typically less congested.`,
-            event_id: conflict.event2_id,
-            new_start_date: new Date(now.setHours(15, 0, 0, 0)).toISOString(),
-            new_end_date: new Date(now.setHours(16, 0, 0, 0)).toISOString(),
-          },
-          {
-            type: 'alternative',
-            action: `Move "${conflict.event1_title}" to the morning`,
-            rationale: `An 8–9 AM slot is usually free and ensures both events can happen on the same day.`,
-            event_id: conflict.event1_id,
-            new_start_date: new Date(now.setHours(8, 0, 0, 0)).toISOString(),
-            new_end_date: new Date(now.setHours(9, 0, 0, 0)).toISOString(),
-          },
-          {
-            type: 'delegate',
-            action: `Delegate or skip "${conflict.event2_title}"`,
-            rationale: `If this event is lower priority, consider delegating it to a team member or cancelling it entirely.`,
-            event_id: conflict.event2_id,
-          },
-        ];
-        setAiSuggestions(suggestions);
+        setAiSuggestions([]);
+        setAiError("Couldn't check for conflicts right now. No suggestions were returned.");
+        toast.error("Couldn't check for conflicts right now");
       }
-    } catch {
-      toast.error('Could not generate AI suggestions. Try again.');
+    } catch (err) {
+      setAiSuggestions([]);
+      const message =
+        err?.message || "Couldn't check for conflicts right now. Please try again.";
+      setAiError(message);
+      toast.error(message);
     } finally {
       setLoadingAI(false);
     }
@@ -292,10 +297,21 @@ export default function ConflictResolutionModal({ conflict, onClose, onResolve, 
                 <Loader2 className="w-6 h-6 animate-spin mb-2" />
                 <p className="text-sm">Analysing your schedule...</p>
               </div>
+            ) : aiError ? (
+              <div className="text-center py-6 px-2 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/80 dark:bg-amber-950/30">
+                <AlertTriangle className="w-7 h-7 mx-auto mb-2 text-amber-600 dark:text-amber-400" />
+                <p className="text-sm font-medium text-amber-900 dark:text-amber-100 mb-1">
+                  Couldn&apos;t check for conflicts right now
+                </p>
+                <p className="text-xs text-amber-700/80 dark:text-amber-300/80 mb-3">{aiError}</p>
+                <Button variant="outline" size="sm" onClick={generateAISuggestions} className="text-xs h-8">
+                  Try again
+                </Button>
+              </div>
             ) : aiSuggestions.length === 0 ? (
               <div className="text-center py-6 text-slate-400">
                 <Sparkles className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                <p className="text-sm">Click "Generate" for AI-powered resolution options</p>
+                <p className="text-sm">Click &quot;Generate&quot; for AI-powered resolution options</p>
               </div>
             ) : (
               <div className="space-y-2.5">

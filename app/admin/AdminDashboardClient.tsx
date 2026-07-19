@@ -91,6 +91,12 @@ export default function AdminDashboardClient({ data }: Props) {
         >
           🏢 Orgs
         </Link>
+        <Link
+          href="/admin/apps"
+          className="px-4 py-2 rounded-lg bg-[var(--surface-elevated)] hover:bg-[var(--card-bg)] text-[var(--foreground)] transition-colors"
+        >
+          📱 Apps
+        </Link>
       </div>
 
       {activeTab === 'overview' && (

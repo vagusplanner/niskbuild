@@ -74,29 +74,71 @@ export default function DailyHadithWidget() {
   const fallbackHadith = null;
   const fallbackLoading = false;
 
-  // Save to DB favorites
+  // Saved favorites from Supabase (vp_saved_hadiths via Hadith entity)
   const { data: savedHadiths = [] } = useQuery({
     queryKey: ['hadiths'],
     queryFn: () => base44.entities.Hadith.list('-created_date', 100),
   });
 
-  const saveMutation = useMutation({
-    mutationFn: (h) => base44.entities.Hadith.create({
-      english_translation: h.english || h.text,
-      arabic_text: h.arabic || '',
-      source: `${collection.label}`,
-      reference: h.reference || `Hadith #${h.hadithNumber || hadithNum}`,
-      narrator: h.narrator || '',
-      is_favorite: true,
-    }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['hadiths'] });
-      toast.success('Hadith saved to your collection ❤️');
-    },
-  });
-
   const displayHadith = hadith || fallbackHadith;
   const loading = isLoading || (isError && fallbackLoading);
+
+  const englishText = displayHadith?.hadith?.[0]?.body
+    || displayHadith?.text
+    || displayHadith?.english_translation
+    || '';
+  const arabicText = displayHadith?.hadith?.[0]?.arabic
+    || displayHadith?.arabic
+    || displayHadith?.arabic_text
+    || '';
+  const narrator = displayHadith?.narrator
+    || displayHadith?.grade
+    || '';
+
+  const currentReference = displayHadith?.hadithNumber
+    ? `${collection.label} #${displayHadith.hadithNumber}`
+    : `${collection.label} #${hadithNum}`;
+
+  const alreadySaved = Boolean(
+    englishText &&
+    savedHadiths.some((h) => {
+      const savedText = (h.english_translation || '').trim();
+      const current = englishText.trim();
+      if (!savedText || !current) return false;
+      if (h.reference && h.reference === currentReference && h.is_favorite !== false) return true;
+      return savedText.slice(0, 80) === current.slice(0, 80) && h.is_favorite !== false;
+    })
+  );
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      if (!englishText.trim()) {
+        throw new Error('Nothing to save — hadith text is empty');
+      }
+      const created = await base44.entities.Hadith.create({
+        english_translation: englishText.trim(),
+        arabic_text: arabicText || '',
+        source: collection.label,
+        collection: collection.key,
+        reference: currentReference,
+        narrator: typeof narrator === 'string' ? narrator : '',
+        hadith_number: displayHadith?.hadithNumber || hadithNum,
+        is_favorite: true,
+      });
+      if (!created?.id) {
+        throw new Error('Save failed — could not store hadith');
+      }
+      return created;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hadiths'] });
+      queryClient.invalidateQueries({ queryKey: ['favorite-hadiths'] });
+      toast.success('Hadith saved to your collection');
+    },
+    onError: (err) => {
+      toast.error(err?.message || 'Could not save hadith. Please try again.');
+    },
+  });
 
   const handleShare = (method) => {
     const text = englishText || '';
@@ -119,26 +161,18 @@ export default function DailyHadithWidget() {
   };
 
   const handleSave = () => {
-    if (!displayHadith) return;
-    const text = displayHadith.hadith?.[0]?.body || displayHadith.text || displayHadith.english_translation;
-    const arabic = displayHadith.hadith?.[0]?.arabic || displayHadith.arabic || '';
-    const reference = displayHadith.hadithNumber ? `${collection.label} #${displayHadith.hadithNumber}` : `${collection.label} #${hadithNum}`;
-    saveMutation.mutate({ english: text, arabic, reference });
+    if (!displayHadith || !englishText.trim()) {
+      toast.error('Nothing to save yet');
+      return;
+    }
+    if (alreadySaved) {
+      toast.info('Already in your saved collection');
+      return;
+    }
+    saveMutation.mutate();
   };
 
-  const englishText = displayHadith?.hadith?.[0]?.body
-    || displayHadith?.text
-    || displayHadith?.english_translation
-    || '';
-  const arabicText = displayHadith?.hadith?.[0]?.arabic
-    || displayHadith?.arabic
-    || displayHadith?.arabic_text
-    || '';
-  const narrator = displayHadith?.hadith?.[0]?.grades?.[0]?.grade
-    || displayHadith?.narrator
-    || displayHadith?.grade
-    || '';
-
+  const isFavorited = alreadySaved || saveMutation.isSuccess;
   return (
     <Card className="overflow-hidden bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-950/40 dark:to-yellow-950/30 border-amber-200 dark:border-amber-800">
       <div className="p-5">
@@ -156,8 +190,15 @@ export default function DailyHadithWidget() {
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => refetch()} disabled={isFetching}>
               <RefreshCw className={`w-4 h-4 text-amber-600 ${isFetching ? 'animate-spin' : ''}`} />
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleSave} disabled={saveMutation.isPending || !displayHadith}>
-              <Heart className={`w-4 h-4 ${saveMutation.isSuccess ? 'fill-rose-500 text-rose-500' : 'text-amber-600'}`} />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={handleSave}
+              disabled={saveMutation.isPending || !displayHadith || !englishText.trim()}
+              title={isFavorited ? 'Saved to your collection' : 'Save to collection'}
+            >
+              <Heart className={`w-4 h-4 ${isFavorited ? 'fill-rose-500 text-rose-500' : 'text-amber-600'}`} />
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

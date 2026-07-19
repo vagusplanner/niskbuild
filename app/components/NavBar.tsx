@@ -25,7 +25,12 @@ const PLATFORM_ADMIN_NAV: NavItem[] = [
     description: 'Public · Firstparty · Marketplace overview',
   },
   { href: '/admin/tenants', label: 'Tenants', icon: '👥', description: 'Subscriber layer' },
-  { href: '/admin/apps', label: 'Apps', icon: '📱', description: 'Firstparty app registry' },
+  {
+    href: '/admin/apps',
+    label: 'Apps',
+    icon: '📱',
+    description: 'Vagus Planner, Shift AI, and app registry',
+  },
   {
     href: '/admin/marketplace',
     label: 'Listings',
@@ -37,18 +42,6 @@ const PLATFORM_ADMIN_NAV: NavItem[] = [
     label: 'Import app',
     icon: '📥',
     description: 'Register first-party apps from manifests',
-  },
-  {
-    href: '/admin/vp-deploy',
-    label: 'VP Deploy',
-    icon: '🚀',
-    description: 'Vagus Planner deployment artifacts',
-  },
-  {
-    href: '/admin/shift-ai/curriculum-packs',
-    label: 'Curriculum packs',
-    icon: '📚',
-    description: 'Shift AI curriculum pack management',
   },
   {
     href: '/admin/insights',
@@ -115,12 +108,6 @@ const PLATFORM_ADMIN_NAV: NavItem[] = [
     label: 'Churn risk',
     icon: '⚠️',
     description: 'Paid users inactive 14+ days — re-engagement',
-  },
-  {
-    href: '/builder/vagus-planner',
-    label: 'VP Studio',
-    icon: '🛠️',
-    description: 'Edit Vagus Planner with AI',
   },
 ];
 
@@ -210,7 +197,6 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
     const path = href.split('#')[0];
     if (path === '/dashboard') return pathname === '/dashboard';
     if (path === '/admin/layer-overview') return pathname.startsWith('/admin');
-    if (path === '/builder/vagus-planner') return pathname.startsWith('/builder/vagus-planner');
     return pathname === path || pathname.startsWith(`${path}/`);
   };
 
