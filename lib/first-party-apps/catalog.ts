@@ -76,9 +76,8 @@ export const FIRST_PARTY_APPS: FirstPartyApp[] = [
     status: 'live',
     icon: '🎓',
     openHref: '/builder/shift-ai',
-    // No AppBuilderWorkspace / AI studio for Shift AI yet — admin content surface instead
-    editHref: '/admin/shift-ai/curriculum-packs',
-    editLabel: 'Curriculum packs',
+    editHref: '/builder/shift-ai/studio',
+    editLabel: 'Open studio',
     actions: [
       {
         id: 'analytics',

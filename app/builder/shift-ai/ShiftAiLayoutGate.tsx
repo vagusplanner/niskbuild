@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import ShiftAiShell from '@/app/builder/shift-ai/ShiftAiShell';
 
 const STANDALONE_PREFIXES = [
+  '/builder/shift-ai/studio',
   '/builder/shift-ai/parent',
   '/builder/shift-ai/mentor',
   '/builder/shift-ai/signup',
