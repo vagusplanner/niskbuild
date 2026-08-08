@@ -14,7 +14,22 @@ export const PLATFORM_OWNER_PATH_PREFIXES = [
   '/vagus-planner',
 ] as const;
 
+/**
+ * App Store–required public legal pages under /vagus-planner/*.
+ * Must stay unauthenticated and must NOT inherit the /vagus-planner platform-owner gate.
+ */
+export const VAGUS_PLANNER_PUBLIC_LEGAL_PATHS = [
+  '/vagus-planner/privacy',
+  '/vagus-planner/terms',
+] as const;
+
+export function isVagusPlannerPublicLegalPath(pathname: string) {
+  const normalized = pathname.replace(/\/+$/, '') || '/';
+  return (VAGUS_PLANNER_PUBLIC_LEGAL_PATHS as readonly string[]).includes(normalized);
+}
+
 export function isPlatformOwnerPath(pathname: string) {
+  if (isVagusPlannerPublicLegalPath(pathname)) return false;
   return PLATFORM_OWNER_PATH_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
   );
@@ -32,6 +47,7 @@ export const PUBLIC_PATHS = [
   '/privacy',
   '/terms',
   '/games',
+  ...VAGUS_PLANNER_PUBLIC_LEGAL_PATHS,
 ];
 
 /** Public shareable preview pages (no auth) */
@@ -87,8 +103,12 @@ export const PAID_TIERS = [
 ] as const;
 
 export function isPublicPath(pathname: string) {
+  const normalized = pathname.replace(/\/+$/, '') || '/';
+  const publicPaths = PUBLIC_PATHS as readonly string[];
   return (
-    PUBLIC_PATHS.includes(pathname) ||
+    publicPaths.includes(pathname) ||
+    publicPaths.includes(normalized) ||
+    isVagusPlannerPublicLegalPath(pathname) ||
     isPreviewPath(pathname) ||
     isInvitePath(pathname) ||
     isVpDeployBundlePath(pathname)

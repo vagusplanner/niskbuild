@@ -53,5 +53,9 @@
 	<string>Vagus Planner uses the camera to scan product barcodes for your grocery list.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Vagus Planner uses speech recognition for voice commands, voice journaling, and voice task capture.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>
