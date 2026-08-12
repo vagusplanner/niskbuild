@@ -1005,7 +1005,16 @@ function BuilderContent() {
       lastPrompt: promptHistory[promptHistory.length - 1]?.prompt,
       promptHistory: promptHistory.map((h) => h.prompt),
     });
-    const effectivePrompt = buildPageScopedPrompt(withPlaces, ctx);
+    const indexHtmlForContext =
+      filesForGen.find((f) => f.path === 'index.html')?.content?.trim() ||
+      (isExportableCode(generatedCode) ? generatedCode : '');
+    const activeHtmlForContext =
+      filesForGen.find((f) => f.path === activeForGen)?.content?.trim() ||
+      (activeForGen === 'index.html' && isExportableCode(generatedCode) ? generatedCode : '');
+    const effectivePrompt = buildPageScopedPrompt(withPlaces, ctx, {
+      indexHtml: indexHtmlForContext,
+      activeHtml: activeHtmlForContext,
+    });
     const narrationContext = formatNarrationContext({
       pageLabel: ctx.pageLabel,
       siteKind: ctx.siteKind,

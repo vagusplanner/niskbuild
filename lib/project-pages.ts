@@ -156,11 +156,97 @@ export function getPreviewHtmlForPage(
   return cleanGeneratedCode(content);
 }
 
-export function buildPageScopedPrompt(userPrompt: string, ctx: ProjectPageContext): string {
+/** Soft budgets so edit prompts stay within model context while keeping design tokens. */
+const INDEX_HTML_BUDGET = 14_000;
+const ACTIVE_HTML_BUDGET = 10_000;
+
+/**
+ * Truncate HTML for edit-context prompts.
+ * Prefer structural/style-defining sections (head, :root vars, nav) over full body.
+ */
+export function truncateHtmlForEditContext(html: string, maxChars: number): string {
+  const trimmed = html.trim();
+  if (!trimmed) return '';
+  if (trimmed.length <= maxChars) return trimmed;
+
+  const head = extractHeadBlock(trimmed);
+  const nav = extractNavBlock(trimmed);
+  const rootVars: string[] = [];
+  const styleBlocks = trimmed.match(/<style[\s\S]*?<\/style>/gi) ?? [];
+  for (const block of styleBlocks) {
+    const root = block.match(/:root\s*\{[\s\S]*?\}/i);
+    if (root) rootVars.push(root[0]);
+  }
+
+  const priorityParts = [
+    '<!-- PRIORITY: head / design tokens / nav (truncated for context) -->',
+    head,
+    rootVars.length ? `<style>\n${rootVars.join('\n')}\n</style>` : '',
+    nav,
+  ].filter(Boolean);
+
+  let priority = priorityParts.join('\n');
+  if (priority.length > maxChars) {
+    return `${priority.slice(0, maxChars)}\n<!-- …truncated… -->`;
+  }
+
+  const remaining = maxChars - priority.length - 80;
+  const bodyMatch = trimmed.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+  const bodyInner = bodyMatch?.[1]?.trim() ?? trimmed;
+  // Drop nav from body slice if we already included it separately
+  let bodySlice = bodyInner;
+  if (nav && bodySlice.includes(nav)) {
+    bodySlice = bodySlice.replace(nav, '<!-- nav omitted — see above -->');
+  }
+
+  if (bodySlice.length <= remaining) {
+    return `${priority}\n<!-- BODY -->\n${bodySlice}`;
+  }
+
+  return `${priority}\n<!-- BODY (truncated) -->\n${bodySlice.slice(0, remaining)}\n<!-- …truncated… -->`;
+}
+
+export type PageScopedHtmlSources = {
+  indexHtml?: string;
+  activeHtml?: string;
+};
+
+export function buildPageScopedPrompt(
+  userPrompt: string,
+  ctx: ProjectPageContext,
+  sources?: PageScopedHtmlSources
+): string {
   if (!ctx.isExistingProject) return userPrompt;
 
   const others =
     ctx.allPages.filter((p) => p !== ctx.activePage).join(', ') || 'none yet';
+
+  const indexRaw = sources?.indexHtml?.trim() || '';
+  const activeRaw = sources?.activeHtml?.trim() || '';
+  const indexSnippet = indexRaw
+    ? truncateHtmlForEditContext(indexRaw, INDEX_HTML_BUDGET)
+    : '';
+  const activeIsIndex = ctx.activePage === 'index.html';
+  const activeSnippet =
+    !activeIsIndex && activeRaw && activeRaw !== indexRaw
+      ? truncateHtmlForEditContext(activeRaw, ACTIVE_HTML_BUDGET)
+      : '';
+
+  const referenceBlocks: string[] = [];
+  if (indexSnippet) {
+    referenceBlocks.push(
+      `--- EXISTING index.html (design system / nav reference) ---\n${indexSnippet}\n---`
+    );
+  }
+  if (activeSnippet) {
+    referenceBlocks.push(
+      `--- CURRENT ${ctx.activePage} (edit this file; preserve its structure unless asked to change) ---\n${activeSnippet}\n---`
+    );
+  }
+
+  const referenceSection = referenceBlocks.length
+    ? `\n${referenceBlocks.join('\n\n')}\n`
+    : '\n(No prior HTML available — invent a cohesive design and keep it consistent.)\n';
 
   return `MULTI-PAGE PROJECT — edit one HTML file only.
 
@@ -168,10 +254,10 @@ Project: ${ctx.businessName || ctx.projectTitle || ctx.primaryHeading || 'User a
 Site type: ${ctx.siteKind || 'website'}
 Active page: ${ctx.pageLabel} (${ctx.activePage})
 Other pages: ${others}
-
+${referenceSection}
 Rules:
 - Return ONE complete HTML document for ${ctx.activePage} only (<!DOCTYPE html> … </html>).
-- Match existing colors, typography, spacing, and navigation from the project.
+- Reuse the existing color palette, CSS variables, typography (Google Fonts), spacing, and navigation from the reference HTML above — do not invent a new visual system.
 - Link nav items to sibling pages (${others}) using relative paths.
 - Do not output markdown fences or explanations.
 

@@ -186,7 +186,7 @@ async function generateWithLocal(prompt: string): Promise<AIResponse> {
   }
 }
 
-// Tier-based provider ordering
+// Tier-based provider ordering (non-stream / batch generates)
 export function getProviderOrder(tier: string): AIProvider[] {
   const local = canUseLocalOllama(tier) ? (['local'] as AIProvider[]) : [];
 
@@ -200,6 +200,29 @@ export function getProviderOrder(tier: string): AIProvider[] {
     case 'basic':
     case 'pro':
       return ['groq', 'together'];
+    default:
+      return ['groq', 'together'];
+  }
+}
+
+/**
+ * Provider order for live SSE code generation — streaming-capable providers first
+ * for ALL tiers (including Agency+). Non-streaming Anthropic remains a quality fallback.
+ */
+export function getStreamProviderOrder(tier: string): AIProvider[] {
+  const local = canUseLocalOllama(tier) ? (['local'] as AIProvider[]) : [];
+
+  switch (tier) {
+    case 'agency':
+    case 'scale':
+    case 'white_label':
+    case 'team_enterprise':
+    case 'sovereign':
+      // Groq streams tokens immediately; Anthropic is quality fallback (also streamable in stream route).
+      return ['groq', 'anthropic', 'together', ...local];
+    case 'basic':
+    case 'pro':
+      return ['groq', 'together', 'anthropic'];
     default:
       return ['groq', 'together'];
   }
