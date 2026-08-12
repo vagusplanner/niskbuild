@@ -28,8 +28,10 @@ interface PromptBarProps {
   /** Scrollable generation log (Cursor-style) */
   activityLog?: string[];
   streamingLine?: string;
-  /** Live plain-English explanation (Cursor-style) — preferred over code stream in UI */
+  /** Live plain-English explanation (Cursor-style) — secondary when steps are present */
   streamingNarration?: string;
+  /** Marker/heuristic build steps tied to the code stream (preferred over narration) */
+  streamingSteps?: Array<{ id: string; label: string; source: string }>;
   /** Raw code tokens — hidden in UI unless showCodeStream */
   streamingCode?: string;
   showCodeStream?: boolean;
@@ -88,6 +90,7 @@ export default function PromptBar({
   activityLog = [],
   streamingLine,
   streamingNarration,
+  streamingSteps = [],
   streamingCode,
   showCodeStream = false,
   promptRows = 5,
@@ -186,6 +189,7 @@ export default function PromptBar({
             </p>
           )}
           {(activityLog.length > 0 ||
+            streamingSteps.length > 0 ||
             streamingNarration ||
             streamingLine ||
             (showCodeStream && streamingCode) ||
@@ -201,7 +205,50 @@ export default function PromptBar({
                   {line}
                 </p>
               ))}
-              {streamingNarration && (
+              {streamingSteps.length > 0 && (
+                <ol className="space-y-1.5" aria-live="polite" aria-label="Build progress">
+                  {streamingSteps.map((step, i) => {
+                    const isActive = isGenerating && i === streamingSteps.length - 1;
+                    const isDone = !isGenerating || i < streamingSteps.length - 1;
+                    return (
+                      <li
+                        key={`${step.source}-${step.id}`}
+                        className={`flex items-start gap-2 text-[13px] leading-snug ${
+                          isActive
+                            ? 'text-[var(--copper-melt)]'
+                            : isDone
+                              ? 'text-[var(--foreground)]/80'
+                              : 'text-[var(--code-comment)]'
+                        }`}
+                      >
+                        <span
+                          className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[10px] ${
+                            isActive
+                              ? 'border-[var(--copper-melt)] text-[var(--copper-melt)]'
+                              : isDone
+                                ? 'border-[var(--success)] text-[var(--success)]'
+                                : 'border-[var(--border)] text-[var(--code-comment)]'
+                          }`}
+                          aria-hidden
+                        >
+                          {isDone && !isActive ? '✓' : i + 1}
+                        </span>
+                        <span className="min-w-0">
+                          {step.label}
+                          {isActive && (
+                            <span
+                              className="inline-block w-2 h-[1em] bg-[var(--copper-melt)] animate-pulse align-middle ml-1"
+                              aria-hidden
+                            />
+                          )}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ol>
+              )}
+              {/* Narration only when no code-tied steps yet (steps replace narration as primary). */}
+              {streamingSteps.length === 0 && streamingNarration && (
                 <div className="text-[13px] text-[var(--foreground)] leading-relaxed whitespace-pre-wrap">
                   {streamingNarration}
                   {isGenerating && (
@@ -215,7 +262,10 @@ export default function PromptBar({
                   <span className="inline-block w-2 h-[1.1em] bg-[var(--copper-melt)] animate-pulse align-middle ml-0.5" aria-hidden />
                 </pre>
               )}
-              {!streamingNarration && !streamingCode && (streamingLine || isGenerating) && (
+              {streamingSteps.length === 0 &&
+                !streamingNarration &&
+                !streamingCode &&
+                (streamingLine || isGenerating) && (
                 <p className="text-[13px] text-[var(--copper-melt)] leading-relaxed flex items-start gap-1">
                   <span>{streamingLine || (planMode ? 'Planning…' : 'Building…')}</span>
                   <span className="inline-block w-2.5 h-[1.1em] bg-[var(--copper-melt)] animate-pulse shrink-0" aria-hidden />

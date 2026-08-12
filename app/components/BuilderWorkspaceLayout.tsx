@@ -69,6 +69,7 @@ export type BuilderWorkspaceLayoutProps = {
   activityLog?: string[];
   streamingCode?: string;
   streamingNarration?: string;
+  streamingSteps?: Array<{ id: string; label: string; source: string }>;
   planMode: boolean;
   onPlanModeChange: (v: boolean) => void;
   previewHtml: string;
@@ -510,6 +511,7 @@ function ChatPanelContent({
   activityLog = [],
   streamingCode,
   streamingNarration,
+  streamingSteps = [],
   planMode,
   onPlanModeChange,
   promptSuggestions = [],
@@ -549,6 +551,7 @@ function ChatPanelContent({
   activityLog?: string[];
   streamingCode?: string;
   streamingNarration?: string;
+  streamingSteps?: Array<{ id: string; label: string; source: string }>;
   planMode: boolean;
   onPlanModeChange: (v: boolean) => void;
   promptSuggestions?: string[];
@@ -634,7 +637,12 @@ function ChatPanelContent({
           activityLog={activityLog}
           streamingCode={streamingCode}
           streamingNarration={streamingNarration}
-          streamingLine={isGenerating && !streamingNarration ? statusMessage : undefined}
+          streamingSteps={streamingSteps}
+          streamingLine={
+            isGenerating && streamingSteps.length === 0 && !streamingNarration
+              ? statusMessage
+              : undefined
+          }
           promptRows={Math.max(3, Math.round(promptHeightPx / 28))}
           promptMinHeight={promptHeightPx}
           suggestions={promptSuggestions}
@@ -698,6 +706,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
     activityLog = [],
     streamingCode,
     streamingNarration,
+    streamingSteps = [],
     planMode,
     onPlanModeChange,
     previewHtml,
@@ -852,6 +861,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
       activityLog={activityLog}
       streamingCode={streamingCode}
       streamingNarration={streamingNarration}
+      streamingSteps={streamingSteps}
       planMode={planMode}
       onPlanModeChange={onPlanModeChange}
       promptSuggestions={promptSuggestions}

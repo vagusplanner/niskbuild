@@ -27,12 +27,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid source' }, { status: 400 });
   }
 
+  const progressSource =
+    body.progressSource === 'markers' ||
+    body.progressSource === 'heuristic' ||
+    body.progressSource === 'none'
+      ? body.progressSource
+      : undefined;
+  const markerCount =
+    typeof body.markerCount === 'number' &&
+    body.markerCount >= 0 &&
+    body.markerCount <= 50
+      ? Math.round(body.markerCount)
+      : undefined;
+
   logBuildPerformance(guard.user.id, {
     source,
     ttfcMs,
     durationMs,
     success: body.success === true,
     codeChars: typeof body.codeChars === 'number' ? body.codeChars : undefined,
+    progressSource,
+    markerCount,
   });
 
   return NextResponse.json({ ok: true });

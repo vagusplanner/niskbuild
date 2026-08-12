@@ -31,6 +31,13 @@ import { buildContextualSuggestions } from '@/lib/project-suggestions';
 import { derivePromptNarrationFallback, formatNarrationContext } from '@/lib/narration-shared';
 import { detectAddPageIntent } from '@/lib/page-add-intent';
 import { reportBuildPerformance } from '@/lib/build-performance';
+import {
+  countProgressMarkers,
+  resolveLiveProgress,
+  stripProgressMarkers,
+  type LiveProgressSource,
+  type ProgressStep,
+} from '@/lib/generation-progress';
 import { isFullAppAuditPrompt } from '@/lib/builder-audit-shared';
 import { injectPreviewPageNavScript } from '@/lib/preview-page-nav-inject';
 import type { NiskBuildPromptEntry } from '@/lib/niskbuild-config';
@@ -157,6 +164,7 @@ function BuilderContent() {
   const [activityLog, setActivityLog] = useState<string[]>([]);
   const [streamingCode, setStreamingCode] = useState('');
   const [streamingNarration, setStreamingNarration] = useState('');
+  const [streamingSteps, setStreamingSteps] = useState<ProgressStep[]>([]);
   const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
   const [teamOrgs, setTeamOrgs] = useState<Array<{ id: string; name: string; role: string }>>([]);
   const [isExporting, setIsExporting] = useState(false);
@@ -434,26 +442,28 @@ function BuilderContent() {
     const targetPage = overrides?.activePage ?? activeFile;
     const filesSnapshot = overrides?.files ?? projectFiles;
     const hasExistingProject = isExportableCode(generatedCode);
+    // Never persist progress markers into editor / project files.
+    const code = stripProgressMarkers(rawCode);
 
     if (hasExistingProject && isHtmlPage(targetPage)) {
-      const merged = mergeGeneratedIntoFiles(filesSnapshot, targetPage, rawCode);
+      const merged = mergeGeneratedIntoFiles(filesSnapshot, targetPage, code);
       setProjectFiles(merged);
       if (targetPage === 'index.html') {
-        lastCodeLenRef.current = rawCode.length;
-        setGeneratedCode(rawCode);
+        lastCodeLenRef.current = code.length;
+        setGeneratedCode(code);
       }
       const preview = getPreviewHtmlForPage(targetPage, merged, generatedCode);
       setPreviewHtml(wrapPreviewHtml(preview));
     } else {
-      const cleaned = cleanGeneratedCode(rawCode);
-      syncFilesFromCode(rawCode, undefined, { activePage: targetPage });
-      lastCodeLenRef.current = rawCode.length;
-      setGeneratedCode(rawCode);
+      const cleaned = cleanGeneratedCode(code);
+      syncFilesFromCode(code, undefined, { activePage: targetPage });
+      lastCodeLenRef.current = code.length;
+      setGeneratedCode(code);
       setPreviewHtml(wrapPreviewHtml(cleaned));
     }
 
-    if (!aiOriginalCodeRef.current && isExportableCode(rawCode)) {
-      aiOriginalCodeRef.current = rawCode;
+    if (!aiOriginalCodeRef.current && isExportableCode(code)) {
+      aiOriginalCodeRef.current = code;
     }
     setStatusMessage(status);
     setActiveEditorTab('preview');
@@ -1031,6 +1041,7 @@ function BuilderContent() {
 
     setIsGenerating(true);
     setStreamingCode('');
+    setStreamingSteps([]);
     setStreamingNarration(derivePromptNarrationFallback(effectivePrompt, narrationContext));
     setVisualEditHistory([]);
     setSelectedVisualElement(null);
@@ -1040,6 +1051,7 @@ function BuilderContent() {
 
     const genStartedAt = performance.now();
     let clientTtfcMs: number | null = null;
+    let lastProgressSource: LiveProgressSource = 'none';
 
     const session = await getSafeSession();
     const sandbox = isSandboxTier(subscriptionTier);
@@ -1064,12 +1076,16 @@ function BuilderContent() {
 
         if (localRes.ok && localData.success && localData.code) {
           const durationMs = Math.round(performance.now() - genStartedAt);
+          const markerCount = countProgressMarkers(localData.code);
+          const localProgress = resolveLiveProgress(localData.code);
           reportBuildPerformance({
             source: 'local_ollama',
             ttfcMs: durationMs,
             durationMs,
             success: true,
             codeChars: localData.code.length,
+            progressSource: localProgress.source,
+            markerCount,
           });
           if (session?.user?.id) {
             recordLocalGeneration(session.user.id, effectivePrompt, localData.code);
@@ -1112,6 +1128,7 @@ function BuilderContent() {
       } finally {
         setIsGenerating(false);
         setStreamingNarration('');
+        setStreamingSteps([]);
         setTimeout(() => setStatusMessage(''), 8000);
       }
       return;
@@ -1134,14 +1151,18 @@ function BuilderContent() {
           onStatus: (message) => setStatusMessage(message),
           onCodeChunk: (accumulated) => {
             setStreamingCode(accumulated);
+            const progress = resolveLiveProgress(accumulated);
+            lastProgressSource = progress.source;
+            setStreamingSteps(progress.steps);
             if (
               clientTtfcMs === null &&
               accumulated.length >= PREVIEW_MIN_CODE_CHARS
             ) {
               clientTtfcMs = Math.round(performance.now() - genStartedAt);
             }
+            const displayCode = stripProgressMarkers(accumulated);
             if (!(ctx.isExistingProject && isHtmlPage(activeForGen) && activeForGen !== 'index.html')) {
-              setGeneratedCode(accumulated);
+              setGeneratedCode(displayCode);
             }
             if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current);
             previewDebounceRef.current = setTimeout(() => {
@@ -1156,16 +1177,24 @@ function BuilderContent() {
       );
 
       const durationMs = Math.round(performance.now() - genStartedAt);
+      const markerCount = countProgressMarkers(code);
+      const finalProgress =
+        lastProgressSource !== 'none'
+          ? lastProgressSource
+          : resolveLiveProgress(code).source;
       reportBuildPerformance({
         source: 'cloud_stream',
         ttfcMs: clientTtfcMs,
         durationMs,
         success: !error && !!code.trim(),
         codeChars: code.length,
+        progressSource: finalProgress,
+        markerCount,
       });
 
       setStreamingCode('');
       setStreamingNarration('');
+      setStreamingSteps([]);
 
       if (error) {
         if (!code.trim()) {
@@ -1209,6 +1238,7 @@ function BuilderContent() {
     } catch {
       setStreamingCode('');
       setStreamingNarration('');
+      setStreamingSteps([]);
       setGeneratedCode('// Failed to generate. Please try again.');
       setPreviewHtml('<div style="padding:2rem;color:#EF4444;text-align:center">❌ Network error — please try again</div>');
       setStatusMessage('❌ Network error');
@@ -1216,6 +1246,7 @@ function BuilderContent() {
       setIsGenerating(false);
       setStreamingCode('');
       setStreamingNarration('');
+      setStreamingSteps([]);
       setTimeout(() => setStatusMessage(''), 8000);
     }
   };
@@ -1835,6 +1866,7 @@ function BuilderContent() {
           activityLog={activityLog}
           streamingCode={streamingCode}
           streamingNarration={streamingNarration}
+          streamingSteps={streamingSteps}
           planMode={planMode}
           onPlanModeChange={setPlanMode}
           previewHtml={previewHtml}

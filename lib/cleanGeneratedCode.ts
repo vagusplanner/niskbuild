@@ -1,14 +1,16 @@
 import { preparePreviewHtml } from '@/lib/preview-html';
+import { stripProgressMarkers } from '@/lib/generation-progress';
 
 /**
  * Strips markdown fences and ensures preview-ready HTML for the iframe.
+ * Progress markers (<!--@step:...-->) are always removed so they never leak into preview or saved apps.
  */
 export function cleanGeneratedCode(rawCode: string): string {
-  let cleaned = rawCode.trim();
+  let cleaned = stripProgressMarkers(rawCode.trim());
 
   const markdownMatch = cleaned.match(/```(?:html|javascript|jsx|tsx|typescript|css)?\n?([\s\S]*?)\n?```/i);
   if (markdownMatch) {
-    cleaned = markdownMatch[1].trim();
+    cleaned = stripProgressMarkers(markdownMatch[1].trim());
   }
 
   const doctypeMatch = cleaned.match(/(<!DOCTYPE[\s\S]*<\/html>)/i);

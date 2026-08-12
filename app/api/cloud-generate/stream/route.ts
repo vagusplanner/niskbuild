@@ -25,6 +25,7 @@ import {
   buildContinuationMessages,
   truncationUserMessage,
 } from '@/lib/generation-completeness';
+import { countProgressMarkers } from '@/lib/generation-progress';
 import Anthropic from '@anthropic-ai/sdk';
 
 const CODE_MAX_TOKENS = 8192;
@@ -517,23 +518,29 @@ export async function POST(request: NextRequest) {
 
         if (!completeness.complete) {
           const durationMs = Date.now() - streamStartedAt;
+          const markerCount = countProgressMarkers(finalCode);
           logBuildPerformance(userId, {
             source: 'cloud_stream_server',
             ttfcMs: firstCodeAt !== null ? firstCodeAt - streamStartedAt : null,
             durationMs,
             success: false,
             codeChars: finalCode.length,
+            progressSource: markerCount > 0 ? 'markers' : 'none',
+            markerCount,
           });
           throw new Error(truncationUserMessage(completeness.reason));
         }
 
         const durationMs = Date.now() - streamStartedAt;
+        const markerCount = countProgressMarkers(finalCode);
         logBuildPerformance(userId, {
           source: 'cloud_stream_server',
           ttfcMs: firstCodeAt !== null ? firstCodeAt - streamStartedAt : null,
           durationMs,
           success: true,
           codeChars: finalCode.length,
+          progressSource: markerCount > 0 ? 'markers' : 'none',
+          markerCount,
         });
 
         void recordUsageEvent({

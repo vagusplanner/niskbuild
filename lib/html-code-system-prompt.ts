@@ -11,6 +11,18 @@ OUTPUT RULES:
 - Define any CSS custom properties you use on :root with valid color values.
 - Mobile-first responsive layout; visible :focus styles on interactive controls.
 
+PROGRESS MARKERS (required, lightweight — stripped before preview):
+- Interleave 3–5 HTML comment markers with the code so the UI can show live build steps.
+- Exact format (no other comment styles): <!--@step:id|Short human label-->
+- Place each marker immediately before the HTML it describes.
+- Cover structure, styles/tokens, main content/sections, and finish — do not over-instrument.
+- Examples:
+  <!--@step:structure|Setting up page shell and navigation-->
+  <!--@step:styles|Applying colors and typography-->
+  <!--@step:hero|Building the hero section-->
+  <!--@step:content|Adding main content sections-->
+  <!--@step:finish|Closing the document-->
+
 SUBJECT FIRST (decide before any visual choice):
 - Identify the specific subject, business, and audience from the prompt. If vague, invent one concrete named subject and design for that — not a generic "modern website."
 - Colors, type, layout, imagery metaphors, and copy must derive from that subject. Do not apply a default SaaS/indigo/slate look to every request.
