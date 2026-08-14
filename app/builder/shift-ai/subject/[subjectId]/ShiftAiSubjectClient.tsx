@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import Link from 'next/link';
 import {
   BookOpen,
   FileText,
@@ -17,12 +18,28 @@ import { SA } from '@/lib/shift-ai/theme';
 
 type SubjectTab = 'notes' | 'ai' | 'flashcards' | 'quiz' | 'videos' | 'pastpaper';
 
-const TABS: { id: SubjectTab; label: string; icon: typeof BookOpen; comingSoon?: boolean }[] = [
+const TABS: {
+  id: SubjectTab;
+  label: string;
+  icon: typeof BookOpen;
+  comingSoon?: boolean;
+  href?: (subjectName: string) => string;
+}[] = [
   { id: 'notes', label: 'Notes', icon: BookOpen },
   { id: 'ai', label: 'AI Tutor', icon: MessageCircle },
   { id: 'videos', label: 'Videos', icon: Video, comingSoon: true },
-  { id: 'flashcards', label: 'Flashcards', icon: Layers, comingSoon: true },
-  { id: 'quiz', label: 'Quizzes', icon: Gamepad2, comingSoon: true },
+  {
+    id: 'flashcards',
+    label: 'Flashcards',
+    icon: Layers,
+    href: (name) => `/builder/shift-ai/flashcards?subject=${encodeURIComponent(name)}`,
+  },
+  {
+    id: 'quiz',
+    label: 'Quizzes',
+    icon: Gamepad2,
+    href: (name) => `/builder/shift-ai/arcade?subject=${encodeURIComponent(name)}`,
+  },
   { id: 'pastpaper', label: 'Past Papers', icon: FileText, comingSoon: true },
 ];
 
@@ -41,11 +58,22 @@ type ProfileInfo = {
   curriculumLabel: string;
 };
 
-function ComingSoonCard({ title }: { title: string }) {
+function ComingSoonCard({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children?: ReactNode;
+}) {
   return (
     <div className={`${SA.cardPadded} text-center`}>
       <p className={`text-lg font-semibold ${SA.text}`}>{title}</p>
-      <p className={`mt-2 text-sm ${SA.muted}`}>Coming in the next update</p>
+      <p className={`mt-2 text-sm ${SA.muted}`}>
+        {description ?? 'Coming soon — this is not available yet.'}
+      </p>
+      {children}
     </div>
   );
 }
@@ -278,12 +306,21 @@ export default function ShiftAiSubjectClient({
         {TABS.map((item) => {
           const Icon = item.icon;
           const active = tab === item.id;
+          const className = active ? SA.tabActive : SA.tab;
+          if (item.href) {
+            return (
+              <Link key={item.id} href={item.href(subject.name)} className={className}>
+                <Icon className="h-3.5 w-3.5" />
+                {item.label}
+              </Link>
+            );
+          }
           return (
             <button
               key={item.id}
               type="button"
               onClick={() => setTab(item.id)}
-              className={active ? SA.tabActive : SA.tab}
+              className={className}
             >
               <Icon className="h-3.5 w-3.5" />
               {item.label}
@@ -301,10 +338,25 @@ export default function ShiftAiSubjectClient({
           <SubjectAiChat subjectName={subject.name} initialMessages={initialMessages} />
         ) : null}
 
-        {tab === 'flashcards' ? <ComingSoonCard title="Flashcards" /> : null}
-        {tab === 'quiz' ? <ComingSoonCard title="Quizzes" /> : null}
-        {tab === 'videos' ? <ComingSoonCard title="Videos" /> : null}
-        {tab === 'pastpaper' ? <ComingSoonCard title="Past Papers" /> : null}
+        {tab === 'videos' ? (
+          <ComingSoonCard
+            title="Videos"
+            description="Lesson videos for this subject are coming soon. Nothing is wired up yet — this is a real content gap, not a hidden tool."
+          />
+        ) : null}
+        {tab === 'pastpaper' ? (
+          <ComingSoonCard
+            title="Past Papers"
+            description="Real past papers are coming — in the meantime, try AI-generated practice questions for this subject."
+          >
+            <Link
+              href={`/builder/shift-ai/content-generator?subject=${encodeURIComponent(subject.name)}&type=practice_questions`}
+              className={`${SA.btnPrimary} mt-4 inline-flex`}
+            >
+              Try practice questions
+            </Link>
+          </ComingSoonCard>
+        ) : null}
       </div>
 
       {notesUpdatedAt && tab === 'notes' ? (

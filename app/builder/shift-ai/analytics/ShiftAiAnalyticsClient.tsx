@@ -17,7 +17,9 @@ import type {
   AnalyticsActivityType,
   AnalyticsDateRange,
   AnalyticsSnapshot,
+  HeatmapDay,
 } from '@/lib/shift-ai/analytics-shared';
+import ShiftAiMasteryHeatmapClient from '@/app/builder/shift-ai/mastery-heatmap/ShiftAiMasteryHeatmapClient';
 import {
   ACTIVITY_TYPE_OPTIONS,
   DATE_RANGE_OPTIONS,
@@ -33,9 +35,15 @@ const MASTERY_COLORS = {
 export default function ShiftAiAnalyticsClient({
   subjectOptions,
   initialSnapshot,
+  heatmapDays,
+  heatmapTotal,
+  heatmapActiveDays,
 }: {
   subjectOptions: string[];
   initialSnapshot: AnalyticsSnapshot;
+  heatmapDays: HeatmapDay[];
+  heatmapTotal: number;
+  heatmapActiveDays: number;
 }) {
   const [filterOpen, setFilterOpen] = useState(false);
   const [subject, setSubject] = useState('');
@@ -167,6 +175,13 @@ export default function ShiftAiAnalyticsClient({
           </button>
         </div>
       ) : null}
+
+      <ShiftAiMasteryHeatmapClient
+        heatmapDays={heatmapDays}
+        totalActivity={heatmapTotal}
+        activeDays={heatmapActiveDays}
+        embedded
+      />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[

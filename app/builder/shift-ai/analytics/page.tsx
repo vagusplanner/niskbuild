@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import ShiftAiAnalyticsClient from '@/app/builder/shift-ai/analytics/ShiftAiAnalyticsClient';
-import { buildAnalyticsSnapshot } from '@/lib/shift-ai/analytics';
+import { buildActivityHeatmap, buildAnalyticsSnapshot } from '@/lib/shift-ai/analytics';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { needsSubjectOnboarding } from '@/lib/shift-ai/onboarding';
 import { getSafeSession } from '@/lib/supabaseSession.server';
@@ -26,9 +26,18 @@ export default async function ShiftAiAnalyticsPage() {
   ).filter((v): v is string => typeof v === 'string' && v.trim().length > 0);
 
   const initialSnapshot = await buildAnalyticsSnapshot(student.id, subjectOptions, '30', 'all');
+  const heatmapDays = await buildActivityHeatmap(student.id, 84);
+  const heatmapTotal = heatmapDays.reduce((sum, d) => sum + d.count, 0);
+  const heatmapActiveDays = heatmapDays.filter((d) => d.count > 0).length;
 
   return (
-    <ShiftAiAnalyticsClient subjectOptions={subjectOptions} initialSnapshot={initialSnapshot} />
+    <ShiftAiAnalyticsClient
+      subjectOptions={subjectOptions}
+      initialSnapshot={initialSnapshot}
+      heatmapDays={heatmapDays}
+      heatmapTotal={heatmapTotal}
+      heatmapActiveDays={heatmapActiveDays}
+    />
   );
 }
 

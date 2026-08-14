@@ -5,7 +5,12 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { needsSubjectOnboarding } from '@/lib/shift-ai/onboarding';
 import { getSafeSession } from '@/lib/supabaseSession.server';
 
-export default async function ShiftAiArcadePage() {
+type PageProps = {
+  searchParams: Promise<{ subject?: string }>;
+};
+
+export default async function ShiftAiArcadePage({ searchParams }: PageProps) {
+  const { subject: subjectParam } = await searchParams;
   const session = await getSafeSession();
 
   if (!session?.user) {
@@ -40,7 +45,11 @@ export default async function ShiftAiArcadePage() {
     error || !scoreRows ? [] : (scoreRows as ArcadeScoreRecord[]);
 
   return (
-    <ShiftAiArcadeClient subjectOptions={subjectOptions} recentScores={recentScores} />
+    <ShiftAiArcadeClient
+      subjectOptions={subjectOptions}
+      recentScores={recentScores}
+      initialSubject={subjectParam ?? null}
+    />
   );
 }
 

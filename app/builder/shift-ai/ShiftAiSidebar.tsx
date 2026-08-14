@@ -8,7 +8,6 @@ import {
   CalendarDays,
   Camera,
   ChevronRight,
-  Flame,
   Gamepad2,
   GraduationCap,
   Home,
@@ -105,7 +104,7 @@ const NAV_GROUPS = [
     ],
   },
   {
-    label: 'Progress & Insights',
+    label: 'Track',
     items: [
       {
         href: '/builder/shift-ai/mastery',
@@ -114,11 +113,16 @@ const NAV_GROUPS = [
         emoji: '🗺️',
       },
       {
-        href: '/builder/shift-ai/grade-predictor',
-        icon: TrendingUp,
-        label: 'Grade Predictor',
-        emoji: '🎯',
+        href: '/builder/shift-ai/spec-tracker',
+        icon: Target,
+        label: 'Spec Tracker',
+        emoji: '📋',
       },
+    ],
+  },
+  {
+    label: 'Insights',
+    items: [
       {
         href: '/builder/shift-ai/analytics',
         icon: BarChart3,
@@ -126,16 +130,10 @@ const NAV_GROUPS = [
         emoji: '📊',
       },
       {
-        href: '/builder/shift-ai/mastery-heatmap',
-        icon: Flame,
-        label: 'Mastery Heatmap',
-        emoji: '🔥',
-      },
-      {
-        href: '/builder/shift-ai/spec-tracker',
-        icon: Target,
-        label: 'Spec Tracker',
-        emoji: '📋',
+        href: '/builder/shift-ai/grade-predictor',
+        icon: TrendingUp,
+        label: 'Grade Predictor',
+        emoji: '🎯',
       },
     ],
   },

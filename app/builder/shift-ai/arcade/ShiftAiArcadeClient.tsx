@@ -8,6 +8,7 @@ import {
   type ArcadeScoreRecord,
   computeArcadeAnswerPoints,
 } from '@/lib/shift-ai/arcade-shared';
+import { resolveSubjectQuery } from '@/lib/shift-ai/subject-query';
 import { SA } from '@/lib/shift-ai/theme';
 
 type Screen = 'lobby' | 'loading' | 'playing' | 'results';
@@ -17,12 +18,15 @@ const OPTION_LABELS = ['A', 'B', 'C', 'D'];
 export default function ShiftAiArcadeClient({
   subjectOptions,
   recentScores: initialScores,
+  initialSubject = null,
 }: {
   subjectOptions: string[];
   recentScores: ArcadeScoreRecord[];
+  initialSubject?: string | null;
 }) {
+  const lockedSubject = resolveSubjectQuery(subjectOptions, initialSubject);
   const [screen, setScreen] = useState<Screen>('lobby');
-  const [subject, setSubject] = useState(subjectOptions[0] ?? '');
+  const [subject, setSubject] = useState(lockedSubject ?? subjectOptions[0] ?? '');
   const [questions, setQuestions] = useState<ArcadeQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
@@ -34,7 +38,11 @@ export default function ShiftAiArcadeClient({
   const [streak, setStreak] = useState(0);
   const [timeLeft, setTimeLeft] = useState(ARCADE_GAME_DURATION_SEC);
   const [error, setError] = useState('');
-  const [recentScores, setRecentScores] = useState(initialScores);
+  const [recentScores, setRecentScores] = useState(
+    lockedSubject
+      ? initialScores.filter((row) => row.subject === lockedSubject)
+      : initialScores
+  );
   const [saving, setSaving] = useState(false);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -374,7 +382,9 @@ export default function ShiftAiArcadeClient({
         </div>
         <h1 className={`text-3xl font-extrabold ${SA.text}`}>Quiz Arcade ⚡</h1>
         <p className={`mt-2 ${SA.muted}`}>
-          60-second AI quiz blitz — earn streak bonuses and beat your best score
+          {lockedSubject
+            ? `60-second AI quiz blitz for ${lockedSubject} — earn streak bonuses and beat your best score`
+            : '60-second AI quiz blitz — earn streak bonuses and beat your best score'}
         </p>
       </div>
 
@@ -395,6 +405,7 @@ export default function ShiftAiArcadeClient({
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 className={SA.select}
+                disabled={Boolean(lockedSubject)}
               >
                 {subjectOptions.map((opt) => (
                   <option key={opt} value={opt}>

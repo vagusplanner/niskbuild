@@ -9,7 +9,12 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { needsSubjectOnboarding } from '@/lib/shift-ai/onboarding';
 import { getSafeSession } from '@/lib/supabaseSession.server';
 
-export default async function ShiftAiFlashcardsPage() {
+type PageProps = {
+  searchParams: Promise<{ subject?: string }>;
+};
+
+export default async function ShiftAiFlashcardsPage({ searchParams }: PageProps) {
+  const { subject: subjectParam } = await searchParams;
   const session = await getSafeSession();
 
   if (!session?.user) {
@@ -106,6 +111,7 @@ export default async function ShiftAiFlashcardsPage() {
       subjectOptions={subjectOptions}
       initialDecks={decks}
       savedNotes={savedNotes}
+      initialSubject={subjectParam ?? null}
     />
   );
 }

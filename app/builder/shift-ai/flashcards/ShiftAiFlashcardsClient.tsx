@@ -29,6 +29,7 @@ import {
   type ReviewCard,
   type Sm2RatingKey,
 } from '@/lib/shift-ai/spaced-repetition';
+import { resolveSubjectQuery } from '@/lib/shift-ai/subject-query';
 import { SA } from '@/lib/shift-ai/theme';
 
 type Tab = 'decks' | 'generate' | 'review' | 'schedule' | 'study';
@@ -191,11 +192,14 @@ export default function ShiftAiFlashcardsClient({
   subjectOptions,
   initialDecks,
   savedNotes,
+  initialSubject = null,
 }: {
   subjectOptions: string[];
   initialDecks: FlashcardDeckWithCards[];
   savedNotes: SavedNotesOption[];
+  initialSubject?: string | null;
 }) {
+  const lockedSubject = resolveSubjectQuery(subjectOptions, initialSubject);
   const [tab, setTab] = useState<Tab>('decks');
   const [decks, setDecks] = useState(initialDecks);
   const [studyingDeck, setStudyingDeck] = useState<FlashcardDeckWithCards | null>(null);
@@ -209,14 +213,18 @@ export default function ShiftAiFlashcardsClient({
   const [error, setError] = useState('');
 
   const [genMode, setGenMode] = useState<'topic' | 'notes' | 'saved'>('topic');
-  const [genSubject, setGenSubject] = useState(subjectOptions[0] ?? '');
+  const [genSubject, setGenSubject] = useState(lockedSubject ?? subjectOptions[0] ?? '');
   const [topicInput, setTopicInput] = useState('');
   const [notesText, setNotesText] = useState('');
   const [savedNoteId, setSavedNoteId] = useState(savedNotes[0]?.subjectId ?? '');
   const [generating, setGenerating] = useState(false);
   const [appendingDeckId, setAppendingDeckId] = useState<string | null>(null);
 
-  const allCards = useMemo(() => allReviewCards(decks), [decks]);
+  const visibleDecks = useMemo(
+    () => (lockedSubject ? decks.filter((d) => d.subject === lockedSubject) : decks),
+    [decks, lockedSubject]
+  );
+  const allCards = useMemo(() => allReviewCards(visibleDecks), [visibleDecks]);
   const stats = useMemo(() => deckStats(allCards), [allCards]);
   const reviewQueue = useMemo(() => buildReviewQueue(allCards, 30), [allCards]);
   const forecast = useMemo(() => forecastReviews(allCards), [allCards]);
@@ -404,8 +412,9 @@ export default function ShiftAiFlashcardsClient({
           Smart Flashcards
         </h1>
         <p className={`mt-1 text-sm ${SA.muted}`}>
-          Build decks from any topic or notes · {FLASHCARDS_PER_GENERATION} cards per generation ·
-          SM-2 spaced repetition
+          {lockedSubject
+            ? `Decks and reviews for ${lockedSubject} · ${FLASHCARDS_PER_GENERATION} cards per generation · SM-2 spaced repetition`
+            : `Build decks from any topic or notes · ${FLASHCARDS_PER_GENERATION} cards per generation · SM-2 spaced repetition`}
         </p>
       </div>
 
@@ -419,7 +428,7 @@ export default function ShiftAiFlashcardsClient({
               color: stats.due > 0 ? 'text-rose-600' : 'text-emerald-600',
             },
             { label: 'Total Cards', value: stats.total, icon: '🃏', color: SA.text },
-            { label: 'Decks', value: decks.length, icon: '📚', color: 'text-[var(--sa-navy-800)]' },
+            { label: 'Decks', value: visibleDecks.length, icon: '📚', color: 'text-[var(--sa-navy-800)]' },
             {
               label: 'Avg Retention',
               value: `${stats.avgRetention}%`,
@@ -464,15 +473,19 @@ export default function ShiftAiFlashcardsClient({
       {error ? <p className={SA.error}>{error}</p> : null}
 
       {tab === 'decks' ? (
-        decks.length === 0 ? (
+        visibleDecks.length === 0 ? (
           <div className={`${SA.cardPadded} space-y-3 py-14 text-center`}>
             <p className="text-4xl">🃏</p>
             <p className={`font-bold ${SA.text}`}>No decks yet</p>
-            <p className={`text-sm ${SA.muted}`}>Go to Build Deck to create your first deck</p>
+            <p className={`text-sm ${SA.muted}`}>
+              {lockedSubject
+                ? `Build a ${lockedSubject} deck to get started`
+                : 'Go to Build Deck to create your first deck'}
+            </p>
           </div>
         ) : (
           <div className="space-y-3">
-            {decks.map((deck) => {
+            {visibleDecks.map((deck) => {
               const due = deck.cards.filter((c) => isCardDue(c)).length;
               const ret = deck.cards.length
                 ? Math.round(
@@ -666,8 +679,9 @@ export default function ShiftAiFlashcardsClient({
               value={genSubject}
               onChange={(e) => setGenSubject(e.target.value)}
               className={SA.select}
+              disabled={Boolean(lockedSubject)}
             >
-              <option value="">General</option>
+              {lockedSubject ? null : <option value="">General</option>}
               {subjectOptions.map((opt) => (
                 <option key={opt} value={opt}>
                   {opt}

@@ -6,7 +6,12 @@ import { needsSubjectOnboarding } from '@/lib/shift-ai/onboarding';
 import { ensureSubjectRecord, mergeStudentSubjects } from '@/lib/shift-ai/subjects';
 import { getSafeSession } from '@/lib/supabaseSession.server';
 
-export default async function ShiftAiContentGeneratorPage() {
+type PageProps = {
+  searchParams: Promise<{ subject?: string; type?: string }>;
+};
+
+export default async function ShiftAiContentGeneratorPage({ searchParams }: PageProps) {
+  const { subject: subjectParam, type: typeParam } = await searchParams;
   const session = await getSafeSession();
 
   if (!session?.user) {
@@ -62,6 +67,8 @@ export default async function ShiftAiContentGeneratorPage() {
       curriculum={normalizeCurriculum(student.curriculum)}
       yearGroup={student.year_group || 'secondary school'}
       notesBySubjectId={notesBySubjectId}
+      initialSubject={subjectParam ?? null}
+      initialType={typeParam ?? null}
     />
   );
 }

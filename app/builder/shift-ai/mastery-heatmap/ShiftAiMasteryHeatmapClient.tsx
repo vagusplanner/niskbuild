@@ -25,10 +25,12 @@ export default function ShiftAiMasteryHeatmapClient({
   heatmapDays,
   totalActivity,
   activeDays,
+  embedded = false,
 }: {
   heatmapDays: HeatmapDay[];
   totalActivity: number;
   activeDays: number;
+  embedded?: boolean;
 }) {
   const maxCount = useMemo(
     () => Math.max(...heatmapDays.map((d) => d.count), 1),
@@ -43,16 +45,32 @@ export default function ShiftAiMasteryHeatmapClient({
     return chunks;
   }, [heatmapDays]);
 
+  const heading = embedded ? (
+    <div>
+      <h2 className={`flex items-center gap-2 text-sm font-bold ${SA.text}`}>
+        <span aria-hidden>🔥</span> Study streak
+      </h2>
+      <p className={`mt-1 text-sm ${SA.muted}`}>
+        Activity calendar — planner completions, arcade plays, flashcard reviews, and tutor chat.
+      </p>
+    </div>
+  ) : (
+    <div>
+      <h1 className={`${SA.headingMd} flex items-center gap-2`}>
+        <span aria-hidden>🔥</span> Study streak
+      </h1>
+      <p className={`mt-1 text-sm ${SA.muted}`}>
+        Activity calendar — planner completions, arcade plays, flashcard reviews, and tutor chat.
+      </p>
+    </div>
+  );
+
   return (
-    <div className={`${SA.contentNarrow} space-y-5`}>
-      <div>
-        <h1 className={`${SA.headingMd} flex items-center gap-2`}>
-          <span aria-hidden>🔥</span> Mastery Heatmap
-        </h1>
-        <p className={`mt-1 text-sm ${SA.muted}`}>
-          Study activity per day — planner completions, quiz plays, flashcard reviews, and tutor chat.
-        </p>
-      </div>
+    <div
+      id="study-streak"
+      className={`${embedded ? 'space-y-5' : `${SA.contentNarrow} space-y-5`}`}
+    >
+      {heading}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {[

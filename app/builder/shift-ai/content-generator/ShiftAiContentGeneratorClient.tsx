@@ -13,6 +13,7 @@ import {
   normalizeCurriculum,
 } from '@/lib/shift-ai/essay-curriculum';
 import type { ShiftCurriculum } from '@/lib/shift-ai/constants';
+import { resolveSubjectQuery } from '@/lib/shift-ai/subject-query';
 import { SA } from '@/lib/shift-ai/theme';
 
 type SubjectOption = { name: string; dbId: string | null };
@@ -68,18 +69,34 @@ export default function ShiftAiContentGeneratorClient({
   curriculum,
   yearGroup,
   notesBySubjectId,
+  initialSubject = null,
+  initialType = null,
 }: {
   subjectOptions: SubjectOption[];
   curriculum: ShiftCurriculum;
   yearGroup: string;
   notesBySubjectId: Record<string, string>;
+  initialSubject?: string | null;
+  initialType?: string | null;
 }) {
   const boards = EXAM_BOARDS[curriculum] ?? EXAM_BOARDS.uk;
+  const lockedSubject = resolveSubjectQuery(
+    subjectOptions.map((s) => s.name),
+    initialSubject
+  );
+  const typeFromQuery: ContentGeneratorType | null =
+    initialType === 'practice_questions' ||
+    initialType === 'summary' ||
+    initialType === 'revision_notes'
+      ? initialType
+      : null;
 
-  const [subject, setSubject] = useState(subjectOptions[0]?.name ?? '');
+  const [subject, setSubject] = useState(lockedSubject ?? subjectOptions[0]?.name ?? '');
   const [examBoard, setExamBoard] = useState(boards[0] ?? '');
   const [topic, setTopic] = useState('');
-  const [contentType, setContentType] = useState<ContentGeneratorType>('summary');
+  const [contentType, setContentType] = useState<ContentGeneratorType>(
+    typeFromQuery ?? 'summary'
+  );
   const [generated, setGenerated] = useState<GeneratedContent | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -167,8 +184,9 @@ export default function ShiftAiContentGeneratorClient({
           <span aria-hidden>✨</span> Content Generator
         </h1>
         <p className={`mt-1 text-sm ${SA.muted}`}>
-          Generate revision summaries, practice questions, or notes for any topic — tailored for{' '}
-          {yearGroup} ({normalizeCurriculum(curriculum).toUpperCase()}).
+          {typeFromQuery === 'practice_questions'
+            ? `AI-generated exam-style practice questions${lockedSubject ? ` for ${lockedSubject}` : ''} — not a past-paper bank.`
+            : `Generate revision summaries, practice questions, or notes for any topic — tailored for ${yearGroup} (${normalizeCurriculum(curriculum).toUpperCase()}).`}
         </p>
       </div>
 
@@ -183,7 +201,7 @@ export default function ShiftAiContentGeneratorClient({
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               className={SA.select}
-              disabled={loading}
+              disabled={loading || Boolean(lockedSubject)}
             >
               {subjectOptions.map((s) => (
                 <option key={s.name} value={s.name}>
