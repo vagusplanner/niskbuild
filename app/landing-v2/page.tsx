@@ -73,6 +73,44 @@ const PROOF_CARDS = [
 
 const TEASER_TIER_KEYS = ['Sandbox', 'Basic', 'Pro Worker'] as const;
 
+/** Decorative stock imagery — copper/iron overlay so photos blend with the brand. */
+function AtmosphereImage({
+  src,
+  alt,
+  sizes,
+  priority,
+  className,
+  imageClassName,
+}: {
+  src: string;
+  alt: string;
+  sizes: string;
+  priority?: boolean;
+  className?: string;
+  imageClassName?: string;
+}) {
+  return (
+    <div className={`overflow-hidden ${className ?? 'relative'}`}>
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        sizes={sizes}
+        priority={priority}
+        className={`object-cover ${imageClassName ?? ''}`}
+      />
+      <div
+        aria-hidden
+        className="absolute inset-0"
+        style={{
+          background:
+            'linear-gradient(165deg, rgba(30, 26, 22, 0.42) 0%, rgba(36, 32, 24, 0.55) 45%, rgba(30, 26, 22, 0.78) 100%), linear-gradient(135deg, rgba(184, 115, 51, 0.38) 0%, transparent 58%)',
+        }}
+      />
+    </div>
+  );
+}
+
 function StartCta({
   isLoggedIn,
   className = '',
@@ -113,6 +151,22 @@ export default function LandingV2Page() {
 
       {/* 1. HERO */}
       <section className="relative pt-16 md:pt-20 pb-20 px-4 overflow-hidden">
+        <AtmosphereImage
+          src="/images/landing/hero-circuit-glow.jpg"
+          alt=""
+          priority
+          sizes="(max-width: 768px) 100vw, 42vw"
+          className="pointer-events-none absolute inset-x-0 top-0 h-[16rem] sm:h-[20rem] md:inset-y-0 md:left-auto md:right-0 md:h-auto md:w-[42%]"
+          imageClassName="object-[center_18%] md:object-center"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-[16rem] sm:h-[20rem] md:inset-y-0 md:left-auto md:right-0 md:h-auto md:w-[42%]"
+          style={{
+            background:
+              'linear-gradient(to bottom, transparent 35%, var(--bg-base) 96%), linear-gradient(to right, var(--bg-base) 0%, transparent 38%)',
+          }}
+        />
         <div
           className="pointer-events-none absolute inset-0 opacity-[0.35]"
           style={{
@@ -153,20 +207,30 @@ export default function LandingV2Page() {
 
       {/* 2. THE DIFFERENCE */}
       <section id="difference" className="py-20 px-4 bg-nisk-surface scroll-mt-28">
-        <div className="max-w-4xl mx-auto">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--copper-melt)] mb-3">
-            Why NiskBuild
-          </p>
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-5 text-[var(--nisk-color)]">
-            Most AI builders rent you an app. We hand you the keys.
-          </h2>
-          <p className="text-nisk-muted text-base md:text-lg leading-relaxed mb-10 max-w-3xl">
-            Type a prompt into most AI app builders, and what you get back lives on their platform,
-            under their terms. Stop paying, and it&apos;s gone. NiskBuild works differently. Every
-            app you build comes with clean, exportable code — HTML, CSS, JavaScript you can open,
-            edit, host anywhere, or hand to a developer. If you ever leave NiskBuild, your apps
-            don&apos;t leave with us.
-          </p>
+        <div className="max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-[1fr_minmax(10rem,14rem)] gap-8 md:gap-10 items-start mb-10">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--copper-melt)] mb-3">
+                Why NiskBuild
+              </p>
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-5 text-[var(--nisk-color)]">
+                Most AI builders rent you an app. We hand you the keys.
+              </h2>
+              <p className="text-nisk-muted text-base md:text-lg leading-relaxed max-w-3xl">
+                Type a prompt into most AI app builders, and what you get back lives on their platform,
+                under their terms. Stop paying, and it&apos;s gone. NiskBuild works differently. Every
+                app you build comes with clean, exportable code — HTML, CSS, JavaScript you can open,
+                edit, host anywhere, or hand to a developer. If you ever leave NiskBuild, your apps
+                don&apos;t leave with us.
+              </p>
+            </div>
+            <AtmosphereImage
+              src="/images/landing/section-circuit-macro.jpg"
+              alt=""
+              sizes="(max-width: 768px) 56vw, 14rem"
+              className="relative aspect-square w-36 sm:w-44 md:w-full mx-auto md:mx-0 rounded-2xl border border-[var(--border)] shadow-[0_16px_40px_-18px_var(--copper-glow)]"
+            />
+          </div>
 
           <div className="rounded-2xl border border-[var(--border)] overflow-hidden bg-[var(--card-bg)]">
             <div className="grid grid-cols-2 border-b border-[var(--border)]">
@@ -204,9 +268,16 @@ export default function LandingV2Page() {
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--copper-melt)] mb-3">
             From idea to app
           </p>
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-12 text-[var(--nisk-color)] max-w-2xl">
+          <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-8 text-[var(--nisk-color)] max-w-2xl">
             Four steps. No code required — unless you want it.
           </h2>
+          <AtmosphereImage
+            src="/images/landing/features-circuit-board.jpg"
+            alt=""
+            sizes="(max-width: 768px) 100vw, 64rem"
+            className="relative mb-12 aspect-[16/7] sm:aspect-[16/6] w-full rounded-2xl border border-[var(--border)] shadow-[0_16px_40px_-18px_var(--copper-glow)]"
+            imageClassName="object-center"
+          />
 
           <ol className="space-y-0">
             {HOW_STEPS.map((step, i) => (
