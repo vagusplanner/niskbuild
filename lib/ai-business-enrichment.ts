@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { getGroqClient } from '@/lib/groq-client';
+import { GROQ_CODE_MODEL, getGroqClient } from '@/lib/groq-client';
 import type { GooglePlacesBusiness, GooglePlacesReview } from '@/lib/google-places-types';
 
 export type BusinessEnrichmentInput = GooglePlacesBusiness & {
@@ -130,7 +130,7 @@ export async function enrichBusinessData(
         { role: 'system', content: ENRICHMENT_SYSTEM },
         { role: 'user', content: buildEnrichmentPrompt(business) },
       ],
-      model: 'llama-3.3-70b-versatile',
+      model: GROQ_CODE_MODEL,
       temperature: 0.3,
       max_tokens: 1024,
       response_format: { type: 'json_object' },
@@ -153,7 +153,7 @@ export async function enrichBusinessData(
           { role: 'system', content: ENRICHMENT_SYSTEM },
           { role: 'user', content: buildSentimentPrompt(business) },
         ],
-        model: 'llama-3.3-70b-versatile',
+        model: GROQ_CODE_MODEL,
         temperature: 0.3,
         max_tokens: 1024,
         response_format: { type: 'json_object' },

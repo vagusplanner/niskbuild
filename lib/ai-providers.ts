@@ -2,7 +2,7 @@ import 'server-only';
 
 import { canUseLocalOllama } from '@/lib/tier-config';
 import Anthropic from '@anthropic-ai/sdk';
-import { getGroqClient } from '@/lib/groq-client';
+import { GROQ_CODE_MODEL, getGroqClient } from '@/lib/groq-client';
 import { HTML_CODE_SYSTEM_PROMPT } from '@/lib/html-code-system-prompt';
 
 let anthropic: Anthropic | null = null;
@@ -66,7 +66,7 @@ async function generateWithGroq(prompt: string): Promise<AIResponse> {
         { role: 'system', content: HTML_CODE_SYSTEM_PROMPT },
         { role: 'user', content: prompt },
       ],
-      model: 'llama-3.3-70b-versatile',
+      model: GROQ_CODE_MODEL,
       temperature: 0.7,
       max_tokens: 4096,
     });
@@ -312,7 +312,7 @@ export async function getAIProviderStatus(): Promise<Record<AIProvider, boolean>
     try {
       await groq.chat.completions.create({
         messages: [{ role: 'user', content: 'test' }],
-        model: 'llama-3.3-70b-versatile',
+        model: GROQ_CODE_MODEL,
         max_tokens: 5,
       });
       status.groq = true;

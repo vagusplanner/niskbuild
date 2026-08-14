@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { getGroqClient } from '@/lib/groq-client';
+import { GROQ_CODE_MODEL, getGroqClient } from '@/lib/groq-client';
 
 export type AgentPromptType = 'simple' | 'complex';
 export type AgentMode = 'user' | 'admin';
@@ -48,7 +48,7 @@ const COMPLEX_KEYWORDS = [
 
 const OLLAMA_URL = process.env.OLLAMA_URL?.trim() || 'http://127.0.0.1:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_AGENT_MODEL?.trim() || 'llama3.2:3b';
-const GROQ_MODEL = process.env.GROQ_AGENT_MODEL?.trim() || 'llama-3.3-70b-versatile';
+const GROQ_MODEL = process.env.GROQ_AGENT_MODEL?.trim() || GROQ_CODE_MODEL;
 
 export function classifyAgentPrompt(message: string): AgentPromptType {
   const lower = message.toLowerCase();

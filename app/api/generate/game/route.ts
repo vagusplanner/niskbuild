@@ -3,7 +3,7 @@ import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { cleanGeneratedCode } from '@/lib/cleanGeneratedCode';
 import { deductCloudCredit } from '@/lib/credits';
-import { getGroqClient } from '@/lib/groq-client';
+import { GROQ_CODE_MODEL, getGroqClient } from '@/lib/groq-client';
 import {
   getGameTemplateCode,
   platformerTemplate,
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
         { role: 'system', content: GAME_SYSTEM_PROMPT },
         { role: 'user', content: prompt },
       ],
-      model: 'llama-3.3-70b-versatile',
+      model: GROQ_CODE_MODEL,
       temperature: 0.7,
       max_tokens: 8192,
     });

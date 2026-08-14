@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { getGroqClient } from '@/lib/groq-client';
+import { GROQ_CODE_MODEL, getGroqClient } from '@/lib/groq-client';
 import {
   APP_CATEGORY_SLUGS,
   normalizeCategorySlug,
@@ -41,7 +41,7 @@ export async function classifyAppCategory(prompt: string): Promise<AppCategorySl
 
   try {
     const completion = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
+      model: GROQ_CODE_MODEL,
       messages: [
         {
           role: 'system',

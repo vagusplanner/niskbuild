@@ -9,7 +9,7 @@ import {
   type CreditChargeContext,
 } from '@/lib/org-credits';
 
-import { getGroqClient } from '@/lib/groq-client';
+import { GROQ_CODE_MODEL, getGroqClient } from '@/lib/groq-client';
 import { streamBuildNarration } from '@/lib/generate-narration';
 import { derivePromptNarrationFallback } from '@/lib/narration-shared';
 import { HTML_CODE_SYSTEM_PROMPT } from '@/lib/html-code-system-prompt';
@@ -112,7 +112,7 @@ async function streamContinueWithGroq(
         { role: 'system', content: HTML_CODE_SYSTEM_PROMPT },
         ...buildContinuationMessages(originalPrompt, partialCode),
       ],
-      model: 'llama-3.3-70b-versatile',
+      model: GROQ_CODE_MODEL,
       temperature: 0.4,
       max_tokens: CONTINUE_MAX_TOKENS,
       stream: true,
@@ -357,7 +357,7 @@ export async function POST(request: NextRequest) {
                     { role: 'system', content: HTML_CODE_SYSTEM_PROMPT },
                     { role: 'user', content: prompt },
                   ],
-                  model: 'llama-3.3-70b-versatile',
+                  model: GROQ_CODE_MODEL,
                   temperature: 0.7,
                   max_tokens: CODE_MAX_TOKENS,
                   stream: true,

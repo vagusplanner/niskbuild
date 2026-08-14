@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { guardApiRequest } from '@/lib/api-auth';
 import 'server-only';
 import OpenAI from 'openai';
-import { getGroqClient } from '@/lib/groq-client';
+import { GROQ_CODE_MODEL, getGroqClient } from '@/lib/groq-client';
 
 // Initialize providers only if API keys exist (safe mode)
 let anthropic: any = null;
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
     try {
       await groq.chat.completions.create({
         messages: [{ role: 'user', content: 'test' }],
-        model: 'llama-3.3-70b-versatile',
+        model: GROQ_CODE_MODEL,
         max_tokens: 5,
       });
       status.groq = true;

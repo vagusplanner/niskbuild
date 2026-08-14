@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { getGroqClient } from '@/lib/groq-client';
+import { GROQ_CODE_MODEL, getGroqClient } from '@/lib/groq-client';
 import type {
   CompetitorCandidate,
   CompetitorIntel,
@@ -148,7 +148,7 @@ export async function analyzeCompetitors(
         { role: 'system', content: 'Return ONLY valid JSON. No markdown.' },
         { role: 'user', content: buildAnalysisPrompt(business, candidates) },
       ],
-      model: 'llama-3.3-70b-versatile',
+      model: GROQ_CODE_MODEL,
       temperature: 0.3,
       max_tokens: 1536,
       response_format: { type: 'json_object' },

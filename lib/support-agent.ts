@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { getGroqClient } from '@/lib/groq-client';
+import { GROQ_CODE_MODEL, getGroqClient } from '@/lib/groq-client';
 
 export type SupportAgentMessage = {
   role: 'user' | 'assistant';
@@ -23,7 +23,7 @@ export interface SupportAgentResult {
   escalationSummary?: string;
 }
 
-const GROQ_MODEL = process.env.GROQ_AGENT_MODEL?.trim() || 'llama-3.3-70b-versatile';
+const GROQ_MODEL = process.env.GROQ_AGENT_MODEL?.trim() || GROQ_CODE_MODEL;
 
 function buildSupportAgentSystemPrompt(ctx: SupportAgentContext): string {
   return `You are NiskBuild Support Agent — first-line help for billing, builder, exports, and account questions.

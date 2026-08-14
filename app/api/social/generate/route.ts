@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
-import { getGroqClient } from '@/lib/groq-client';
+import { GROQ_CODE_MODEL, getGroqClient } from '@/lib/groq-client';
 import { logFeatureUsage } from '@/lib/feature-usage';
 import {
   SOCIAL_SYSTEM_PROMPT,
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     }
 
     const completion = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
+      model: GROQ_CODE_MODEL,
       messages: [
         { role: 'system', content: SOCIAL_SYSTEM_PROMPT },
         {

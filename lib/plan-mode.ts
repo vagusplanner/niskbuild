@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { getGroqClient } from '@/lib/groq-client';
+import { GROQ_CODE_MODEL, getGroqClient } from '@/lib/groq-client';
 
 export const PLAN_SYSTEM_PROMPT = `You are a senior software architect. The user wants a technical implementation roadmap BEFORE any code is written.
 
@@ -45,7 +45,7 @@ export async function generateArchitecturePlan(prompt: string): Promise<{
           content: `Create an architectural roadmap for:\n\n${prompt}`,
         },
       ],
-      model: 'llama-3.3-70b-versatile',
+      model: GROQ_CODE_MODEL,
       temperature: 0.4,
       max_tokens: 2048,
     });

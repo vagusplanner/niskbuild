@@ -8,7 +8,7 @@ import {
   type SocialPostKey,
   type SocialPosts,
 } from '@/lib/social-publisher';
-import { getGroqClient } from '@/lib/groq-client';
+import { GROQ_CODE_MODEL, getGroqClient } from '@/lib/groq-client';
 import {
   createBufferCompanyPost,
   isBufferPersonalConfigured,
@@ -162,7 +162,7 @@ export async function generateCompanySocialPosts(promptHint?: string): Promise<S
     'NiskBuild — AI app builder. Own your code forever. Describe apps in plain English and get real HTML/CSS/JS. For freelancers, agencies, and companies.';
 
   const completion = await groq.chat.completions.create({
-    model: 'llama-3.3-70b-versatile',
+    model: GROQ_CODE_MODEL,
     messages: [
       { role: 'system', content: SOCIAL_SYSTEM_PROMPT },
       {

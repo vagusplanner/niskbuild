@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { getGroqClient } from '@/lib/groq-client';
+import { GROQ_FAST_MODEL, getGroqClient } from '@/lib/groq-client';
 import { derivePromptNarrationFallback } from '@/lib/narration-shared';
 
 const HTML_NARRATION_SYSTEM = `You are NiskBuild's build assistant. The user asked for a web app change.
@@ -15,7 +15,7 @@ Mention UI, features, navigation, or logic — specific to their request and pag
 NO code, NO JSX, NO markdown — one sentence per line, present tense.`;
 
 /** Fast, cheap model for live narration (code generation uses a separate call). */
-const NARRATION_MODEL = 'llama-3.1-8b-instant';
+const NARRATION_MODEL = GROQ_FAST_MODEL;
 
 export type NarrationContext = 'html' | 'vp';
 

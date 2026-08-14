@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { getGroqClient } from '@/lib/groq-client';
+import { GROQ_CODE_MODEL, getGroqClient } from '@/lib/groq-client';
 import type { ComponentBlueprint } from '@/lib/blueprint-schema';
 
 const SYSTEM_PROMPT = `You are a blueprint architect. When given a description of an app, return ONLY valid JSON matching the ComponentBlueprint schema. No markdown, no explanation, only JSON.
@@ -68,7 +68,7 @@ export async function generateBlueprint(
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: prompt },
       ],
-      model: 'llama-3.3-70b-versatile',
+      model: GROQ_CODE_MODEL,
       temperature: 0.3,
       max_tokens: 8192,
       response_format: { type: 'json_object' },

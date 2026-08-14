@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
-import { getGroqClient } from '@/lib/groq-client';
+import { GROQ_CODE_MODEL, getGroqClient } from '@/lib/groq-client';
 import { computeSeoScore } from '@/lib/seo-score';
 import type { SeoAiSuggestion } from '@/lib/seo-types';
 import { canGenerateSeoAi } from '@/lib/tier-config';
@@ -47,7 +47,7 @@ Page content excerpt: ${String(pageContent || '').slice(0, 3000)}
 Generate optimised SEO metadata. Make it compelling and keyword-rich.`;
 
     const completion = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
+      model: GROQ_CODE_MODEL,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },

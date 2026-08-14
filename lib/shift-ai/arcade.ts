@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { getGroqClient } from '@/lib/groq-client';
+import { GROQ_CODE_MODEL, getGroqClient } from '@/lib/groq-client';
 import {
   ARCADE_QUESTION_COUNT,
   type ArcadeQuestion,
@@ -16,7 +16,7 @@ export {
   type ArcadeScoreRecord,
 } from '@/lib/shift-ai/arcade-shared';
 
-const GROQ_MODEL = process.env.GROQ_AGENT_MODEL?.trim() || 'llama-3.3-70b-versatile';
+const GROQ_MODEL = process.env.GROQ_AGENT_MODEL?.trim() || GROQ_CODE_MODEL;
 
 function normalizeOptions(raw: unknown): [string, string, string, string] | null {
   if (!Array.isArray(raw) || raw.length !== 4) return null;

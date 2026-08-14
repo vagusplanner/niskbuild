@@ -2,6 +2,8 @@ import 'server-only';
 
 import Groq from 'groq-sdk';
 
+export { GROQ_CODE_MODEL, GROQ_FAST_MODEL } from '@/lib/groq-models';
+
 let groqClient: Groq | null = null;
 
 /** Lazy Groq client — avoids build-time failure when GROQ_API_KEY is unset on Vercel. */

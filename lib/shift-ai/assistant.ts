@@ -1,8 +1,8 @@
 import 'server-only';
 
-import { getGroqClient } from '@/lib/groq-client';
+import { GROQ_CODE_MODEL, getGroqClient } from '@/lib/groq-client';
 
-const GROQ_MODEL = process.env.GROQ_AGENT_MODEL?.trim() || 'llama-3.3-70b-versatile';
+const GROQ_MODEL = process.env.GROQ_AGENT_MODEL?.trim() || GROQ_CODE_MODEL;
 
 const SYSTEM_PROMPT_BASE =
   'You are a helpful AI study tutor for students aged 7-17. Adapt your language to be age-appropriate. Be encouraging, clear, and educational. Never provide answers directly — guide the student to understand.';

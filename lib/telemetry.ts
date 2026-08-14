@@ -1,3 +1,4 @@
+import { GROQ_CODE_MODEL } from '@/lib/groq-models';
 import { randomBytes } from 'crypto';
 import type { DemographicTier } from '@/lib/demographic-tiers';
 
@@ -94,7 +95,7 @@ export function detectFrameworkTags(prompt: string, code?: string): string[] {
 export function normalizeAiModel(provider: string, modelHint?: string): string {
   if (modelHint) return modelHint;
   const map: Record<string, string> = {
-    groq: 'llama-3.3-70b-versatile',
+    groq: GROQ_CODE_MODEL,
     anthropic: 'claude-3-sonnet',
     openai: 'gpt-4-turbo',
     together: 'llama-3.3-70b-instruct',

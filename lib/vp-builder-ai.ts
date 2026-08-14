@@ -7,7 +7,7 @@ import {
   type AIResponse,
   type UserKeyOptions,
 } from '@/lib/ai-providers';
-import { getGroqClient } from '@/lib/groq-client';
+import { GROQ_CODE_MODEL, getGroqClient } from '@/lib/groq-client';
 import { VP_REACT_SYSTEM_PROMPT } from '@/lib/vagus-planner-builder';
 
 async function groqWithSystem(system: string, user: string): Promise<AIResponse> {
@@ -22,7 +22,7 @@ async function groqWithSystem(system: string, user: string): Promise<AIResponse>
         { role: 'system', content: system },
         { role: 'user', content: user },
       ],
-      model: 'llama-3.3-70b-versatile',
+      model: GROQ_CODE_MODEL,
       temperature: 0.4,
       max_tokens: 8192,
     });

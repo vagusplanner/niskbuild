@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { getGroqClient } from '@/lib/groq-client';
+import { GROQ_CODE_MODEL, getGroqClient } from '@/lib/groq-client';
 
 export type DemoBlueprint = {
   appName: string;
@@ -130,7 +130,7 @@ export async function generateDemoBlueprint(prompt: string): Promise<{
         { role: 'system', content: DEMO_SYSTEM_PROMPT },
         { role: 'user', content: trimmed },
       ],
-      model: 'llama-3.3-70b-versatile',
+      model: GROQ_CODE_MODEL,
       temperature: 0.5,
       max_tokens: 1024,
       response_format: { type: 'json_object' },

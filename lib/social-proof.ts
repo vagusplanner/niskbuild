@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { getGroqClient } from '@/lib/groq-client';
+import { GROQ_CODE_MODEL, getGroqClient } from '@/lib/groq-client';
 import type {
   GooglePlacesBusiness,
   SocialProofCounter,
@@ -130,7 +130,7 @@ export async function buildSocialProofIntel(
         { role: 'system', content: 'Return ONLY valid JSON. No markdown.' },
         { role: 'user', content: buildSocialProofPrompt(business) },
       ],
-      model: 'llama-3.3-70b-versatile',
+      model: GROQ_CODE_MODEL,
       temperature: 0.4,
       max_tokens: 1536,
       response_format: { type: 'json_object' },
