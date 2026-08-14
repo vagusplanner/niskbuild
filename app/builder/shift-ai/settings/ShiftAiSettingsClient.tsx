@@ -7,7 +7,10 @@ import {
   SHIFT_CURRICULA,
   SHIFT_CURRICULUM_FLAGS,
   SHIFT_CURRICULUM_LABELS,
+  SHIFT_STUDY_LANGUAGES,
+  SHIFT_STUDY_LANGUAGE_LABELS,
   type ShiftCurriculum,
+  type ShiftStudyLanguage,
 } from '@/lib/shift-ai/constants';
 import {
   AI_PERSONA_OPTIONS,
@@ -40,6 +43,7 @@ export default function ShiftAiSettingsClient({
   const [newSubject, setNewSubject] = useState('');
   const [voiceEnabled, setVoiceEnabled] = useState(profile.voice_enabled);
   const [preferredVoice, setPreferredVoice] = useState(profile.preferred_voice ?? '');
+  const [studyLanguage, setStudyLanguage] = useState<ShiftStudyLanguage>(profile.study_language);
   const [personas, setPersonas] = useState<Record<string, string>>(
     Object.fromEntries(
       profile.subjects.map((s) => [s.name, s.aiPersona ?? 'chill'])
@@ -81,6 +85,7 @@ export default function ShiftAiSettingsClient({
           favouriteSubjects: subjects,
           voiceEnabled,
           preferredVoice: preferredVoice || null,
+          studyLanguage,
           subjectPersonas: subjects.map((name) => ({
             name,
             aiPersona: personas[name] ?? 'chill',
@@ -183,6 +188,30 @@ export default function ShiftAiSettingsClient({
             {profile.year_group} — managed by your parent account.
           </p>
         )}
+      </div>
+
+      <div className={`${SA.cardPadded} mt-4 space-y-4`}>
+        <h2 className={`font-semibold ${SA.text}`}>Study language</h2>
+        <p className={`text-sm ${SA.muted}`}>
+          AI tools will use this language in a later update. Arabic is the default for Saudi Arabia;
+          you can switch anytime.
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          {SHIFT_STUDY_LANGUAGES.map((lang) => (
+            <button
+              key={lang}
+              type="button"
+              onClick={() => setStudyLanguage(lang)}
+              className={`rounded-xl border px-4 py-3 text-sm font-semibold ${
+                studyLanguage === lang
+                  ? 'border-[var(--sa-navy-800)] bg-[var(--sa-navy-800)] text-white'
+                  : 'border-[var(--sa-navy-100)]'
+              }`}
+            >
+              {SHIFT_STUDY_LANGUAGE_LABELS[lang]}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className={`${SA.cardPadded} mt-4 space-y-4`}>

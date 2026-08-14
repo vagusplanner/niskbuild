@@ -1,7 +1,7 @@
 import 'server-only';
 
 import type { ShiftCurriculum } from '@/lib/shift-ai/constants';
-import { isShiftCurriculum } from '@/lib/shift-ai/constants';
+import { isShiftCurriculum, isShiftStudyLanguage, parseStudyLanguage } from '@/lib/shift-ai/constants';
 import type { InviteTokenInfo, SettingsProfile } from '@/lib/shift-ai/settings-shared';
 import {
   mergeStudentSubjects,
@@ -16,7 +16,7 @@ export async function getSettingsProfile(studentId: string): Promise<SettingsPro
     .schema('firstparty')
     .from('shift_students')
     .select(
-      'id, full_name, curriculum, year_group, key_stage, account_type, favourite_subjects, voice_enabled, preferred_voice'
+      'id, full_name, curriculum, year_group, key_stage, account_type, favourite_subjects, voice_enabled, preferred_voice, study_language'
     )
     .eq('id', studentId)
     .maybeSingle();
@@ -45,6 +45,7 @@ export async function getSettingsProfile(studentId: string): Promise<SettingsPro
     favourite_subjects: favouriteSubjects,
     voice_enabled: Boolean(student.voice_enabled),
     preferred_voice: student.preferred_voice,
+    study_language: parseStudyLanguage(student.study_language, student.curriculum),
     canEditCurriculum: accountType === 'self',
     subjects: mergeStudentSubjects(favouriteSubjects, (subjectRows ?? []) as ShiftSubjectRow[]),
   };
@@ -58,6 +59,7 @@ export async function updateSettingsProfile(
     favouriteSubjects?: string[];
     voiceEnabled?: boolean;
     preferredVoice?: string | null;
+    studyLanguage?: string;
     subjectPersonas?: Array<{ name: string; aiPersona: string | null }>;
   }
 ): Promise<void> {
@@ -102,6 +104,10 @@ export async function updateSettingsProfile(
 
   if (input.preferredVoice !== undefined) {
     updates.preferred_voice = input.preferredVoice?.trim() || null;
+  }
+
+  if (input.studyLanguage && isShiftStudyLanguage(input.studyLanguage)) {
+    updates.study_language = input.studyLanguage;
   }
 
   if (Object.keys(updates).length > 0) {

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import {
   isShiftAgeRange,
   isShiftCurriculum,
+  defaultStudyLanguageForCurriculum,
   normalizeEmail,
 } from '@/lib/shift-ai/constants';
 import { deriveKeyStage } from '@/lib/shift-ai/year-group';
@@ -76,6 +77,7 @@ export async function POST(request: NextRequest) {
     account_type: 'self',
     is_active: true,
     parent_consent_given: false,
+    study_language: defaultStudyLanguageForCurriculum(curriculum),
   });
 
   if (error) {

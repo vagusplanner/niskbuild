@@ -51,3 +51,29 @@ export function isShiftAgeRange(value: string): value is ShiftAgeRange {
 export function normalizeEmail(value: string): string {
   return value.trim().toLowerCase();
 }
+
+export const SHIFT_STUDY_LANGUAGES = ['en', 'ar'] as const;
+export type ShiftStudyLanguage = (typeof SHIFT_STUDY_LANGUAGES)[number];
+
+export const SHIFT_STUDY_LANGUAGE_LABELS: Record<ShiftStudyLanguage, string> = {
+  en: 'English',
+  ar: 'Arabic',
+};
+
+export function isShiftStudyLanguage(value: string): value is ShiftStudyLanguage {
+  return (SHIFT_STUDY_LANGUAGES as readonly string[]).includes(value);
+}
+
+export function defaultStudyLanguageForCurriculum(curriculum: string): ShiftStudyLanguage {
+  return curriculum === 'saudi' ? 'ar' : 'en';
+}
+
+export function parseStudyLanguage(
+  value: unknown,
+  curriculum?: string | null
+): ShiftStudyLanguage {
+  if (typeof value === 'string' && isShiftStudyLanguage(value)) {
+    return value;
+  }
+  return defaultStudyLanguageForCurriculum(curriculum ?? 'uk');
+}

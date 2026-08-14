@@ -1,4 +1,4 @@
-import type { ShiftAccountType, ShiftCurriculum } from '@/lib/shift-ai/constants';
+import type { ShiftAccountType, ShiftCurriculum, ShiftStudyLanguage } from '@/lib/shift-ai/constants';
 import type { ShiftSubject } from '@/lib/shift-ai/subjects';
 
 export const AI_PERSONA_OPTIONS = [
@@ -21,6 +21,7 @@ export type SettingsProfile = {
   favourite_subjects: string[];
   voice_enabled: boolean;
   preferred_voice: string | null;
+  study_language: ShiftStudyLanguage;
   canEditCurriculum: boolean;
   subjects: ShiftSubject[];
 };

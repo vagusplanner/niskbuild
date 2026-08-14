@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isShiftCurriculum } from '@/lib/shift-ai/constants';
+import { isShiftCurriculum, isShiftStudyLanguage } from '@/lib/shift-ai/constants';
 import { updateSettingsProfile } from '@/lib/shift-ai/settings';
 import { getShiftStudentForRequest } from '@/lib/shift-ai/student-auth';
 
@@ -31,6 +31,10 @@ export async function PATCH(request: NextRequest) {
     typeof payload.preferredVoice === 'string' || payload.preferredVoice === null
       ? (payload.preferredVoice as string | null)
       : undefined;
+  const studyLanguage =
+    typeof payload.studyLanguage === 'string' && isShiftStudyLanguage(payload.studyLanguage)
+      ? payload.studyLanguage
+      : undefined;
 
   const subjectPersonas = Array.isArray(payload.subjectPersonas)
     ? payload.subjectPersonas
@@ -53,6 +57,7 @@ export async function PATCH(request: NextRequest) {
       favouriteSubjects,
       voiceEnabled,
       preferredVoice,
+      studyLanguage,
       subjectPersonas,
     });
     return NextResponse.json({ ok: true });

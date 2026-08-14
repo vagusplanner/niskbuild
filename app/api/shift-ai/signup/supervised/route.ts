@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { isShiftCurriculum, normalizeEmail } from '@/lib/shift-ai/constants';
+import { isShiftCurriculum, defaultStudyLanguageForCurriculum, normalizeEmail } from '@/lib/shift-ai/constants';
 import { parseFavouriteSubjects } from '@/lib/shift-ai/onboarding';
 import { defaultAgeRangeForAccount, deriveKeyStage } from '@/lib/shift-ai/year-group';
 import { sendParentalConsentRequestEmail } from '@/lib/shift-ai/emails';
@@ -57,6 +57,7 @@ export async function POST(request: NextRequest) {
       is_active: false,
       parent_consent_given: false,
       favourite_subjects: favouriteSubjects,
+      study_language: defaultStudyLanguageForCurriculum(curriculum),
     })
     .select('id')
     .single();

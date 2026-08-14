@@ -60,12 +60,14 @@ create table if not exists firstparty.shift_students (
   year_group text not null,
   key_stage text not null,
   age_range firstparty.shift_age_range not null,
+  study_language text not null default 'en',
   school_id uuid references firstparty.shift_schools(id) on delete set null,
   created_at timestamptz not null default now(),
   constraint shift_students_user_id_unique unique (user_id),
   constraint shift_students_full_name_not_blank check (char_length(trim(full_name)) > 0),
   constraint shift_students_year_group_not_blank check (char_length(trim(year_group)) > 0),
-  constraint shift_students_key_stage_not_blank check (char_length(trim(key_stage)) > 0)
+  constraint shift_students_key_stage_not_blank check (char_length(trim(key_stage)) > 0),
+  constraint shift_students_study_language_check check (study_language in ('en', 'ar'))
 );
 
 create index if not exists idx_shift_students_school
