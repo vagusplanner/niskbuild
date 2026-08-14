@@ -173,7 +173,7 @@ export default function ShiftAiSettingsClient({
               type="text"
               value={yearGroup}
               onChange={(e) => setYearGroup(e.target.value)}
-              placeholder="Year group (e.g. Year 9)"
+              placeholder="Year group (e.g. Year 9, Intermediate 2)"
               className={SA.input}
             />
           </>

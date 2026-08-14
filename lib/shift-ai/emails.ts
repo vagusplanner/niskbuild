@@ -30,7 +30,7 @@ export async function sendParentalConsentRequestEmail(options: {
 
   const html = emailShell(`
     <h1 style="font-size:20px;margin:0 0 16px">Parental consent needed</h1>
-    <p><strong>${options.childFirstName}</strong> has asked to use Shift AI — an AI study companion for ages 7–17 that adapts to UK, French, and US curricula.</p>
+    <p><strong>${options.childFirstName}</strong> has asked to use Shift AI — an AI study companion for ages 7–17 that adapts to UK, French, US, and Saudi curricula.</p>
     <p>Before we can activate their account, we need your consent as their parent or guardian.</p>
     <p style="margin:28px 0">
       <a href="${link}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600">

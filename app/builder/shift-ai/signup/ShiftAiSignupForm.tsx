@@ -165,7 +165,7 @@ export default function ShiftAiSignupForm() {
               <option key={c} value={c}>{SHIFT_CURRICULUM_LABELS[c]}</option>
             ))}
           </select>
-          <input className={SA.input} type="text" placeholder="Year group (e.g. Year 9)" value={yearGroup} onChange={(e) => setYearGroup(e.target.value)} required />
+          <input className={SA.input} type="text" placeholder="Year group (e.g. Year 9, Intermediate 2)" value={yearGroup} onChange={(e) => setYearGroup(e.target.value)} required />
           <select className={SA.select} value={ageRange} onChange={(e) => setAgeRange(e.target.value as ShiftAgeRange)} required>
             {SHIFT_AGE_RANGES.filter((r) => r !== '7_8' && r !== '9_10' && r !== '11_12').map((r) => (
               <option key={r} value={r}>{SHIFT_AGE_RANGE_LABELS[r]}</option>
@@ -197,7 +197,7 @@ export default function ShiftAiSignupForm() {
               <option key={c} value={c}>{SHIFT_CURRICULUM_LABELS[c]}</option>
             ))}
           </select>
-          <input className={SA.input} type="text" placeholder="Year group (e.g. Year 5)" value={yearGroup} onChange={(e) => setYearGroup(e.target.value)} required />
+          <input className={SA.input} type="text" placeholder="Year group (e.g. Year 5, Primary 4)" value={yearGroup} onChange={(e) => setYearGroup(e.target.value)} required />
           <input className={SA.input} type="text" placeholder="Favourite subject 1 (optional)" value={subjectOne} onChange={(e) => setSubjectOne(e.target.value)} />
           <input className={SA.input} type="text" placeholder="Favourite subject 2 (optional)" value={subjectTwo} onChange={(e) => setSubjectTwo(e.target.value)} />
           <input className={SA.input} type="text" placeholder="Favourite subject 3 (optional)" value={subjectThree} onChange={(e) => setSubjectThree(e.target.value)} />

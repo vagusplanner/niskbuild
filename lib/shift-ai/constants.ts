@@ -1,16 +1,18 @@
-export const SHIFT_CURRICULA = ['uk', 'france', 'usa'] as const;
+export const SHIFT_CURRICULA = ['uk', 'france', 'usa', 'saudi'] as const;
 export type ShiftCurriculum = (typeof SHIFT_CURRICULA)[number];
 
 export const SHIFT_CURRICULUM_LABELS: Record<ShiftCurriculum, string> = {
   uk: 'United Kingdom',
   france: 'France',
   usa: 'United States',
+  saudi: 'Saudi Arabia',
 };
 
 export const SHIFT_CURRICULUM_FLAGS: Record<ShiftCurriculum, string> = {
   uk: '🇬🇧',
   france: '🇫🇷',
   usa: '🇺🇸',
+  saudi: '🇸🇦',
 };
 
 export const SHIFT_AGE_RANGES = [

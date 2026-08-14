@@ -91,7 +91,7 @@ export default function ShiftAiOnboardingForm({
               <option key={c} value={c}>{SHIFT_CURRICULUM_LABELS[c]}</option>
             ))}
           </select>
-          <input className={SA.input} type="text" placeholder="Year group (e.g. Year 9)" value={yearGroup} onChange={(e) => setYearGroup(e.target.value)} required />
+          <input className={SA.input} type="text" placeholder="Year group (e.g. Year 9, Grade 8, Intermediate 2)" value={yearGroup} onChange={(e) => setYearGroup(e.target.value)} required />
           <select className={SA.select} value={ageRange} onChange={(e) => setAgeRange(e.target.value as ShiftAgeRange)} required>
             {SHIFT_AGE_RANGES.map((r) => (
               <option key={r} value={r}>{SHIFT_AGE_RANGE_LABELS[r]}</option>

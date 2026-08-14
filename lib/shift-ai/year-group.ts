@@ -28,6 +28,32 @@ export function deriveKeyStage(yearGroup: string, curriculum: ShiftCurriculum): 
     return 'Middle School';
   }
 
+  if (curriculum === 'saudi') {
+    if (y.includes('primary') || y.includes('elementary')) {
+      return 'Primary';
+    }
+    if (y.includes('intermediate') || y.includes('middle')) {
+      return 'Intermediate';
+    }
+    if (y.includes('secondary') || y.includes('high')) {
+      if (y.includes('science')) return 'Secondary (Sciences)';
+      if (y.includes('humanit') || y.includes('arts') || y.includes('literary')) {
+        return 'Secondary (Humanities)';
+      }
+      return 'Secondary';
+    }
+
+    const gradeMatch = y.match(/grade\s*(\d+)/i) ?? y.match(/\bg(\d+)\b/i);
+    const gradeNum = gradeMatch ? Number.parseInt(gradeMatch[1], 10) : null;
+    if (gradeNum !== null) {
+      if (gradeNum <= 6) return 'Primary';
+      if (gradeNum <= 9) return 'Intermediate';
+      return 'Secondary';
+    }
+
+    return 'Intermediate';
+  }
+
   // UK default
   const yearMatch = y.match(/year\s*(\d+)/i) ?? y.match(/\by(\d+)\b/i);
   const yearNum = yearMatch ? Number.parseInt(yearMatch[1], 10) : null;

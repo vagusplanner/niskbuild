@@ -27,11 +27,20 @@ export function isUuid(value: string): boolean {
 }
 
 export function subjectNameToSlug(name: string): string {
-  return name
+  const slug = name
     .trim()
+    .normalize('NFKC')
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/[^\p{L}\p{N}]+/gu, '-')
     .replace(/^-+|-+$/g, '');
+
+  if (slug) return slug;
+
+  let hash = 0;
+  for (let i = 0; i < name.length; i += 1) {
+    hash = (hash * 31 + name.charCodeAt(i)) | 0;
+  }
+  return `subject-${Math.abs(hash).toString(36)}`;
 }
 
 export function subjectIcon(name: string): string {

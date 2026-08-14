@@ -58,6 +58,9 @@ function keyStageTip(curriculum: ShiftCurriculum, keyStage: string, yearGroup: s
   if (curriculum === 'usa') {
     return `Tip for ${yearGroup}: use the AI tutor to review lessons, prep for AP exams, SAT/ACT, and get step-by-step homework help.`;
   }
+  if (curriculum === 'saudi') {
+    return `Tip for ${yearGroup}: use the AI tutor to review Ministry of Education lessons and prepare for Qudurat and Tahsili where relevant.`;
+  }
 
   const tips: Record<string, string> = {
     'Key Stage 2': 'Focus on building strong foundations in reading, maths and science.',

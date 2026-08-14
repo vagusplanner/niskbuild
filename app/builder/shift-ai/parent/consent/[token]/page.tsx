@@ -83,7 +83,7 @@ export default async function ShiftAiParentConsentPage({
           <p>
             <strong>{request.childFirstName}</strong>
             {request.yearGroup ? ` (${request.yearGroup})` : ''} would like to use Shift AI — an AI study
-            companion that adapts to UK, French, and US school curricula.
+            companion that adapts to UK, French, US, and Saudi school curricula.
           </p>
           <p>
             Shift AI helps with homework, revision, and exam preparation. We collect a coarse age band

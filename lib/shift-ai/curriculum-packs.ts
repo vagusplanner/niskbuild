@@ -103,8 +103,12 @@ export async function generateCurriculumPack(input: {
 
   const curriculumName = curriculumLabel(input.curriculum);
   const boardNote = input.examBoard ? ` (${input.examBoard} exam board)` : '';
+  const saudiNote =
+    input.curriculum === 'saudi'
+      ? ' Align with the Saudi Ministry of Education K-12 structure (Primary 1–6, Intermediate 1–3, Secondary 1–3). Write in English.'
+      : '';
 
-  const prompt = `Create a comprehensive ${input.packType} curriculum revision pack for a ${input.yearGroup} student studying ${input.subject} (${curriculumName} curriculum)${boardNote}.
+  const prompt = `Create a comprehensive ${input.packType} curriculum revision pack for a ${input.yearGroup} student studying ${input.subject} (${curriculumName} curriculum)${boardNote}.${saudiNote}
 Topic: "${input.topic}"
 Structure with 4-6 clear sections. Each section: title, content, key_points array, exam_tip.
 Include practice_questions array (4-6 exam-style questions).

@@ -13,7 +13,7 @@ begin
     join pg_namespace n on n.oid = t.typnamespace
     where n.nspname = 'firstparty' and t.typname = 'shift_curriculum'
   ) then
-    create type firstparty.shift_curriculum as enum ('uk', 'france', 'usa');
+    create type firstparty.shift_curriculum as enum ('uk', 'france', 'usa', 'saudi');
   end if;
 end $$;
 
