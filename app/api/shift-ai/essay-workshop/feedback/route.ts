@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { upsertEssayDraft } from '@/lib/shift-ai/essays';
 import type { WorkshopOutline } from '@/lib/shift-ai/essay-workshop-shared';
 import { generateWorkshopFeedback } from '@/lib/shift-ai/essay-workshop';
+import { getStudentLanguage } from '@/lib/shift-ai/study-language';
 import { getShiftStudentForRequest } from '@/lib/shift-ai/student-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest) {
     draft,
     outline,
     curriculum: String(profile?.curriculum || 'uk'),
+    language: await getStudentLanguage(auth.student.id),
   });
 
   if (!result.ok) {

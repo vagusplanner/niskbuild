@@ -3,6 +3,7 @@ import 'server-only';
 import type { WorkshopLiveFeedback, WorkshopOutline } from '@/lib/shift-ai/essay-workshop-shared';
 import { CURRICULUM_RUBRICS, normalizeCurriculum } from '@/lib/shift-ai/essay-curriculum';
 import { curriculumLabel } from '@/lib/shift-ai/subjects';
+import { withLanguageInstruction, type ShiftStudyLanguage } from '@/lib/shift-ai/study-language';
 import { getGroqClient } from '@/lib/groq-client';
 import {
   GROQ_JSON_ONLY_INSTRUCTION,
@@ -19,6 +20,7 @@ export async function generateWorkshopOutline(input: {
   prompt: string;
   wordTarget: number;
   curriculum: string;
+  language?: ShiftStudyLanguage;
 }): Promise<{ ok: true; outline: WorkshopOutline } | { ok: false; error: string }> {
   const groq = getGroqClient();
   if (!groq) {
@@ -29,7 +31,8 @@ export async function generateWorkshopOutline(input: {
   const rubric = CURRICULUM_RUBRICS[curriculum];
   const curriculumName = curriculumLabel(input.curriculum);
 
-  const userPrompt = `You are an expert essay coach for ${curriculumName} students.
+  const userPrompt = withLanguageInstruction(
+    `You are an expert essay coach for ${curriculumName} students.
 Subject: ${input.subject}
 Exam board: ${input.examBoard}, Level: ${input.level}
 Essay question: "${input.prompt}"
@@ -38,14 +41,18 @@ Rubric context: ${rubric}
 
 Generate a structured essay outline JSON with thesis, introduction {hook, context, thesis_sentence}, body_paragraphs [{topic_sentence, arguments[], evidence[], transition}], conclusion {restate_thesis, synthesis, final_thought}, key_vocabulary[], marking_tips[].
 
-${GROQ_JSON_ONLY_INSTRUCTION}`;
+Keep quoted source/question wording in its original language when it is not Arabic. Write coaching text in the student's study language.
+
+${GROQ_JSON_ONLY_INSTRUCTION}`,
+    input.language
+  );
 
   try {
     const completion = await withGroqTimeout(
       groq.chat.completions.create({
         model: SHIFT_GROQ_MODEL,
         messages: [
-          { role: 'system', content: 'You help students plan strong curriculum-aligned essays.' },
+          { role: 'system', content: withLanguageInstruction('You help students plan strong curriculum-aligned essays.', input.language) },
           { role: 'user', content: userPrompt },
         ],
         temperature: 0.7,
@@ -77,6 +84,7 @@ export async function generateWorkshopFeedback(input: {
   draft: string;
   outline?: WorkshopOutline | null;
   curriculum: string;
+  language?: ShiftStudyLanguage;
 }): Promise<{ ok: true; feedback: WorkshopLiveFeedback } | { ok: false; error: string }> {
   const groq = getGroqClient();
   if (!groq) {
@@ -86,7 +94,8 @@ export async function generateWorkshopFeedback(input: {
   const wordCount = input.draft.trim().split(/\s+/).filter(Boolean).length;
   const curriculumName = curriculumLabel(input.curriculum);
 
-  const userPrompt = `You are a supportive ${input.examBoard} ${input.level} ${input.subject} writing coach for ${curriculumName} students.
+  const userPrompt = withLanguageInstruction(
+    `You are a supportive ${input.examBoard} ${input.level} ${input.subject} writing coach for ${curriculumName} students.
 This is IN-PROGRESS workshop feedback — encouraging guidance, NOT a final exam grade.
 
 Essay question: "${input.prompt}"
@@ -102,8 +111,11 @@ ${input.draft}
 
 Return JSON with: encouragement, progress_summary, suggestions[] (3-5), outline_alignment, strengths[], next_steps[], optional word_count_note.
 Do NOT assign a final grade. Be warm and specific.
+Keep quoted draft excerpts in the original language of the draft. Write coaching comments in the student's study language.
 
-${GROQ_JSON_ONLY_INSTRUCTION}`;
+${GROQ_JSON_ONLY_INSTRUCTION}`,
+    input.language
+  );
 
   try {
     const completion = await withGroqTimeout(
@@ -112,7 +124,10 @@ ${GROQ_JSON_ONLY_INSTRUCTION}`;
         messages: [
           {
             role: 'system',
-            content: 'You give encouraging in-progress essay coaching to secondary students.',
+            content: withLanguageInstruction(
+              'You give encouraging in-progress essay coaching to secondary students.',
+              input.language
+            ),
           },
           { role: 'user', content: userPrompt },
         ],

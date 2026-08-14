@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateArcadeQuestions } from '@/lib/shift-ai/arcade';
+import { getStudentLanguage } from '@/lib/shift-ai/study-language';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getShiftStudentForRequest } from '@/lib/shift-ai/student-auth';
 
@@ -38,7 +39,8 @@ export async function POST(request: NextRequest) {
   const result = await generateArcadeQuestions(
     subject,
     profile.year_group,
-    String(profile.curriculum)
+    String(profile.curriculum),
+    await getStudentLanguage(auth.student.id)
   );
 
   if (!result.ok) {

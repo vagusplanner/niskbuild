@@ -4,6 +4,7 @@ import {
   getHomeworkPhotoUrl,
   uploadHomeworkPhoto,
 } from '@/lib/shift-ai/homework-storage';
+import { getStudentLanguage } from '@/lib/shift-ai/study-language';
 import { getShiftStudentForRequest } from '@/lib/shift-ai/student-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -63,7 +64,11 @@ export async function POST(request: NextRequest) {
     );
 
     const imageUrl = await getHomeworkPhotoUrl(uploadId);
-    const aiResponse = await analyzeHomeworkPhoto(imageUrl, yearGroup);
+    const aiResponse = await analyzeHomeworkPhoto(
+      imageUrl,
+      yearGroup,
+      await getStudentLanguage(auth.student.id)
+    );
 
     if (!aiResponse) {
       return NextResponse.json(

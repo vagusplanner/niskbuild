@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generateCurriculumPack } from '@/lib/shift-ai/curriculum-packs';
 import { PACK_TYPES } from '@/lib/shift-ai/curriculum-packs-shared';
 import { getShiftStudentForRequest } from '@/lib/shift-ai/student-auth';
+import { getStudentLanguage } from '@/lib/shift-ai/study-language';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 const VALID_PACK_TYPES = new Set<string>(PACK_TYPES);
@@ -54,6 +55,7 @@ export async function POST(request: NextRequest) {
     packType,
     examBoard,
     createdBy: auth.userId,
+    language: await getStudentLanguage(auth.student.id),
   });
 
   if (!result.ok) {

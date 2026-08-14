@@ -3,6 +3,7 @@ import 'server-only';
 import type { CurriculumPack, CurriculumPackContent } from '@/lib/shift-ai/curriculum-packs-shared';
 import { parsePackContent } from '@/lib/shift-ai/curriculum-packs-shared';
 import { curriculumLabel } from '@/lib/shift-ai/subjects';
+import { withLanguageInstruction, type ShiftStudyLanguage } from '@/lib/shift-ai/study-language';
 import { getGroqClient } from '@/lib/groq-client';
 import {
   GROQ_JSON_ONLY_INSTRUCTION,
@@ -82,6 +83,7 @@ export async function generateCurriculumPack(input: {
   packType: string;
   examBoard?: string;
   createdBy?: string | null;
+  language?: ShiftStudyLanguage;
 }): Promise<
   { ok: true; pack: CurriculumPack; reused: boolean } | { ok: false; error: string }
 > {
@@ -92,7 +94,8 @@ export async function generateCurriculumPack(input: {
     title: input.topic,
   });
 
-  if (existing) {
+  const requestedLang = input.language ?? 'en';
+  if (existing && (existing.content.language ?? 'en') === requestedLang) {
     return { ok: true, pack: existing, reused: true };
   }
 
@@ -105,10 +108,11 @@ export async function generateCurriculumPack(input: {
   const boardNote = input.examBoard ? ` (${input.examBoard} exam board)` : '';
   const saudiNote =
     input.curriculum === 'saudi'
-      ? ' Align with the Saudi Ministry of Education K-12 structure (Primary 1–6, Intermediate 1–3, Secondary 1–3). Write in English.'
+      ? ' Align with the Saudi Ministry of Education K-12 structure (Primary 1–6, Intermediate 1–3, Secondary 1–3).'
       : '';
 
-  const prompt = `Create a comprehensive ${input.packType} curriculum revision pack for a ${input.yearGroup} student studying ${input.subject} (${curriculumName} curriculum)${boardNote}.${saudiNote}
+  const prompt = withLanguageInstruction(
+    `Create a comprehensive ${input.packType} curriculum revision pack for a ${input.yearGroup} student studying ${input.subject} (${curriculumName} curriculum)${boardNote}.${saudiNote}
 Topic: "${input.topic}"
 Structure with 4-6 clear sections. Each section: title, content, key_points array, exam_tip.
 Include practice_questions array (4-6 exam-style questions).
@@ -121,7 +125,9 @@ JSON shape:
   "overview": "",
   "sections": [{ "title": "", "content": "", "key_points": [], "exam_tip": "" }],
   "practice_questions": []
-}`;
+}`,
+    input.language
+  );
 
   try {
     const completion = await withGroqTimeout(
@@ -130,7 +136,10 @@ JSON shape:
         messages: [
           {
             role: 'system',
-            content: 'You create accurate, student-friendly curriculum revision packs.',
+            content: withLanguageInstruction(
+              'You create accurate, student-friendly curriculum revision packs.',
+              input.language
+            ),
           },
           { role: 'user', content: prompt },
         ],
@@ -155,6 +164,7 @@ JSON shape:
       pack_type: input.packType,
       exam_board: input.examBoard,
       topic: input.topic,
+      language: requestedLang,
       sections: parsePackContent(data).sections,
       practice_questions: Array.isArray(data.practice_questions)
         ? data.practice_questions.filter((q): q is string => typeof q === 'string')

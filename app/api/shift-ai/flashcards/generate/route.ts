@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generateFlashcardDeck, verifyDeckOwnership } from '@/lib/shift-ai/flashcards';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getShiftStudentForRequest } from '@/lib/shift-ai/student-auth';
+import { getStudentLanguage } from '@/lib/shift-ai/study-language';
 import { isUuid } from '@/lib/shift-ai/subjects';
 
 export async function POST(request: NextRequest) {
@@ -59,6 +60,8 @@ export async function POST(request: NextRequest) {
       .eq('id', auth.student.id)
       .maybeSingle();
 
+    const language = await getStudentLanguage(auth.student.id);
+
     const result = await generateFlashcardDeck({
       mode: 'topic',
       subject: existingDeck.subject || subject,
@@ -66,6 +69,7 @@ export async function POST(request: NextRequest) {
       yearGroup: profile?.year_group || 'secondary school',
       curriculum: String(profile?.curriculum || 'UK'),
       existingFronts: (existingCards ?? []).map((row) => row.front),
+      language,
     });
 
     if (!result.ok) {
@@ -141,6 +145,7 @@ export async function POST(request: NextRequest) {
     content,
     yearGroup: profile?.year_group || 'secondary school',
     curriculum: String(profile?.curriculum || 'UK'),
+    language: await getStudentLanguage(auth.student.id),
   });
 
   if (!result.ok) {

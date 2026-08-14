@@ -2,6 +2,7 @@ import 'server-only';
 
 import type { TeacherNarrativeResult, TeacherStudentDetail, TeacherStudentSummary } from '@/lib/shift-ai/teacher-shared';
 import { getGroqClient } from '@/lib/groq-client';
+import { getStudentLanguage, withLanguageInstruction } from '@/lib/shift-ai/study-language';
 import {
   GROQ_JSON_ONLY_INSTRUCTION,
   SHIFT_GROQ_MODEL,
@@ -187,7 +188,9 @@ export async function generateTeacherNarrative(
     throw new Error('AI narrative is temporarily unavailable');
   }
 
-  const prompt = `You are writing a weekly "Progress Narrative" for a teacher to share with a parent.
+  const language = await getStudentLanguage(studentId);
+  const prompt = withLanguageInstruction(
+    `You are writing a weekly "Progress Narrative" for a teacher to share with a parent.
 Use ONLY the real data below — cite specific subject names, percentages, and numbers. No generic praise.
 
 Student: ${detail.full_name} (${detail.year_group}, ${detail.key_stage})
@@ -206,7 +209,9 @@ Write JSON:
   "key_strengths": ["2-3 short phrases with real subject/topic names"],
   "areas_for_growth": ["2-3 short phrases naming real weak areas"]
 }
-${GROQ_JSON_ONLY_INSTRUCTION}`;
+${GROQ_JSON_ONLY_INSTRUCTION}`,
+    language
+  );
 
   const completion = await withGroqTimeout(
     groq.chat.completions.create({
@@ -214,8 +219,10 @@ ${GROQ_JSON_ONLY_INSTRUCTION}`;
       messages: [
         {
           role: 'system',
-          content:
+          content: withLanguageInstruction(
             'You write concise, data-driven school progress summaries for teachers and parents.',
+            language
+          ),
         },
         { role: 'user', content: prompt },
       ],

@@ -4,6 +4,7 @@ import type { EssayMarkerFeedback } from '@/lib/shift-ai/essay-marker-shared';
 import type { ShiftCurriculum } from '@/lib/shift-ai/constants';
 import { CURRICULUM_RUBRICS, normalizeCurriculum } from '@/lib/shift-ai/essay-curriculum';
 import { curriculumLabel } from '@/lib/shift-ai/subjects';
+import { withLanguageInstruction, type ShiftStudyLanguage } from '@/lib/shift-ai/study-language';
 import { getGroqClient } from '@/lib/groq-client';
 import {
   GROQ_JSON_ONLY_INSTRUCTION,
@@ -21,6 +22,7 @@ export async function markEssay(input: {
   questionText?: string;
   yearGroup: string;
   curriculum: string;
+  language?: ShiftStudyLanguage;
 }): Promise<{ ok: true; feedback: EssayMarkerFeedback } | { ok: false; error: string }> {
   const groq = getGroqClient();
   if (!groq) {
@@ -31,7 +33,8 @@ export async function markEssay(input: {
   const rubric = CURRICULUM_RUBRICS[curriculum];
   const curriculumName = curriculumLabel(input.curriculum);
 
-  const prompt = `You are an expert ${input.examBoard} ${input.level} ${input.subject} examiner marking a ${input.yearGroup} student's essay following the ${curriculumName} curriculum.
+  const prompt = withLanguageInstruction(
+    `You are an expert ${input.examBoard} ${input.level} ${input.subject} examiner marking a ${input.yearGroup} student's essay following the ${curriculumName} curriculum.
 ${input.questionText ? `Exam question: "${input.questionText}"` : ''}
 Rubric: ${rubric}
 
@@ -48,7 +51,11 @@ Provide curriculum-aligned marking as JSON with:
 - rewrite_suggestions: array of actionable rewrite tips
 - key_strengths, priority_improvements, examiner_tip
 
-${GROQ_JSON_ONLY_INSTRUCTION}`;
+Keep quoted essay excerpts in the original language of the essay. Write comments and explanations in the student's study language.
+
+${GROQ_JSON_ONLY_INSTRUCTION}`,
+    input.language
+  );
 
   try {
     const completion = await withGroqTimeout(
@@ -57,7 +64,10 @@ ${GROQ_JSON_ONLY_INSTRUCTION}`;
         messages: [
           {
             role: 'system',
-            content: `You are a rigorous but fair ${curriculumName} examiner. Be specific and constructive.`,
+            content: withLanguageInstruction(
+              `You are a rigorous but fair ${curriculumName} examiner. Be specific and constructive.`,
+              input.language
+            ),
           },
           { role: 'user', content: prompt },
         ],

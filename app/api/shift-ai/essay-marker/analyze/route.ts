@@ -6,6 +6,7 @@ import {
   getHomeworkPhotoUrl,
   uploadHomeworkPhoto,
 } from '@/lib/shift-ai/homework-storage';
+import { getStudentLanguage } from '@/lib/shift-ai/study-language';
 import { getShiftStudentForRequest } from '@/lib/shift-ai/student-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -131,6 +132,7 @@ export async function POST(request: NextRequest) {
       questionText: questionText || undefined,
       yearGroup,
       curriculum,
+      language: await getStudentLanguage(auth.student.id),
     });
 
     if (!result.ok) {

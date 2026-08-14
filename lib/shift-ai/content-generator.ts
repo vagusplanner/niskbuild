@@ -7,6 +7,7 @@ import type {
   GeneratedSummary,
 } from '@/lib/shift-ai/content-generator-shared';
 import { curriculumLabel } from '@/lib/shift-ai/subjects';
+import { withLanguageInstruction, type ShiftStudyLanguage } from '@/lib/shift-ai/study-language';
 import { getGroqClient } from '@/lib/groq-client';
 import {
   GROQ_JSON_ONLY_INSTRUCTION,
@@ -23,6 +24,7 @@ export async function generateStudyContent(input: {
   yearGroup: string;
   curriculum: string;
   examBoard?: string;
+  language?: ShiftStudyLanguage;
 }): Promise<{ ok: true; content: GeneratedContent } | { ok: false; error: string }> {
   const groq = getGroqClient();
   if (!groq) {
@@ -51,12 +53,20 @@ ${GROQ_JSON_ONLY_INSTRUCTION}
 JSON: { "key_concepts": "", "important_terms": "", "exam_tips": "", "common_mistakes": "" }`;
   }
 
+  userPrompt = withLanguageInstruction(userPrompt, input.language);
+
   try {
     const completion = await withGroqTimeout(
       groq.chat.completions.create({
         model: SHIFT_GROQ_MODEL,
         messages: [
-          { role: 'system', content: 'You create high-quality revision materials for students.' },
+          {
+            role: 'system',
+            content: withLanguageInstruction(
+              'You create high-quality revision materials for students.',
+              input.language
+            ),
+          },
           { role: 'user', content: userPrompt },
         ],
         temperature: 0.65,

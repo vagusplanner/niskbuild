@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { GROQ_CODE_MODEL, getGroqClient } from '@/lib/groq-client';
+import { withLanguageInstruction, type ShiftStudyLanguage } from '@/lib/shift-ai/study-language';
 
 const GROQ_MODEL = process.env.GROQ_AGENT_MODEL?.trim() || GROQ_CODE_MODEL;
 
@@ -26,6 +27,7 @@ export type ShiftStudentTutorContext = {
   age_range: string;
   curriculum: string;
   curriculumLabel?: string;
+  language?: ShiftStudyLanguage;
 };
 
 function buildSystemPrompt(
@@ -48,7 +50,7 @@ function buildSystemPrompt(
     parts.push(`Teaching style for this subject: ${aiPersona.trim()}`);
   }
 
-  return parts.join('\n\n');
+  return withLanguageInstruction(parts.join('\n\n'), ctx.language);
 }
 
 export async function generateShiftAiTutorReply(

@@ -20,6 +20,7 @@ export type CurriculumPackContent = {
   pack_type?: string;
   exam_board?: string;
   topic?: string;
+  language?: string;
   sections: CurriculumPackSection[];
   practice_questions?: string[];
 };
@@ -63,6 +64,7 @@ export function parsePackContent(raw: unknown): CurriculumPackContent {
     pack_type: typeof obj.pack_type === 'string' ? obj.pack_type : undefined,
     exam_board: typeof obj.exam_board === 'string' ? obj.exam_board : undefined,
     topic: typeof obj.topic === 'string' ? obj.topic : undefined,
+    language: typeof obj.language === 'string' ? obj.language : undefined,
     sections,
     practice_questions: Array.isArray(obj.practice_questions)
       ? obj.practice_questions.filter((q): q is string => typeof q === 'string')

@@ -2,6 +2,7 @@ import 'server-only';
 
 import { CURRICULUM_RUBRICS, normalizeCurriculum } from '@/lib/shift-ai/essay-curriculum';
 import { curriculumLabel } from '@/lib/shift-ai/subjects';
+import { withLanguageInstruction, type ShiftStudyLanguage } from '@/lib/shift-ai/study-language';
 import { getGroqClient } from '@/lib/groq-client';
 import {
   GROQ_JSON_ONLY_INSTRUCTION,
@@ -19,6 +20,7 @@ export async function generateSpecPoints(input: {
   examBoard: string;
   yearGroup: string;
   curriculum: string;
+  language?: ShiftStudyLanguage;
 }): Promise<{ ok: true; points: SpecPoint[] } | { ok: false; error: string }> {
   const groq = getGroqClient();
   if (!groq) {
@@ -29,7 +31,8 @@ export async function generateSpecPoints(input: {
   const rubric = CURRICULUM_RUBRICS[curriculum];
   const curriculumName = curriculumLabel(input.curriculum);
 
-  const prompt = `Generate real ${input.examBoard} specification points for ${input.subject} (${curriculumName}, ${input.yearGroup}).
+  const prompt = withLanguageInstruction(
+    `Generate real ${input.examBoard} specification points for ${input.subject} (${curriculumName}, ${input.yearGroup}).
 Use authentic spec codes where applicable (e.g. GCSE AQA 4.1.1, AP Unit 3, Bac SVT points).
 Cover all major testable areas students must revise.
 
@@ -41,7 +44,9 @@ Return JSON:
 }
 
 Include 15-30 points. ${rubric}
-${GROQ_JSON_ONLY_INSTRUCTION}`;
+${GROQ_JSON_ONLY_INSTRUCTION}`,
+    input.language
+  );
 
   try {
     const completion = await withGroqTimeout(
@@ -50,7 +55,10 @@ ${GROQ_JSON_ONLY_INSTRUCTION}`;
         messages: [
           {
             role: 'system',
-            content: 'You output accurate curriculum specification points for students to track.',
+            content: withLanguageInstruction(
+              'You output accurate curriculum specification points for students to track.',
+              input.language
+            ),
           },
           { role: 'user', content: prompt },
         ],

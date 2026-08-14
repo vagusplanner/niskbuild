@@ -3,6 +3,7 @@ import 'server-only';
 import { aggregateGradeSignals } from '@/lib/shift-ai/analytics';
 import type { GradePredictionResult } from '@/lib/shift-ai/grade-predictor-shared';
 import { curriculumLabel } from '@/lib/shift-ai/subjects';
+import { withLanguageInstruction, type ShiftStudyLanguage } from '@/lib/shift-ai/study-language';
 import { getGroqClient } from '@/lib/groq-client';
 import {
   GROQ_JSON_ONLY_INSTRUCTION,
@@ -18,6 +19,7 @@ export async function generateGradePrediction(input: {
   subject: string;
   yearGroup: string;
   curriculum: string;
+  language?: ShiftStudyLanguage;
 }): Promise<{ ok: true; prediction: GradePredictionResult } | { ok: false; error: string }> {
   const signals = await aggregateGradeSignals(input.studentId, input.subject);
 
@@ -39,7 +41,8 @@ export async function generateGradePrediction(input: {
   }
 
   const curriculumName = curriculumLabel(input.curriculum);
-  const prompt = `You are an expert ${curriculumName} exam coach predicting a likely grade for a ${input.yearGroup} student in ${input.subject}.
+  const prompt = withLanguageInstruction(
+    `You are an expert ${curriculumName} exam coach predicting a likely grade for a ${input.yearGroup} student in ${input.subject}.
 
 REAL aggregated study signals (use these exactly — do not invent data):
 - Mastery: ${signals.masteryPercent}% mastered (${signals.masteredCount}/${signals.masteryTotal} topics)
@@ -56,7 +59,9 @@ Return JSON:
   "improvement_plan": "2-3 sentence actionable plan referencing the signals above"
 }
 
-Be transparent and realistic. ${GROQ_JSON_ONLY_INSTRUCTION}`;
+Be transparent and realistic. ${GROQ_JSON_ONLY_INSTRUCTION}`,
+    input.language
+  );
 
   try {
     const completion = await withGroqTimeout(
@@ -65,7 +70,10 @@ Be transparent and realistic. ${GROQ_JSON_ONLY_INSTRUCTION}`;
         messages: [
           {
             role: 'system',
-            content: 'You give honest, curriculum-aligned grade predictions based only on provided signals.',
+            content: withLanguageInstruction(
+              'You give honest, curriculum-aligned grade predictions based only on provided signals.',
+              input.language
+            ),
           },
           { role: 'user', content: prompt },
         ],

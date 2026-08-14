@@ -2,6 +2,7 @@ import 'server-only';
 
 import { getGroqClient } from '@/lib/groq-client';
 import type { GeneratedFlashcard } from '@/lib/shift-ai/flashcards-shared';
+import { withLanguageInstruction, type ShiftStudyLanguage } from '@/lib/shift-ai/study-language';
 import {
   GROQ_JSON_ONLY_INSTRUCTION,
   SHIFT_GROQ_MODEL,
@@ -60,6 +61,7 @@ export async function generateFlashcardDeck(
     yearGroup: string;
     curriculum: string;
     existingFronts?: string[];
+    language?: ShiftStudyLanguage;
   }
 ): Promise<
   | { ok: true; deckTitle: string; cards: GeneratedFlashcard[] }
@@ -70,7 +72,7 @@ export async function generateFlashcardDeck(
     return { ok: false, error: 'AI flashcard generator is temporarily unavailable' };
   }
 
-  const { mode, subject, content, yearGroup, curriculum, existingFronts = [] } = input;
+  const { mode, subject, content, yearGroup, curriculum, existingFronts = [], language } = input;
   const count = GENERATION_CARD_COUNT;
   const avoidDupes =
     existingFronts.length > 0
@@ -80,7 +82,7 @@ export async function generateFlashcardDeck(
           .join('\n')}`
       : '';
 
-  const prompt =
+  const prompt = withLanguageInstruction(
     mode === 'topic'
       ? `Create exactly ${count} high-quality flashcard pairs for a ${yearGroup} student studying the topic "${content}" in ${subject} (${curriculum} curriculum).
 Include a mix of key term definitions, conceptual questions, application prompts, and common misconception checks.
@@ -109,7 +111,9 @@ Return ONLY valid JSON in this shape:
   "cards": [
     { "front": "Question or term", "back": "Answer or definition" }
   ]
-}`;
+}`,
+    language
+  );
 
   try {
     const completion = await withGroqTimeout(
@@ -117,7 +121,10 @@ Return ONLY valid JSON in this shape:
         messages: [
           {
             role: 'system',
-            content: `You create educational flashcards for school students. ${GROQ_JSON_ONLY_INSTRUCTION}`,
+            content: withLanguageInstruction(
+              `You create educational flashcards for school students. ${GROQ_JSON_ONLY_INSTRUCTION}`,
+              language
+            ),
           },
           {
             role: 'user',

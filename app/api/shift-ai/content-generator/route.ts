@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { ContentGeneratorType } from '@/lib/shift-ai/content-generator-shared';
 import { generateStudyContent } from '@/lib/shift-ai/content-generator';
+import { getStudentLanguage } from '@/lib/shift-ai/study-language';
 import { getShiftStudentForRequest } from '@/lib/shift-ai/student-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -54,6 +55,7 @@ export async function POST(request: NextRequest) {
     yearGroup: profile?.year_group?.trim() || 'secondary school',
     curriculum: String(profile?.curriculum || 'uk'),
     examBoard,
+    language: await getStudentLanguage(auth.student.id),
   });
 
   if (!result.ok) {

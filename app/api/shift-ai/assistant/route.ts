@@ -5,6 +5,7 @@ import {
   type ShiftChatHistoryMessage,
   type ShiftStudentTutorContext,
 } from '@/lib/shift-ai/assistant';
+import { getStudentLanguage } from '@/lib/shift-ai/study-language';
 import { curriculumLabel } from '@/lib/shift-ai/subjects';
 import { getShiftStudentForRequest } from '@/lib/shift-ai/student-auth';
 
@@ -64,6 +65,7 @@ export async function POST(request: NextRequest) {
     age_range: String(profile.age_range),
     curriculum: String(profile.curriculum),
     curriculumLabel: curriculumLabel(String(profile.curriculum)),
+    language: await getStudentLanguage(auth.student.id),
   };
 
   let historyQuery = admin

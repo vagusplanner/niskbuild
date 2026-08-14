@@ -8,6 +8,7 @@ import type {
   StudyGroup,
 } from '@/lib/shift-ai/groups-shared';
 import { getGroqClient } from '@/lib/groq-client';
+import { getStudentLanguage, withLanguageInstruction } from '@/lib/shift-ai/study-language';
 import {
   GROQ_JSON_ONLY_INSTRUCTION,
   SHIFT_GROQ_MODEL,
@@ -321,15 +322,19 @@ export async function generateGroupFlashcardSet(input: {
   }
 
   const subjectLabel = input.subject?.trim() || 'this subject';
-  const prompt = `Create 8 flashcards for the topic "${input.topic}" in ${subjectLabel}.
+  const language = await getStudentLanguage(input.studentId);
+  const prompt = withLanguageInstruction(
+    `Create 8 flashcards for the topic "${input.topic}" in ${subjectLabel}.
 Return JSON: { "cards": [{ "front": "", "back": "" }] }
-${GROQ_JSON_ONLY_INSTRUCTION}`;
+${GROQ_JSON_ONLY_INSTRUCTION}`,
+    language
+  );
 
   const completion = await withGroqTimeout(
     groq.chat.completions.create({
       model: SHIFT_GROQ_MODEL,
       messages: [
-        { role: 'system', content: 'You create concise study flashcards for students.' },
+        { role: 'system', content: withLanguageInstruction('You create concise study flashcards for students.', language) },
         { role: 'user', content: prompt },
       ],
       temperature: 0.6,

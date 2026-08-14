@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { GROQ_CODE_MODEL, getGroqClient } from '@/lib/groq-client';
+import { withLanguageInstruction, type ShiftStudyLanguage } from '@/lib/shift-ai/study-language';
 import {
   ARCADE_QUESTION_COUNT,
   type ArcadeQuestion,
@@ -77,14 +78,16 @@ export function parseArcadeQuestions(raw: unknown): ArcadeQuestion[] {
 export async function generateArcadeQuestions(
   subject: string,
   yearGroup: string,
-  curriculum: string
+  curriculum: string,
+  language?: ShiftStudyLanguage
 ): Promise<{ ok: true; questions: ArcadeQuestion[] } | { ok: false; error: string }> {
   const groq = getGroqClient();
   if (!groq) {
     return { ok: false, error: 'AI quiz generator is temporarily unavailable' };
   }
 
-  const prompt = `Generate exactly 10 multiple choice quiz questions for a ${yearGroup} student studying ${subject} in the ${curriculum} curriculum.
+  const prompt = withLanguageInstruction(
+    `Generate exactly 10 multiple choice quiz questions for a ${yearGroup} student studying ${subject} in the ${curriculum} curriculum.
 
 Rules:
 - Each question must have exactly 4 answer options with only one correct answer
@@ -102,15 +105,19 @@ Return ONLY valid JSON in this shape:
       "socraticHint": "A simpler question to guide them if they get it wrong"
     }
   ]
-}`;
+}`,
+    language
+  );
 
   try {
     const completion = await groq.chat.completions.create({
       messages: [
         {
           role: 'system',
-          content:
+          content: withLanguageInstruction(
             'You create educational multiple-choice quizzes for school students. Respond with valid JSON only.',
+            language
+          ),
         },
         { role: 'user', content: prompt },
       ],

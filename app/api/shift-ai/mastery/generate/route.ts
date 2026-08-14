@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateMasteryTopics } from '@/lib/shift-ai/mastery';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getStudentLanguage } from '@/lib/shift-ai/study-language';
 import { getShiftStudentForRequest } from '@/lib/shift-ai/student-auth';
 
 export async function POST(request: NextRequest) {
@@ -50,7 +51,8 @@ export async function POST(request: NextRequest) {
   const result = await generateMasteryTopics(
     subject,
     profile?.year_group || 'secondary school',
-    String(profile?.curriculum || 'UK')
+    String(profile?.curriculum || 'UK'),
+    await getStudentLanguage(auth.student.id)
   );
 
   if (!result.ok) {

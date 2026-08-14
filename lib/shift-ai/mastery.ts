@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { getGroqClient } from '@/lib/groq-client';
+import { withLanguageInstruction, type ShiftStudyLanguage } from '@/lib/shift-ai/study-language';
 import {
   GROQ_JSON_ONLY_INSTRUCTION,
   SHIFT_GROQ_MODEL,
@@ -57,14 +58,16 @@ function parseGeneratedTopics(raw: unknown): { ok: true; topics: string[] } | { 
 export async function generateMasteryTopics(
   subject: string,
   yearGroup: string,
-  curriculum: string
+  curriculum: string,
+  language?: ShiftStudyLanguage
 ): Promise<{ ok: true; topics: string[] } | { ok: false; error: string }> {
   const groq = getGroqClient();
   if (!groq) {
     return { ok: false, error: 'AI topic generator is temporarily unavailable' };
   }
 
-  const prompt = `List exactly ${MASTERY_TOPIC_MIN} to ${MASTERY_TOPIC_MAX} essential curriculum topics for a ${yearGroup} student studying ${subject} (${curriculum} curriculum).
+  const prompt = withLanguageInstruction(
+    `List exactly ${MASTERY_TOPIC_MIN} to ${MASTERY_TOPIC_MAX} essential curriculum topics for a ${yearGroup} student studying ${subject} (${curriculum} curriculum).
 
 Rules:
 - Short topic names only (3–6 words max)
@@ -75,7 +78,9 @@ Rules:
 Return ONLY valid JSON in this shape:
 {
   "topics": ["Topic one", "Topic two"]
-}`;
+}`,
+    language
+  );
 
   try {
     const completion = await withGroqTimeout(
@@ -83,7 +88,10 @@ Return ONLY valid JSON in this shape:
         messages: [
           {
             role: 'system',
-            content: `You create curriculum topic maps for school students. ${GROQ_JSON_ONLY_INSTRUCTION}`,
+            content: withLanguageInstruction(
+              `You create curriculum topic maps for school students. ${GROQ_JSON_ONLY_INSTRUCTION}`,
+              language
+            ),
           },
           {
             role: 'user',
