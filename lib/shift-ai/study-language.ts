@@ -6,6 +6,7 @@ import {
   type ShiftStudyLanguage,
 } from '@/lib/shift-ai/constants';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/supabase/server';
 
 export { parseStudyLanguage, defaultStudyLanguageForCurriculum };
 export type { ShiftStudyLanguage };
@@ -27,6 +28,35 @@ export async function getStudentLanguage(studentId: string): Promise<ShiftStudyL
     .from('shift_students')
     .select('study_language, curriculum')
     .eq('id', studentId)
+    .maybeSingle();
+
+  if (!data) {
+    return 'en';
+  }
+
+  return studyLanguageFromStudent(data);
+}
+
+/**
+ * Locale for Shift AI UI (Phase 2b). Preference-based — no URL locale segment.
+ * Unauthenticated / missing profile defaults to English (LTR).
+ */
+export async function getRequestStudyLanguage(): Promise<ShiftStudyLanguage> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return 'en';
+  }
+
+  const admin = createAdminClient();
+  const { data } = await admin
+    .schema('firstparty')
+    .from('shift_students')
+    .select('study_language, curriculum')
+    .eq('user_id', user.id)
     .maybeSingle();
 
   if (!data) {

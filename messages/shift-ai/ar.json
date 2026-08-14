@@ -1,0 +1,63 @@
+{
+  "brand": {
+    "name": "Shift Learning",
+    "tagline": "قوِّ دراستك"
+  },
+  "sidebar": {
+    "groups": {
+      "home": "الرئيسية",
+      "study": "الدراسة",
+      "studyTools": "أدوات الدراسة",
+      "writingTools": "أدوات الكتابة",
+      "track": "التتبّع",
+      "insights": "الرؤى",
+      "collaborate": "التعاون",
+      "practise": "التدريب"
+    },
+    "items": {
+      "dashboard": "لوحة التحكم",
+      "planner": "المخطّط",
+      "settings": "الإعدادات",
+      "tutor": "محادثة المعلّم الذكي",
+      "flashcards": "البطاقات الذكية",
+      "homework": "التقط الواجب",
+      "curriculumPacks": "حزم المنهج",
+      "voiceBuddy": "رفيق الصوت",
+      "voiceTutor": "المعلّم الصوتي",
+      "essayMarker": "مصحّح المقال",
+      "essayWorkshop": "ورشة المقال",
+      "contentGenerator": "مولّد المحتوى",
+      "mastery": "خريطة الإتقان",
+      "specTracker": "متتبّع المواصفات",
+      "analytics": "التحليلات",
+      "gradePredictor": "متوقّع الدرجات",
+      "groups": "مجموعات الدراسة",
+      "arcade": "أركيد الاختبارات ⚡"
+    },
+    "signOut": "تسجيل الخروج",
+    "openMenu": "فتح القائمة",
+    "closeMenu": "إغلاق القائمة",
+    "closeMenuOverlay": "إغلاق طبقة القائمة"
+  },
+  "dashboard": {},
+  "planner": {},
+  "settings": {},
+  "tutor": {},
+  "flashcards": {},
+  "homework": {},
+  "curriculumPacks": {},
+  "voiceBuddy": {},
+  "voiceTutor": {},
+  "essayMarker": {},
+  "essayWorkshop": {},
+  "contentGenerator": {},
+  "mastery": {},
+  "specTracker": {},
+  "analytics": {},
+  "gradePredictor": {},
+  "groups": {},
+  "arcade": {},
+  "studio": {},
+  "onboarding": {},
+  "auth": {}
+}

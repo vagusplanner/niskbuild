@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import ShiftAiShell from '@/app/builder/shift-ai/ShiftAiShell';
+import type { ShiftStudyLanguage } from '@/lib/shift-ai/constants';
 
 const STANDALONE_PREFIXES = [
   '/builder/shift-ai/studio',
@@ -18,12 +19,28 @@ function isStandaloneRoute(pathname: string): boolean {
   );
 }
 
-export default function ShiftAiLayoutGate({ children }: { children: React.ReactNode }) {
+export default function ShiftAiLayoutGate({
+  children,
+  dir,
+  locale,
+}: {
+  children: React.ReactNode;
+  dir: 'ltr' | 'rtl';
+  locale: ShiftStudyLanguage;
+}) {
   const pathname = usePathname() ?? '';
 
   if (isStandaloneRoute(pathname)) {
-    return <div className="shift-ai-app shift-ai-standalone">{children}</div>;
+    return (
+      <div className="shift-ai-app shift-ai-standalone" dir={dir} lang={locale}>
+        {children}
+      </div>
+    );
   }
 
-  return <ShiftAiShell>{children}</ShiftAiShell>;
+  return (
+    <ShiftAiShell dir={dir} locale={locale}>
+      {children}
+    </ShiftAiShell>
+  );
 }

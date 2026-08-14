@@ -1,0 +1,63 @@
+{
+  "brand": {
+    "name": "Shift Learning",
+    "tagline": "Power Your Study"
+  },
+  "sidebar": {
+    "groups": {
+      "home": "Home",
+      "study": "Study",
+      "studyTools": "Study Tools",
+      "writingTools": "Writing Tools",
+      "track": "Track",
+      "insights": "Insights",
+      "collaborate": "Collaborate",
+      "practise": "Practise"
+    },
+    "items": {
+      "dashboard": "Dashboard",
+      "planner": "Planner",
+      "settings": "Settings",
+      "tutor": "AI Tutor Chat",
+      "flashcards": "Smart Flashcards",
+      "homework": "Snap Homework",
+      "curriculumPacks": "Curriculum Packs",
+      "voiceBuddy": "Voice Buddy",
+      "voiceTutor": "Voice Tutor",
+      "essayMarker": "Essay Marker",
+      "essayWorkshop": "Essay Workshop",
+      "contentGenerator": "Content Generator",
+      "mastery": "Mastery Map",
+      "specTracker": "Spec Tracker",
+      "analytics": "Analytics",
+      "gradePredictor": "Grade Predictor",
+      "groups": "Study Groups",
+      "arcade": "Quiz Arcade ⚡"
+    },
+    "signOut": "Sign Out",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "closeMenuOverlay": "Close menu overlay"
+  },
+  "dashboard": {},
+  "planner": {},
+  "settings": {},
+  "tutor": {},
+  "flashcards": {},
+  "homework": {},
+  "curriculumPacks": {},
+  "voiceBuddy": {},
+  "voiceTutor": {},
+  "essayMarker": {},
+  "essayWorkshop": {},
+  "contentGenerator": {},
+  "mastery": {},
+  "specTracker": {},
+  "analytics": {},
+  "gradePredictor": {},
+  "groups": {},
+  "arcade": {},
+  "studio": {},
+  "onboarding": {},
+  "auth": {}
+}

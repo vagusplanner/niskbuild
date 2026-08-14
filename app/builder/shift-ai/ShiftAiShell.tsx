@@ -1,14 +1,26 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { GraduationCap, Menu, X } from 'lucide-react';
 import ShiftAiSidebar from '@/app/builder/shift-ai/ShiftAiSidebar';
+import type { ShiftStudyLanguage } from '@/lib/shift-ai/constants';
 
-export default function ShiftAiShell({ children }: { children: React.ReactNode }) {
+export default function ShiftAiShell({
+  children,
+  dir,
+  locale,
+}: {
+  children: React.ReactNode;
+  dir: 'ltr' | 'rtl';
+  locale: ShiftStudyLanguage;
+}) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const tBrand = useTranslations('brand');
+  const tSidebar = useTranslations('sidebar');
 
   return (
-    <div className="shift-ai-app flex h-screen overflow-hidden">
+    <div className="shift-ai-app flex h-screen overflow-hidden" dir={dir} lang={locale}>
       <div className="hidden flex-shrink-0 md:flex">
         <ShiftAiSidebar />
       </div>
@@ -20,8 +32,8 @@ export default function ShiftAiShell({ children }: { children: React.ReactNode }
             <button
               type="button"
               onClick={() => setMobileOpen(false)}
-              className="absolute right-3 top-4 rounded-md bg-white/10 p-1.5 text-white hover:bg-white/20"
-              aria-label="Close menu"
+              className="absolute end-3 top-4 rounded-md bg-white/10 p-1.5 text-white hover:bg-white/20"
+              aria-label={tSidebar('closeMenu')}
             >
               <X className="h-4 w-4" />
             </button>
@@ -30,7 +42,7 @@ export default function ShiftAiShell({ children }: { children: React.ReactNode }
             type="button"
             className="flex-1 bg-black/50"
             onClick={() => setMobileOpen(false)}
-            aria-label="Close menu overlay"
+            aria-label={tSidebar('closeMenuOverlay')}
           />
         </div>
       ) : null}
@@ -42,7 +54,7 @@ export default function ShiftAiShell({ children }: { children: React.ReactNode }
               type="button"
               onClick={() => setMobileOpen(true)}
               className="rounded-md p-1.5 hover:bg-[var(--sa-secondary)]"
-              aria-label="Open menu"
+              aria-label={tSidebar('openMenu')}
             >
               <Menu className="h-5 w-5" />
             </button>
@@ -50,7 +62,7 @@ export default function ShiftAiShell({ children }: { children: React.ReactNode }
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--sa-navy-800)]">
                 <GraduationCap className="h-4 w-4 text-white" />
               </div>
-              <span className="text-sm font-bold text-[var(--sa-navy-800)]">Shift Learning</span>
+              <span className="text-sm font-bold text-[var(--sa-navy-800)]">{tBrand('name')}</span>
             </div>
           </div>
         </div>

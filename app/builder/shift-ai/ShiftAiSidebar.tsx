@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   BarChart3,
   BookOpen,
@@ -27,134 +28,134 @@ import { signOut } from '@/lib/auth';
 
 const NAV_GROUPS = [
   {
-    label: 'Home',
+    groupKey: 'home',
     items: [
-      { href: '/builder/shift-ai/dashboard', icon: Home, label: 'Dashboard', emoji: '🏠' },
-      { href: '/builder/shift-ai/planner', icon: CalendarDays, label: 'Planner', emoji: '📅' },
-      { href: '/builder/shift-ai/settings', icon: Settings, label: 'Settings', emoji: '⚙️' },
+      { href: '/builder/shift-ai/dashboard', icon: Home, itemKey: 'dashboard', emoji: '🏠' },
+      { href: '/builder/shift-ai/planner', icon: CalendarDays, itemKey: 'planner', emoji: '📅' },
+      { href: '/builder/shift-ai/settings', icon: Settings, itemKey: 'settings', emoji: '⚙️' },
     ],
   },
   {
-    label: 'Study',
+    groupKey: 'study',
     items: [
       {
         href: '/builder/shift-ai/assistant',
         icon: MessageCircle,
-        label: 'AI Tutor Chat',
+        itemKey: 'tutor',
         emoji: '🤖',
       },
       {
         href: '/builder/shift-ai/flashcards',
         icon: Layers,
-        label: 'Smart Flashcards',
+        itemKey: 'flashcards',
         emoji: '🃏',
       },
     ],
   },
   {
-    label: 'Study Tools',
+    groupKey: 'studyTools',
     items: [
       {
         href: '/builder/shift-ai/homework',
         icon: Camera,
-        label: 'Snap Homework',
+        itemKey: 'homework',
         emoji: '📸',
       },
       {
         href: '/builder/shift-ai/curriculum-packs',
         icon: BookOpen,
-        label: 'Curriculum Packs',
+        itemKey: 'curriculumPacks',
         emoji: '📚',
       },
       {
         href: '/builder/shift-ai/voice-buddy',
         icon: Mic,
-        label: 'Voice Buddy',
+        itemKey: 'voiceBuddy',
         emoji: '🐥',
       },
       {
         href: '/builder/shift-ai/voice-tutor',
         icon: Mic,
-        label: 'Voice Tutor',
+        itemKey: 'voiceTutor',
         emoji: '🎙️',
       },
     ],
   },
   {
-    label: 'Writing Tools',
+    groupKey: 'writingTools',
     items: [
       {
         href: '/builder/shift-ai/essay-marker',
         icon: PenLine,
-        label: 'Essay Marker',
+        itemKey: 'essayMarker',
         emoji: '✍️',
       },
       {
         href: '/builder/shift-ai/essay-workshop',
         icon: PenLine,
-        label: 'Essay Workshop',
+        itemKey: 'essayWorkshop',
         emoji: '📝',
       },
       {
         href: '/builder/shift-ai/content-generator',
         icon: Sparkles,
-        label: 'Content Generator',
+        itemKey: 'contentGenerator',
         emoji: '✨',
       },
     ],
   },
   {
-    label: 'Track',
+    groupKey: 'track',
     items: [
       {
         href: '/builder/shift-ai/mastery',
         icon: Map,
-        label: 'Mastery Map',
+        itemKey: 'mastery',
         emoji: '🗺️',
       },
       {
         href: '/builder/shift-ai/spec-tracker',
         icon: Target,
-        label: 'Spec Tracker',
+        itemKey: 'specTracker',
         emoji: '📋',
       },
     ],
   },
   {
-    label: 'Insights',
+    groupKey: 'insights',
     items: [
       {
         href: '/builder/shift-ai/analytics',
         icon: BarChart3,
-        label: 'Analytics',
+        itemKey: 'analytics',
         emoji: '📊',
       },
       {
         href: '/builder/shift-ai/grade-predictor',
         icon: TrendingUp,
-        label: 'Grade Predictor',
+        itemKey: 'gradePredictor',
         emoji: '🎯',
       },
     ],
   },
   {
-    label: 'Collaborate',
+    groupKey: 'collaborate',
     items: [
       {
         href: '/builder/shift-ai/groups',
         icon: Users,
-        label: 'Study Groups',
+        itemKey: 'groups',
         emoji: '👥',
       },
     ],
   },
   {
-    label: 'Practise',
+    groupKey: 'practise',
     items: [
       {
         href: '/builder/shift-ai/arcade',
         icon: Gamepad2,
-        label: 'Quiz Arcade ⚡',
+        itemKey: 'arcade',
         emoji: '🎮',
       },
     ],
@@ -170,6 +171,8 @@ function isActive(pathname: string, href: string): boolean {
 
 export default function ShiftAiSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const t = useTranslations('sidebar');
+  const tBrand = useTranslations('brand');
 
   const handleSignOut = async () => {
     await signOut();
@@ -184,19 +187,19 @@ export default function ShiftAiSidebar({ onNavigate }: { onNavigate?: () => void
             <GraduationCap className="h-5 w-5 text-white" />
           </div>
           <div>
-            <span className="block text-base font-extrabold leading-none tracking-tight">
-              Shift Learning
+            <span className="block text-base font-extrabold leading-none tracking-tight rtl:tracking-normal">
+              {tBrand('name')}
             </span>
-            <span className="mt-0.5 block text-[10px] text-blue-200/70">Power Your Study</span>
+            <span className="mt-0.5 block text-[10px] text-blue-200/70">{tBrand('tagline')}</span>
           </div>
         </div>
       </div>
 
       <nav className="flex-1 space-y-4 overflow-y-auto px-2 py-3">
         {NAV_GROUPS.map((group) => (
-          <div key={group.label}>
-            <p className="mb-1 px-3 text-[10px] font-bold uppercase tracking-widest text-white/30">
-              {group.label}
+          <div key={group.groupKey}>
+            <p className="mb-1 px-3 text-[10px] font-bold uppercase tracking-widest text-white/30 rtl:normal-case rtl:tracking-normal">
+              {t(`groups.${group.groupKey}`)}
             </p>
             <div className="space-y-0.5">
               {group.items.map((item) => {
@@ -206,14 +209,14 @@ export default function ShiftAiSidebar({ onNavigate }: { onNavigate?: () => void
                     key={item.href}
                     href={item.href}
                     onClick={onNavigate}
-                    className={`sa-sidebar-item flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-medium ${
+                    className={`sa-sidebar-item flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-start text-sm font-medium ${
                       active ? 'sa-sidebar-item-active shadow-sm' : ''
                     }`}
                   >
                     <span className="w-5 text-center text-base leading-none">{item.emoji}</span>
-                    <span className="truncate">{item.label}</span>
+                    <span className="truncate">{t(`items.${item.itemKey}`)}</span>
                     {active ? (
-                      <ChevronRight className="ml-auto h-3.5 w-3.5 flex-shrink-0 opacity-60" />
+                      <ChevronRight className="ms-auto h-3.5 w-3.5 flex-shrink-0 opacity-60 rtl:-scale-x-100" />
                     ) : null}
                   </Link>
                 );
@@ -227,10 +230,10 @@ export default function ShiftAiSidebar({ onNavigate }: { onNavigate?: () => void
         <button
           type="button"
           onClick={() => void handleSignOut()}
-          className="sa-sidebar-item flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-medium"
+          className="sa-sidebar-item flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-start text-sm font-medium"
         >
-          <LogOut className="ml-0.5 h-4 w-4 flex-shrink-0" />
-          <span>Sign Out</span>
+          <LogOut className="ms-0.5 h-4 w-4 flex-shrink-0 rtl:-scale-x-100" />
+          <span>{t('signOut')}</span>
         </button>
       </div>
     </aside>

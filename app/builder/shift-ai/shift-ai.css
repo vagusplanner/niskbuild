@@ -27,6 +27,17 @@
   color: var(--sa-fg);
 }
 
+/* Arabic UI: Noto Sans Arabic for chrome/body, Amiri as serif companion.
+   Scoped to Shift AI shell dir=rtl — does not change Inter for LTR. */
+.shift-ai-app[dir='rtl'] {
+  font-family: var(--font-sa-arabic-sans), 'Noto Sans Arabic', 'Amiri', sans-serif;
+  letter-spacing: 0;
+}
+
+.shift-ai-app[dir='rtl'] .sa-sidebar {
+  font-family: var(--font-sa-arabic-sans), 'Noto Sans Arabic', sans-serif;
+}
+
 .shift-ai-standalone {
   min-height: 100vh;
 }
