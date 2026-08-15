@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Loader2, RefreshCw, Target } from 'lucide-react';
 import {
   EXAM_BOARDS,
 } from '@/lib/shift-ai/essay-curriculum';
 import type { SpecPoint } from '@/lib/shift-ai/spec-tracker-shared';
 import {
-  SPEC_STATUS_LABELS,
   SPEC_STATUS_STYLES,
   cycleSpecStatus,
   isSpecStatus,
@@ -24,6 +24,7 @@ export default function ShiftAiSpecTrackerClient({
   curriculum: ShiftCurriculum;
   initialPoints: SpecPoint[];
 }) {
+  const t = useTranslations('specTracker');
   const boards = EXAM_BOARDS[curriculum] ?? EXAM_BOARDS.uk;
   const [subject, setSubject] = useState(subjectOptions[0] ?? '');
   const [examBoard, setExamBoard] = useState(boards[0] ?? '');
@@ -40,7 +41,7 @@ export default function ShiftAiSpecTrackerClient({
 
   const generate = async () => {
     if (!subject) {
-      setError('Choose a subject');
+      setError(t('errors.chooseSubject'));
       return;
     }
 
@@ -57,7 +58,7 @@ export default function ShiftAiSpecTrackerClient({
 
       const data = (await res.json()) as { points?: SpecPoint[]; error?: string };
       if (!res.ok || !data.points) {
-        throw new Error(data.error || 'Could not generate spec points');
+        throw new Error(data.error || t('errors.generateFailed'));
       }
 
       setPoints((prev) => [
@@ -65,7 +66,7 @@ export default function ShiftAiSpecTrackerClient({
         ...data.points!,
       ]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not generate spec');
+      setError(err instanceof Error ? err.message : t('errors.generateFailedShort'));
     } finally {
       setLoading(false);
     }
@@ -85,12 +86,12 @@ export default function ShiftAiSpecTrackerClient({
 
       const data = (await res.json()) as { point?: SpecPoint; error?: string };
       if (!res.ok || !data.point) {
-        throw new Error(data.error || 'Could not update status');
+        throw new Error(data.error || t('errors.updateFailed'));
       }
 
       setPoints((prev) => prev.map((p) => (p.id === point.id ? data.point! : p)));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not update status');
+      setError(err instanceof Error ? err.message : t('errors.updateFailed'));
     } finally {
       setUpdatingId('');
     }
@@ -100,17 +101,15 @@ export default function ShiftAiSpecTrackerClient({
     <div className={`${SA.contentNarrow} space-y-5`}>
       <div>
         <h1 className={`${SA.headingMd} flex items-center gap-2`}>
-          <span aria-hidden>🗺️</span> Spec Tracker
+          <span aria-hidden>🗺️</span> {t('title')}
         </h1>
-        <p className={`mt-1 text-sm ${SA.muted}`}>
-          Track curriculum specification points — mark each as covered or needs review.
-        </p>
+        <p className={`mt-1 text-sm ${SA.muted}`}>{t('subtitle')}</p>
       </div>
 
       <div className={`${SA.cardPadded} grid gap-4 sm:grid-cols-3`}>
         <div className="space-y-2">
           <label htmlFor="st-subject" className={`block text-sm font-medium ${SA.text}`}>
-            Subject
+            {t('subject')}
           </label>
           <select
             id="st-subject"
@@ -127,7 +126,7 @@ export default function ShiftAiSpecTrackerClient({
         </div>
         <div className="space-y-2">
           <label htmlFor="st-board" className={`block text-sm font-medium ${SA.text}`}>
-            Exam board
+            {t('examBoard')}
           </label>
           <select
             id="st-board"
@@ -152,17 +151,17 @@ export default function ShiftAiSpecTrackerClient({
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Generating…
+                {t('generating')}
               </>
             ) : visiblePoints.length > 0 ? (
               <>
                 <RefreshCw className="h-4 w-4" />
-                Regenerate spec
+                {t('regenerate')}
               </>
             ) : (
               <>
                 <Target className="h-4 w-4" />
-                Generate spec
+                {t('generate')}
               </>
             )}
           </button>
@@ -176,7 +175,7 @@ export default function ShiftAiSpecTrackerClient({
           <div className={`${SA.cardPadded} space-y-3`}>
             <div className="flex items-center justify-between gap-2">
               <p className={`text-sm font-bold ${SA.text}`}>
-                Coverage — {subject} ({examBoard})
+                {t('coverage', { subject, examBoard })}
               </p>
               <span className="text-lg font-extrabold text-[var(--sa-navy-700)]">{coverage}%</span>
             </div>
@@ -187,8 +186,12 @@ export default function ShiftAiSpecTrackerClient({
               />
             </div>
             <p className={`text-xs ${SA.muted}`}>
-              Covered: {coveredCount} · Needs review: {reviewCount} · Not covered:{' '}
-              {visiblePoints.length - coveredCount - reviewCount} · Total: {visiblePoints.length}
+              {t('stats', {
+                covered: coveredCount,
+                review: reviewCount,
+                notCovered: visiblePoints.length - coveredCount - reviewCount,
+                total: visiblePoints.length,
+              })}
             </p>
           </div>
 
@@ -199,14 +202,14 @@ export default function ShiftAiSpecTrackerClient({
                 type="button"
                 onClick={() => void cycleStatus(point)}
                 disabled={updatingId === point.id}
-                className={`flex w-full items-start gap-3 rounded-xl border p-4 text-left transition-shadow hover:shadow-sm ${SPEC_STATUS_STYLES[point.status]}`}
+                className={`flex w-full items-start gap-3 rounded-xl border p-4 text-start transition-shadow hover:shadow-sm ${SPEC_STATUS_STYLES[point.status]}`}
               >
                 <span className={`mt-0.5 text-xs font-bold uppercase tracking-wide ${SA.muted}`}>
                   {point.spec_code}
                 </span>
                 <span className={`flex-1 text-sm ${SA.text}`}>{point.description}</span>
                 <span className="text-xs font-medium opacity-80">
-                  {SPEC_STATUS_LABELS[point.status]}
+                  {isSpecStatus(point.status) ? t(`status.${point.status}`) : point.status}
                 </span>
               </button>
             ))}
@@ -214,9 +217,7 @@ export default function ShiftAiSpecTrackerClient({
         </>
       ) : (
         <div className={`${SA.cardPadded} text-center`}>
-          <p className={`text-sm ${SA.muted}`}>
-            Choose a subject and generate your exam specification points to start tracking.
-          </p>
+          <p className={`text-sm ${SA.muted}`}>{t('empty')}</p>
         </div>
       )}
     </div>

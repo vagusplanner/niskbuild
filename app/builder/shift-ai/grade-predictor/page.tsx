@@ -2,7 +2,9 @@ import { redirect } from 'next/navigation';
 import ShiftAiGradePredictorClient from '@/app/builder/shift-ai/grade-predictor/ShiftAiGradePredictorClient';
 import type { SavedGradePrediction } from '@/lib/shift-ai/grade-predictor-shared';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { shiftAiCatalog } from '@/lib/shift-ai/i18n';
 import { needsSubjectOnboarding } from '@/lib/shift-ai/onboarding';
+import { getRequestStudyLanguage } from '@/lib/shift-ai/study-language';
 import { getSafeSession } from '@/lib/supabaseSession.server';
 
 export default async function ShiftAiGradePredictorPage() {
@@ -44,5 +46,8 @@ export default async function ShiftAiGradePredictorPage() {
 }
 
 export async function generateMetadata() {
-  return { title: 'Grade Predictor · Shift AI', robots: 'noindex' };
+  return {
+    title: shiftAiCatalog(await getRequestStudyLanguage()).gradePredictor.metaTitle,
+    robots: 'noindex',
+  };
 }

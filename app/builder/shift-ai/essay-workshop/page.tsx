@@ -2,7 +2,9 @@ import { redirect } from 'next/navigation';
 import ShiftAiEssayWorkshopClient from '@/app/builder/shift-ai/essay-workshop/ShiftAiEssayWorkshopClient';
 import { normalizeCurriculum } from '@/lib/shift-ai/essay-curriculum';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { shiftAiCatalog } from '@/lib/shift-ai/i18n';
 import { needsSubjectOnboarding } from '@/lib/shift-ai/onboarding';
+import { getRequestStudyLanguage } from '@/lib/shift-ai/study-language';
 import { getSafeSession } from '@/lib/supabaseSession.server';
 
 export default async function ShiftAiEssayWorkshopPage() {
@@ -38,7 +40,7 @@ export default async function ShiftAiEssayWorkshopPage() {
 
 export async function generateMetadata() {
   return {
-    title: 'Essay Workshop · Shift AI',
+    title: shiftAiCatalog(await getRequestStudyLanguage()).essayWorkshop.metaTitle,
     robots: 'noindex',
   };
 }

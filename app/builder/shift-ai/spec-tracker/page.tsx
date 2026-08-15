@@ -3,7 +3,9 @@ import ShiftAiSpecTrackerClient from '@/app/builder/shift-ai/spec-tracker/ShiftA
 import { normalizeCurriculum } from '@/lib/shift-ai/essay-curriculum';
 import type { SpecPoint } from '@/lib/shift-ai/spec-tracker-shared';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { shiftAiCatalog } from '@/lib/shift-ai/i18n';
 import { needsSubjectOnboarding } from '@/lib/shift-ai/onboarding';
+import { getRequestStudyLanguage } from '@/lib/shift-ai/study-language';
 import { getSafeSession } from '@/lib/supabaseSession.server';
 
 export default async function ShiftAiSpecTrackerPage() {
@@ -43,5 +45,8 @@ export default async function ShiftAiSpecTrackerPage() {
 }
 
 export async function generateMetadata() {
-  return { title: 'Spec Tracker · Shift AI', robots: 'noindex' };
+  return {
+    title: shiftAiCatalog(await getRequestStudyLanguage()).specTracker.metaTitle,
+    robots: 'noindex',
+  };
 }

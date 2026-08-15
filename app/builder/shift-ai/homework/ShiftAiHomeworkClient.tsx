@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import {
   Camera,
   ChevronRight,
@@ -12,6 +13,7 @@ import {
   X,
 } from 'lucide-react';
 import { SA } from '@/lib/shift-ai/theme';
+import { splitResponseSections } from '@/lib/shift-ai/homework-sections';
 
 type AnalyzeResult = {
   uploadId: string;
@@ -20,39 +22,6 @@ type AnalyzeResult = {
   expiresAt: string;
 };
 
-function splitResponseSections(text: string): { title: string; body: string }[] {
-  const lines = text.split('\n');
-  const sections: { title: string; body: string }[] = [];
-  let currentTitle = 'Step-by-step guidance';
-  let currentLines: string[] = [];
-
-  const flush = () => {
-    const body = currentLines.join('\n').trim();
-    if (body) {
-      sections.push({ title: currentTitle, body });
-    }
-    currentLines = [];
-  };
-
-  for (const line of lines) {
-    const heading = line.match(/^#{1,3}\s+(.+)$/) || line.match(/^(\d+\.\s+[A-Z][^:]{0,60}:?)$/);
-    if (heading && currentLines.length > 0) {
-      flush();
-      currentTitle = heading[1].replace(/:$/, '').trim();
-      continue;
-    }
-    currentLines.push(line);
-  }
-
-  flush();
-
-  if (sections.length === 0) {
-    return [{ title: 'Step-by-step guidance', body: text.trim() }];
-  }
-
-  return sections;
-}
-
 export default function ShiftAiHomeworkClient({
   subjectOptions,
   yearGroup,
@@ -60,6 +29,8 @@ export default function ShiftAiHomeworkClient({
   subjectOptions: string[];
   yearGroup: string;
 }) {
+  const t = useTranslations('homework');
+  const locale = useLocale();
   const fileRef = useRef<HTMLInputElement>(null);
   const [selectedSubject, setSelectedSubject] = useState(subjectOptions[0] ?? '');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -114,7 +85,7 @@ export default function ShiftAiHomeworkClient({
       const data = (await res.json()) as AnalyzeResult & { error?: string };
 
       if (!res.ok || !data.aiResponse) {
-        throw new Error(data.error || 'Could not analyse homework');
+        throw new Error(data.error || t('errors.analyse'));
       }
 
       setResult({
@@ -124,7 +95,7 @@ export default function ShiftAiHomeworkClient({
         expiresAt: data.expiresAt,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not analyse homework');
+      setError(err instanceof Error ? err.message : t('errors.analyse'));
     } finally {
       setAnalysing(false);
     }
@@ -147,7 +118,7 @@ export default function ShiftAiHomeworkClient({
       const data = (await res.json()) as { error?: string; expiresAt?: string };
 
       if (!res.ok) {
-        throw new Error(data.error || 'Could not extend photo retention');
+        throw new Error(data.error || t('errors.extend'));
       }
 
       setResult((prev) =>
@@ -155,30 +126,29 @@ export default function ShiftAiHomeworkClient({
       );
       setRetentionExtended(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not extend photo retention');
+      setError(err instanceof Error ? err.message : t('errors.extend'));
     } finally {
       setExtending(false);
     }
   };
 
-  const sections = result ? splitResponseSections(result.aiResponse) : [];
+  const sections = result ? splitResponseSections(result.aiResponse, t('defaultSection')) : [];
 
   return (
     <div className={`${SA.contentNarrow} space-y-5`}>
       <div>
         <h1 className={`${SA.headingMd} flex items-center gap-2`}>
-          <span aria-hidden>📸</span> Snap Homework
+          <span aria-hidden>📸</span> {t('title')}
         </h1>
         <p className={`mt-1 text-sm ${SA.muted}`}>
-          Photograph any homework problem or worksheet — AI guides you through the reasoning step
-          by step, tailored for {yearGroup}.
+          {t('subtitle', { yearGroup })}
         </p>
       </div>
 
       {subjectOptions.length > 0 ? (
         <div className={`${SA.cardPadded} space-y-2`}>
           <label htmlFor="homework-subject" className={`block text-sm font-medium ${SA.text}`}>
-            Subject <span className={SA.muted}>(optional)</span>
+            {t('subject')} <span className={SA.muted}>{t('optional')}</span>
           </label>
           <select
             id="homework-subject"
@@ -187,7 +157,7 @@ export default function ShiftAiHomeworkClient({
             className={SA.select}
             disabled={analysing}
           >
-            <option value="">General</option>
+            <option value="">{t('general')}</option>
             {subjectOptions.map((subject) => (
               <option key={subject} value={subject}>
                 {subject}
@@ -202,10 +172,8 @@ export default function ShiftAiHomeworkClient({
           <p className="text-5xl" aria-hidden>
             📷
           </p>
-          <p className={`mt-3 font-semibold ${SA.text}`}>Snap your homework</p>
-          <p className={`mt-1 text-sm ${SA.muted}`}>
-            Take a photo or upload an image — single problems and full worksheets both work.
-          </p>
+          <p className={`mt-3 font-semibold ${SA.text}`}>{t('snapTitle')}</p>
+          <p className={`mt-1 text-sm ${SA.muted}`}>{t('snapHint')}</p>
           <div className="mt-5 flex flex-wrap justify-center gap-3">
             <button
               type="button"
@@ -213,7 +181,7 @@ export default function ShiftAiHomeworkClient({
               className={`${SA.btnPrimary} h-11 px-5`}
             >
               <Camera className="h-4 w-4" />
-              Take Photo
+              {t('takePhoto')}
             </button>
             <button
               type="button"
@@ -221,7 +189,7 @@ export default function ShiftAiHomeworkClient({
               className={`${SA.btnSecondary} inline-flex h-11 items-center gap-2 px-5`}
             >
               <Upload className="h-4 w-4" />
-              Upload Image
+              {t('uploadImage')}
             </button>
           </div>
           <input
@@ -238,15 +206,15 @@ export default function ShiftAiHomeworkClient({
           <div className="relative">
             <img
               src={result?.imageUrl ?? previewUrl}
-              alt="Homework upload"
+              alt={t('homeworkAlt')}
               className="max-h-72 w-full rounded-2xl border border-[var(--sa-navy-100)] bg-[var(--sa-secondary)] object-contain"
             />
             {!result ? (
               <button
                 type="button"
                 onClick={reset}
-                className="absolute right-3 top-3 rounded-full bg-black/60 p-1.5 text-white hover:bg-black/80"
-                aria-label="Remove photo"
+                className="absolute end-3 top-3 rounded-full bg-black/60 p-1.5 text-white hover:bg-black/80"
+                aria-label={t('removePhoto')}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -263,12 +231,12 @@ export default function ShiftAiHomeworkClient({
               {analysing ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Analysing homework…
+                  {t('analysing')}
                 </>
               ) : (
                 <>
                   <Lightbulb className="h-4 w-4" />
-                  Analyse &amp; Guide Me
+                  {t('analyseGuide')}
                 </>
               )}
             </button>
@@ -281,16 +249,14 @@ export default function ShiftAiHomeworkClient({
       {result ? (
         <div className="space-y-4">
           <div className="rounded-2xl bg-[var(--sa-navy-800)] p-5 text-white">
-            <p className="text-xs uppercase tracking-wide text-white/50">AI tutor guidance</p>
-            <p className="mt-1 text-sm text-white/80">
-              Reveal each section below — try working through the steps yourself first.
-            </p>
+            <p className="text-xs uppercase tracking-wide text-white/50">{t('guidanceKicker')}</p>
+            <p className="mt-1 text-sm text-white/80">{t('revealHint')}</p>
           </div>
 
           {sections.map((section, index) => (
             <div key={`${section.title}-${index}`} className={`${SA.cardPadded} space-y-2`}>
               <h3 className={`flex items-center gap-2 text-sm font-bold ${SA.text}`}>
-                <ChevronRight className="h-4 w-4 text-[var(--sa-navy-600)]" />
+                <ChevronRight className="h-4 w-4 text-[var(--sa-navy-600)] rtl:-scale-x-100" />
                 {section.title}
               </h3>
               <p className={`whitespace-pre-wrap text-sm leading-relaxed ${SA.text}`}>
@@ -303,12 +269,14 @@ export default function ShiftAiHomeworkClient({
             <div className="flex items-start gap-2 text-sm">
               <Clock className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--sa-navy-600)]" />
               <p>
-                This photo will be automatically deleted in 48 hours
+                {t('deleted48')}
                 {retentionExtended ? (
                   <span className="block text-xs opacity-80">
-                    Retention extended — new expiry{' '}
-                    {new Date(result.expiresAt).toLocaleDateString(undefined, {
-                      dateStyle: 'medium',
+                    {t('retentionExtended', {
+                      date: new Date(result.expiresAt).toLocaleDateString(
+                        locale === 'ar' ? 'ar' : 'en',
+                        { dateStyle: 'medium' }
+                      ),
                     })}
                   </span>
                 ) : null}
@@ -319,9 +287,9 @@ export default function ShiftAiHomeworkClient({
                 type="button"
                 onClick={() => void handleExtendRetention()}
                 disabled={extending}
-                className={`${SA.link} whitespace-nowrap text-left font-semibold sm:text-right`}
+                className={`${SA.link} whitespace-nowrap text-start font-semibold sm:text-end`}
               >
-                {extending ? 'Extending…' : 'Ask parent to keep longer →'}
+                {extending ? t('extending') : t('askParentKeep')}
               </button>
             ) : null}
           </div>
@@ -332,7 +300,7 @@ export default function ShiftAiHomeworkClient({
             className={`${SA.btnSecondary} inline-flex w-full items-center justify-center gap-2`}
           >
             <RotateCcw className="h-4 w-4" />
-            Snap another problem
+            {t('snapAnother')}
           </button>
         </div>
       ) : null}

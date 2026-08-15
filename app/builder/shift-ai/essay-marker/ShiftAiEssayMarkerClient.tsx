@@ -1,10 +1,10 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import {
   Camera,
   ChevronDown,
-  ChevronRight,
   Clock,
   Loader2,
   PenLine,
@@ -50,7 +50,7 @@ function ExpandableSection({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-2 px-5 py-4 text-left"
+        className="flex w-full items-center justify-between gap-2 px-5 py-4 text-start"
       >
         <span className={`text-sm font-bold ${SA.text}`}>{title}</span>
         <ChevronDown
@@ -123,6 +123,8 @@ export default function ShiftAiEssayMarkerClient({
   curriculum: ShiftCurriculum;
   yearGroup: string;
 }) {
+  const t = useTranslations('essayMarker');
+  const locale = useLocale();
   const fileRef = useRef<HTMLInputElement>(null);
   const boards = EXAM_BOARDS[curriculum] ?? EXAM_BOARDS.uk;
   const levels = EXAM_LEVELS[curriculum] ?? EXAM_LEVELS.uk;
@@ -162,16 +164,16 @@ export default function ShiftAiEssayMarkerClient({
 
   const markEssay = async () => {
     if (!subject || !examBoard || !level) {
-      setError('Subject, exam board, and level are required');
+      setError(t('errors.requiredFields'));
       return;
     }
 
     if (inputMode === 'typed' && !essayText.trim()) {
-      setError('Please paste or type your essay');
+      setError(t('errors.pasteEssay'));
       return;
     }
     if (inputMode === 'photo' && !selectedFile) {
-      setError('Please take or upload a photo of your essay');
+      setError(t('errors.needPhoto'));
       return;
     }
 
@@ -211,12 +213,12 @@ export default function ShiftAiEssayMarkerClient({
 
       const data = (await res.json()) as AnalyzeResult & { error?: string };
       if (!res.ok || !data.feedback) {
-        throw new Error(data.error || 'Could not mark essay');
+        throw new Error(data.error || t('errors.markFailed'));
       }
 
       setResult(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not mark essay');
+      setError(err instanceof Error ? err.message : t('errors.markFailed'));
     } finally {
       setAnalysing(false);
     }
@@ -237,7 +239,7 @@ export default function ShiftAiEssayMarkerClient({
       });
 
       const data = (await res.json()) as { error?: string; expiresAt?: string };
-      if (!res.ok) throw new Error(data.error || 'Could not extend photo retention');
+      if (!res.ok) throw new Error(data.error || t('errors.extendFailed'));
 
       setResult((prev) =>
         prev
@@ -246,7 +248,7 @@ export default function ShiftAiEssayMarkerClient({
       );
       setRetentionExtended(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not extend photo retention');
+      setError(err instanceof Error ? err.message : t('errors.extendFailed'));
     } finally {
       setExtending(false);
     }
@@ -259,11 +261,13 @@ export default function ShiftAiEssayMarkerClient({
     <div className={`${SA.contentNarrow} space-y-5`}>
       <div>
         <h1 className={`${SA.headingMd} flex items-center gap-2`}>
-          <span aria-hidden>✍️</span> Essay Marker
+          <span aria-hidden>✍️</span> {t('title')}
         </h1>
         <p className={`mt-1 text-sm ${SA.muted}`}>
-          Get examiner-style feedback on your essay — typed or photographed — aligned to your{' '}
-          {normalizeCurriculum(curriculum).toUpperCase()} curriculum ({yearGroup}).
+          {t('subtitle', {
+            curriculum: normalizeCurriculum(curriculum).toUpperCase(),
+            yearGroup,
+          })}
         </p>
       </div>
 
@@ -272,7 +276,7 @@ export default function ShiftAiEssayMarkerClient({
           <div className={`${SA.cardPadded} grid gap-4 sm:grid-cols-2`}>
             <div className="space-y-2">
               <label htmlFor="marker-subject" className={`block text-sm font-medium ${SA.text}`}>
-                Subject
+                {t('subject')}
               </label>
               <select
                 id="marker-subject"
@@ -282,7 +286,7 @@ export default function ShiftAiEssayMarkerClient({
                 disabled={analysing}
               >
                 {subjectOptions.length === 0 ? (
-                  <option value="">Add subjects in onboarding</option>
+                  <option value="">{t('addSubjects')}</option>
                 ) : (
                   subjectOptions.map((s) => (
                     <option key={s} value={s}>
@@ -294,7 +298,7 @@ export default function ShiftAiEssayMarkerClient({
             </div>
             <div className="space-y-2">
               <label htmlFor="marker-board" className={`block text-sm font-medium ${SA.text}`}>
-                Exam board
+                {t('examBoard')}
               </label>
               <select
                 id="marker-board"
@@ -312,7 +316,7 @@ export default function ShiftAiEssayMarkerClient({
             </div>
             <div className="space-y-2">
               <label htmlFor="marker-level" className={`block text-sm font-medium ${SA.text}`}>
-                Level
+                {t('level')}
               </label>
               <select
                 id="marker-level"
@@ -330,7 +334,7 @@ export default function ShiftAiEssayMarkerClient({
             </div>
             <div className="space-y-2 sm:col-span-2">
               <label htmlFor="marker-question" className={`block text-sm font-medium ${SA.text}`}>
-                Essay question <span className={SA.muted}>(optional)</span>
+                {t('question')} <span className={SA.muted}>{t('optional')}</span>
               </label>
               <input
                 id="marker-question"
@@ -338,7 +342,7 @@ export default function ShiftAiEssayMarkerClient({
                 value={questionText}
                 onChange={(e) => setQuestionText(e.target.value)}
                 className={SA.input}
-                placeholder="e.g. How does the author present conflict?"
+                placeholder={t('questionPlaceholder')}
                 disabled={analysing}
               />
             </div>
@@ -351,7 +355,7 @@ export default function ShiftAiEssayMarkerClient({
               className={inputMode === 'typed' ? SA.tabActive : SA.tab}
             >
               <PenLine className="h-3.5 w-3.5" />
-              Type essay
+              {t('typeEssay')}
             </button>
             <button
               type="button"
@@ -359,21 +363,21 @@ export default function ShiftAiEssayMarkerClient({
               className={inputMode === 'photo' ? SA.tabActive : SA.tab}
             >
               <Camera className="h-3.5 w-3.5" />
-              Photo essay
+              {t('photoEssay')}
             </button>
           </div>
 
           {inputMode === 'typed' ? (
             <div className={`${SA.cardPadded} space-y-2`}>
               <label htmlFor="marker-essay" className={`block text-sm font-medium ${SA.text}`}>
-                Your essay
+                {t('yourEssay')}
               </label>
               <textarea
                 id="marker-essay"
                 value={essayText}
                 onChange={(e) => setEssayText(e.target.value)}
                 className={`${SA.textarea} min-h-56`}
-                placeholder="Paste or type your full essay here…"
+                placeholder={t('essayPlaceholder')}
                 disabled={analysing}
               />
             </div>
@@ -382,14 +386,12 @@ export default function ShiftAiEssayMarkerClient({
               <p className="text-5xl" aria-hidden>
                 📷
               </p>
-              <p className={`mt-3 font-semibold ${SA.text}`}>Photograph your handwritten essay</p>
-              <p className={`mt-1 text-sm ${SA.muted}`}>
-                We&apos;ll transcribe it with AI, then mark it like an examiner would.
-              </p>
-              <div className={`${SA.tip} mx-auto mt-4 max-w-md text-left`}>
+              <p className={`mt-3 font-semibold ${SA.text}`}>{t('photoTitle')}</p>
+              <p className={`mt-1 text-sm ${SA.muted}`}>{t('photoHint')}</p>
+              <div className={`${SA.tip} mx-auto mt-4 max-w-md text-start`}>
                 <div className="flex items-start gap-2">
                   <Clock className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--sa-navy-600)]" />
-                  <p>Essay photos are automatically deleted after 48 hours.</p>
+                  <p>{t('photoRetention48')}</p>
                 </div>
               </div>
               <div className="mt-5 flex flex-wrap justify-center gap-3">
@@ -399,7 +401,7 @@ export default function ShiftAiEssayMarkerClient({
                   className={`${SA.btnPrimary} h-11 px-5`}
                 >
                   <Camera className="h-4 w-4" />
-                  Take Photo
+                  {t('takePhoto')}
                 </button>
                 <button
                   type="button"
@@ -407,7 +409,7 @@ export default function ShiftAiEssayMarkerClient({
                   className={`${SA.btnSecondary} inline-flex h-11 items-center gap-2 px-5`}
                 >
                   <Upload className="h-4 w-4" />
-                  Upload Image
+                  {t('uploadImage')}
                 </button>
               </div>
               <input
@@ -424,14 +426,14 @@ export default function ShiftAiEssayMarkerClient({
               <div className="relative">
                 <img
                   src={previewUrl}
-                  alt="Essay upload"
+                  alt={t('essayAlt')}
                   className="max-h-72 w-full rounded-2xl border border-[var(--sa-navy-100)] bg-[var(--sa-secondary)] object-contain"
                 />
                 <button
                   type="button"
                   onClick={reset}
-                  className="absolute right-3 top-3 rounded-full bg-black/60 p-1.5 text-white hover:bg-black/80"
-                  aria-label="Remove photo"
+                  className="absolute end-3 top-3 rounded-full bg-black/60 p-1.5 text-white hover:bg-black/80"
+                  aria-label={t('removePhoto')}
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -448,10 +450,10 @@ export default function ShiftAiEssayMarkerClient({
             {analysing ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                {inputMode === 'photo' ? 'Transcribing & marking…' : 'Marking essay…'}
+                {inputMode === 'photo' ? t('transcribing') : t('marking')}
               </>
             ) : (
-              'Mark my essay'
+              t('markMyEssay')
             )}
           </button>
         </>
@@ -462,7 +464,7 @@ export default function ShiftAiEssayMarkerClient({
       {feedback ? (
         <div className="space-y-4">
           <div className="rounded-2xl bg-[var(--sa-navy-800)] p-6 text-center text-white">
-            <p className="text-xs uppercase tracking-wide text-white/50">Estimated grade</p>
+            <p className="text-xs uppercase tracking-wide text-white/50">{t('estimatedGrade')}</p>
             <p className={`mt-1 text-4xl font-extrabold ${gradeColor(feedback.grade_estimate)}`}>
               {feedback.grade_estimate}
             </p>
@@ -475,7 +477,7 @@ export default function ShiftAiEssayMarkerClient({
             <p className="mt-3 text-sm leading-relaxed text-white/85">{feedback.overall_comment}</p>
           </div>
 
-          <ExpandableSection title="Assessment objectives" defaultOpen>
+          <ExpandableSection title={t('assessmentObjectives')} defaultOpen>
             <div className="space-y-4">
               {(feedback.assessment_objectives ?? []).map((ao, i) => (
                 <div key={i} className="rounded-xl border border-[var(--sa-navy-100)] p-4">
@@ -505,10 +507,8 @@ export default function ShiftAiEssayMarkerClient({
             </div>
           </ExpandableSection>
 
-          <ExpandableSection title="Line-by-line annotations">
-            <p className={`mb-3 text-xs ${SA.muted}`}>
-              Highlighted phrases show examiner comments — hover to read.
-            </p>
+          <ExpandableSection title={t('annotations')}>
+            <p className={`mb-3 text-xs ${SA.muted}`}>{t('annotationsHint')}</p>
             <AnnotatedEssay essayText={displayEssay} feedback={feedback} />
             {(feedback.annotations ?? []).length > 0 ? (
               <ul className="mt-4 space-y-2">
@@ -523,7 +523,7 @@ export default function ShiftAiEssayMarkerClient({
             ) : null}
           </ExpandableSection>
 
-          <ExpandableSection title="Structural critique">
+          <ExpandableSection title={t('structuralCritique')}>
             <div className="grid gap-3 sm:grid-cols-2">
               {(['introduction', 'arguments', 'evidence', 'conclusion'] as const).map((key) => {
                 const section = feedback.structural_critique?.[key];
@@ -533,8 +533,17 @@ export default function ShiftAiEssayMarkerClient({
                   'border-[var(--sa-navy-100)] bg-[var(--sa-secondary)] text-[var(--sa-navy-700)]';
                 return (
                   <div key={key} className={`rounded-xl border p-3 ${style}`}>
-                    <p className="text-xs font-bold uppercase tracking-wide">{key}</p>
-                    <p className="mt-1 text-sm font-semibold capitalize">{section.rating}</p>
+                    <p className="text-xs font-bold uppercase tracking-wide">
+                      {t(`structure.${key}`)}
+                    </p>
+                    <p className="mt-1 text-sm font-semibold">
+                      {section.rating === 'excellent' ||
+                      section.rating === 'good' ||
+                      section.rating === 'needs_work' ||
+                      section.rating === 'poor'
+                        ? t(`ratings.${section.rating}`)
+                        : section.rating}
+                    </p>
                     {section.comment ? <p className="mt-1 text-sm">{section.comment}</p> : null}
                   </div>
                 );
@@ -554,7 +563,7 @@ export default function ShiftAiEssayMarkerClient({
             ) : null}
           </ExpandableSection>
 
-          <ExpandableSection title="Rewrite suggestions">
+          <ExpandableSection title={t('rewriteSuggestions')}>
             <ul className={`list-inside list-disc space-y-2 text-sm ${SA.text}`}>
               {(feedback.rewrite_suggestions ?? []).map((tip, i) => (
                 <li key={i}>{tip}</li>
@@ -562,7 +571,7 @@ export default function ShiftAiEssayMarkerClient({
             </ul>
             {feedback.examiner_tip ? (
               <p className={`${SA.tip} mt-4`}>
-                <strong>Examiner tip:</strong> {feedback.examiner_tip}
+                <strong>{t('examinerTip')}</strong> {feedback.examiner_tip}
               </p>
             ) : null}
           </ExpandableSection>
@@ -572,12 +581,14 @@ export default function ShiftAiEssayMarkerClient({
               <div className="flex items-start gap-2 text-sm">
                 <Clock className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--sa-navy-600)]" />
                 <p>
-                  This essay photo will be automatically deleted in 48 hours
+                  {t('photoDeleted48')}
                   {retentionExtended && result.photoExpiresAt ? (
                     <span className="block text-xs opacity-80">
-                      Retention extended — new expiry{' '}
-                      {new Date(result.photoExpiresAt).toLocaleDateString(undefined, {
-                        dateStyle: 'medium',
+                      {t('retentionExtended', {
+                        date: new Date(result.photoExpiresAt).toLocaleDateString(
+                          locale === 'ar' ? 'ar' : 'en',
+                          { dateStyle: 'medium' }
+                        ),
                       })}
                     </span>
                   ) : null}
@@ -590,7 +601,7 @@ export default function ShiftAiEssayMarkerClient({
                   disabled={extending}
                   className={`${SA.link} whitespace-nowrap font-semibold`}
                 >
-                  {extending ? 'Extending…' : 'Ask parent to keep longer →'}
+                  {extending ? t('extending') : t('askParentKeep')}
                 </button>
               ) : null}
             </div>
@@ -605,7 +616,7 @@ export default function ShiftAiEssayMarkerClient({
             className={`${SA.btnSecondary} inline-flex w-full items-center justify-center gap-2`}
           >
             <RotateCcw className="h-4 w-4" />
-            Mark another essay
+            {t('markAnother')}
           </button>
         </div>
       ) : null}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import { Loader2, Sparkles, Target } from 'lucide-react';
 import type {
   GradePredictionResult,
@@ -35,6 +36,8 @@ export default function ShiftAiGradePredictorClient({
   subjectOptions: string[];
   recentPredictions: SavedGradePrediction[];
 }) {
+  const t = useTranslations('gradePredictor');
+  const locale = useLocale();
   const [subject, setSubject] = useState(subjectOptions[0] ?? '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -43,7 +46,7 @@ export default function ShiftAiGradePredictorClient({
 
   const generate = async () => {
     if (!subject) {
-      setError('Choose a subject');
+      setError(t('errors.chooseSubject'));
       return;
     }
 
@@ -60,7 +63,7 @@ export default function ShiftAiGradePredictorClient({
 
       const data = (await res.json()) as { prediction?: GradePredictionResult; error?: string };
       if (!res.ok || !data.prediction) {
-        throw new Error(data.error || 'Could not generate prediction');
+        throw new Error(data.error || t('errors.generateFailed'));
       }
 
       setPrediction(data.prediction);
@@ -76,7 +79,7 @@ export default function ShiftAiGradePredictorClient({
         ...prev.filter((p) => p.subject !== subject),
       ]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not generate prediction');
+      setError(err instanceof Error ? err.message : t('errors.generateFailed'));
     } finally {
       setLoading(false);
     }
@@ -88,23 +91,17 @@ export default function ShiftAiGradePredictorClient({
     <div className={`${SA.contentNarrow} space-y-5`}>
       <div>
         <h1 className={`${SA.headingMd} flex items-center gap-2`}>
-          <span aria-hidden>🎯</span> Grade Predictor
+          <span aria-hidden>🎯</span> {t('title')}
         </h1>
-        <p className={`mt-1 text-sm ${SA.muted}`}>
-          Predicted grades based on your real study data — mastery, quizzes, flashcards, and planner
-          completion.
-        </p>
+        <p className={`mt-1 text-sm ${SA.muted}`}>{t('subtitle')}</p>
       </div>
 
-      <div className={`${SA.tip} text-sm`}>
-        Predictions use actual signals from your account. No hidden scoring — every number shown below
-        comes from your Mastery Map, Quiz Arcade, Flashcards, and Planner.
-      </div>
+      <div className={`${SA.tip} text-sm`}>{t('honesty')}</div>
 
       <div className={`${SA.cardPadded} space-y-4`}>
         <div className="space-y-2">
           <label htmlFor="gp-subject" className={`block text-sm font-medium ${SA.text}`}>
-            Subject
+            {t('subject')}
           </label>
           <select
             id="gp-subject"
@@ -129,12 +126,12 @@ export default function ShiftAiGradePredictorClient({
           {loading ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Analysing your data…
+              {t('analysing')}
             </>
           ) : (
             <>
               <Sparkles className="h-4 w-4" />
-              Generate prediction
+              {t('generatePrediction')}
             </>
           )}
         </button>
@@ -145,39 +142,48 @@ export default function ShiftAiGradePredictorClient({
       {prediction && signals ? (
         <div className="space-y-4">
           <div className="rounded-2xl bg-[var(--sa-navy-800)] p-6 text-center text-white">
-            <p className="text-xs uppercase tracking-wide text-white/50">Predicted grade</p>
+            <p className="text-xs uppercase tracking-wide text-white/50">{t('predictedGrade')}</p>
             <p className="mt-1 text-5xl font-extrabold">{prediction.predicted_grade}</p>
             <p className="mt-2 text-sm text-white/70">
-              Confidence: {Math.round(prediction.confidence * 100)}%
+              {t('confidence', { percent: Math.round(prediction.confidence * 100) })}
             </p>
             <p className="mt-4 text-sm leading-relaxed text-white/85">
-              Based on: {signals.masteryPercent}% mastery
+              {t('basedOnMastery', { percent: signals.masteryPercent })}
               {signals.avgQuizScorePercent !== null
-                ? `, ${signals.avgQuizScorePercent}% avg quiz score`
+                ? t('avgQuizScore', { percent: signals.avgQuizScorePercent })
                 : ''}
               {signals.flashcardRetentionPercent !== null
-                ? `, ${signals.flashcardRetentionPercent}% flashcard retention`
+                ? t('flashcardRetention', { percent: signals.flashcardRetentionPercent })
                 : ''}
-              , {signals.plannerCompletionPercent}% planner completion
+              {t('plannerCompletion', { percent: signals.plannerCompletionPercent })}
             </p>
           </div>
 
           <div className={`${SA.cardPadded} space-y-3`}>
-            <p className={`text-sm font-bold ${SA.text}`}>Signals used</p>
+            <p className={`text-sm font-bold ${SA.text}`}>{t('signalsUsed')}</p>
             <SignalBar
-              label={`Mastery (${signals.masteredCount}/${signals.masteryTotal} topics)`}
+              label={t('masteryTopics', {
+                mastered: signals.masteredCount,
+                total: signals.masteryTotal,
+              })}
               value={signals.masteryPercent}
             />
             <SignalBar
-              label={`Quiz Arcade avg (${signals.quizSessions} sessions)`}
+              label={t('quizArcadeAvg', { count: signals.quizSessions })}
               value={signals.avgQuizScorePercent}
             />
             <SignalBar
-              label={`Flashcard retention (${signals.flashcardRetained}/${signals.flashcardTotal} cards)`}
+              label={t('flashcardRetentionBar', {
+                retained: signals.flashcardRetained,
+                total: signals.flashcardTotal,
+              })}
               value={signals.flashcardRetentionPercent}
             />
             <SignalBar
-              label={`Planner completion (${signals.plannerCompleted}/${signals.plannerTotal} tasks)`}
+              label={t('plannerCompletionBar', {
+                completed: signals.plannerCompleted,
+                total: signals.plannerTotal,
+              })}
               value={signals.plannerCompletionPercent}
             />
           </div>
@@ -186,7 +192,7 @@ export default function ShiftAiGradePredictorClient({
             <div className={`${SA.cardPadded} space-y-2`}>
               <p className={`flex items-center gap-2 text-sm font-bold ${SA.text}`}>
                 <Target className="h-4 w-4 text-amber-600" />
-                Priority topics to revise
+                {t('priorityTopics')}
               </p>
               <ul className={`list-inside list-disc text-sm ${SA.text}`}>
                 {prediction.priority_topics.map((topic) => (
@@ -197,7 +203,7 @@ export default function ShiftAiGradePredictorClient({
           ) : null}
 
           <div className={SA.tip}>
-            <p className={`text-sm font-semibold ${SA.text}`}>Improvement plan</p>
+            <p className={`text-sm font-semibold ${SA.text}`}>{t('improvementPlan')}</p>
             <p className={`mt-1 text-sm ${SA.muted}`}>{prediction.improvement_plan}</p>
           </div>
         </div>
@@ -205,7 +211,7 @@ export default function ShiftAiGradePredictorClient({
 
       {history.length > 0 ? (
         <div className={`${SA.cardPadded} space-y-3`}>
-          <p className={`text-sm font-bold ${SA.text}`}>Recent predictions</p>
+          <p className={`text-sm font-bold ${SA.text}`}>{t('recentPredictions')}</p>
           {history.slice(0, 5).map((row) => (
             <div
               key={`${row.subject}-${row.generated_at}`}
@@ -214,7 +220,9 @@ export default function ShiftAiGradePredictorClient({
               <div>
                 <p className={`text-sm font-medium ${SA.text}`}>{row.subject}</p>
                 <p className={`text-xs ${SA.muted}`}>
-                  {new Date(row.generated_at).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                  {new Date(row.generated_at).toLocaleDateString(locale === 'ar' ? 'ar' : 'en', {
+                    dateStyle: 'medium',
+                  })}
                 </p>
               </div>
               <span className="text-lg font-extrabold text-[var(--sa-navy-700)]">

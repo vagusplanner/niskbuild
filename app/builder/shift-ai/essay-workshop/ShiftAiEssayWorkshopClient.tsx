@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { ChevronRight, Loader2, Sparkles } from 'lucide-react';
 import {
   EXAM_BOARDS,
@@ -14,12 +15,7 @@ import { SA } from '@/lib/shift-ai/theme';
 
 type Step = 'setup' | 'outline' | 'draft' | 'feedback';
 
-const STEPS: { id: Step; label: string }[] = [
-  { id: 'setup', label: 'Setup' },
-  { id: 'outline', label: 'Outline' },
-  { id: 'draft', label: 'Draft' },
-  { id: 'feedback', label: 'Feedback' },
-];
+const STEPS: Step[] = ['setup', 'outline', 'draft', 'feedback'];
 
 export default function ShiftAiEssayWorkshopClient({
   subjectOptions,
@@ -28,6 +24,7 @@ export default function ShiftAiEssayWorkshopClient({
   subjectOptions: string[];
   curriculum: ShiftCurriculum;
 }) {
+  const t = useTranslations('essayWorkshop');
   const boards = EXAM_BOARDS[curriculum] ?? EXAM_BOARDS.uk;
   const levels = EXAM_LEVELS[curriculum] ?? EXAM_LEVELS.uk;
 
@@ -68,7 +65,7 @@ export default function ShiftAiEssayWorkshopClient({
           }),
         });
         const data = (await res.json()) as { essayId?: string; error?: string };
-        if (!res.ok) throw new Error(data.error || 'Could not save draft');
+        if (!res.ok) throw new Error(data.error || t('errors.saveFailed'));
         if (data.essayId) setEssayId(data.essayId);
         setSaveStatus('saved');
         window.setTimeout(() => setSaveStatus('idle'), 2000);
@@ -76,7 +73,7 @@ export default function ShiftAiEssayWorkshopClient({
         setSaveStatus('error');
       }
     },
-    [subject, prompt, feedback]
+    [subject, prompt, feedback, t]
   );
 
   useEffect(() => {
@@ -94,7 +91,7 @@ export default function ShiftAiEssayWorkshopClient({
 
   const generateOutline = async () => {
     if (!subject || !prompt.trim()) {
-      setError('Subject and essay question are required');
+      setError(t('errors.requiredFields'));
       return;
     }
 
@@ -111,14 +108,14 @@ export default function ShiftAiEssayWorkshopClient({
 
       const data = (await res.json()) as { outline?: WorkshopOutline; error?: string };
       if (!res.ok || !data.outline) {
-        throw new Error(data.error || 'Could not generate outline');
+        throw new Error(data.error || t('errors.generateFailed'));
       }
 
       setOutline(data.outline);
       setDraft(buildOutlineScaffold(data.outline));
       setStep('outline');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not generate outline');
+      setError(err instanceof Error ? err.message : t('errors.generateFailed'));
     } finally {
       setLoading(false);
     }
@@ -126,7 +123,7 @@ export default function ShiftAiEssayWorkshopClient({
 
   const requestFeedback = async () => {
     if (!draft.trim()) {
-      setError('Write some of your draft first');
+      setError(t('errors.writeDraftFirst'));
       return;
     }
 
@@ -156,44 +153,43 @@ export default function ShiftAiEssayWorkshopClient({
         error?: string;
       };
       if (!res.ok || !data.feedback) {
-        throw new Error(data.error || 'Could not get feedback');
+        throw new Error(data.error || t('errors.feedbackFailed'));
       }
 
       setFeedback(data.feedback);
       if (data.essayId) setEssayId(data.essayId);
       setStep('feedback');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not get feedback');
+      setError(err instanceof Error ? err.message : t('errors.feedbackFailed'));
     } finally {
       setFeedbackLoading(false);
     }
   };
 
   const wc = wordCount(draft);
-  const stepIndex = STEPS.findIndex((s) => s.id === step);
+  const stepIndex = STEPS.findIndex((s) => s === step);
 
   return (
     <div className={`${SA.contentNarrow} space-y-5`}>
       <div>
         <h1 className={`${SA.headingMd} flex items-center gap-2`}>
-          <span aria-hidden>📝</span> Essay Workshop
+          <span aria-hidden>📝</span> {t('title')}
         </h1>
         <p className={`mt-1 text-sm ${SA.muted}`}>
-          Plan, draft, and refine your essay with encouraging in-progress coaching —{' '}
-          {normalizeCurriculum(curriculum).toUpperCase()} curriculum.
+          {t('subtitle', { curriculum: normalizeCurriculum(curriculum).toUpperCase() })}
         </p>
       </div>
 
       <div className="flex gap-1 overflow-x-auto border-b border-[var(--sa-navy-100)] pb-px">
-        {STEPS.map((s, i) => (
+        {STEPS.map((id, i) => (
           <button
-            key={s.id}
+            key={id}
             type="button"
-            onClick={() => i <= stepIndex && setStep(s.id)}
-            className={step === s.id ? SA.tabActive : SA.tab}
+            onClick={() => i <= stepIndex && setStep(id)}
+            className={step === id ? SA.tabActive : SA.tab}
             disabled={i > stepIndex}
           >
-            {i + 1}. {s.label}
+            {i + 1}. {t(`steps.${id}`)}
           </button>
         ))}
       </div>
@@ -205,7 +201,7 @@ export default function ShiftAiEssayWorkshopClient({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <label htmlFor="ws-subject" className={`block text-sm font-medium ${SA.text}`}>
-                Subject
+                {t('subject')}
               </label>
               <select
                 id="ws-subject"
@@ -222,7 +218,7 @@ export default function ShiftAiEssayWorkshopClient({
             </div>
             <div className="space-y-2">
               <label htmlFor="ws-board" className={`block text-sm font-medium ${SA.text}`}>
-                Exam board
+                {t('examBoard')}
               </label>
               <select
                 id="ws-board"
@@ -239,7 +235,7 @@ export default function ShiftAiEssayWorkshopClient({
             </div>
             <div className="space-y-2">
               <label htmlFor="ws-level" className={`block text-sm font-medium ${SA.text}`}>
-                Level
+                {t('level')}
               </label>
               <select
                 id="ws-level"
@@ -256,7 +252,7 @@ export default function ShiftAiEssayWorkshopClient({
             </div>
             <div className="space-y-2">
               <label htmlFor="ws-target" className={`block text-sm font-medium ${SA.text}`}>
-                Target word count
+                {t('targetWordCount')}
               </label>
               <input
                 id="ws-target"
@@ -271,14 +267,14 @@ export default function ShiftAiEssayWorkshopClient({
           </div>
           <div className="space-y-2">
             <label htmlFor="ws-prompt" className={`block text-sm font-medium ${SA.text}`}>
-              Essay question
+              {t('essayQuestion')}
             </label>
             <textarea
               id="ws-prompt"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               className={`${SA.textarea} min-h-24`}
-              placeholder="What is your essay about?"
+              placeholder={t('promptPlaceholder')}
             />
           </div>
           <button
@@ -290,12 +286,12 @@ export default function ShiftAiEssayWorkshopClient({
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Building outline…
+                {t('buildingOutline')}
               </>
             ) : (
               <>
                 <Sparkles className="h-4 w-4" />
-                Generate outline
+                {t('generateOutline')}
               </>
             )}
           </button>
@@ -305,21 +301,21 @@ export default function ShiftAiEssayWorkshopClient({
       {step === 'outline' && outline ? (
         <div className="space-y-4">
           <div className={`${SA.cardPadded} space-y-4`}>
-            <p className={`text-sm font-bold ${SA.text}`}>Thesis</p>
+            <p className={`text-sm font-bold ${SA.text}`}>{t('thesis')}</p>
             <p className={`text-sm ${SA.text}`}>{outline.thesis}</p>
 
             <div>
-              <p className={`text-sm font-bold ${SA.text}`}>Introduction</p>
+              <p className={`text-sm font-bold ${SA.text}`}>{t('introduction')}</p>
               <ul className={`mt-2 list-inside list-disc text-sm ${SA.muted}`}>
-                <li>Hook: {outline.introduction?.hook}</li>
-                <li>Context: {outline.introduction?.context}</li>
-                <li>Thesis: {outline.introduction?.thesis_sentence}</li>
+                <li>{t('hook', { text: outline.introduction?.hook ?? '' })}</li>
+                <li>{t('context', { text: outline.introduction?.context ?? '' })}</li>
+                <li>{t('thesisLine', { text: outline.introduction?.thesis_sentence ?? '' })}</li>
               </ul>
             </div>
 
             {(outline.body_paragraphs ?? []).map((p, i) => (
               <div key={i}>
-                <p className={`text-sm font-bold ${SA.text}`}>Paragraph {i + 1}</p>
+                <p className={`text-sm font-bold ${SA.text}`}>{t('paragraph', { n: i + 1 })}</p>
                 <p className={`mt-1 text-sm ${SA.text}`}>{p.topic_sentence}</p>
                 {p.arguments?.length ? (
                   <ul className={`mt-1 list-inside list-disc text-sm ${SA.muted}`}>
@@ -333,7 +329,7 @@ export default function ShiftAiEssayWorkshopClient({
 
             {outline.key_vocabulary?.length ? (
               <div>
-                <p className={`text-sm font-bold ${SA.text}`}>Key vocabulary</p>
+                <p className={`text-sm font-bold ${SA.text}`}>{t('keyVocabulary')}</p>
                 <p className={`mt-1 text-sm ${SA.muted}`}>{outline.key_vocabulary.join(', ')}</p>
               </div>
             ) : null}
@@ -344,8 +340,8 @@ export default function ShiftAiEssayWorkshopClient({
             onClick={() => setStep('draft')}
             className={`${SA.btnPrimary} h-11 w-full`}
           >
-            Start drafting
-            <ChevronRight className="h-4 w-4" />
+            {t('startDrafting')}
+            <ChevronRight className="h-4 w-4 rtl:-scale-x-100" />
           </button>
         </div>
       ) : null}
@@ -354,19 +350,19 @@ export default function ShiftAiEssayWorkshopClient({
         <div className="grid gap-5 lg:grid-cols-2">
           <div className={`${SA.cardPadded} space-y-3`}>
             <div className="flex items-center justify-between gap-2">
-              <p className={`text-sm font-bold ${SA.text}`}>Your draft</p>
+              <p className={`text-sm font-bold ${SA.text}`}>{t('yourDraft')}</p>
               <span className={`text-xs ${SA.muted}`}>
-                {wc} / {wordTarget} words
-                {saveStatus === 'saving' ? ' · Saving…' : null}
-                {saveStatus === 'saved' ? ' · Saved' : null}
-                {saveStatus === 'error' ? ' · Save failed' : null}
+                {t('wordCount', { count: wc, target: wordTarget })}
+                {saveStatus === 'saving' ? t('saving') : null}
+                {saveStatus === 'saved' ? t('saved') : null}
+                {saveStatus === 'error' ? t('saveFailedStatus') : null}
               </span>
             </div>
             <textarea
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               className={`${SA.textarea} min-h-80`}
-              placeholder="Expand your outline into a full essay…"
+              placeholder={t('draftPlaceholder')}
             />
             {step === 'draft' ? (
               <button
@@ -378,10 +374,10 @@ export default function ShiftAiEssayWorkshopClient({
                 {feedbackLoading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Getting feedback…
+                    {t('gettingFeedback')}
                   </>
                 ) : (
-                  'Get live feedback'
+                  t('getLiveFeedback')
                 )}
               </button>
             ) : (
@@ -390,18 +386,15 @@ export default function ShiftAiEssayWorkshopClient({
                 onClick={() => setStep('draft')}
                 className={`${SA.btnSecondary} w-full`}
               >
-                Back to editing
+                {t('backToEditing')}
               </button>
             )}
           </div>
 
           <div className={`${SA.cardPadded} space-y-4`}>
-            <p className={`text-sm font-bold ${SA.text}`}>Live feedback</p>
+            <p className={`text-sm font-bold ${SA.text}`}>{t('liveFeedback')}</p>
             {!feedback ? (
-              <p className={`text-sm ${SA.muted}`}>
-                Write your draft and tap &ldquo;Get live feedback&rdquo; for encouraging coaching —
-                no final grade.
-              </p>
+              <p className={`text-sm ${SA.muted}`}>{t('liveFeedbackHint')}</p>
             ) : (
               <>
                 <p className={`text-sm font-medium text-[var(--sa-navy-700)]`}>
@@ -410,7 +403,7 @@ export default function ShiftAiEssayWorkshopClient({
                 <p className={`text-sm ${SA.text}`}>{feedback.progress_summary}</p>
                 {feedback.outline_alignment ? (
                   <div className={SA.tip}>
-                    <p className="text-xs font-bold uppercase tracking-wide">Outline alignment</p>
+                    <p className="text-xs font-bold uppercase tracking-wide">{t('outlineAlignment')}</p>
                     <p className="mt-1 text-sm">{feedback.outline_alignment}</p>
                   </div>
                 ) : null}
@@ -420,7 +413,7 @@ export default function ShiftAiEssayWorkshopClient({
                 {feedback.strengths?.length ? (
                   <div>
                     <p className={`text-xs font-bold uppercase tracking-wide text-emerald-700`}>
-                      Strengths
+                      {t('strengths')}
                     </p>
                     <ul className="mt-1 list-inside list-disc text-sm">
                       {feedback.strengths.map((s, i) => (
@@ -432,7 +425,7 @@ export default function ShiftAiEssayWorkshopClient({
                 {feedback.suggestions?.length ? (
                   <div>
                     <p className={`text-xs font-bold uppercase tracking-wide text-amber-700`}>
-                      Suggestions
+                      {t('suggestions')}
                     </p>
                     <ul className="mt-1 list-inside list-disc text-sm">
                       {feedback.suggestions.map((s, i) => (
@@ -444,7 +437,7 @@ export default function ShiftAiEssayWorkshopClient({
                 {feedback.next_steps?.length ? (
                   <div>
                     <p className={`text-xs font-bold uppercase tracking-wide ${SA.muted}`}>
-                      Next steps
+                      {t('nextSteps')}
                     </p>
                     <ul className="mt-1 list-inside list-disc text-sm">
                       {feedback.next_steps.map((s, i) => (
@@ -459,7 +452,7 @@ export default function ShiftAiEssayWorkshopClient({
                   disabled={feedbackLoading}
                   className={`${SA.btnSecondary} w-full`}
                 >
-                  {feedbackLoading ? 'Refreshing…' : 'Refresh feedback'}
+                  {feedbackLoading ? t('refreshing') : t('refreshFeedback')}
                 </button>
               </>
             )}
