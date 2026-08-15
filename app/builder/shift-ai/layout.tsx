@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Amiri, Noto_Sans_Arabic } from 'next/font/google';
-import { NextIntlClientProvider } from 'next-intl';
+import ShiftAiIntlProvider from '@/app/builder/shift-ai/ShiftAiIntlProvider';
 import ShiftAiLayoutGate from '@/app/builder/shift-ai/ShiftAiLayoutGate';
 import { getShiftAiMessages, shiftAiTextDirection } from '@/lib/shift-ai/i18n';
 import { getRequestStudyLanguage } from '@/lib/shift-ai/study-language';
@@ -35,11 +35,11 @@ export default async function ShiftAiLayout({ children }: { children: React.Reac
 
   return (
     <div className={`${notoSansArabic.variable} ${amiri.variable}`}>
-      <NextIntlClientProvider locale={locale} messages={messages} timeZone="UTC">
+      <ShiftAiIntlProvider locale={locale} messages={messages}>
         <ShiftAiLayoutGate dir={dir} locale={locale}>
           {children}
         </ShiftAiLayoutGate>
-      </NextIntlClientProvider>
+      </ShiftAiIntlProvider>
     </div>
   );
 }
