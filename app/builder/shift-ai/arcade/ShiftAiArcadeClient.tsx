@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Gamepad2, Lightbulb, Loader2, RotateCcw, Timer, Trophy, Zap } from 'lucide-react';
 import {
   ARCADE_GAME_DURATION_SEC,
@@ -24,6 +25,7 @@ export default function ShiftAiArcadeClient({
   recentScores: ArcadeScoreRecord[];
   initialSubject?: string | null;
 }) {
+  const t = useTranslations('arcade');
   const lockedSubject = resolveSubjectQuery(subjectOptions, initialSubject);
   const [screen, setScreen] = useState<Screen>('lobby');
   const [subject, setSubject] = useState(lockedSubject ?? subjectOptions[0] ?? '');
@@ -84,12 +86,12 @@ export default function ShiftAiArcadeClient({
 
       const data = (await res.json()) as { error?: string; score?: ArcadeScoreRecord };
       if (!res.ok || !data.score) {
-        throw new Error(data.error || 'Could not save score');
+        throw new Error(data.error || t('errors.saveScore'));
       }
 
       setRecentScores((current) => [data.score!, ...current].slice(0, 10));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save score');
+      setError(err instanceof Error ? err.message : t('errors.saveScore'));
     } finally {
       setSaving(false);
     }
@@ -144,7 +146,7 @@ export default function ShiftAiArcadeClient({
 
       const data = (await res.json()) as { error?: string; questions?: ArcadeQuestion[] };
       if (!res.ok || !data.questions?.length) {
-        throw new Error(data.error || 'Could not load quiz questions');
+        throw new Error(data.error || t('errors.loadQuestions'));
       }
 
       resetGameState();
@@ -152,7 +154,7 @@ export default function ShiftAiArcadeClient({
       setScreen('playing');
       startTimer();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not start game');
+      setError(err instanceof Error ? err.message : t('errors.startGame'));
       setScreen('lobby');
     }
   };
@@ -213,8 +215,8 @@ export default function ShiftAiArcadeClient({
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--sa-navy-800)] animate-pulse">
           <Zap className="h-8 w-8 text-white" />
         </div>
-        <p className={`text-lg font-bold ${SA.text}`}>Generating your quiz…</p>
-        <p className={`text-sm ${SA.muted}`}>AI is crafting 10 questions for {subject}</p>
+        <p className={`text-lg font-bold ${SA.text}`}>{t('generating')}</p>
+        <p className={`text-sm ${SA.muted}`}>{t('crafting', { subject })}</p>
         <Loader2 className={`h-6 w-6 animate-spin ${SA.muted}`} />
       </div>
     );
@@ -226,22 +228,24 @@ export default function ShiftAiArcadeClient({
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className={`text-sm font-bold ${SA.text}`}>
-              Q{currentIndex + 1}/{questions.length}
+              {t('questionProgress', { current: currentIndex + 1, total: questions.length })}
             </span>
             {streak >= 2 ? (
               <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
-                🔥 {streak} streak
+                🔥 {t('streak', { count: streak })}
               </span>
             ) : null}
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-lg font-extrabold text-[var(--sa-navy-800)]">{score} pts</span>
+            <span className="text-lg font-extrabold text-[var(--sa-navy-800)]">
+              {t('points', { score })}
+            </span>
             <div className="flex items-center gap-1.5 rounded-full bg-[var(--sa-secondary)] px-3 py-1.5">
               <Timer className={`h-3.5 w-3.5 ${SA.muted}`} />
               <span
                 className={`font-mono text-sm font-bold ${timeLeft <= 10 ? 'text-red-600' : SA.text}`}
               >
-                {timeLeft}s
+                {t('seconds', { count: timeLeft })}
               </span>
             </div>
           </div>
@@ -260,14 +264,14 @@ export default function ShiftAiArcadeClient({
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {q.options.map((opt, i) => {
-            let cls = `${SA.card} px-4 py-3.5 text-left text-sm font-semibold transition-all hover:border-[var(--sa-navy-400)]`;
+            let cls = `${SA.card} px-4 py-3.5 text-start text-sm font-semibold transition-all hover:border-[var(--sa-navy-400)]`;
             if (answered) {
               if (i === q.correctIndex) {
-                cls = 'rounded-xl border-2 border-emerald-500 bg-emerald-50 px-4 py-3.5 text-left text-sm font-semibold text-emerald-900';
+                cls = 'rounded-xl border-2 border-emerald-500 bg-emerald-50 px-4 py-3.5 text-start text-sm font-semibold text-emerald-900';
               } else if (i === selected) {
-                cls = 'rounded-xl border-2 border-red-400 bg-red-50 px-4 py-3.5 text-left text-sm font-semibold text-red-900';
+                cls = 'rounded-xl border-2 border-red-400 bg-red-50 px-4 py-3.5 text-start text-sm font-semibold text-red-900';
               } else {
-                cls = `${SA.card} px-4 py-3.5 text-left text-sm opacity-50`;
+                cls = `${SA.card} px-4 py-3.5 text-start text-sm opacity-50`;
               }
             }
 
@@ -279,7 +283,7 @@ export default function ShiftAiArcadeClient({
                 disabled={answered}
                 className={cls}
               >
-                <span className="mr-2 text-xs opacity-60">{OPTION_LABELS[i]}.</span>
+                <span className="me-2 text-xs opacity-60">{OPTION_LABELS[i]}.</span>
                 {opt}
               </button>
             );
@@ -290,19 +294,16 @@ export default function ShiftAiArcadeClient({
           <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
             <div className="mb-2 flex items-center gap-2">
               <Lightbulb className="h-4 w-4 text-amber-600" />
-              <p className="text-sm font-bold text-amber-900">Let&apos;s break it down</p>
+              <p className="text-sm font-bold text-amber-900">{t('breakItDown')}</p>
             </div>
             <p className={`text-sm ${SA.text}`}>{q.socraticHint}</p>
-            <p className={`mt-2 text-xs ${SA.muted}`}>
-              Think about this simpler question — it guides you toward the answer without giving it
-              away.
-            </p>
+            <p className={`mt-2 text-xs ${SA.muted}`}>{t('scaffoldHint')}</p>
             <button
               type="button"
               onClick={advanceQuestion}
               className={`${SA.btnPrimary} mt-4 w-full py-2.5`}
             >
-              Got it — next question
+              {t('nextQuestion')}
             </button>
           </div>
         ) : null}
@@ -324,19 +325,19 @@ export default function ShiftAiArcadeClient({
                 ? '⭐'
                 : '💪'}
           </p>
-          <h2 className="text-3xl font-extrabold">{score} points!</h2>
+          <h2 className="text-3xl font-extrabold">{t('pointsBang', { score })}</h2>
           <p className="mt-1 text-white/80">
-            {correctCount}/{questions.length} correct
-            {streakBonusTotal > 0 ? ` · +${streakBonusTotal} streak bonus` : ''}
+            {t('correctSummary', { correct: correctCount, total: questions.length })}
+            {streakBonusTotal > 0 ? t('streakBonus', { bonus: streakBonusTotal }) : ''}
           </p>
-          {saving ? <p className="mt-2 text-sm text-white/70">Saving score…</p> : null}
+          {saving ? <p className="mt-2 text-sm text-white/70">{t('saving')}</p> : null}
         </div>
 
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: 'Score', value: `${score} pts`, icon: '⚡' },
-            { label: 'Accuracy', value: `${accuracy}%`, icon: '🎯' },
-            { label: 'Streak bonus', value: `+${streakBonusTotal}`, icon: '🔥' },
+            { label: t('statScore'), value: t('points', { score }), icon: '⚡' },
+            { label: t('statAccuracy'), value: `${accuracy}%`, icon: '🎯' },
+            { label: t('statStreakBonus'), value: `+${streakBonusTotal}`, icon: '🔥' },
           ].map((stat) => (
             <div key={stat.label} className={`${SA.cardPadded} text-center`}>
               <p className="text-xl">{stat.icon}</p>
@@ -358,7 +359,7 @@ export default function ShiftAiArcadeClient({
             className={`${SA.btnSecondary} flex flex-1 items-center justify-center gap-2 py-2.5`}
           >
             <RotateCcw className="h-4 w-4" />
-            Lobby
+            {t('lobby')}
           </button>
           <button
             type="button"
@@ -367,7 +368,7 @@ export default function ShiftAiArcadeClient({
             className={`${SA.btnPrimary} flex flex-1 py-2.5`}
           >
             <Zap className="h-4 w-4" />
-            Play again
+            {t('playAgain')}
           </button>
         </div>
       </div>
@@ -380,26 +381,24 @@ export default function ShiftAiArcadeClient({
         <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-[var(--sa-navy-800)] shadow-lg">
           <Gamepad2 className="h-10 w-10 text-white" />
         </div>
-        <h1 className={`text-3xl font-extrabold ${SA.text}`}>Quiz Arcade ⚡</h1>
+        <h1 className={`text-3xl font-extrabold ${SA.text}`}>{t('title')}</h1>
         <p className={`mt-2 ${SA.muted}`}>
           {lockedSubject
-            ? `60-second AI quiz blitz for ${lockedSubject} — earn streak bonuses and beat your best score`
-            : '60-second AI quiz blitz — earn streak bonuses and beat your best score'}
+            ? t('subtitleLocked', { subject: lockedSubject })
+            : t('subtitle')}
         </p>
       </div>
 
       <div className={`mb-6 space-y-4 ${SA.cardPadded}`}>
-        <h2 className={`font-bold ${SA.text}`}>Choose your challenge</h2>
+        <h2 className={`font-bold ${SA.text}`}>{t('chooseChallenge')}</h2>
 
         {subjectOptions.length === 0 ? (
-          <p className={`text-sm ${SA.muted}`}>
-            Add favourite subjects during onboarding to play the arcade.
-          </p>
+          <p className={`text-sm ${SA.muted}`}>{t('noSubjects')}</p>
         ) : (
           <>
             <div>
-              <label className={`mb-2 block text-xs font-semibold uppercase tracking-wide ${SA.muted}`}>
-                Subject
+              <label className={`mb-2 block text-xs font-semibold uppercase tracking-wide rtl:normal-case rtl:tracking-normal ${SA.muted}`}>
+                {t('subject')}
               </label>
               <select
                 value={subject}
@@ -417,9 +416,9 @@ export default function ShiftAiArcadeClient({
 
             <div className="grid grid-cols-3 gap-3 text-center text-xs">
               {[
-                { icon: '⚡', label: '10 Questions', desc: 'Quick fire' },
-                { icon: '⏱️', label: '60 Seconds', desc: 'Beat the clock' },
-                { icon: '🔥', label: 'Streak Bonus', desc: '+3 pts' },
+                { icon: '⚡', label: t('featQuestions'), desc: t('featQuestionsDesc') },
+                { icon: '⏱️', label: t('featSeconds'), desc: t('featSecondsDesc') },
+                { icon: '🔥', label: t('featStreak'), desc: t('featStreakDesc') },
               ].map((feature) => (
                 <div
                   key={feature.label}
@@ -439,7 +438,7 @@ export default function ShiftAiArcadeClient({
               className={`${SA.btnPrimary} w-full py-3 text-base`}
             >
               <Zap className="h-5 w-5" />
-              Start Arcade!
+              {t('start')}
             </button>
           </>
         )}
@@ -451,11 +450,11 @@ export default function ShiftAiArcadeClient({
         <div className="mb-4 flex items-center justify-between">
           <h2 className={`flex items-center gap-2 font-bold ${SA.text}`}>
             <Trophy className="h-4 w-4 text-amber-500" />
-            Your recent scores
+            {t('recentScores')}
           </h2>
         </div>
         {recentScores.length === 0 ? (
-          <p className={`text-center text-sm ${SA.muted}`}>No scores yet — be the first!</p>
+          <p className={`text-center text-sm ${SA.muted}`}>{t('noScores')}</p>
         ) : (
           <div className="space-y-2">
             {recentScores.map((row, i) => (
@@ -468,11 +467,14 @@ export default function ShiftAiArcadeClient({
                 <span className="w-6 text-center text-lg">{i === 0 ? '🥇' : `${i + 1}`}</span>
                 <div className="min-w-0 flex-1">
                   <p className={`truncate text-sm font-semibold ${SA.text}`}>
-                    {row.subject || 'General'} · {row.score} pts
+                    {t('scoreLine', { subject: row.subject || t('general'), score: row.score })}
                   </p>
                   <p className={`text-xs ${SA.muted}`}>
-                    {row.questions_correct}/{row.questions_total} correct ·{' '}
-                    {new Date(row.played_at).toLocaleDateString()}
+                    {t('correctLine', {
+                      correct: row.questions_correct,
+                      total: row.questions_total,
+                    })}{' '}
+                    · {new Date(row.played_at).toLocaleDateString()}
                   </p>
                 </div>
               </div>

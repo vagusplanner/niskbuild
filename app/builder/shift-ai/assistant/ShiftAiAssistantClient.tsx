@@ -1,12 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { GraduationCap, Loader2, Send } from 'lucide-react';
 import type { ShiftChatMessage } from '@/lib/shift-ai/assistant';
 import { SA } from '@/lib/shift-ai/theme';
-
-const WELCOME_MESSAGE =
-  "Hello! I'm your personal Teaching Assistant.\n\nI can help you with any subject, explain concepts, quiz you, help with homework, or answer questions. What would you like to learn today?";
 
 export default function ShiftAiAssistantClient({
   initialMessages,
@@ -15,6 +13,7 @@ export default function ShiftAiAssistantClient({
   initialMessages: ShiftChatMessage[];
   subjectOptions: string[];
 }) {
+  const t = useTranslations('tutor');
   const [messages, setMessages] = useState<ShiftChatMessage[]>(initialMessages);
   const [input, setInput] = useState('');
   const [subject, setSubject] = useState('');
@@ -52,12 +51,12 @@ export default function ShiftAiAssistantClient({
       };
 
       if (!res.ok || !data.userMessage || !data.assistantMessage) {
-        throw new Error(data.error || 'Could not send message');
+        throw new Error(data.error || t('sendError'));
       }
 
       setMessages((current) => [...current, data.userMessage!, data.assistantMessage!]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not send message');
+      setError(err instanceof Error ? err.message : t('sendError'));
       setInput(text);
     } finally {
       setLoading(false);
@@ -73,15 +72,15 @@ export default function ShiftAiAssistantClient({
           <GraduationCap className="h-6 w-6" />
         </div>
         <div>
-          <h1 className={SA.headingMd}>Teaching Assistant</h1>
-          <p className={`text-sm ${SA.muted}`}>Your personal AI tutor for every subject</p>
+          <h1 className={SA.headingMd}>{t('title')}</h1>
+          <p className={`text-sm ${SA.muted}`}>{t('subtitle')}</p>
         </div>
       </div>
 
       {subjectOptions.length > 0 ? (
         <div className="mb-4">
           <label htmlFor="assistant-subject" className={`mb-1 block text-xs ${SA.muted}`}>
-            Subject context (optional)
+            {t('subjectLabel')}
           </label>
           <select
             id="assistant-subject"
@@ -89,7 +88,7 @@ export default function ShiftAiAssistantClient({
             onChange={(e) => setSubject(e.target.value)}
             className={`${SA.select} sm:max-w-xs`}
           >
-            <option value="">Any subject</option>
+            <option value="">{t('anySubject')}</option>
             {subjectOptions.map((option) => (
               <option key={option} value={option}>
                 {option}
@@ -104,37 +103,42 @@ export default function ShiftAiAssistantClient({
       <div className={`${SA.chatPanel} min-h-[420px] flex-1`}>
         <div className="flex-1 space-y-4 overflow-y-auto p-5">
           {showWelcome ? (
-            <div className="flex justify-start">
-              <div className={`${SA.avatar} mr-2 mt-1`}>
-                <GraduationCap className="h-3.5 w-3.5" />
+            <div className="flex w-full">
+              <div className="mr-auto flex max-w-[85%] items-start">
+                <div className={`${SA.avatar} mr-2 mt-1`}>
+                  <GraduationCap className="h-3.5 w-3.5" />
+                </div>
+                <div className={`${SA.assistBubble} whitespace-pre-wrap`}>{t('welcome')}</div>
               </div>
-              <div className={SA.assistBubble}>{WELCOME_MESSAGE}</div>
             </div>
           ) : null}
 
           {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              {msg.role === 'assistant' ? (
-                <div className={`${SA.avatar} mr-2 mt-1`}>
-                  <GraduationCap className="h-3.5 w-3.5" />
+            <div key={msg.id} className="flex w-full">
+              {msg.role === 'user' ? (
+                <div className="ml-auto max-w-[85%]">
+                  <div className={SA.userBubble}>{msg.content}</div>
                 </div>
-              ) : null}
-              <div className={msg.role === 'user' ? SA.userBubble : SA.assistBubble}>
-                {msg.content}
-              </div>
+              ) : (
+                <div className="mr-auto flex max-w-[85%] items-start">
+                  <div className={`${SA.avatar} mr-2 mt-1`}>
+                    <GraduationCap className="h-3.5 w-3.5" />
+                  </div>
+                  <div className={SA.assistBubble}>{msg.content}</div>
+                </div>
+              )}
             </div>
           ))}
 
           {loading ? (
-            <div className="flex items-center justify-start gap-2">
-              <div className={SA.avatar}>
-                <GraduationCap className="h-3.5 w-3.5" />
-              </div>
-              <div className={`${SA.assistBubble} px-4 py-3`}>
-                <Loader2 className={`h-4 w-4 animate-spin ${SA.muted}`} />
+            <div className="flex w-full">
+              <div className="mr-auto flex items-center gap-2">
+                <div className={SA.avatar}>
+                  <GraduationCap className="h-3.5 w-3.5" />
+                </div>
+                <div className={`${SA.assistBubble} px-4 py-3`}>
+                  <Loader2 className={`h-4 w-4 animate-spin ${SA.muted}`} />
+                </div>
               </div>
             </div>
           ) : null}
@@ -153,7 +157,7 @@ export default function ShiftAiAssistantClient({
                 void send();
               }
             }}
-            placeholder="Ask me anything..."
+            placeholder={t('placeholder')}
             disabled={loading}
             className={`${SA.input} flex-1 disabled:opacity-60`}
           />
@@ -162,9 +166,9 @@ export default function ShiftAiAssistantClient({
             onClick={() => void send()}
             disabled={!input.trim() || loading}
             className={SA.btnPrimaryIcon}
-            aria-label="Send message"
+            aria-label={t('sendAria')}
           >
-            <Send className="h-4 w-4" />
+            <Send className="h-4 w-4 rtl:-scale-x-100" />
           </button>
         </div>
       </div>

@@ -1,8 +1,10 @@
 import { redirect } from 'next/navigation';
 import ShiftAiArcadeClient from '@/app/builder/shift-ai/arcade/ShiftAiArcadeClient';
 import type { ArcadeScoreRecord } from '@/lib/shift-ai/arcade-shared';
+import { shiftAiCatalog } from '@/lib/shift-ai/i18n';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { needsSubjectOnboarding } from '@/lib/shift-ai/onboarding';
+import { getRequestStudyLanguage } from '@/lib/shift-ai/study-language';
 import { getSafeSession } from '@/lib/supabaseSession.server';
 
 type PageProps = {
@@ -55,7 +57,7 @@ export default async function ShiftAiArcadePage({ searchParams }: PageProps) {
 
 export async function generateMetadata() {
   return {
-    title: 'Quiz Arcade · Shift AI',
+    title: shiftAiCatalog(await getRequestStudyLanguage()).arcade.metaTitle,
     robots: 'noindex',
   };
 }

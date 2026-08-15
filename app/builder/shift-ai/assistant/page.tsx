@@ -1,7 +1,9 @@
 import { redirect } from 'next/navigation';
 import ShiftAiAssistantClient from '@/app/builder/shift-ai/assistant/ShiftAiAssistantClient';
 import type { ShiftChatMessage } from '@/lib/shift-ai/assistant';
+import { shiftAiCatalog } from '@/lib/shift-ai/i18n';
 import { needsSubjectOnboarding } from '@/lib/shift-ai/onboarding';
+import { getRequestStudyLanguage } from '@/lib/shift-ai/study-language';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getSafeSession } from '@/lib/supabaseSession.server';
 
@@ -51,7 +53,7 @@ export default async function ShiftAiAssistantPage() {
 
 export async function generateMetadata() {
   return {
-    title: 'Teaching Assistant · Shift AI',
+    title: shiftAiCatalog(await getRequestStudyLanguage()).tutor.metaTitle,
     robots: 'noindex',
   };
 }

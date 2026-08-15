@@ -6,7 +6,9 @@ import type {
   SavedNotesOption,
 } from '@/lib/shift-ai/flashcards-shared';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { shiftAiCatalog } from '@/lib/shift-ai/i18n';
 import { needsSubjectOnboarding } from '@/lib/shift-ai/onboarding';
+import { getRequestStudyLanguage } from '@/lib/shift-ai/study-language';
 import { getSafeSession } from '@/lib/supabaseSession.server';
 
 type PageProps = {
@@ -97,11 +99,12 @@ export default async function ShiftAiFlashcardsPage({ searchParams }: PageProps)
     }
   }
 
+  const notesFallback = shiftAiCatalog(await getRequestStudyLanguage()).flashcards.subjectNotes;
   const savedNotes: SavedNotesOption[] = (noteRows ?? [])
     .filter((row) => typeof row.content === 'string' && row.content.trim().length > 50)
     .map((row) => ({
       subjectId: row.subject_id,
-      subjectName: subjectNameById.get(row.subject_id) || 'Subject notes',
+      subjectName: subjectNameById.get(row.subject_id) || notesFallback,
       preview: row.content.trim().slice(0, 120),
       updatedAt: row.updated_at,
     }));
@@ -118,7 +121,7 @@ export default async function ShiftAiFlashcardsPage({ searchParams }: PageProps)
 
 export async function generateMetadata() {
   return {
-    title: 'Smart Flashcards · Shift AI',
+    title: shiftAiCatalog(await getRequestStudyLanguage()).flashcards.metaTitle,
     robots: 'noindex',
   };
 }

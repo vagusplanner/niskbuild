@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import {
   ArrowLeft,
   Brain,
@@ -56,6 +57,7 @@ function FlipCard({
   onRate: (rating: { key: Sm2RatingKey; quality: number }) => void;
   showRetention?: boolean;
 }) {
+  const t = useTranslations('flashcards');
   const [flipped, setFlipped] = useState(false);
 
   const handleRate = (rating: { key: Sm2RatingKey; quality: number }) => {
@@ -68,7 +70,7 @@ function FlipCard({
       {showRetention && card._retention !== undefined ? (
         <div className={`flex items-center justify-between px-1 text-xs ${SA.muted}`}>
           <span className="flex items-center gap-1">
-            <Brain className="h-3 w-3" /> Estimated retention
+            <Brain className="h-3 w-3" /> {t('estimatedRetention')}
           </span>
           <span
             className={`font-bold ${
@@ -87,7 +89,7 @@ function FlipCard({
       <button
         type="button"
         onClick={() => setFlipped((f) => !f)}
-        className="relative w-full cursor-pointer text-left"
+        className="relative w-full cursor-pointer text-start"
         style={{ perspective: 1200 }}
       >
         <div
@@ -104,16 +106,20 @@ function FlipCard({
             {card.subject ? (
               <p className="mb-2 text-xs uppercase tracking-widest text-white/40">{card.subject}</p>
             ) : null}
-            <p className="mb-3 text-xs uppercase tracking-widest text-white/30">Question</p>
+            <p className="mb-3 text-xs uppercase tracking-widest text-white/30 rtl:normal-case rtl:tracking-normal">
+              {t('question')}
+            </p>
             <p className="text-lg font-semibold leading-relaxed">{card.front}</p>
-            <p className="mt-5 text-xs text-white/25">Tap to reveal answer</p>
+            <p className="mt-5 text-xs text-white/25">{t('tapReveal')}</p>
           </div>
 
           <div
             className="absolute inset-0 flex min-h-52 flex-col items-center justify-center rounded-2xl bg-emerald-800 p-8 text-center text-white"
             style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
           >
-            <p className="mb-3 text-xs uppercase tracking-widest text-white/40">Answer</p>
+            <p className="mb-3 text-xs uppercase tracking-widest text-white/40 rtl:normal-case rtl:tracking-normal">
+              {t('answer')}
+            </p>
             <p className="text-lg font-semibold leading-relaxed">{card.back}</p>
           </div>
         </div>
@@ -137,7 +143,7 @@ function FlipCard({
               }`}
             >
               <span className="text-lg">{rating.emoji}</span>
-              {rating.label}
+              {t(`ratings.${rating.key}`)}
             </button>
           ))}
         </div>
@@ -147,19 +153,23 @@ function FlipCard({
 }
 
 function ReviewForecast({ forecast }: { forecast: Record<string, number> }) {
+  const t = useTranslations('flashcards');
+  const locale = useLocale();
   const days = Object.entries(forecast);
   const max = Math.max(...days.map(([, v]) => v), 1);
 
   return (
     <div className={SA.cardPadded}>
-      <h3 className={`mb-3 text-sm font-bold ${SA.text}`}>📅 Upcoming review load</h3>
-      <div className="flex h-16 items-end gap-1.5">
+      <h3 className={`mb-3 text-sm font-bold ${SA.text}`}>{t('forecastTitle')}</h3>
+      <div dir="ltr" className="flex h-16 items-end gap-1.5">
         {days.map(([date, count], i) => {
           const isToday = i === 0;
           const height = count > 0 ? Math.max(8, (count / max) * 56) : 4;
           const dayLabel = isToday
-            ? 'Today'
-            : new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short' });
+            ? t('today')
+            : new Date(`${date}T12:00:00`).toLocaleDateString(locale === 'ar' ? 'ar' : 'en', {
+                weekday: 'short',
+              });
 
           return (
             <div key={date} className="flex flex-1 flex-col items-center gap-1">
@@ -182,7 +192,7 @@ function ReviewForecast({ forecast }: { forecast: Record<string, number> }) {
         })}
       </div>
       <p className={`mt-2 text-xs ${SA.muted}`}>
-        Cards scheduled per day based on your learning history
+        {t('forecastHint')}
       </p>
     </div>
   );
@@ -199,6 +209,7 @@ export default function ShiftAiFlashcardsClient({
   savedNotes: SavedNotesOption[];
   initialSubject?: string | null;
 }) {
+  const t = useTranslations('flashcards');
   const lockedSubject = resolveSubjectQuery(subjectOptions, initialSubject);
   const [tab, setTab] = useState<Tab>('decks');
   const [decks, setDecks] = useState(initialDecks);
@@ -260,11 +271,11 @@ export default function ShiftAiFlashcardsClient({
       });
       const data = (await res.json()) as { error?: string; card?: Flashcard };
       if (!res.ok || !data.card) {
-        throw new Error(data.error || 'Could not save review');
+        throw new Error(data.error || t('errors.saveReview'));
       }
       updateCardInDecks(data.card);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save review');
+      setError(err instanceof Error ? err.message : t('errors.saveReview'));
     }
   };
 
@@ -275,11 +286,11 @@ export default function ShiftAiFlashcardsClient({
         credentials: 'include',
       });
       const data = (await res.json()) as { error?: string };
-      if (!res.ok) throw new Error(data.error || 'Could not delete deck');
+      if (!res.ok) throw new Error(data.error || t('errors.deleteDeck'));
       setDecks((current) => current.filter((d) => d.id !== deckId));
       setConfirmDelete(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not delete deck');
+      setError(err instanceof Error ? err.message : t('errors.deleteDeck'));
     }
   };
 
@@ -293,7 +304,7 @@ export default function ShiftAiFlashcardsClient({
 
     try {
       const payload: Record<string, unknown> = {
-        subject: appendToDeck?.subject || genSubject || 'General',
+        subject: appendToDeck?.subject || genSubject || t('general'),
       };
 
       if (appendToDeck) {
@@ -327,7 +338,7 @@ export default function ShiftAiFlashcardsClient({
       };
 
       if (!res.ok || !data.deck) {
-        throw new Error(data.error || 'Could not generate deck');
+        throw new Error(data.error || t('errors.generateDeck'));
       }
 
       if (appendToDeck) {
@@ -344,7 +355,7 @@ export default function ShiftAiFlashcardsClient({
         setTab('decks');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not generate deck');
+      setError(err instanceof Error ? err.message : t('errors.generateDeck'));
     } finally {
       setGenerating(false);
       setAppendingDeckId(null);
@@ -387,14 +398,14 @@ export default function ShiftAiFlashcardsClient({
   };
 
   const TABS = [
-    { id: 'decks' as const, label: 'My Decks', emoji: '📚' },
-    { id: 'generate' as const, label: 'Build Deck', emoji: '✨' },
+    { id: 'decks' as const, label: t('tabDecks'), emoji: '📚' },
+    { id: 'generate' as const, label: t('tabGenerate'), emoji: '✨' },
     {
       id: 'review' as const,
-      label: `Daily Review${stats.due ? ` (${stats.due})` : ''}`,
+      label: stats.due ? t('tabReviewCount', { count: stats.due }) : t('tabReview'),
       emoji: '🔁',
     },
-    { id: 'schedule' as const, label: 'Schedule', emoji: '📅' },
+    { id: 'schedule' as const, label: t('tabSchedule'), emoji: '📅' },
   ];
 
   const canGenerate =
@@ -409,12 +420,12 @@ export default function ShiftAiFlashcardsClient({
       <div>
         <h1 className={`flex items-center gap-2 text-2xl font-bold ${SA.text}`}>
           <Brain className="h-6 w-6 text-[var(--sa-navy-800)]" />
-          Smart Flashcards
+          {t('title')}
         </h1>
         <p className={`mt-1 text-sm ${SA.muted}`}>
           {lockedSubject
-            ? `Decks and reviews for ${lockedSubject} · ${FLASHCARDS_PER_GENERATION} cards per generation · SM-2 spaced repetition`
-            : `Build decks from any topic or notes · ${FLASHCARDS_PER_GENERATION} cards per generation · SM-2 spaced repetition`}
+            ? t('subtitleLocked', { subject: lockedSubject, count: FLASHCARDS_PER_GENERATION })
+            : t('subtitle', { count: FLASHCARDS_PER_GENERATION })}
         </p>
       </div>
 
@@ -422,15 +433,15 @@ export default function ShiftAiFlashcardsClient({
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {[
             {
-              label: 'Due Today',
+              label: t('statDueToday'),
               value: stats.due,
               icon: '🔁',
               color: stats.due > 0 ? 'text-rose-600' : 'text-emerald-600',
             },
-            { label: 'Total Cards', value: stats.total, icon: '🃏', color: SA.text },
-            { label: 'Decks', value: visibleDecks.length, icon: '📚', color: 'text-[var(--sa-navy-800)]' },
+            { label: t('statTotalCards'), value: stats.total, icon: '🃏', color: SA.text },
+            { label: t('statDecks'), value: visibleDecks.length, icon: '📚', color: 'text-[var(--sa-navy-800)]' },
             {
-              label: 'Avg Retention',
+              label: t('statAvgRetention'),
               value: `${stats.avgRetention}%`,
               icon: '🧠',
               color:
@@ -476,11 +487,11 @@ export default function ShiftAiFlashcardsClient({
         visibleDecks.length === 0 ? (
           <div className={`${SA.cardPadded} space-y-3 py-14 text-center`}>
             <p className="text-4xl">🃏</p>
-            <p className={`font-bold ${SA.text}`}>No decks yet</p>
+            <p className={`font-bold ${SA.text}`}>{t('noDecks')}</p>
             <p className={`text-sm ${SA.muted}`}>
               {lockedSubject
-                ? `Build a ${lockedSubject} deck to get started`
-                : 'Go to Build Deck to create your first deck'}
+                ? t('noDecksLocked', { subject: lockedSubject })
+                : t('noDecksHint')}
             </p>
           </div>
         ) : (
@@ -503,11 +514,11 @@ export default function ShiftAiFlashcardsClient({
                       <p className={`truncate font-bold ${SA.text}`}>{deck.name}</p>
                       <div className={`mt-1 flex flex-wrap items-center gap-3 text-xs ${SA.muted}`}>
                         <span className="flex items-center gap-1">
-                          <BookOpen className="h-3 w-3" /> {deck.card_count} cards
+                          <BookOpen className="h-3 w-3" /> {t('cardsCount', { count: deck.card_count })}
                         </span>
                         {due > 0 ? (
                           <span className="flex items-center gap-1 font-semibold text-rose-600">
-                            <CalendarDays className="h-3 w-3" /> {due} due
+                            <CalendarDays className="h-3 w-3" /> {t('dueCount', { count: due })}
                           </span>
                         ) : null}
                         <span
@@ -515,7 +526,7 @@ export default function ShiftAiFlashcardsClient({
                             ret >= 70 ? 'text-emerald-600' : ret >= 40 ? 'text-amber-600' : SA.muted
                           }`}
                         >
-                          <Brain className="h-3 w-3" /> {ret}% retention
+                          <Brain className="h-3 w-3" /> {t('retentionPct', { pct: ret })}
                         </span>
                       </div>
                     </div>
@@ -527,14 +538,14 @@ export default function ShiftAiFlashcardsClient({
                             onClick={() => void handleDeleteDeck(deck.id)}
                             className="text-xs font-semibold text-red-600 hover:underline"
                           >
-                            Confirm
+                            {t('confirm')}
                           </button>
                           <button
                             type="button"
                             onClick={() => setConfirmDelete(null)}
                             className={`text-xs hover:underline ${SA.muted}`}
                           >
-                            Cancel
+                            {t('cancel')}
                           </button>
                         </>
                       ) : (
@@ -551,7 +562,7 @@ export default function ShiftAiFlashcardsClient({
                             onClick={() => startStudyDeck(deck)}
                             className={`${SA.btnPrimary} gap-1.5 px-3 py-2`}
                           >
-                            <Play className="h-3.5 w-3.5" /> Study
+                            <Play className="h-3.5 w-3.5" /> {t('study')}
                           </button>
                         </>
                       )}
@@ -565,13 +576,13 @@ export default function ShiftAiFlashcardsClient({
                   >
                     {appendingDeckId === deck.id ? (
                       <>
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating{' '}
-                        {FLASHCARDS_PER_GENERATION} more cards…
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />{' '}
+                        {t('generatingMore', { count: FLASHCARDS_PER_GENERATION })}
                       </>
                     ) : (
                       <>
-                        <Sparkles className="h-3.5 w-3.5" /> Generate {FLASHCARDS_PER_GENERATION}{' '}
-                        more cards
+                        <Sparkles className="h-3.5 w-3.5" />{' '}
+                        {t('generateMore', { count: FLASHCARDS_PER_GENERATION })}
                       </>
                     )}
                   </button>
@@ -593,12 +604,12 @@ export default function ShiftAiFlashcardsClient({
               }}
               className={`rounded-lg p-1.5 ${SA.muted} hover:bg-[var(--sa-secondary)]`}
             >
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-5 w-5 rtl:-scale-x-100" />
             </button>
             <div>
               <p className={`font-bold ${SA.text}`}>{studyingDeck.name}</p>
               <p className={`text-xs ${SA.muted}`}>
-                {studyingDeck.cards.length} cards · Study mode
+                {t('studyMode', { count: studyingDeck.cards.length })}
               </p>
             </div>
           </div>
@@ -606,20 +617,18 @@ export default function ShiftAiFlashcardsClient({
           {studyDone ? (
             <div className={`${SA.cardPadded} space-y-5 py-8 text-center`}>
               <p className="text-5xl">🎉</p>
-              <p className={`text-xl font-bold ${SA.text}`}>Session complete!</p>
+              <p className={`text-xl font-bold ${SA.text}`}>{t('sessionComplete')}</p>
               <div className="mx-auto grid max-w-xs grid-cols-2 gap-4">
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
                   <p className="text-2xl font-extrabold text-emerald-700">{studyKnown}</p>
-                  <p className="text-xs font-medium text-emerald-600">Known ✓</p>
+                  <p className="text-xs font-medium text-emerald-600">{t('known')}</p>
                 </div>
                 <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
                   <p className="text-2xl font-extrabold text-amber-700">{studyLater}</p>
-                  <p className="text-xs font-medium text-amber-600">Review later</p>
+                  <p className="text-xs font-medium text-amber-600">{t('reviewLater')}</p>
                 </div>
               </div>
-              <p className={`text-sm ${SA.muted}`}>
-                SM-2 has rescheduled your cards based on your ratings.
-              </p>
+              <p className={`text-sm ${SA.muted}`}>{t('sm2Rescheduled')}</p>
               <button
                 type="button"
                 onClick={() => {
@@ -630,7 +639,7 @@ export default function ShiftAiFlashcardsClient({
                 }}
                 className={`${SA.btnSecondary} inline-flex items-center gap-2`}
               >
-                <RotateCcw className="h-4 w-4" /> Restart
+                <RotateCcw className="h-4 w-4" /> {t('restart')}
               </button>
             </div>
           ) : (
@@ -644,7 +653,7 @@ export default function ShiftAiFlashcardsClient({
                     }}
                   />
                 </div>
-                <span className={`w-14 text-right text-xs font-semibold ${SA.muted}`}>
+                <span className={`w-14 text-end text-xs font-semibold ${SA.muted}`}>
                   {studyIdx + 1} / {studyingDeck.cards.length}
                 </span>
               </div>
@@ -660,7 +669,7 @@ export default function ShiftAiFlashcardsClient({
               />
 
               <p className={`text-center text-xs ${SA.muted}`}>
-                Tap card to flip · Rate yourself honestly · SM-2 reschedules automatically
+                {t('flipHint')}
               </p>
             </div>
           )}
@@ -669,11 +678,11 @@ export default function ShiftAiFlashcardsClient({
 
       {tab === 'generate' ? (
         <div className={`${SA.cardPadded} space-y-5`}>
-          <h2 className={`font-bold ${SA.text}`}>Build a new deck</h2>
+          <h2 className={`font-bold ${SA.text}`}>{t('buildTitle')}</h2>
 
           <div>
-            <label className={`mb-1.5 block text-xs font-bold uppercase tracking-wide ${SA.muted}`}>
-              Subject
+            <label className={`mb-1.5 block text-xs font-bold uppercase tracking-wide rtl:normal-case rtl:tracking-normal ${SA.muted}`}>
+              {t('subject')}
             </label>
             <select
               value={genSubject}
@@ -681,7 +690,7 @@ export default function ShiftAiFlashcardsClient({
               className={SA.select}
               disabled={Boolean(lockedSubject)}
             >
-              {lockedSubject ? null : <option value="">General</option>}
+              {lockedSubject ? null : <option value="">{t('general')}</option>}
               {subjectOptions.map((opt) => (
                 <option key={opt} value={opt}>
                   {opt}
@@ -692,9 +701,9 @@ export default function ShiftAiFlashcardsClient({
 
           <div className="flex gap-1 rounded-xl bg-[var(--sa-secondary)] p-1">
             {[
-              { id: 'topic' as const, label: '📝 Enter Topic' },
-              { id: 'notes' as const, label: '📄 Paste Notes' },
-              { id: 'saved' as const, label: '📚 Saved Notes' },
+              { id: 'topic' as const, label: t('modeTopic') },
+              { id: 'notes' as const, label: t('modeNotes') },
+              { id: 'saved' as const, label: t('modeSaved') },
             ].map((m) => (
               <button
                 key={m.id}
@@ -711,13 +720,13 @@ export default function ShiftAiFlashcardsClient({
 
           {genMode === 'topic' ? (
             <div>
-              <label className={`mb-1.5 block text-xs font-bold uppercase tracking-wide ${SA.muted}`}>
-                Topic or concept
+              <label className={`mb-1.5 block text-xs font-bold uppercase tracking-wide rtl:normal-case rtl:tracking-normal ${SA.muted}`}>
+                {t('topicLabel')}
               </label>
               <input
                 value={topicInput}
                 onChange={(e) => setTopicInput(e.target.value)}
-                placeholder="e.g. Photosynthesis, The French Revolution, Quadratic equations…"
+                placeholder={t('topicPlaceholder')}
                 className={SA.input}
               />
             </div>
@@ -725,13 +734,13 @@ export default function ShiftAiFlashcardsClient({
 
           {genMode === 'notes' ? (
             <div>
-              <label className={`mb-1.5 block text-xs font-bold uppercase tracking-wide ${SA.muted}`}>
-                Paste your notes
+              <label className={`mb-1.5 block text-xs font-bold uppercase tracking-wide rtl:normal-case rtl:tracking-normal ${SA.muted}`}>
+                {t('notesLabel')}
               </label>
               <textarea
                 value={notesText}
                 onChange={(e) => setNotesText(e.target.value)}
-                placeholder="Paste your notes, textbook extract, or summary here…"
+                placeholder={t('notesPlaceholder')}
                 rows={7}
                 className={SA.textarea}
               />
@@ -740,13 +749,11 @@ export default function ShiftAiFlashcardsClient({
 
           {genMode === 'saved' ? (
             <div>
-              <label className={`mb-1.5 block text-xs font-bold uppercase tracking-wide ${SA.muted}`}>
-                From subject notes
+              <label className={`mb-1.5 block text-xs font-bold uppercase tracking-wide rtl:normal-case rtl:tracking-normal ${SA.muted}`}>
+                {t('savedLabel')}
               </label>
               {savedNotes.length === 0 ? (
-                <p className={`text-sm ${SA.muted}`}>
-                  No saved notes yet — write notes on a subject page first.
-                </p>
+                <p className={`text-sm ${SA.muted}`}>{t('noSavedNotes')}</p>
               ) : (
                 <select
                   value={savedNoteId}
@@ -764,11 +771,11 @@ export default function ShiftAiFlashcardsClient({
           ) : null}
 
           <p className={`rounded-xl bg-[var(--sa-navy-50)] px-4 py-3 text-sm ${SA.muted}`}>
-            Each generation creates{' '}
+            {t('genBlurbBefore')}{' '}
             <span className={`font-semibold ${SA.text}`}>
-              {FLASHCARDS_PER_GENERATION} cards per generation
+              {t('genBlurbCards', { count: FLASHCARDS_PER_GENERATION })}
             </span>
-            . Need more? Generate again — new cards append to your deck from My Decks.
+            {t('genBlurbAfter')}
           </p>
 
           <button
@@ -779,12 +786,12 @@ export default function ShiftAiFlashcardsClient({
           >
             {generating ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Generating{' '}
-                {FLASHCARDS_PER_GENERATION} cards…
+                <Loader2 className="h-4 w-4 animate-spin" />{' '}
+                {t('generatingCards', { count: FLASHCARDS_PER_GENERATION })}
               </>
             ) : (
               <>
-                <Sparkles className="h-4 w-4" /> Generate deck ({FLASHCARDS_PER_GENERATION} cards)
+                <Sparkles className="h-4 w-4" /> {t('generateDeck', { count: FLASHCARDS_PER_GENERATION })}
               </>
             )}
           </button>
@@ -795,24 +802,22 @@ export default function ShiftAiFlashcardsClient({
         stats.due === 0 ? (
           <div className={`${SA.cardPadded} space-y-4 py-12 text-center`}>
             <p className="text-5xl">🎉</p>
-            <p className={`text-xl font-bold ${SA.text}`}>All caught up!</p>
-            <p className={`text-sm ${SA.muted}`}>
-              No cards due today. Next reviews are auto-scheduled.
-            </p>
+            <p className={`text-xl font-bold ${SA.text}`}>{t('allCaughtUp')}</p>
+            <p className={`text-sm ${SA.muted}`}>{t('noCardsDue')}</p>
             <button
               type="button"
               onClick={() => setTab('generate')}
               className={`${SA.btnPrimary} inline-flex gap-2`}
             >
-              <Sparkles className="h-4 w-4" /> Build a new deck
+              <Sparkles className="h-4 w-4" /> {t('buildNewDeck')}
             </button>
           </div>
         ) : reviewDone ? (
           <div className={`${SA.cardPadded} space-y-4 py-12 text-center`}>
             <p className="text-5xl">🏆</p>
-            <p className={`text-xl font-bold ${SA.text}`}>Session complete!</p>
+            <p className={`text-xl font-bold ${SA.text}`}>{t('sessionComplete')}</p>
             <p className={`text-sm ${SA.muted}`}>
-              Reviewed {reviewQueue.length} cards. SM-2 has rescheduled all cards.
+              {t('reviewedCount', { count: reviewQueue.length })}
             </p>
             <button
               type="button"
@@ -822,7 +827,7 @@ export default function ShiftAiFlashcardsClient({
               }}
               className={`${SA.btnSecondary} inline-flex items-center gap-2`}
             >
-              <RotateCcw className="h-4 w-4" /> Reload
+              <RotateCcw className="h-4 w-4" /> {t('reload')}
             </button>
           </div>
         ) : reviewQueue[reviewIdx] ? (
@@ -853,10 +858,10 @@ export default function ShiftAiFlashcardsClient({
               >
                 <TrendingUp className="h-3 w-3" />
                 {reviewQueue[reviewIdx]._retention! < 40
-                  ? '⚠️ Forgetting fast — urgent review!'
+                  ? t('forgettingFast')
                   : reviewQueue[reviewIdx]._retention! < 70
-                    ? '📉 Memory fading — good time to review'
-                    : '✅ Good retention — reinforcing memory'}
+                    ? t('memoryFading')
+                    : t('goodRetention')}
               </div>
             ) : null}
 
@@ -868,7 +873,7 @@ export default function ShiftAiFlashcardsClient({
             />
 
             <p className={`text-center text-xs ${SA.muted}`}>
-              Rate how well you remembered — SM-2 reschedules accordingly
+              {t('rateHint')}
             </p>
           </div>
         ) : null
@@ -879,10 +884,10 @@ export default function ShiftAiFlashcardsClient({
           <ReviewForecast forecast={forecast} />
           <div className={SA.cardPadded}>
             <h3 className={`mb-3 flex items-center gap-2 text-sm font-bold ${SA.text}`}>
-              <BookOpen className="h-4 w-4" /> All cards ({allCards.length})
+              <BookOpen className="h-4 w-4" /> {t('allCards', { count: allCards.length })}
             </h3>
             {allCards.length === 0 ? (
-              <p className={`py-6 text-center text-sm ${SA.muted}`}>No cards yet.</p>
+              <p className={`py-6 text-center text-sm ${SA.muted}`}>{t('noCardsYet')}</p>
             ) : (
               <div className="max-h-[500px] space-y-2 overflow-y-auto">
                 {allCards.slice(0, 80).map((card) => {
@@ -894,7 +899,7 @@ export default function ShiftAiFlashcardsClient({
                     >
                       <div className="min-w-0 flex-1">
                         <p className={`truncate text-xs font-medium ${SA.text}`}>{card.front}</p>
-                        <p className={`text-[10px] ${SA.muted}`}>{card.subject || 'General'}</p>
+                        <p className={`text-[10px] ${SA.muted}`}>{card.subject || t('general')}</p>
                       </div>
                       <div className="flex flex-shrink-0 items-center gap-2 text-[10px]">
                         <span
@@ -906,7 +911,7 @@ export default function ShiftAiFlashcardsClient({
                                 : 'text-red-600'
                           }`}
                         >
-                          {retention}% ret.
+                          {t('retentionShort', { pct: retention })}
                         </span>
                         {card.interval_days > 0 ? (
                           <span className={`rounded bg-[var(--sa-navy-50)] px-1.5 py-0.5 ${SA.muted}`}>
