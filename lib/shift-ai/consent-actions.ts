@@ -14,6 +14,7 @@ import {
   sendParentWelcomeAfterConsentEmail,
 } from '@/lib/shift-ai/emails';
 import { normalizeEmail } from '@/lib/shift-ai/constants';
+import { withLangQuery } from '@/lib/shift-ai/locale-query';
 
 function generateTemporaryPassword(): string {
   return randomBytes(9).toString('base64url').slice(0, 12);
@@ -51,11 +52,19 @@ async function upsertVerifiedParentAccount(admin: ReturnType<typeof createAdminC
   });
 }
 
-export async function approveParentConsent(token: string) {
+function consentResultPath(token: string, query: string, lang?: string | null) {
+  return withLangQuery(`/builder/shift-ai/parent/consent/${token}?${query}`, lang);
+}
+
+function consentInvalidPath(lang?: string | null) {
+  return withLangQuery('/builder/shift-ai/parent/consent/invalid', lang);
+}
+
+export async function approveParentConsent(token: string, lang?: string | null) {
   const request = await getConsentRequestByToken(token);
 
   if (!request || !isConsentRequestValid(request)) {
-    redirect('/builder/shift-ai/parent/consent/invalid');
+    redirect(consentInvalidPath(lang));
   }
 
   const admin = createAdminClient();
@@ -70,7 +79,7 @@ export async function approveParentConsent(token: string) {
 
   if (authError || !authUser.user) {
     console.error('Shift AI createUser failed:', authError?.message);
-    redirect(`/builder/shift-ai/parent/consent/${token}?error=activate`);
+    redirect(consentResultPath(token, 'error=activate', lang));
   }
 
   const now = new Date().toISOString();
@@ -90,7 +99,7 @@ export async function approveParentConsent(token: string) {
   if (studentError) {
     console.error('Shift AI student activate failed:', studentError.message);
     await admin.auth.admin.deleteUser(authUser.user.id);
-    redirect(`/builder/shift-ai/parent/consent/${token}?error=activate`);
+    redirect(consentResultPath(token, 'error=activate', lang));
   }
 
   await admin
@@ -110,7 +119,7 @@ export async function approveParentConsent(token: string) {
 
   const parentDashboardToken = parentTokenRow?.token;
   if (!parentDashboardToken) {
-    redirect(`/builder/shift-ai/parent/consent/${token}?error=token`);
+    redirect(consentResultPath(token, 'error=token', lang));
   }
 
   await sendParentWelcomeAfterConsentEmail({
@@ -121,14 +130,14 @@ export async function approveParentConsent(token: string) {
     parentDashboardToken,
   });
 
-  redirect(`/builder/shift-ai/parent/consent/${token}?status=approved`);
+  redirect(consentResultPath(token, 'status=approved', lang));
 }
 
-export async function declineParentConsent(token: string) {
+export async function declineParentConsent(token: string, lang?: string | null) {
   const request = await getConsentRequestByToken(token);
 
   if (!request || !isConsentRequestValid(request)) {
-    redirect('/builder/shift-ai/parent/consent/invalid');
+    redirect(consentInvalidPath(lang));
   }
 
   const admin = createAdminClient();
@@ -151,5 +160,5 @@ export async function declineParentConsent(token: string) {
     childFirstName: request.childFirstName,
   });
 
-  redirect(`/builder/shift-ai/parent/consent/${token}?status=declined`);
+  redirect(consentResultPath(token, 'status=declined', lang));
 }

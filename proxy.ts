@@ -1,5 +1,10 @@
-import { NextResponse, type NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { updateSession } from '@/lib/supabase/middleware';
+import {
+  SHIFT_AI_LANG_HEADER,
+  isUnauthenticatedLocaleOverridePath,
+  parseLangQueryParam,
+} from '@/lib/shift-ai/locale-query';
 import {
   hasPaidTier,
   isAuthExemptPath,
@@ -16,7 +21,18 @@ import {
   shouldSkipTenantRouting,
 } from '@/lib/tenant-routing';
 
+function requestWithShiftAiLangHeader(request: NextRequest): NextRequest {
+  const lang = parseLangQueryParam(request.nextUrl.searchParams.get('lang'));
+  if (!lang || !isUnauthenticatedLocaleOverridePath(request.nextUrl.pathname)) {
+    return request;
+  }
+  const headers = new Headers(request.headers);
+  headers.set(SHIFT_AI_LANG_HEADER, lang);
+  return new NextRequest(request, { headers });
+}
+
 export async function proxy(request: NextRequest) {
+  request = requestWithShiftAiLangHeader(request);
   const { pathname } = request.nextUrl;
   const host = request.headers.get('host') || '';
   const hostname = host.split(':')[0].toLowerCase();

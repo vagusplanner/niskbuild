@@ -2,12 +2,10 @@ import { redirect } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getSafeSession } from '@/lib/supabaseSession.server';
 import ShiftAiOnboardingForm from '@/app/builder/shift-ai/onboarding/ShiftAiOnboardingForm';
-import {
-  SHIFT_CURRICULUM_LABELS,
-  type ShiftAgeRange,
-  type ShiftCurriculum,
-} from '@/lib/shift-ai/constants';
+import { type ShiftAgeRange, type ShiftCurriculum } from '@/lib/shift-ai/constants';
+import { shiftAiCatalog } from '@/lib/shift-ai/i18n';
 import { needsSubjectOnboarding } from '@/lib/shift-ai/onboarding';
+import { getRequestStudyLanguage } from '@/lib/shift-ai/study-language';
 import { SA } from '@/lib/shift-ai/theme';
 
 export default async function ShiftAiOnboardingPage() {
@@ -30,19 +28,20 @@ export default async function ShiftAiOnboardingPage() {
   }
 
   const completeMode = Boolean(student);
+  const catalog = shiftAiCatalog(await getRequestStudyLanguage());
 
   return (
     <main className={SA.authPage}>
       <div className="mx-auto max-w-lg">
         <header className="mb-10 text-center">
-          <p className={SA.authKicker}>Shift Learning</p>
+          <p className={SA.authKicker}>{catalog.auth.brand}</p>
           <h1 className={`mt-2 text-3xl font-bold ${SA.text}`}>
-            {completeMode ? 'Choose your subjects' : 'Set up your profile'}
+            {completeMode ? catalog.onboarding.chooseSubjects : catalog.onboarding.setupProfile}
           </h1>
           <p className={`mt-3 ${SA.muted}`}>
             {completeMode
-              ? 'Pick up to three favourite subjects so we can personalise your tutors and dashboard.'
-              : 'Tell us a little about you so we can personalise your tutors.'}
+              ? catalog.onboarding.completeSubtitle
+              : catalog.onboarding.createSubtitle}
           </p>
         </header>
         <ShiftAiOnboardingForm
@@ -54,8 +53,6 @@ export default async function ShiftAiOnboardingPage() {
                   curriculum: (student.curriculum || 'uk') as ShiftCurriculum,
                   yearGroup: student.year_group,
                   ageRange: String(student.age_range) as ShiftAgeRange,
-                  curriculumLabel:
-                    SHIFT_CURRICULUM_LABELS[(student.curriculum || 'uk') as ShiftCurriculum],
                 }
               : undefined
           }
@@ -67,7 +64,7 @@ export default async function ShiftAiOnboardingPage() {
 
 export async function generateMetadata() {
   return {
-    title: 'Onboarding · Shift AI',
+    title: shiftAiCatalog(await getRequestStudyLanguage()).onboarding.metaTitle,
     robots: 'noindex',
   };
 }

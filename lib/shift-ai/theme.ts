@@ -33,7 +33,7 @@ export const SA = {
   authPage: 'sa-auth-page px-6 py-16',
   authKicker: 'sa-auth-kicker text-sm',
   authCard: 'sa-auth-card p-5',
-  authChoice: 'sa-auth-choice w-full p-5 text-left',
+  authChoice: 'sa-auth-choice w-full p-5 text-start',
   link: 'sa-link text-sm',
   error: 'sa-error rounded-lg px-4 py-3 text-sm',
   success: 'sa-success rounded-lg px-4 py-3 text-sm',

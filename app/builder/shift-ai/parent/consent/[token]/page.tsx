@@ -7,10 +7,13 @@ import {
   getConsentRequestByToken,
   isConsentRequestValid,
 } from '@/lib/shift-ai/consent-auth';
+import { shiftAiCatalog } from '@/lib/shift-ai/i18n';
+import { withLangQuery } from '@/lib/shift-ai/locale-query';
+import { getRequestStudyLanguage } from '@/lib/shift-ai/study-language';
 
 interface ConsentPageProps {
   params: Promise<{ token: string }>;
-  searchParams: Promise<{ status?: string; error?: string }>;
+  searchParams: Promise<{ status?: string; error?: string; lang?: string }>;
 }
 
 export default async function ShiftAiParentConsentPage({
@@ -19,13 +22,14 @@ export default async function ShiftAiParentConsentPage({
 }: ConsentPageProps) {
   const { token } = await params;
   const query = await searchParams;
+  const copy = shiftAiCatalog(await getRequestStudyLanguage()).parentConsent;
 
   if (query.status === 'approved') {
     return (
-      <main className="min-h-screen flex items-center justify-center px-6">
+      <main className="flex min-h-screen items-center justify-center px-6">
         <div className="max-w-md text-center">
-          <p className="text-lg text-slate-900">Thank you — your child&apos;s account is now active.</p>
-          <p className="mt-3 text-sm text-slate-600">We emailed you login details and your parent dashboard link.</p>
+          <p className="text-lg text-slate-900">{copy.approved}</p>
+          <p className="mt-3 text-sm text-slate-600">{copy.approvedHint}</p>
         </div>
       </main>
     );
@@ -33,16 +37,16 @@ export default async function ShiftAiParentConsentPage({
 
   if (query.status === 'declined') {
     return (
-      <main className="min-h-screen flex items-center justify-center px-6">
-        <p className="text-lg text-slate-700">Consent declined. No account was created.</p>
+      <main className="flex min-h-screen items-center justify-center px-6">
+        <p className="text-lg text-slate-700">{copy.declined}</p>
       </main>
     );
   }
 
   if (query.error === 'activate') {
     return (
-      <main className="min-h-screen flex items-center justify-center px-6">
-        <p className="text-lg text-slate-700">We could not activate the account. Please try again or contact support.</p>
+      <main className="flex min-h-screen items-center justify-center px-6">
+        <p className="text-lg text-slate-700">{copy.activateError}</p>
       </main>
     );
   }
@@ -51,70 +55,73 @@ export default async function ShiftAiParentConsentPage({
 
   if (!request) {
     return (
-      <main className="min-h-screen flex items-center justify-center px-6">
-        <p className="text-lg text-slate-700">This consent link is invalid or has already been used</p>
+      <main className="flex min-h-screen items-center justify-center px-6">
+        <p className="text-lg text-slate-700">{copy.invalid}</p>
       </main>
     );
   }
 
   if (request.status !== 'pending') {
     return (
-      <main className="min-h-screen flex items-center justify-center px-6">
-        <p className="text-lg text-slate-700">This consent link is invalid or has already been used</p>
+      <main className="flex min-h-screen items-center justify-center px-6">
+        <p className="text-lg text-slate-700">{copy.invalid}</p>
       </main>
     );
   }
 
   if (!isConsentRequestValid(request)) {
     return (
-      <main className="min-h-screen flex items-center justify-center px-6">
-        <p className="text-lg text-slate-700">This consent link is invalid or has already been used</p>
+      <main className="flex min-h-screen items-center justify-center px-6">
+        <p className="text-lg text-slate-700">{copy.invalid}</p>
       </main>
     );
   }
 
+  const intro = request.yearGroup
+    ? copy.introWithYear.replaceAll('{name}', request.childFirstName).replaceAll('{year}', request.yearGroup)
+    : copy.introWithoutYear.replaceAll('{name}', request.childFirstName);
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-indigo-50 to-white px-6 py-16">
       <div className="mx-auto max-w-lg rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <p className="text-sm font-semibold uppercase tracking-wider text-indigo-600">Shift AI</p>
-        <h1 className="mt-2 text-2xl font-bold text-slate-900">Parental consent</h1>
+        <p className="text-sm font-semibold uppercase tracking-wider text-indigo-600">{copy.kicker}</p>
+        <h1 className="mt-2 text-2xl font-bold text-slate-900">{copy.title}</h1>
 
-        <div className="mt-6 space-y-4 text-sm text-slate-700 leading-relaxed">
-          <p>
-            <strong>{request.childFirstName}</strong>
-            {request.yearGroup ? ` (${request.yearGroup})` : ''} would like to use Shift AI — an AI study
-            companion that adapts to UK, French, US, and Saudi school curricula.
-          </p>
-          <p>
-            Shift AI helps with homework, revision, and exam preparation. We collect a coarse age band
-            and study progress to personalise learning — not precise location, and we do not store raw
-            chat transcripts (the same privacy approach as NiskBuild analytics).
-          </p>
+        <p className="mt-4 rounded-lg border border-amber-500/30 bg-amber-50 px-3 py-2 text-sm leading-relaxed text-amber-950">
+          {copy.legalReviewBanner}
+        </p>
+
+        <div className="mt-6 space-y-4 text-sm leading-relaxed text-slate-700">
+          <p>{intro}</p>
+          <p>{copy.privacyBody}</p>
         </div>
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <form action={approveParentConsent.bind(null, token)} className="flex-1">
+          <form action={approveParentConsent.bind(null, token, query.lang)} className="flex-1">
             <button
               type="submit"
               className="w-full rounded-lg bg-indigo-600 py-3 text-sm font-semibold text-white hover:bg-indigo-700"
             >
-              I consent — activate my child&apos;s account
+              {copy.approve}
             </button>
           </form>
-          <form action={declineParentConsent.bind(null, token)} className="flex-1">
+          <form action={declineParentConsent.bind(null, token, query.lang)} className="flex-1">
             <button
               type="submit"
               className="w-full rounded-lg border border-slate-300 bg-white py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
-              Decline
+              {copy.decline}
             </button>
           </form>
         </div>
 
         <p className="mt-6 text-xs text-slate-500">
-          Already have an account?{' '}
-          <Link href="/builder/shift-ai/signup" className="text-indigo-600 hover:underline">
-            Shift AI sign up
+          {copy.alreadyAccount}{' '}
+          <Link
+            href={withLangQuery('/builder/shift-ai/signup', query.lang)}
+            className="text-indigo-600 hover:underline"
+          >
+            {copy.signupLink}
           </Link>
         </p>
       </div>
@@ -124,7 +131,7 @@ export default async function ShiftAiParentConsentPage({
 
 export async function generateMetadata() {
   return {
-    title: 'Parental consent · Shift AI',
+    title: shiftAiCatalog(await getRequestStudyLanguage()).parentConsent.metaTitle,
     robots: 'noindex',
   };
 }

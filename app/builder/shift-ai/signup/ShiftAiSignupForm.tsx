@@ -2,12 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { ChevronLeft } from 'lucide-react';
 import { signUpWithEmail } from '@/lib/auth';
 import {
   SHIFT_AGE_RANGES,
-  SHIFT_AGE_RANGE_LABELS,
   SHIFT_CURRICULA,
-  SHIFT_CURRICULUM_LABELS,
   type ShiftAgeRange,
   type ShiftCurriculum,
 } from '@/lib/shift-ai/constants';
@@ -16,6 +16,9 @@ import { SA } from '@/lib/shift-ai/theme';
 type SignupPath = 'choose' | 'self' | 'supervised' | 'family';
 
 export default function ShiftAiSignupForm() {
+  const t = useTranslations('auth');
+  const tDash = useTranslations('dashboard');
+  const tAge = useTranslations('onboarding.ageRanges');
   const router = useRouter();
   const [path, setPath] = useState<SignupPath>('choose');
   const [loading, setLoading] = useState(false);
@@ -60,12 +63,12 @@ export default function ShiftAiSignupForm() {
 
       const data = (await res.json()) as { error?: string };
       if (!res.ok) {
-        throw new Error(data.error || 'Could not create your Shift AI profile');
+        throw new Error(data.error || t('createProfileFailed'));
       }
 
       router.replace('/builder/shift-ai');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sign-up failed');
+      setError(err instanceof Error ? err.message : t('signupFailed'));
     } finally {
       setLoading(false);
     }
@@ -96,16 +99,13 @@ export default function ShiftAiSignupForm() {
 
       const data = (await res.json()) as { error?: string; message?: string };
       if (!res.ok) {
-        throw new Error(data.error || 'Could not start supervised sign-up');
+        throw new Error(data.error || t('supervisedFailed'));
       }
 
-      setMessage(
-        data.message ||
-          'We emailed the parent a consent link. The account stays inactive until they approve.'
-      );
+      setMessage(data.message || t('consentEmailed'));
       setPath('choose');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sign-up failed');
+      setError(err instanceof Error ? err.message : t('signupFailed'));
     } finally {
       setLoading(false);
     }
@@ -116,24 +116,16 @@ export default function ShiftAiSignupForm() {
       <div className="space-y-4">
         {message ? <p className={SA.success}>{message}</p> : null}
         <button type="button" onClick={() => setPath('self')} className={SA.authChoice}>
-          <p className={`font-semibold ${SA.text}`}>I am 13 or older — create my own account</p>
-          <p className={`mt-1 text-sm ${SA.muted}`}>
-            Self-registration with your own email and password.
-          </p>
+          <p className={`font-semibold ${SA.text}`}>{t('selfTitle')}</p>
+          <p className={`mt-1 text-sm ${SA.muted}`}>{t('selfHint')}</p>
         </button>
         <button type="button" onClick={() => setPath('supervised')} className={SA.authChoice}>
-          <p className={`font-semibold ${SA.text}`}>
-            I am setting up an account for my child under 13
-          </p>
-          <p className={`mt-1 text-sm ${SA.muted}`}>
-            Supervised account — we email the parent for consent first.
-          </p>
+          <p className={`font-semibold ${SA.text}`}>{t('supervisedTitle')}</p>
+          <p className={`mt-1 text-sm ${SA.muted}`}>{t('supervisedHint')}</p>
         </button>
         <button type="button" onClick={() => setPath('family')} className={SA.authChoice}>
-          <p className={`font-semibold ${SA.text}`}>I am setting up for a young child aged 4–7</p>
-          <p className={`mt-1 text-sm ${SA.muted}`}>
-            Family / Voice Buddy mode — parent manages everything.
-          </p>
+          <p className={`font-semibold ${SA.text}`}>{t('familyTitle')}</p>
+          <p className={`mt-1 text-sm ${SA.muted}`}>{t('familyHint')}</p>
         </button>
       </div>
     );
@@ -147,35 +139,99 @@ export default function ShiftAiSignupForm() {
           setPath('choose');
           setError('');
         }}
-        className={SA.link}
+        className={`${SA.link} inline-flex items-center gap-1`}
       >
-        ← Back to account types
+        <ChevronLeft className="h-4 w-4 rtl:-scale-x-100" />
+        {t('back')}
       </button>
 
       {error ? <p className={`mb-4 mt-4 ${SA.error}`}>{error}</p> : null}
 
       {path === 'self' && (
         <form onSubmit={handleSelfSubmit} className="mt-6 space-y-4">
-          <h2 className={`text-lg font-semibold ${SA.text}`}>Create your Shift AI account</h2>
-          <input className={SA.input} type="email" placeholder="Your email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          <input className={SA.input} type="password" placeholder="Password (min 6 characters)" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
-          <input className={SA.input} type="text" placeholder="Your name" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
-          <select className={SA.select} value={curriculum} onChange={(e) => setCurriculum(e.target.value as ShiftCurriculum)} required>
+          <h2 className={`text-lg font-semibold ${SA.text}`}>{t('createHeading')}</h2>
+          <input
+            className={SA.input}
+            type="email"
+            placeholder={t('email')}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <input
+            className={SA.input}
+            type="password"
+            placeholder={t('password')}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={6}
+          />
+          <input
+            className={SA.input}
+            type="text"
+            placeholder={t('yourName')}
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            required
+          />
+          <select
+            className={SA.select}
+            value={curriculum}
+            onChange={(e) => setCurriculum(e.target.value as ShiftCurriculum)}
+            required
+          >
             {SHIFT_CURRICULA.map((c) => (
-              <option key={c} value={c}>{SHIFT_CURRICULUM_LABELS[c]}</option>
+              <option key={c} value={c}>
+                {tDash(`curricula.${c}`)}
+              </option>
             ))}
           </select>
-          <input className={SA.input} type="text" placeholder="Year group (e.g. Year 9, Intermediate 2)" value={yearGroup} onChange={(e) => setYearGroup(e.target.value)} required />
-          <select className={SA.select} value={ageRange} onChange={(e) => setAgeRange(e.target.value as ShiftAgeRange)} required>
-            {SHIFT_AGE_RANGES.filter((r) => r !== '7_8' && r !== '9_10' && r !== '11_12').map((r) => (
-              <option key={r} value={r}>{SHIFT_AGE_RANGE_LABELS[r]}</option>
-            ))}
+          <input
+            className={SA.input}
+            type="text"
+            placeholder={t('yearGroupPlaceholder')}
+            value={yearGroup}
+            onChange={(e) => setYearGroup(e.target.value)}
+            required
+          />
+          <select
+            className={SA.select}
+            value={ageRange}
+            onChange={(e) => setAgeRange(e.target.value as ShiftAgeRange)}
+            required
+          >
+            {SHIFT_AGE_RANGES.filter((r) => r !== '7_8' && r !== '9_10' && r !== '11_12').map(
+              (r) => (
+                <option key={r} value={r}>
+                  {tAge(r)}
+                </option>
+              )
+            )}
           </select>
-          <input className={SA.input} type="text" placeholder="Favourite subject 1 (optional)" value={subjectOne} onChange={(e) => setSubjectOne(e.target.value)} />
-          <input className={SA.input} type="text" placeholder="Favourite subject 2 (optional)" value={subjectTwo} onChange={(e) => setSubjectTwo(e.target.value)} />
-          <input className={SA.input} type="text" placeholder="Favourite subject 3 (optional)" value={subjectThree} onChange={(e) => setSubjectThree(e.target.value)} />
+          <input
+            className={SA.input}
+            type="text"
+            placeholder={t('subject1Optional')}
+            value={subjectOne}
+            onChange={(e) => setSubjectOne(e.target.value)}
+          />
+          <input
+            className={SA.input}
+            type="text"
+            placeholder={t('subject2Optional')}
+            value={subjectTwo}
+            onChange={(e) => setSubjectTwo(e.target.value)}
+          />
+          <input
+            className={SA.input}
+            type="text"
+            placeholder={t('subject3Optional')}
+            value={subjectThree}
+            onChange={(e) => setSubjectThree(e.target.value)}
+          />
           <button type="submit" disabled={loading} className={`${SA.btnPrimary} w-full py-2.5`}>
-            {loading ? 'Creating account…' : 'Create account'}
+            {loading ? t('creating') : t('createAccount')}
           </button>
         </form>
       )}
@@ -186,24 +242,68 @@ export default function ShiftAiSignupForm() {
           className="mt-6 space-y-4"
         >
           <h2 className={`text-lg font-semibold ${SA.text}`}>
-            {path === 'family' ? 'Family / Voice Buddy setup' : 'Supervised account setup'}
+            {path === 'family' ? t('familyHeading') : t('supervisedHeading')}
           </h2>
-          <p className={`text-sm ${SA.muted}`}>
-            We will email the parent a consent link. No login is created until they approve.
-          </p>
-          <input className={SA.input} type="text" placeholder="Child's first name" value={childFirstName} onChange={(e) => setChildFirstName(e.target.value)} required />
-          <select className={SA.select} value={curriculum} onChange={(e) => setCurriculum(e.target.value as ShiftCurriculum)} required>
+          <p className={`text-sm ${SA.muted}`}>{t('supervisedNote')}</p>
+          <input
+            className={SA.input}
+            type="text"
+            placeholder={t('childFirstName')}
+            value={childFirstName}
+            onChange={(e) => setChildFirstName(e.target.value)}
+            required
+          />
+          <select
+            className={SA.select}
+            value={curriculum}
+            onChange={(e) => setCurriculum(e.target.value as ShiftCurriculum)}
+            required
+          >
             {SHIFT_CURRICULA.map((c) => (
-              <option key={c} value={c}>{SHIFT_CURRICULUM_LABELS[c]}</option>
+              <option key={c} value={c}>
+                {tDash(`curricula.${c}`)}
+              </option>
             ))}
           </select>
-          <input className={SA.input} type="text" placeholder="Year group (e.g. Year 5, Primary 4)" value={yearGroup} onChange={(e) => setYearGroup(e.target.value)} required />
-          <input className={SA.input} type="text" placeholder="Favourite subject 1 (optional)" value={subjectOne} onChange={(e) => setSubjectOne(e.target.value)} />
-          <input className={SA.input} type="text" placeholder="Favourite subject 2 (optional)" value={subjectTwo} onChange={(e) => setSubjectTwo(e.target.value)} />
-          <input className={SA.input} type="text" placeholder="Favourite subject 3 (optional)" value={subjectThree} onChange={(e) => setSubjectThree(e.target.value)} />
-          <input className={SA.input} type="email" placeholder="Parent or guardian email" value={parentEmail} onChange={(e) => setParentEmail(e.target.value)} required />
+          <input
+            className={SA.input}
+            type="text"
+            placeholder={t('yearGroupYoungPlaceholder')}
+            value={yearGroup}
+            onChange={(e) => setYearGroup(e.target.value)}
+            required
+          />
+          <input
+            className={SA.input}
+            type="text"
+            placeholder={t('subject1Optional')}
+            value={subjectOne}
+            onChange={(e) => setSubjectOne(e.target.value)}
+          />
+          <input
+            className={SA.input}
+            type="text"
+            placeholder={t('subject2Optional')}
+            value={subjectTwo}
+            onChange={(e) => setSubjectTwo(e.target.value)}
+          />
+          <input
+            className={SA.input}
+            type="text"
+            placeholder={t('subject3Optional')}
+            value={subjectThree}
+            onChange={(e) => setSubjectThree(e.target.value)}
+          />
+          <input
+            className={SA.input}
+            type="email"
+            placeholder={t('parentEmail')}
+            value={parentEmail}
+            onChange={(e) => setParentEmail(e.target.value)}
+            required
+          />
           <button type="submit" disabled={loading} className={`${SA.btnPrimary} w-full py-2.5`}>
-            {loading ? 'Sending consent email…' : 'Send consent request to parent'}
+            {loading ? t('sendingConsent') : t('sendConsent')}
           </button>
         </form>
       )}

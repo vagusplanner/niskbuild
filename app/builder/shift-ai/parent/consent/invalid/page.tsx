@@ -1,14 +1,19 @@
-export default function ShiftAiConsentInvalidPage() {
+import { shiftAiCatalog } from '@/lib/shift-ai/i18n';
+import { getRequestStudyLanguage } from '@/lib/shift-ai/study-language';
+
+export default async function ShiftAiConsentInvalidPage() {
+  const copy = shiftAiCatalog(await getRequestStudyLanguage()).parentConsent;
+
   return (
-    <main className="min-h-screen flex items-center justify-center px-6">
-      <p className="text-lg text-slate-700">This consent link is invalid or has already been used</p>
+    <main className="flex min-h-screen items-center justify-center px-6">
+      <p className="text-lg text-slate-700">{copy.invalid}</p>
     </main>
   );
 }
 
 export async function generateMetadata() {
   return {
-    title: 'Consent link invalid · Shift AI',
+    title: shiftAiCatalog(await getRequestStudyLanguage()).parentConsent.invalidMetaTitle,
     robots: 'noindex',
   };
 }

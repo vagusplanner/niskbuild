@@ -42,6 +42,8 @@ export async function POST(request: NextRequest) {
   const admin = createAdminClient();
   const ageRange = defaultAgeRangeForAccount(accountType);
 
+  const studyLanguage = defaultStudyLanguageForCurriculum(curriculum);
+
   const { data: student, error: studentError } = await admin
     .schema('firstparty')
     .from('shift_students')
@@ -57,7 +59,7 @@ export async function POST(request: NextRequest) {
       is_active: false,
       parent_consent_given: false,
       favourite_subjects: favouriteSubjects,
-      study_language: defaultStudyLanguageForCurriculum(curriculum),
+      study_language: studyLanguage,
     })
     .select('id')
     .single();
@@ -87,6 +89,7 @@ export async function POST(request: NextRequest) {
     parentEmail,
     childFirstName,
     consentToken: consentRequest.consent_token,
+    studyLanguage,
   });
 
   if (!emailResult.ok) {

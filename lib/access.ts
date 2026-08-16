@@ -125,6 +125,15 @@ export function isStaticPublicAsset(pathname: string) {
   );
 }
 
+/** Shift AI pages parents/students open without a NiskBuild session. */
+export function isShiftAiUnauthenticatedPath(pathname: string) {
+  return (
+    pathname === '/builder/shift-ai/signup' ||
+    pathname.startsWith('/builder/shift-ai/signup/') ||
+    pathname.startsWith('/builder/shift-ai/parent/consent')
+  );
+}
+
 /** Paths that must never require NiskBuild login (shared previews, bundle proxy, etc.) */
 export function isAuthExemptPath(pathname: string) {
   return (
@@ -133,7 +142,8 @@ export function isAuthExemptPath(pathname: string) {
     isInvitePath(pathname) ||
     isTenantRuntimePath(pathname) ||
     isVpDeployBundlePath(pathname) ||
-    isStaticPublicAsset(pathname)
+    isStaticPublicAsset(pathname) ||
+    isShiftAiUnauthenticatedPath(pathname)
   );
 }
 
