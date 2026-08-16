@@ -8,6 +8,8 @@ import {
   type ShiftSubjectRow,
 } from '@/lib/shift-ai/subjects';
 import { deriveKeyStage } from '@/lib/shift-ai/year-group';
+import { mentorDashboardPath, parentDashboardPath } from '@/lib/shift-ai/locale-query';
+import { getStudentLanguage } from '@/lib/shift-ai/study-language';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 export async function getSettingsProfile(studentId: string): Promise<SettingsProfile | null> {
@@ -168,7 +170,7 @@ export async function createParentInviteToken(studentId: string): Promise<Invite
 
   return {
     ...data,
-    linkPath: `/builder/shift-ai/parent/${data.token}`,
+    linkPath: parentDashboardPath(data.token, await getStudentLanguage(studentId)),
   };
 }
 
@@ -187,7 +189,7 @@ export async function createMentorInviteToken(studentId: string): Promise<Invite
 
   return {
     ...data,
-    linkPath: `/builder/shift-ai/mentor/${data.token}`,
+    linkPath: mentorDashboardPath(data.token, await getStudentLanguage(studentId)),
   };
 }
 
@@ -214,14 +216,16 @@ export async function listActiveInviteTokens(studentId: string): Promise<{
       .order('created_at', { ascending: false }),
   ]);
 
+  const lang = await getStudentLanguage(studentId);
+
   return {
     parent: (parent ?? []).map((row) => ({
       ...row,
-      linkPath: `/builder/shift-ai/parent/${row.token}`,
+      linkPath: parentDashboardPath(row.token, lang),
     })),
     mentor: (mentor ?? []).map((row) => ({
       ...row,
-      linkPath: `/builder/shift-ai/mentor/${row.token}`,
+      linkPath: mentorDashboardPath(row.token, lang),
     })),
   };
 }

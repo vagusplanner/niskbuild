@@ -10,7 +10,10 @@ export function isUnauthenticatedLocaleOverridePath(pathname: string): boolean {
   if (pathname === '/builder/shift-ai/signup' || pathname.startsWith('/builder/shift-ai/signup/')) {
     return true;
   }
-  return pathname.startsWith('/builder/shift-ai/parent/consent');
+  return (
+    pathname.startsWith('/builder/shift-ai/parent/') ||
+    pathname.startsWith('/builder/shift-ai/mentor/')
+  );
 }
 
 export function parseLangQueryParam(value: string | null | undefined): ShiftStudyLanguage | null {
@@ -30,5 +33,15 @@ export function withLangQuery(path: string, lang: string | null | undefined): st
 /** Consent email links only add `lang` when Arabic so English stays the default URL. */
 export function parentalConsentPath(token: string, lang: ShiftStudyLanguage): string {
   const path = `/builder/shift-ai/parent/consent/${encodeURIComponent(token)}`;
+  return lang === 'ar' ? `${path}?lang=ar` : path;
+}
+
+export function parentDashboardPath(token: string, lang: ShiftStudyLanguage): string {
+  const path = `/builder/shift-ai/parent/${encodeURIComponent(token)}`;
+  return lang === 'ar' ? `${path}?lang=ar` : path;
+}
+
+export function mentorDashboardPath(token: string, lang: ShiftStudyLanguage): string {
+  const path = `/builder/shift-ai/mentor/${encodeURIComponent(token)}`;
   return lang === 'ar' ? `${path}?lang=ar` : path;
 }

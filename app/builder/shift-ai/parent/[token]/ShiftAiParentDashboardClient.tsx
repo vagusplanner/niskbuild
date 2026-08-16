@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   CalendarDays,
   Gamepad2,
@@ -31,13 +32,14 @@ function StatCard({
 }
 
 export default function ShiftAiParentDashboardClient({ snapshot }: { snapshot: ObserverSnapshot }) {
+  const t = useTranslations('parentView');
   const [tab, setTab] = useState<Tab>('overview');
   const { student, planner, mastery, activity } = snapshot;
 
   const tabs: { id: Tab; label: string }[] = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'mastery', label: 'Mastery' },
-    { id: 'activity', label: 'Activity' },
+    { id: 'overview', label: t('tabOverview') },
+    { id: 'mastery', label: t('tabMastery') },
+    { id: 'activity', label: t('tabActivity') },
   ];
 
   return (
@@ -50,10 +52,10 @@ export default function ShiftAiParentDashboardClient({ snapshot }: { snapshot: O
             </div>
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
-                Parent Dashboard
+                {t('kicker')}
               </p>
               <h1 className="text-xl font-bold text-[var(--sa-navy-900)]">
-                {student.fullName}&apos;s Progress
+                {t('progressTitle', { name: student.fullName })}
               </h1>
               <p className="text-sm text-neutral-500">
                 {student.yearGroup} · {student.keyStage}
@@ -63,16 +65,16 @@ export default function ShiftAiParentDashboardClient({ snapshot }: { snapshot: O
         </div>
 
         <div className="flex gap-1 rounded-xl bg-white/10 p-1">
-          {tabs.map((t) => (
+          {tabs.map((item) => (
             <button
-              key={t.id}
+              key={item.id}
               type="button"
-              onClick={() => setTab(t.id)}
+              onClick={() => setTab(item.id)}
               className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium capitalize transition-all ${
-                tab === t.id ? 'bg-white text-[var(--sa-navy-800)] shadow-sm' : 'text-white/60 hover:text-white'
+                tab === item.id ? 'bg-white text-[var(--sa-navy-800)] shadow-sm' : 'text-white/60 hover:text-white'
               }`}
             >
-              {t.label}
+              {item.label}
             </button>
           ))}
         </div>
@@ -80,35 +82,35 @@ export default function ShiftAiParentDashboardClient({ snapshot }: { snapshot: O
         {tab === 'overview' ? (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <StatCard label="Tasks Done" value={planner.completed} icon="✅" />
-              <StatCard label="Overdue" value={planner.overdue} icon="⚠️" />
-              <StatCard label="Upcoming" value={planner.upcoming} icon="📅" />
-              <StatCard label="Mastery %" value={`${mastery[0]?.masteredPercent ?? 0}%`} icon="🎯" />
+              <StatCard label={t('tasksDone')} value={planner.completed} icon="✅" />
+              <StatCard label={t('overdue')} value={planner.overdue} icon="⚠️" />
+              <StatCard label={t('upcoming')} value={planner.upcoming} icon="📅" />
+              <StatCard label={t('masteryPct')} value={`${mastery[0]?.masteredPercent ?? 0}%`} icon="🎯" />
             </div>
 
             <div className="rounded-2xl bg-white p-5">
               <h2 className="mb-4 flex items-center gap-2 font-bold text-[var(--sa-navy-800)]">
                 <Gamepad2 className="h-4 w-4" />
-                Recent study activity
+                {t('recentActivity')}
               </h2>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-xl bg-neutral-50 p-4">
-                  <p className="text-xs text-neutral-500">Quiz Arcade</p>
+                  <p className="text-xs text-neutral-500">{t('quizArcade')}</p>
                   <p className="text-lg font-bold text-[var(--sa-navy-900)]">
-                    {activity.arcadeGamesPlayed} games
+                    {t('gamesCount', { count: activity.arcadeGamesPlayed })}
                   </p>
                   <p className="text-sm text-neutral-600">
-                    Best score: {activity.arcadeBestScore.toLocaleString()}
+                    {t('bestScore', { score: activity.arcadeBestScore.toLocaleString() })}
                     {activity.arcadeRecentSubject ? ` · ${activity.arcadeRecentSubject}` : ''}
                   </p>
                 </div>
                 <div className="rounded-xl bg-neutral-50 p-4">
-                  <p className="text-xs text-neutral-500">Flashcards</p>
+                  <p className="text-xs text-neutral-500">{t('flashcards')}</p>
                   <p className="text-lg font-bold text-[var(--sa-navy-900)]">
-                    {activity.flashcardDecks} decks
+                    {t('decksCount', { count: activity.flashcardDecks })}
                   </p>
                   <p className="text-sm text-neutral-600">
-                    {activity.flashcardReviewsLast7Days} reviews this week
+                    {t('reviewsThisWeek', { count: activity.flashcardReviewsLast7Days })}
                   </p>
                 </div>
               </div>
@@ -120,10 +122,10 @@ export default function ShiftAiParentDashboardClient({ snapshot }: { snapshot: O
           <div className="rounded-2xl bg-white p-5">
             <h2 className="mb-4 flex items-center gap-2 font-bold text-[var(--sa-navy-800)]">
               <Target className="h-4 w-4" />
-              Mastery by subject
+              {t('masteryBySubject')}
             </h2>
             {mastery.length === 0 ? (
-              <p className="text-sm text-neutral-500">No mastery topics tracked yet.</p>
+              <p className="text-sm text-neutral-500">{t('noMastery')}</p>
             ) : (
               <div className="space-y-3">
                 {mastery.map((group) => (
@@ -131,7 +133,11 @@ export default function ShiftAiParentDashboardClient({ snapshot }: { snapshot: O
                     <div className="mb-1 flex justify-between text-sm">
                       <span className="font-medium text-[var(--sa-navy-900)]">{group.subject}</span>
                       <span className="text-neutral-500">
-                        {group.masteredCount}/{group.topics.length} mastered ({group.masteredPercent}%)
+                        {t('masteredLine', {
+                          mastered: group.masteredCount,
+                          total: group.topics.length,
+                          percent: group.masteredPercent,
+                        })}
                       </span>
                     </div>
                     <div className="h-2.5 overflow-hidden rounded-full bg-neutral-100">
@@ -152,11 +158,11 @@ export default function ShiftAiParentDashboardClient({ snapshot }: { snapshot: O
             <div className="rounded-2xl bg-white p-5">
               <h2 className="mb-4 flex items-center gap-2 font-bold text-[var(--sa-navy-800)]">
                 <CalendarDays className="h-4 w-4" />
-                Planner
+                {t('planner')}
               </h2>
               {planner.recentOverdue.length > 0 ? (
                 <div className="mb-4 space-y-2">
-                  <p className="text-xs font-semibold uppercase text-red-600">Overdue</p>
+                  <p className="text-xs font-semibold uppercase text-red-600">{t('overdue')}</p>
                   {planner.recentOverdue.map((item) => (
                     <div key={item.id} className="flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2">
                       <span className="flex-1 text-sm font-medium">{item.title}</span>
@@ -169,7 +175,7 @@ export default function ShiftAiParentDashboardClient({ snapshot }: { snapshot: O
               ) : null}
               {planner.recentUpcoming.length > 0 ? (
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase text-neutral-500">Upcoming</p>
+                  <p className="text-xs font-semibold uppercase text-neutral-500">{t('upcoming')}</p>
                   {planner.recentUpcoming.map((item) => (
                     <div key={item.id} className="flex items-center gap-2 rounded-lg bg-neutral-50 px-3 py-2">
                       <span className="flex-1 text-sm font-medium">{item.title}</span>
@@ -180,28 +186,26 @@ export default function ShiftAiParentDashboardClient({ snapshot }: { snapshot: O
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-neutral-500">No upcoming planner items.</p>
+                <p className="text-sm text-neutral-500">{t('noUpcoming')}</p>
               )}
             </div>
 
             <div className="rounded-2xl bg-white p-5">
               <h2 className="mb-3 flex items-center gap-2 font-bold text-[var(--sa-navy-800)]">
                 <Layers className="h-4 w-4" />
-                Flashcard & arcade summary
+                {t('flashArcadeSummary')}
               </h2>
               <ul className="space-y-1 text-sm text-neutral-700">
-                <li>🃏 {activity.flashcardDecks} flashcard deck(s)</li>
-                <li>🔄 {activity.flashcardReviewsLast7Days} card reviews in the last 7 days</li>
-                <li>🎮 {activity.arcadeGamesPlayed} recent arcade session(s)</li>
-                <li>🏆 Best arcade score: {activity.arcadeBestScore.toLocaleString()}</li>
+                <li>{t('decksLine', { count: activity.flashcardDecks })}</li>
+                <li>{t('reviewsLine', { count: activity.flashcardReviewsLast7Days })}</li>
+                <li>{t('sessionsLine', { count: activity.arcadeGamesPlayed })}</li>
+                <li>{t('bestArcadeLine', { score: activity.arcadeBestScore.toLocaleString() })}</li>
               </ul>
             </div>
           </div>
         ) : null}
 
-        <p className="pb-4 text-center text-xs text-white/20">
-          Shift Learning · Secure parent view · Chat messages are never shared
-        </p>
+        <p className="pb-4 text-center text-xs text-white/20">{t('footer')}</p>
       </div>
     </div>
   );

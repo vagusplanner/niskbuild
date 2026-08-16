@@ -2,7 +2,7 @@ import 'server-only';
 
 import { sendEmail } from '@/lib/send-email';
 import type { ShiftStudyLanguage } from '@/lib/shift-ai/constants';
-import { parentalConsentPath } from '@/lib/shift-ai/locale-query';
+import { parentDashboardPath, parentalConsentPath } from '@/lib/shift-ai/locale-query';
 
 function shiftAiAppOrigin(): string {
   return (
@@ -14,8 +14,8 @@ function consentLink(token: string, lang: ShiftStudyLanguage): string {
   return `${shiftAiAppOrigin()}${parentalConsentPath(token, lang)}`;
 }
 
-function parentDashboardLink(token: string): string {
-  return `${shiftAiAppOrigin()}/builder/shift-ai/parent/${encodeURIComponent(token)}`;
+function parentDashboardLink(token: string, lang: ShiftStudyLanguage): string {
+  return `${shiftAiAppOrigin()}${parentDashboardPath(token, lang)}`;
 }
 
 function emailShell(body: string): string {
@@ -54,8 +54,9 @@ export async function sendParentWelcomeAfterConsentEmail(options: {
   childLoginEmail: string;
   temporaryPassword: string;
   parentDashboardToken: string;
+  studyLanguage: ShiftStudyLanguage;
 }): Promise<{ ok: boolean; error?: string }> {
-  const dashboardUrl = parentDashboardLink(options.parentDashboardToken);
+  const dashboardUrl = parentDashboardLink(options.parentDashboardToken, options.studyLanguage);
   const subject = `Welcome to Shift AI — ${options.childFirstName}'s account is ready`;
 
   const html = emailShell(`

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { GraduationCap, Loader2, Plus, Target, Trophy } from 'lucide-react';
 import type { MentorChallenge, ObserverSnapshot } from '@/lib/shift-ai/observer-shared';
 
@@ -15,6 +16,8 @@ export default function ShiftAiMentorViewClient({
   initialChallenges: MentorChallenge[];
   mentorToken: string;
 }) {
+  const t = useTranslations('mentorView');
+  const tMastery = useTranslations('mastery.status');
   const [tab, setTab] = useState<Tab>('overview');
   const [challenges, setChallenges] = useState(initialChallenges);
   const [title, setTitle] = useState('');
@@ -24,6 +27,20 @@ export default function ShiftAiMentorViewClient({
   const [error, setError] = useState<string | null>(null);
 
   const { student, planner, mastery, activity } = snapshot;
+
+  const challengeStatusLabel = (status: string) => {
+    if (status === 'active' || status === 'completed') {
+      return t(`status.${status}`);
+    }
+    return status.replace('_', ' ');
+  };
+
+  const topicStatusLabel = (status: string) => {
+    if (status === 'not_started' || status === 'learning' || status === 'mastered') {
+      return tMastery(status);
+    }
+    return status.replace('_', ' ');
+  };
 
   const assignChallenge = async () => {
     if (!title.trim()) return;
@@ -37,7 +54,7 @@ export default function ShiftAiMentorViewClient({
       });
       const data = (await res.json()) as { challenge?: MentorChallenge; error?: string };
       if (!res.ok) {
-        setError(data.error || 'Could not assign challenge');
+        setError(data.error || t('assignFailed'));
         return;
       }
       if (data.challenge) {
@@ -48,7 +65,7 @@ export default function ShiftAiMentorViewClient({
         setTab('challenges');
       }
     } catch {
-      setError('Could not assign challenge');
+      setError(t('assignFailed'));
     } finally {
       setSaving(false);
     }
@@ -64,10 +81,10 @@ export default function ShiftAiMentorViewClient({
             </div>
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
-                Mentor Dashboard
+                {t('kicker')}
               </p>
               <h1 className="text-xl font-bold text-[var(--sa-navy-900)]">
-                {student.fullName}&apos;s Progress
+                {t('progressTitle', { name: student.fullName })}
               </h1>
               <p className="text-sm text-neutral-500">
                 {student.yearGroup} · {student.keyStage}
@@ -77,16 +94,16 @@ export default function ShiftAiMentorViewClient({
         </div>
 
         <div className="flex gap-1 rounded-xl bg-white/10 p-1">
-          {(['overview', 'challenges'] as Tab[]).map((t) => (
+          {(['overview', 'challenges'] as Tab[]).map((item) => (
             <button
-              key={t}
+              key={item}
               type="button"
-              onClick={() => setTab(t)}
+              onClick={() => setTab(item)}
               className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium capitalize transition-all ${
-                tab === t ? 'bg-white text-[var(--sa-navy-800)] shadow-sm' : 'text-white/60 hover:text-white'
+                tab === item ? 'bg-white text-[var(--sa-navy-800)] shadow-sm' : 'text-white/60 hover:text-white'
               }`}
             >
-              {t === 'overview' ? 'Overview' : 'Challenges'}
+              {item === 'overview' ? t('tabOverview') : t('tabChallenges')}
             </button>
           ))}
         </div>
@@ -99,10 +116,10 @@ export default function ShiftAiMentorViewClient({
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
-                { label: 'Tasks Done', value: planner.completed, icon: '✅' },
-                { label: 'Overdue', value: planner.overdue, icon: '⚠️' },
-                { label: 'Mastery %', value: `${mastery[0]?.masteredPercent ?? 0}%`, icon: '🎯' },
-                { label: 'Arcade Best', value: activity.arcadeBestScore, icon: '🏆' },
+                { label: t('tasksDone'), value: planner.completed, icon: '✅' },
+                { label: t('overdue'), value: planner.overdue, icon: '⚠️' },
+                { label: t('masteryPct'), value: `${mastery[0]?.masteredPercent ?? 0}%`, icon: '🎯' },
+                { label: t('arcadeBest'), value: activity.arcadeBestScore, icon: '🏆' },
               ].map((s) => (
                 <div key={s.label} className="rounded-2xl border bg-white p-4 text-center">
                   <p className="mb-1 text-2xl">{s.icon}</p>
@@ -115,26 +132,26 @@ export default function ShiftAiMentorViewClient({
             <div className="rounded-2xl bg-white p-5">
               <h2 className="mb-3 flex items-center gap-2 font-bold text-[var(--sa-navy-800)]">
                 <Target className="h-4 w-4 text-amber-500" />
-                Topics needing attention
+                {t('needsAttention')}
               </h2>
               {mastery.flatMap((g) =>
-                g.topics.filter((t) => t.status !== 'mastered').slice(0, 2).map((t) => (
+                g.topics.filter((topic) => topic.status !== 'mastered').slice(0, 2).map((topic) => (
                   <div
-                    key={t.id}
+                    key={topic.id}
                     className="mb-2 flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-4 py-3"
                   >
                     <div>
-                      <p className="text-sm font-semibold text-amber-900">{t.topic}</p>
+                      <p className="text-sm font-semibold text-amber-900">{topic.topic}</p>
                       <p className="text-xs text-amber-700">{g.subject}</p>
                     </div>
                     <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-700">
-                      {t.status.replace('_', ' ')}
+                      {topicStatusLabel(topic.status)}
                     </span>
                   </div>
                 ))
               )}
-              {mastery.every((g) => g.topics.every((t) => t.status === 'mastered')) ? (
-                <p className="text-sm text-neutral-500">All tracked topics look strong.</p>
+              {mastery.every((g) => g.topics.every((topic) => topic.status === 'mastered')) ? (
+                <p className="text-sm text-neutral-500">{t('allStrong')}</p>
               ) : null}
             </div>
           </div>
@@ -145,19 +162,19 @@ export default function ShiftAiMentorViewClient({
             <div className="space-y-4 rounded-2xl bg-white p-6">
               <h2 className="flex items-center gap-2 font-bold text-[var(--sa-navy-800)]">
                 <Target className="h-4 w-4 text-purple-600" />
-                Assign a study challenge
+                {t('assignTitle')}
               </h2>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Challenge title *"
+                placeholder={t('titlePlaceholder')}
                 className="w-full rounded-xl border px-3 py-2 text-sm"
               />
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="What should the student do?"
+                placeholder={t('descriptionPlaceholder')}
                 rows={3}
                 className="w-full resize-none rounded-xl border px-3 py-2 text-sm"
               />
@@ -165,7 +182,7 @@ export default function ShiftAiMentorViewClient({
                 type="text"
                 value={rewardText}
                 onChange={(e) => setRewardText(e.target.value)}
-                placeholder="Reward (optional, e.g. extra screen time)"
+                placeholder={t('rewardPlaceholder')}
                 className="w-full rounded-xl border px-3 py-2 text-sm"
               />
               <button
@@ -175,21 +192,21 @@ export default function ShiftAiMentorViewClient({
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-700 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-60"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                Assign challenge
+                {t('assign')}
               </button>
             </div>
 
             {challenges.length === 0 ? (
               <div className="rounded-2xl bg-white p-8 text-center">
                 <Trophy className="mx-auto mb-3 h-10 w-10 text-neutral-300" />
-                <p className="text-sm text-neutral-500">No challenges assigned yet.</p>
+                <p className="text-sm text-neutral-500">{t('noChallenges')}</p>
               </div>
             ) : (
               challenges.map((c) => (
                 <div key={c.id} className="rounded-2xl border-2 border-neutral-200 bg-white p-5">
                   <div className="mb-1 flex items-center gap-2">
                     <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-                      {c.status}
+                      {challengeStatusLabel(c.status)}
                     </span>
                   </div>
                   <p className="font-bold text-[var(--sa-navy-900)]">{c.title}</p>
@@ -208,9 +225,7 @@ export default function ShiftAiMentorViewClient({
           </div>
         ) : null}
 
-        <p className="pb-4 text-center text-xs text-white/20">
-          Shift Learning · Secure mentor view
-        </p>
+        <p className="pb-4 text-center text-xs text-white/20">{t('footer')}</p>
       </div>
     </div>
   );

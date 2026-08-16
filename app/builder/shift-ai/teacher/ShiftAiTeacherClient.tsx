@@ -1,11 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { ChevronDown, ChevronUp, Loader2, Search, Sparkles, Users } from 'lucide-react';
 import type { TeacherNarrativeResult, TeacherStudentSummary } from '@/lib/shift-ai/teacher-shared';
 import { SA } from '@/lib/shift-ai/theme';
 
 function NarrativePanel({ studentId }: { studentId: string }) {
+  const t = useTranslations('teacher');
   const [expanded, setExpanded] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [result, setResult] = useState<TeacherNarrativeResult | null>(null);
@@ -22,7 +24,7 @@ function NarrativePanel({ studentId }: { studentId: string }) {
       });
       const data = (await res.json()) as { narrative?: TeacherNarrativeResult; error?: string };
       if (!res.ok) {
-        setError(data.error || 'Could not generate narrative');
+        setError(data.error || t('generateFailed'));
         return;
       }
       if (data.narrative) {
@@ -30,7 +32,7 @@ function NarrativePanel({ studentId }: { studentId: string }) {
         setExpanded(true);
       }
     } catch {
-      setError('Could not generate narrative');
+      setError(t('generateFailed'));
     } finally {
       setGenerating(false);
     }
@@ -44,7 +46,7 @@ function NarrativePanel({ studentId }: { studentId: string }) {
           onClick={() => setExpanded((e) => !e)}
           className="flex items-center gap-2 text-xs font-semibold text-indigo-700"
         >
-          AI Progress Narrative
+          {t('narrative')}
           {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
         </button>
         <button
@@ -58,7 +60,7 @@ function NarrativePanel({ studentId }: { studentId: string }) {
           ) : (
             <Sparkles className="h-3 w-3" />
           )}
-          {result ? 'Regenerate' : 'Generate'}
+          {result ? t('regenerate') : t('generate')}
         </button>
       </div>
 
@@ -71,7 +73,7 @@ function NarrativePanel({ studentId }: { studentId: string }) {
             {result.key_strengths.length > 0 ? (
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-wide text-green-700">
-                  Strengths
+                  {t('strengths')}
                 </p>
                 <ul className="mt-1 space-y-0.5">
                   {result.key_strengths.map((s, i) => (
@@ -85,7 +87,7 @@ function NarrativePanel({ studentId }: { studentId: string }) {
             {result.areas_for_growth.length > 0 ? (
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-wide text-amber-700">
-                  Focus areas
+                  {t('focusAreas')}
                 </p>
                 <ul className="mt-1 space-y-0.5">
                   {result.areas_for_growth.map((s, i) => (
@@ -101,9 +103,7 @@ function NarrativePanel({ studentId }: { studentId: string }) {
       ) : null}
 
       {!result && !generating && !error ? (
-        <p className="text-xs text-neutral-500">
-          Generate a one-paragraph weekly summary with real mastery and completion data.
-        </p>
+        <p className="text-xs text-neutral-500">{t('narrativeHint')}</p>
       ) : null}
     </div>
   );
@@ -114,6 +114,7 @@ export default function ShiftAiTeacherClient({
 }: {
   students: TeacherStudentSummary[];
 }) {
+  const t = useTranslations('teacher');
   const [search, setSearch] = useState('');
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -129,23 +130,21 @@ export default function ShiftAiTeacherClient({
   return (
     <div className={SA.content}>
       <div className="mb-8">
-        <h1 className={SA.heading}>🏫 Teacher Dashboard</h1>
-        <p className={`mt-2 text-sm ${SA.muted}`}>
-          Overview of student activity in your school
-        </p>
+        <h1 className={SA.heading}>🏫 {t('title')}</h1>
+        <p className={`mt-2 text-sm ${SA.muted}`}>{t('subtitle')}</p>
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
         {[
-          { icon: Users, label: 'Students', value: students.length },
-          { icon: Users, label: 'Tasks completed', value: `${totalCompleted}/${totalPlanner}` },
+          { icon: Users, label: t('statStudents'), value: students.length },
+          { icon: Users, label: t('statTasks'), value: `${totalCompleted}/${totalPlanner}` },
           {
             icon: Users,
-            label: 'Avg mastery',
+            label: t('statAvgMastery'),
             value:
               students.length > 0
                 ? `${Math.round(students.reduce((s, st) => s + st.masteryPercent, 0) / students.length)}%`
-                : '—',
+                : t('emDash'),
           },
         ].map((stat) => (
           <div key={stat.label} className={`${SA.cardPadded} flex items-center gap-3`}>
@@ -160,15 +159,15 @@ export default function ShiftAiTeacherClient({
 
       <div className={SA.cardPadded}>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className={`font-semibold ${SA.text}`}>Students ({filtered.length})</h2>
+          <h2 className={`font-semibold ${SA.text}`}>{t('studentsHeading', { count: filtered.length })}</h2>
           <div className="relative w-64">
-            <Search className={`absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${SA.muted}`} />
+            <Search className={`absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 ${SA.muted}`} />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search students…"
-              className={`${SA.input} pl-9`}
+              placeholder={t('searchPlaceholder')}
+              className={`${SA.input} ps-9`}
             />
           </div>
         </div>
@@ -181,7 +180,7 @@ export default function ShiftAiTeacherClient({
                 <button
                   type="button"
                   onClick={() => setExpanded(isOpen ? null : student.id)}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-[var(--sa-navy-50)]"
+                  className="flex w-full items-center gap-3 px-4 py-3 text-start hover:bg-[var(--sa-navy-50)]"
                 >
                   <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[var(--sa-navy-100)] text-sm font-bold text-[var(--sa-navy-700)]">
                     {student.full_name[0]?.toUpperCase()}
@@ -209,15 +208,15 @@ export default function ShiftAiTeacherClient({
                   <div className="border-t border-[var(--sa-navy-100)] px-4 pb-4 pt-3">
                     <div className="mb-3 grid gap-3 text-xs sm:grid-cols-3">
                       <div>
-                        <p className={`font-semibold uppercase ${SA.muted}`}>Notes</p>
+                        <p className={`font-semibold uppercase ${SA.muted}`}>{t('notes')}</p>
                         <p className={SA.text}>{student.notesCount}</p>
                       </div>
                       <div>
-                        <p className={`font-semibold uppercase ${SA.muted}`}>Mastery</p>
+                        <p className={`font-semibold uppercase ${SA.muted}`}>{t('mastery')}</p>
                         <p className={SA.text}>{student.masteryPercent}%</p>
                       </div>
                       <div>
-                        <p className={`font-semibold uppercase ${SA.muted}`}>Best arcade</p>
+                        <p className={`font-semibold uppercase ${SA.muted}`}>{t('bestArcade')}</p>
                         <p className={SA.text}>{student.arcadeBestScore.toLocaleString()}</p>
                       </div>
                     </div>
@@ -228,7 +227,7 @@ export default function ShiftAiTeacherClient({
             );
           })}
           {filtered.length === 0 ? (
-            <p className={`py-4 text-center text-sm ${SA.muted}`}>No students found</p>
+            <p className={`py-4 text-center text-sm ${SA.muted}`}>{t('empty')}</p>
           ) : null}
         </div>
       </div>

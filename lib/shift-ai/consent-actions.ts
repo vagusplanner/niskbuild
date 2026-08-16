@@ -15,6 +15,7 @@ import {
 } from '@/lib/shift-ai/emails';
 import { normalizeEmail } from '@/lib/shift-ai/constants';
 import { withLangQuery } from '@/lib/shift-ai/locale-query';
+import { getStudentLanguage } from '@/lib/shift-ai/study-language';
 
 function generateTemporaryPassword(): string {
   return randomBytes(9).toString('base64url').slice(0, 12);
@@ -128,6 +129,7 @@ export async function approveParentConsent(token: string, lang?: string | null) 
     childLoginEmail: loginEmail,
     temporaryPassword: tempPassword,
     parentDashboardToken,
+    studyLanguage: await getStudentLanguage(request.studentId),
   });
 
   redirect(consentResultPath(token, 'status=approved', lang));

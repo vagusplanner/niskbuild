@@ -130,7 +130,8 @@ export function isShiftAiUnauthenticatedPath(pathname: string) {
   return (
     pathname === '/builder/shift-ai/signup' ||
     pathname.startsWith('/builder/shift-ai/signup/') ||
-    pathname.startsWith('/builder/shift-ai/parent/consent')
+    pathname.startsWith('/builder/shift-ai/parent/') ||
+    pathname.startsWith('/builder/shift-ai/mentor/')
   );
 }
 
