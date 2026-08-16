@@ -2,8 +2,10 @@ import { redirect } from 'next/navigation';
 import ShiftAiContentGeneratorClient from '@/app/builder/shift-ai/content-generator/ShiftAiContentGeneratorClient';
 import { normalizeCurriculum } from '@/lib/shift-ai/essay-curriculum';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { shiftAiCatalog } from '@/lib/shift-ai/i18n';
 import { needsSubjectOnboarding } from '@/lib/shift-ai/onboarding';
 import { ensureSubjectRecord, mergeStudentSubjects } from '@/lib/shift-ai/subjects';
+import { getRequestStudyLanguage } from '@/lib/shift-ai/study-language';
 import { getSafeSession } from '@/lib/supabaseSession.server';
 
 type PageProps = {
@@ -61,11 +63,13 @@ export default async function ShiftAiContentGeneratorPage({ searchParams }: Page
     }
   }
 
+  const catalog = shiftAiCatalog(await getRequestStudyLanguage());
+
   return (
     <ShiftAiContentGeneratorClient
       subjectOptions={subjectOptions}
       curriculum={normalizeCurriculum(student.curriculum)}
-      yearGroup={student.year_group || 'secondary school'}
+      yearGroup={student.year_group || catalog.contentGenerator.secondarySchool}
       notesBySubjectId={notesBySubjectId}
       initialSubject={subjectParam ?? null}
       initialType={typeParam ?? null}
@@ -75,7 +79,7 @@ export default async function ShiftAiContentGeneratorPage({ searchParams }: Page
 
 export async function generateMetadata() {
   return {
-    title: 'Content Generator · Shift AI',
+    title: shiftAiCatalog(await getRequestStudyLanguage()).contentGenerator.metaTitle,
     robots: 'noindex',
   };
 }

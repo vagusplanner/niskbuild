@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { ChevronDown, Download, Loader2, Sparkles } from 'lucide-react';
 import {
   EXAM_BOARDS,
@@ -11,10 +12,27 @@ import type { CurriculumPack } from '@/lib/shift-ai/curriculum-packs-shared';
 import {
   PACK_TYPES,
   formatPackForPrint,
+  type PackType,
 } from '@/lib/shift-ai/curriculum-packs-shared';
 import { SA } from '@/lib/shift-ai/theme';
 
+const PACK_TYPE_KEYS = {
+  'Full Topic Summary': 'fullTopicSummary',
+  'Key Facts & Definitions': 'keyFacts',
+  'Common Exam Questions': 'commonExamQuestions',
+  'Worked Examples': 'workedExamples',
+  'Mind Map Guide': 'mindMapGuide',
+} as const;
+
+function packTypeI18nKey(type: string): string | null {
+  if ((PACK_TYPES as readonly string[]).includes(type)) {
+    return `packTypes.${PACK_TYPE_KEYS[type as PackType]}`;
+  }
+  return null;
+}
+
 function PackViewer({ pack, onPrint }: { pack: CurriculumPack; onPrint: () => void }) {
+  const t = useTranslations('curriculumPacks');
   const [expanded, setExpanded] = useState<number | null>(0);
 
   return (
@@ -22,7 +40,16 @@ function PackViewer({ pack, onPrint }: { pack: CurriculumPack; onPrint: () => vo
       <div className="rounded-2xl bg-[var(--sa-navy-800)] p-6 text-white">
         <p className="text-xs uppercase tracking-wide text-white/50">
           {pack.content.exam_board || pack.curriculum.toUpperCase()} ·{' '}
-          {pack.content.pack_type || 'Revision pack'}
+          {(() => {
+            const key = pack.content.pack_type ? packTypeI18nKey(pack.content.pack_type) : null;
+            if (!pack.content.pack_type) return t('revisionPack');
+            if (key === 'packTypes.fullTopicSummary') return t('packTypes.fullTopicSummary');
+            if (key === 'packTypes.keyFacts') return t('packTypes.keyFacts');
+            if (key === 'packTypes.commonExamQuestions') return t('packTypes.commonExamQuestions');
+            if (key === 'packTypes.workedExamples') return t('packTypes.workedExamples');
+            if (key === 'packTypes.mindMapGuide') return t('packTypes.mindMapGuide');
+            return pack.content.pack_type;
+          })()}
         </p>
         <h2 className="mt-1 text-xl font-bold">{pack.title}</h2>
         {pack.content.overview ? (
@@ -34,7 +61,7 @@ function PackViewer({ pack, onPrint }: { pack: CurriculumPack; onPrint: () => vo
           className={`${SA.btnSecondary} mt-4 inline-flex items-center gap-2 bg-white/10 text-white hover:bg-white/20`}
         >
           <Download className="h-4 w-4" />
-          Print / save view
+          {t('printSave')}
         </button>
       </div>
 
@@ -43,7 +70,7 @@ function PackViewer({ pack, onPrint }: { pack: CurriculumPack; onPrint: () => vo
           <button
             type="button"
             onClick={() => setExpanded(expanded === i ? null : i)}
-            className="flex w-full items-center justify-between gap-2 px-5 py-4 text-left"
+            className="flex w-full items-center justify-between gap-2 px-5 py-4 text-start"
           >
             <span className={`text-sm font-bold ${SA.text}`}>{section.title}</span>
             <ChevronDown
@@ -62,7 +89,7 @@ function PackViewer({ pack, onPrint }: { pack: CurriculumPack; onPrint: () => vo
               ) : null}
               {section.exam_tip ? (
                 <div className={SA.tip}>
-                  <p className="text-xs font-bold uppercase tracking-wide">Exam tip</p>
+                  <p className="text-xs font-bold uppercase tracking-wide">{t('examTip')}</p>
                   <p className="mt-1 text-sm">{section.exam_tip}</p>
                 </div>
               ) : null}
@@ -73,7 +100,7 @@ function PackViewer({ pack, onPrint }: { pack: CurriculumPack; onPrint: () => vo
 
       {pack.content.practice_questions?.length ? (
         <div className={`${SA.cardPadded}`}>
-          <p className={`text-sm font-bold ${SA.text}`}>Practice questions</p>
+          <p className={`text-sm font-bold ${SA.text}`}>{t('practiceQuestions')}</p>
           <ol className={`mt-3 list-inside list-decimal space-y-2 text-sm ${SA.text}`}>
             {pack.content.practice_questions.map((q, i) => (
               <li key={i}>{q}</li>
@@ -96,6 +123,7 @@ export default function ShiftAiCurriculumPacksClient({
   yearGroup: string;
   initialPacks: CurriculumPack[];
 }) {
+  const t = useTranslations('curriculumPacks');
   const boards = EXAM_BOARDS[curriculum] ?? EXAM_BOARDS.uk;
 
   const [packs, setPacks] = useState(initialPacks);
@@ -124,7 +152,7 @@ export default function ShiftAiCurriculumPacksClient({
 
   const generate = async () => {
     if (!subject || !topic.trim()) {
-      setError('Subject and topic are required');
+      setError(t('errors.required'));
       return;
     }
 
@@ -147,7 +175,7 @@ export default function ShiftAiCurriculumPacksClient({
       };
 
       if (!res.ok || !data.pack) {
-        throw new Error(data.error || 'Could not generate pack');
+        throw new Error(data.error || t('errors.generateFailed'));
       }
 
       setPacks((prev) => {
@@ -156,10 +184,10 @@ export default function ShiftAiCurriculumPacksClient({
       });
       setSelectedPack(data.pack);
       if (data.reused) {
-        setReusedNotice('Using an existing shared pack for this topic — no regeneration needed.');
+        setReusedNotice(t('reusedNotice'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not generate pack');
+      setError(err instanceof Error ? err.message : t('errors.generateFailed'));
     } finally {
       setLoading(false);
     }
@@ -179,11 +207,13 @@ export default function ShiftAiCurriculumPacksClient({
     <div className={`${SA.contentNarrow} space-y-5`}>
       <div>
         <h1 className={`${SA.headingMd} flex items-center gap-2`}>
-          <span aria-hidden>📚</span> Curriculum Packs
+          <span aria-hidden>📚</span> {t('title')}
         </h1>
         <p className={`mt-1 text-sm ${SA.muted}`}>
-          Exam-aligned revision packs for {yearGroup} ({normalizeCurriculum(curriculum).toUpperCase()}
-          ).
+          {t('subtitle', {
+            yearGroup,
+            curriculum: normalizeCurriculum(curriculum).toUpperCase(),
+          })}
         </p>
       </div>
 
@@ -191,7 +221,7 @@ export default function ShiftAiCurriculumPacksClient({
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <label htmlFor="cp-subject" className={`block text-sm font-medium ${SA.text}`}>
-              Subject
+              {t('subject')}
             </label>
             <select
               id="cp-subject"
@@ -211,7 +241,7 @@ export default function ShiftAiCurriculumPacksClient({
           </div>
           <div className="space-y-2">
             <label htmlFor="cp-board" className={`block text-sm font-medium ${SA.text}`}>
-              Exam board
+              {t('examBoard')}
             </label>
             <select
               id="cp-board"
@@ -229,7 +259,7 @@ export default function ShiftAiCurriculumPacksClient({
         </div>
 
         <div className="space-y-2">
-          <p className={`text-sm font-medium ${SA.text}`}>Pack type</p>
+          <p className={`text-sm font-medium ${SA.text}`}>{t('packType')}</p>
           <div className="flex flex-wrap gap-2">
             {PACK_TYPES.map((type) => (
               <button
@@ -242,7 +272,7 @@ export default function ShiftAiCurriculumPacksClient({
                     : `${SA.tab} rounded-lg border border-[var(--sa-navy-100)] px-3 py-1.5`
                 }
               >
-                {type}
+                {t(`packTypes.${PACK_TYPE_KEYS[type]}`)}
               </button>
             ))}
           </div>
@@ -250,13 +280,13 @@ export default function ShiftAiCurriculumPacksClient({
 
         <div className="space-y-2">
           <label htmlFor="cp-topic" className={`block text-sm font-medium ${SA.text}`}>
-            Topic
+            {t('topic')}
           </label>
           <input
             id="cp-topic"
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
-            placeholder="e.g. Photosynthesis, The French Revolution…"
+            placeholder={t('topicPlaceholder')}
             className={SA.input}
           />
         </div>
@@ -271,12 +301,12 @@ export default function ShiftAiCurriculumPacksClient({
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Generating pack…
+                {t('generating')}
               </>
             ) : (
               <>
                 <Sparkles className="h-4 w-4" />
-                Generate one for me
+                {t('generateOne')}
               </>
             )}
           </button>
@@ -288,30 +318,28 @@ export default function ShiftAiCurriculumPacksClient({
 
       {subjectPacks.length > 0 ? (
         <div className={`${SA.cardPadded} space-y-3`}>
-          <p className={`text-sm font-bold ${SA.text}`}>Available packs</p>
+          <p className={`text-sm font-bold ${SA.text}`}>{t('availablePacks')}</p>
           <div className="flex flex-wrap gap-2">
             {subjectPacks.map((pack) => (
               <button
                 key={pack.id}
                 type="button"
                 onClick={() => setSelectedPack(pack)}
-                className={`rounded-xl border px-3 py-2 text-left text-sm ${
+                className={`rounded-xl border px-3 py-2 text-start text-sm ${
                   selectedPack?.id === pack.id
                     ? 'border-[var(--sa-navy-600)] bg-[var(--sa-navy-50)]'
                     : 'border-[var(--sa-navy-100)]'
                 }`}
               >
                 <span className="font-medium">{pack.title}</span>
-                <span className={`ml-2 text-xs ${SA.muted}`}>{pack.source}</span>
+                <span className={`ms-2 text-xs ${SA.muted}`}>{pack.source}</span>
               </button>
             ))}
           </div>
         </div>
       ) : (
         <div className={`${SA.cardPadded} text-center`}>
-          <p className={`text-sm ${SA.muted}`}>
-            No packs for this subject yet. Enter a topic and tap &ldquo;Generate one for me&rdquo;.
-          </p>
+          <p className={`text-sm ${SA.muted}`}>{t('empty')}</p>
         </div>
       )}
 

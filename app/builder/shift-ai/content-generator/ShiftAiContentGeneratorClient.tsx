@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Loader2, Save } from 'lucide-react';
 import {
   CONTENT_TYPES,
@@ -18,23 +19,26 @@ import { SA } from '@/lib/shift-ai/theme';
 
 type SubjectOption = { name: string; dbId: string | null };
 
-function renderContent(content: GeneratedContent) {
+function renderContent(
+  content: GeneratedContent,
+  t: ReturnType<typeof useTranslations<'contentGenerator'>>
+) {
   if (content.type === 'practice_questions') {
     return (
       <div className="space-y-4">
         {content.questions.map((q, i) => (
           <div key={i} className="rounded-xl border border-[var(--sa-navy-100)] p-4">
             <p className={`text-xs font-bold uppercase tracking-wide ${SA.muted}`}>
-              Q{i + 1} · {q.marks} marks
+              {t('marks', { n: i + 1, marks: q.marks })}
             </p>
             <p className={`mt-2 text-sm font-medium ${SA.text}`}>{q.question}</p>
             <p className={`mt-3 text-sm ${SA.muted}`}>
-              <span className="font-semibold text-[var(--sa-navy-700)]">Answer: </span>
+              <span className="font-semibold text-[var(--sa-navy-700)]">{t('answer')}</span>
               {q.answer}
             </p>
             {q.mark_scheme ? (
               <p className={`mt-2 text-sm ${SA.muted}`}>
-                <span className="font-semibold text-[var(--sa-navy-700)]">Mark scheme: </span>
+                <span className="font-semibold text-[var(--sa-navy-700)]">{t('markScheme')}</span>
                 {q.mark_scheme}
               </p>
             ) : null}
@@ -46,10 +50,10 @@ function renderContent(content: GeneratedContent) {
 
   const body = content.type === 'summary' ? content.summary : content.notes;
   const sections = [
-    { title: 'Key concepts', text: body.key_concepts },
-    { title: 'Important terms', text: body.important_terms },
-    { title: 'Exam tips', text: body.exam_tips },
-    { title: 'Common mistakes', text: body.common_mistakes },
+    { title: t('sections.keyConcepts'), text: body.key_concepts },
+    { title: t('sections.importantTerms'), text: body.important_terms },
+    { title: t('sections.examTips'), text: body.exam_tips },
+    { title: t('sections.commonMistakes'), text: body.common_mistakes },
   ].filter((s) => s.text);
 
   return (
@@ -79,6 +83,7 @@ export default function ShiftAiContentGeneratorClient({
   initialSubject?: string | null;
   initialType?: string | null;
 }) {
+  const t = useTranslations('contentGenerator');
   const boards = EXAM_BOARDS[curriculum] ?? EXAM_BOARDS.uk;
   const lockedSubject = resolveSubjectQuery(
     subjectOptions.map((s) => s.name),
@@ -107,7 +112,7 @@ export default function ShiftAiContentGeneratorClient({
 
   const generate = async () => {
     if (!subject || !topic.trim()) {
-      setError('Subject and topic are required');
+      setError(t('errors.required'));
       return;
     }
 
@@ -126,12 +131,12 @@ export default function ShiftAiContentGeneratorClient({
 
       const data = (await res.json()) as { content?: GeneratedContent; error?: string };
       if (!res.ok || !data.content) {
-        throw new Error(data.error || 'Could not generate content');
+        throw new Error(data.error || t('errors.generateFailed'));
       }
 
       setGenerated(data.content);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not generate content');
+      setError(err instanceof Error ? err.message : t('errors.generateFailed'));
     } finally {
       setLoading(false);
     }
@@ -139,7 +144,7 @@ export default function ShiftAiContentGeneratorClient({
 
   const saveToNotes = async () => {
     if (!generated || !selectedSubject?.dbId) {
-      setError('Could not find a subject record to save notes');
+      setError(t('errors.noSubjectRecord'));
       return;
     }
 
@@ -165,12 +170,12 @@ export default function ShiftAiContentGeneratorClient({
       });
 
       const data = (await res.json()) as { error?: string };
-      if (!res.ok) throw new Error(data.error || 'Could not save to notes');
+      if (!res.ok) throw new Error(data.error || t('errors.saveFailed'));
 
       notesBySubjectId[selectedSubject.dbId] = nextContent;
       setSaveStatus('saved');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save to notes');
+      setError(err instanceof Error ? err.message : t('errors.saveFailed'));
       setSaveStatus('error');
     } finally {
       setSaving(false);
@@ -181,12 +186,17 @@ export default function ShiftAiContentGeneratorClient({
     <div className={`${SA.contentNarrow} space-y-5`}>
       <div>
         <h1 className={`${SA.headingMd} flex items-center gap-2`}>
-          <span aria-hidden>✨</span> Content Generator
+          <span aria-hidden>✨</span> {t('title')}
         </h1>
         <p className={`mt-1 text-sm ${SA.muted}`}>
           {typeFromQuery === 'practice_questions'
-            ? `AI-generated exam-style practice questions${lockedSubject ? ` for ${lockedSubject}` : ''} — not a past-paper bank.`
-            : `Generate revision summaries, practice questions, or notes for any topic — tailored for ${yearGroup} (${normalizeCurriculum(curriculum).toUpperCase()}).`}
+            ? lockedSubject
+              ? t('subtitlePracticeSubject', { subject: lockedSubject })
+              : t('subtitlePractice')
+            : t('subtitle', {
+                yearGroup,
+                curriculum: normalizeCurriculum(curriculum).toUpperCase(),
+              })}
         </p>
       </div>
 
@@ -194,7 +204,7 @@ export default function ShiftAiContentGeneratorClient({
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <label htmlFor="cg-subject" className={`block text-sm font-medium ${SA.text}`}>
-              Subject
+              {t('subject')}
             </label>
             <select
               id="cg-subject"
@@ -212,7 +222,7 @@ export default function ShiftAiContentGeneratorClient({
           </div>
           <div className="space-y-2">
             <label htmlFor="cg-board" className={`block text-sm font-medium ${SA.text}`}>
-              Exam board <span className={SA.muted}>(optional)</span>
+              {t('examBoard')} <span className={SA.muted}>{t('optional')}</span>
             </label>
             <select
               id="cg-board"
@@ -232,7 +242,7 @@ export default function ShiftAiContentGeneratorClient({
 
         <div className="space-y-2">
           <label htmlFor="cg-topic" className={`block text-sm font-medium ${SA.text}`}>
-            Topic
+            {t('topic')}
           </label>
           <input
             id="cg-topic"
@@ -240,20 +250,20 @@ export default function ShiftAiContentGeneratorClient({
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
             className={SA.input}
-            placeholder="e.g. Photosynthesis, World War I causes…"
+            placeholder={t('topicPlaceholder')}
             disabled={loading}
           />
         </div>
 
         <div className="space-y-2">
-          <p className={`text-sm font-medium ${SA.text}`}>Content type</p>
+          <p className={`text-sm font-medium ${SA.text}`}>{t('contentType')}</p>
           <div className="grid gap-2 sm:grid-cols-3">
             {CONTENT_TYPES.map((type) => (
               <button
                 key={type.id}
                 type="button"
                 onClick={() => setContentType(type.id)}
-                className={`rounded-xl border p-3 text-left transition-colors ${
+                className={`rounded-xl border p-3 text-start transition-colors ${
                   contentType === type.id
                     ? 'border-[var(--sa-navy-600)] bg-[var(--sa-navy-50)]'
                     : 'border-[var(--sa-navy-100)] hover:border-[var(--sa-navy-200)]'
@@ -262,8 +272,8 @@ export default function ShiftAiContentGeneratorClient({
                 <span className="text-lg" aria-hidden>
                   {type.emoji}
                 </span>
-                <p className={`mt-1 text-sm font-semibold ${SA.text}`}>{type.label}</p>
-                <p className={`mt-0.5 text-xs ${SA.muted}`}>{type.desc}</p>
+                <p className={`mt-1 text-sm font-semibold ${SA.text}`}>{t(`types.${type.id}.label`)}</p>
+                <p className={`mt-0.5 text-xs ${SA.muted}`}>{t(`types.${type.id}.desc`)}</p>
               </button>
             ))}
           </div>
@@ -278,10 +288,10 @@ export default function ShiftAiContentGeneratorClient({
           {loading ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Generating…
+              {t('generating')}
             </>
           ) : (
-            'Generate content'
+            t('generate')
           )}
         </button>
       </div>
@@ -303,10 +313,10 @@ export default function ShiftAiContentGeneratorClient({
               ) : (
                 <Save className="h-4 w-4" />
               )}
-              {saveStatus === 'saved' ? 'Saved to Notes' : 'Save to Notes'}
+              {saveStatus === 'saved' ? t('savedToNotes') : t('saveToNotes')}
             </button>
           </div>
-          {renderContent(generated)}
+          {renderContent(generated, t)}
         </div>
       ) : null}
     </div>

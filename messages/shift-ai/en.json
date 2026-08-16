@@ -74,8 +74,81 @@
     "favouritesHint": "· ⭐ your favourites",
     "noSubjects": "Add favourite subjects during onboarding to see them here."
   },
-  "planner": {},
-  "settings": {},
+  "planner": {
+    "metaTitle": "Planner · Shift AI",
+    "title": "Planner",
+    "subtitle": "Classes, homework, tests & revision",
+    "add": "Add",
+    "newItem": "New planner item",
+    "subjectOptional": "Subject (optional)",
+    "titlePlaceholder": "Title, e.g. Algebra homework due",
+    "notesOptional": "Notes (optional)",
+    "save": "Save",
+    "cancel": "Cancel",
+    "overdue": "⚠️ Overdue",
+    "upcoming": "📅 Upcoming",
+    "completed": "✅ Completed",
+    "emptyUpcoming": "Nothing upcoming — add something above!",
+    "markIncomplete": "Mark incomplete",
+    "markComplete": "Mark complete",
+    "deleteItem": "Delete planner item",
+    "itemTypes": {
+      "class": "Class",
+      "homework": "Homework",
+      "test": "Test",
+      "revision": "Revision"
+    },
+    "errors": {
+      "saveFailed": "Could not save planner item",
+      "updateFailed": "Could not update planner item",
+      "deleteFailed": "Could not delete planner item"
+    }
+  },
+  "settings": {
+    "metaTitle": "Settings · Shift AI",
+    "title": "Settings",
+    "saved": "Settings saved.",
+    "curriculumYear": "Curriculum & year group",
+    "yearGroupPlaceholder": "Year group (e.g. Year 9, Intermediate 2)",
+    "managedByParent": "{flag} {curriculum} · {yearGroup} — managed by your parent account.",
+    "studyLanguage": "Study language",
+    "studyLanguageHint": "AI tools will use this language in a later update. Arabic is the default for Saudi Arabia; you can switch anytime.",
+    "languages": {
+      "en": "English",
+      "ar": "Arabic"
+    },
+    "curricula": {
+      "uk": "United Kingdom",
+      "france": "France",
+      "usa": "United States",
+      "saudi": "Saudi Arabia"
+    },
+    "favouriteSubjects": "Favourite subjects",
+    "addSubject": "Add a subject",
+    "remove": "Remove",
+    "aiVoice": "AI voice",
+    "enableVoice": "Enable AI voice responses",
+    "personaHeading": "AI tutor persona per subject",
+    "personas": {
+      "chill": "😎 Chill Older Sibling",
+      "strict": "🎓 Strict Professor",
+      "sassy": "😏 Sassy Tutor",
+      "excited": "🎉 Super Enthusiastic",
+      "mentor": "🧙 Wise Mentor"
+    },
+    "parentLinks": "Parent view links",
+    "mentorLinks": "Mentor view links",
+    "newLink": "New link",
+    "noParentLinks": "No parent links yet.",
+    "noMentorLinks": "No mentor links yet.",
+    "created": "Created {date}",
+    "copyLink": "Copy link",
+    "saveSettings": "Save settings",
+    "errors": {
+      "saveFailed": "Could not save settings",
+      "generateLink": "Could not generate link"
+    }
+  },
   "tutor": {
     "metaTitle": "Teaching Assistant · Shift AI",
     "title": "Teaching Assistant",
@@ -197,7 +270,37 @@
       "extend": "Could not extend photo retention"
     }
   },
-  "curriculumPacks": {},
+  "curriculumPacks": {
+    "metaTitle": "Curriculum Packs · Shift AI",
+    "title": "Curriculum Packs",
+    "subtitle": "Exam-aligned revision packs for {yearGroup} ({curriculum}).",
+    "secondarySchool": "secondary school",
+    "subject": "Subject",
+    "examBoard": "Exam board",
+    "packType": "Pack type",
+    "topic": "Topic",
+    "topicPlaceholder": "e.g. Photosynthesis, The French Revolution…",
+    "generating": "Generating pack…",
+    "generateOne": "Generate one for me",
+    "availablePacks": "Available packs",
+    "empty": "No packs for this subject yet. Enter a topic and tap “Generate one for me”.",
+    "printSave": "Print / save view",
+    "revisionPack": "Revision pack",
+    "examTip": "Exam tip",
+    "practiceQuestions": "Practice questions",
+    "reusedNotice": "Using an existing shared pack for this topic — no regeneration needed.",
+    "packTypes": {
+      "fullTopicSummary": "Full Topic Summary",
+      "keyFacts": "Key Facts & Definitions",
+      "commonExamQuestions": "Common Exam Questions",
+      "workedExamples": "Worked Examples",
+      "mindMapGuide": "Mind Map Guide"
+    },
+    "errors": {
+      "required": "Subject and topic are required",
+      "generateFailed": "Could not generate pack"
+    }
+  },
   "voiceBuddy": {},
   "voiceTutor": {},
   "essayMarker": {
@@ -309,8 +412,82 @@
       "feedbackFailed": "Could not get feedback"
     }
   },
-  "contentGenerator": {},
-  "mastery": {},
+  "contentGenerator": {
+    "metaTitle": "Content Generator · Shift AI",
+    "title": "Content Generator",
+    "subtitle": "Generate revision summaries, practice questions, or notes for any topic — tailored for {yearGroup} ({curriculum}).",
+    "subtitlePractice": "AI-generated exam-style practice questions — not a past-paper bank.",
+    "subtitlePracticeSubject": "AI-generated exam-style practice questions for {subject} — not a past-paper bank.",
+    "secondarySchool": "secondary school",
+    "subject": "Subject",
+    "examBoard": "Exam board",
+    "optional": "(optional)",
+    "topic": "Topic",
+    "topicPlaceholder": "e.g. Photosynthesis, World War I causes…",
+    "contentType": "Content type",
+    "generating": "Generating…",
+    "generate": "Generate content",
+    "saveToNotes": "Save to Notes",
+    "savedToNotes": "Saved to Notes",
+    "marks": "Q{n} · {marks} marks",
+    "answer": "Answer: ",
+    "markScheme": "Mark scheme: ",
+    "sections": {
+      "keyConcepts": "Key concepts",
+      "importantTerms": "Important terms",
+      "examTips": "Exam tips",
+      "commonMistakes": "Common mistakes"
+    },
+    "types": {
+      "summary": {
+        "label": "Revision Summary",
+        "desc": "Concise, structured revision notes"
+      },
+      "practice_questions": {
+        "label": "Practice Questions",
+        "desc": "Exam-style questions with model answers"
+      },
+      "revision_notes": {
+        "label": "Revision Notes",
+        "desc": "Detailed notes with terms and tips"
+      }
+    },
+    "errors": {
+      "required": "Subject and topic are required",
+      "generateFailed": "Could not generate content",
+      "noSubjectRecord": "Could not find a subject record to save notes",
+      "saveFailed": "Could not save to notes"
+    }
+  },
+  "mastery": {
+    "metaTitle": "Mastery Map · Shift AI",
+    "title": "Mastery Map",
+    "subtitle": "Track your progress across every topic — colour-coded by mastery level",
+    "overallProgress": "Overall progress",
+    "tapToCycle": "· Tap a topic card to cycle status",
+    "noSubjects": "Add favourite subjects during onboarding to build your mastery map.",
+    "subject": "Subject",
+    "masteredCount": "{mastered}/{total} mastered",
+    "generating": "Generating topic map…",
+    "regenerate": "Regenerate topic map",
+    "generate": "Generate topic map",
+    "noTopics": "No topics yet for {subject}.",
+    "generateHint": "Generate a map of 12–15 curriculum topics to get started.",
+    "tapToUpdate": "Tap to update status",
+    "otherSubjects": "Other subjects",
+    "topicsMastered": "{topics} topics · {mastered} mastered",
+    "confirmRegenerate": "Regenerate and replace all topics for this subject? Your status progress will reset.",
+    "thisSubject": "this subject",
+    "status": {
+      "not_started": "Not started",
+      "learning": "Learning",
+      "mastered": "Mastered"
+    },
+    "errors": {
+      "generateFailed": "Could not generate topic map",
+      "updateFailed": "Could not update topic"
+    }
+  },
   "specTracker": {
     "metaTitle": "Spec Tracker · Shift AI",
     "title": "Spec Tracker",

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Brain, Loader2, Map, Sparkles, TrendingUp } from 'lucide-react';
 import {
   cycleMasteryStatus,
@@ -14,22 +15,19 @@ import { SA } from '@/lib/shift-ai/theme';
 
 const STATUS_STYLES: Record<
   MasteryStatus,
-  { label: string; card: string; dot: string; badge: string }
+  { card: string; dot: string; badge: string }
 > = {
   not_started: {
-    label: 'Not started',
     card: 'border-[var(--sa-navy-100)] bg-[var(--sa-secondary)]',
     dot: 'bg-slate-400',
     badge: 'bg-slate-100 text-slate-700',
   },
   learning: {
-    label: 'Learning',
     card: 'border-amber-200 bg-amber-50',
     dot: 'bg-amber-400',
     badge: 'bg-amber-100 text-amber-800',
   },
   mastered: {
-    label: 'Mastered',
     card: 'border-emerald-200 bg-emerald-50',
     dot: 'bg-emerald-500',
     badge: 'bg-emerald-100 text-emerald-800',
@@ -43,6 +41,7 @@ export default function ShiftAiMasteryClient({
   subjectOptions: string[];
   initialSubjectGroups: MasterySubjectGroup[];
 }) {
+  const t = useTranslations('mastery');
   const [subjectGroups, setSubjectGroups] = useState(initialSubjectGroups);
   const [selectedSubject, setSelectedSubject] = useState(subjectOptions[0] ?? '');
   const [generating, setGenerating] = useState(false);
@@ -70,9 +69,7 @@ export default function ShiftAiMasteryClient({
 
     const replace = Boolean(selectedGroup);
     if (replace) {
-      const ok = window.confirm(
-        'Regenerate and replace all topics for this subject? Your status progress will reset.'
-      );
+      const ok = window.confirm(t('confirmRegenerate'));
       if (!ok) return;
     }
 
@@ -93,12 +90,12 @@ export default function ShiftAiMasteryClient({
       const data = (await res.json()) as { error?: string; topics?: MasteryTopic[] };
 
       if (!res.ok || !data.topics) {
-        throw new Error(data.error || 'Could not generate topic map');
+        throw new Error(data.error || t('errors.generateFailed'));
       }
 
       mergeTopics(data.topics, selectedSubject);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not generate topic map');
+      setError(err instanceof Error ? err.message : t('errors.generateFailed'));
     } finally {
       setGenerating(false);
     }
@@ -119,15 +116,15 @@ export default function ShiftAiMasteryClient({
 
       const data = (await res.json()) as { error?: string; topic?: MasteryTopic };
       if (!res.ok || !data.topic) {
-        throw new Error(data.error || 'Could not update topic');
+        throw new Error(data.error || t('errors.updateFailed'));
       }
 
       const allTopics = subjectGroups
         .flatMap((g) => g.topics)
-        .map((t) => (t.id === data.topic!.id ? data.topic! : t));
+        .map((row) => (row.id === data.topic!.id ? data.topic! : row));
       setSubjectGroups(groupMasteryBySubject(allTopics, subjectOptions));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not update topic');
+      setError(err instanceof Error ? err.message : t('errors.updateFailed'));
     } finally {
       setUpdatingId(null);
     }
@@ -138,18 +135,16 @@ export default function ShiftAiMasteryClient({
       <div>
         <h1 className={`flex items-center gap-2 text-2xl font-bold ${SA.text}`}>
           <Brain className="h-6 w-6 text-[var(--sa-navy-800)]" />
-          Mastery Map
+          {t('title')}
         </h1>
-        <p className={`mt-1 text-sm ${SA.muted}`}>
-          Track your progress across every topic — colour-coded by mastery level
-        </p>
+        <p className={`mt-1 text-sm ${SA.muted}`}>{t('subtitle')}</p>
       </div>
 
       {overallProgress.total > 0 ? (
         <div className={SA.cardPadded}>
           <div className="mb-3 flex items-center justify-between">
             <h2 className={`flex items-center gap-2 font-bold ${SA.text}`}>
-              <TrendingUp className="h-4 w-4" /> Overall progress
+              <TrendingUp className="h-4 w-4" /> {t('overallProgress')}
             </h2>
             <span className={`text-2xl font-extrabold ${SA.text}`}>
               {overallProgress.masteredPercent}%
@@ -164,47 +159,39 @@ export default function ShiftAiMasteryClient({
           <div className="grid grid-cols-3 gap-2 text-center text-xs">
             <div className="rounded-xl bg-emerald-50 p-3">
               <p className="text-lg font-bold text-emerald-700">{overallProgress.masteredCount}</p>
-              <p className={SA.muted}>Mastered</p>
+              <p className={SA.muted}>{t('status.mastered')}</p>
             </div>
             <div className="rounded-xl bg-amber-50 p-3">
               <p className="text-lg font-bold text-amber-700">{overallProgress.learningCount}</p>
-              <p className={SA.muted}>Learning</p>
+              <p className={SA.muted}>{t('status.learning')}</p>
             </div>
             <div className="rounded-xl bg-slate-100 p-3">
               <p className="text-lg font-bold text-slate-700">{overallProgress.notStartedCount}</p>
-              <p className={SA.muted}>Not started</p>
+              <p className={SA.muted}>{t('status.not_started')}</p>
             </div>
           </div>
         </div>
       ) : null}
 
       <div className="flex flex-wrap gap-3 text-xs">
-        {(
-          [
-            ['not_started', 'Not started'],
-            ['learning', 'Learning'],
-            ['mastered', 'Mastered'],
-          ] as const
-        ).map(([status, label]) => (
+        {(['not_started', 'learning', 'mastered'] as const).map((status) => (
           <div key={status} className={`flex items-center gap-1.5 ${SA.muted}`}>
             <div className={`h-3 w-3 rounded-full ${STATUS_STYLES[status].dot}`} />
-            {label}
+            {t(`status.${status}`)}
           </div>
         ))}
-        <span className={SA.muted}>· Tap a topic card to cycle status</span>
+        <span className={SA.muted}>{t('tapToCycle')}</span>
       </div>
 
       {subjectOptions.length === 0 ? (
         <div className={`${SA.cardPadded} py-12 text-center`}>
-          <p className={`text-sm ${SA.muted}`}>
-            Add favourite subjects during onboarding to build your mastery map.
-          </p>
+          <p className={`text-sm ${SA.muted}`}>{t('noSubjects')}</p>
         </div>
       ) : (
         <div className={`${SA.cardPadded} space-y-4`}>
           <div>
             <label className={`mb-1.5 block text-xs font-bold uppercase tracking-wide ${SA.muted}`}>
-              Subject
+              {t('subject')}
             </label>
             <select
               value={selectedSubject}
@@ -223,7 +210,10 @@ export default function ShiftAiMasteryClient({
             <div>
               <div className="mb-2 flex items-center justify-between gap-3">
                 <p className={`text-sm font-semibold ${SA.text}`}>
-                  {selectedGroup.masteredCount}/{selectedGroup.topics.length} mastered
+                  {t('masteredCount', {
+                    mastered: selectedGroup.masteredCount,
+                    total: selectedGroup.topics.length,
+                  })}
                 </p>
                 <p className={`text-sm font-bold text-[var(--sa-navy-800)]`}>
                   {selectedGroup.masteredPercent}%
@@ -246,12 +236,12 @@ export default function ShiftAiMasteryClient({
           >
             {generating ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Generating topic map…
+                <Loader2 className="h-4 w-4 animate-spin" /> {t('generating')}
               </>
             ) : (
               <>
                 <Sparkles className="h-4 w-4" />
-                {selectedGroup ? 'Regenerate topic map' : 'Generate topic map'}
+                {selectedGroup ? t('regenerate') : t('generate')}
               </>
             )}
           </button>
@@ -259,8 +249,10 @@ export default function ShiftAiMasteryClient({
           {!selectedGroup ? (
             <div className={`rounded-xl bg-[var(--sa-navy-50)] px-4 py-6 text-center ${SA.muted}`}>
               <Map className="mx-auto mb-2 h-8 w-8 opacity-40" />
-              <p className="text-sm">No topics yet for {selectedSubject || 'this subject'}.</p>
-              <p className="mt-1 text-xs">Generate a map of 12–15 curriculum topics to get started.</p>
+              <p className="text-sm">
+                {t('noTopics', { subject: selectedSubject || t('thisSubject') })}
+              </p>
+              <p className="mt-1 text-xs">{t('generateHint')}</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -274,7 +266,7 @@ export default function ShiftAiMasteryClient({
                     type="button"
                     onClick={() => void handleCycleStatus(topic)}
                     disabled={busy}
-                    className={`rounded-xl border p-3 text-left transition-all hover:shadow-sm ${style.card} ${
+                    className={`rounded-xl border p-3 text-start transition-all hover:shadow-sm ${style.card} ${
                       busy ? 'opacity-60' : ''
                     }`}
                   >
@@ -283,10 +275,10 @@ export default function ShiftAiMasteryClient({
                       <span
                         className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${style.badge}`}
                       >
-                        {style.label}
+                        {t(`status.${topic.status}`)}
                       </span>
                     </div>
-                    <p className={`text-[10px] ${SA.muted}`}>Tap to update status</p>
+                    <p className={`text-[10px] ${SA.muted}`}>{t('tapToUpdate')}</p>
                   </button>
                 );
               })}
@@ -297,7 +289,7 @@ export default function ShiftAiMasteryClient({
 
       {subjectGroups.filter((g) => g.subject !== selectedSubject).length > 0 ? (
         <div className="space-y-3">
-          <h2 className={`text-sm font-bold ${SA.text}`}>Other subjects</h2>
+          <h2 className={`text-sm font-bold ${SA.text}`}>{t('otherSubjects')}</h2>
           {subjectGroups
             .filter((g) => g.subject !== selectedSubject)
             .map((group) => (
@@ -305,7 +297,7 @@ export default function ShiftAiMasteryClient({
                 key={group.subject}
                 type="button"
                 onClick={() => setSelectedSubject(group.subject)}
-                className={`${SA.cardPadded} w-full text-left transition-all hover:shadow-sm`}
+                className={`${SA.cardPadded} w-full text-start transition-all hover:shadow-sm`}
               >
                 <div className="mb-2 flex items-center justify-between">
                   <p className={`font-bold ${SA.text}`}>{group.subject}</p>
@@ -320,7 +312,10 @@ export default function ShiftAiMasteryClient({
                   />
                 </div>
                 <p className={`mt-2 text-xs ${SA.muted}`}>
-                  {group.topics.length} topics · {group.masteredCount} mastered
+                  {t('topicsMastered', {
+                    topics: group.topics.length,
+                    mastered: group.masteredCount,
+                  })}
                 </p>
               </button>
             ))}

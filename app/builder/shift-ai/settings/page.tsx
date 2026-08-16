@@ -2,7 +2,9 @@ import { redirect } from 'next/navigation';
 import ShiftAiSettingsClient from '@/app/builder/shift-ai/settings/ShiftAiSettingsClient';
 import { getSettingsProfile, listActiveInviteTokens } from '@/lib/shift-ai/settings';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { shiftAiCatalog } from '@/lib/shift-ai/i18n';
 import { needsSubjectOnboarding } from '@/lib/shift-ai/onboarding';
+import { getRequestStudyLanguage } from '@/lib/shift-ai/study-language';
 import { getSafeSession } from '@/lib/supabaseSession.server';
 
 export default async function ShiftAiSettingsPage() {
@@ -39,5 +41,8 @@ export default async function ShiftAiSettingsPage() {
 }
 
 export async function generateMetadata() {
-  return { title: 'Settings · Shift AI', robots: 'noindex' };
+  return {
+    title: shiftAiCatalog(await getRequestStudyLanguage()).settings.metaTitle,
+    robots: 'noindex',
+  };
 }

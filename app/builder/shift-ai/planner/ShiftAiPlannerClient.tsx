@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import { CalendarDays, Check, Plus, Trash2 } from 'lucide-react';
 import {
   groupPlannerItems,
@@ -36,9 +37,9 @@ const emptyForm = (): PlannerFormState => ({
   notes: '',
 });
 
-function formatDueDate(iso: string): string {
+function formatDueDate(iso: string, locale: string): string {
   const dateKey = iso.split('T')[0];
-  return new Date(`${dateKey}T12:00:00`).toLocaleDateString('en-GB', {
+  return new Date(`${dateKey}T12:00:00`).toLocaleDateString(locale === 'ar' ? 'ar' : 'en-GB', {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -52,6 +53,8 @@ export default function ShiftAiPlannerClient({
   initialItems: ShiftPlannerItem[];
   subjectOptions: string[];
 }) {
+  const t = useTranslations('planner');
+  const locale = useLocale();
   const [items, setItems] = useState<ShiftPlannerItem[]>(initialItems);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<PlannerFormState>(emptyForm);
@@ -79,7 +82,7 @@ export default function ShiftAiPlannerClient({
 
       const data = (await res.json()) as { error?: string; item?: ShiftPlannerItem };
       if (!res.ok || !data.item) {
-        throw new Error(data.error || 'Could not save planner item');
+        throw new Error(data.error || t('errors.saveFailed'));
       }
 
       setItems((current) =>
@@ -90,7 +93,7 @@ export default function ShiftAiPlannerClient({
       setForm(emptyForm());
       setShowForm(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save planner item');
+      setError(err instanceof Error ? err.message : t('errors.saveFailed'));
     } finally {
       setBusy(false);
     }
@@ -107,14 +110,14 @@ export default function ShiftAiPlannerClient({
 
       const data = (await res.json()) as { error?: string; item?: ShiftPlannerItem };
       if (!res.ok || !data.item) {
-        throw new Error(data.error || 'Could not update planner item');
+        throw new Error(data.error || t('errors.updateFailed'));
       }
 
       setItems((current) =>
         current.map((row) => (row.id === data.item!.id ? data.item! : row))
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not update planner item');
+      setError(err instanceof Error ? err.message : t('errors.updateFailed'));
     } finally {
       setBusy(false);
     }
@@ -131,12 +134,12 @@ export default function ShiftAiPlannerClient({
 
       const data = (await res.json()) as { error?: string };
       if (!res.ok) {
-        throw new Error(data.error || 'Could not delete planner item');
+        throw new Error(data.error || t('errors.deleteFailed'));
       }
 
       setItems((current) => current.filter((row) => row.id !== id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not delete planner item');
+      setError(err instanceof Error ? err.message : t('errors.deleteFailed'));
     } finally {
       setBusy(false);
     }
@@ -150,8 +153,8 @@ export default function ShiftAiPlannerClient({
               <CalendarDays className="h-5 w-5" />
             </div>
             <div>
-              <h1 className={SA.headingMd}>Planner</h1>
-              <p className={`text-sm ${SA.muted}`}>Classes, homework, tests & revision</p>
+              <h1 className={SA.headingMd}>{t('title')}</h1>
+              <p className={`text-sm ${SA.muted}`}>{t('subtitle')}</p>
             </div>
           </div>
           <button
@@ -161,7 +164,7 @@ export default function ShiftAiPlannerClient({
             disabled={busy}
           >
             <Plus className="h-4 w-4" />
-            Add
+            {t('add')}
           </button>
         </div>
 
@@ -169,7 +172,7 @@ export default function ShiftAiPlannerClient({
 
         {showForm ? (
           <div className={`mb-6 space-y-3 ${SA.cardPadded}`}>
-            <h3 className={`font-semibold ${SA.text}`}>New planner item</h3>
+            <h3 className={`font-semibold ${SA.text}`}>{t('newItem')}</h3>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <select
                 value={form.itemType}
@@ -183,8 +186,7 @@ export default function ShiftAiPlannerClient({
               >
                 {SHIFT_PLANNER_ITEM_TYPES.map((type) => (
                   <option key={type} value={type}>
-                    {SHIFT_PLANNER_TYPE_ICONS[type]}{' '}
-                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                    {SHIFT_PLANNER_TYPE_ICONS[type]} {t(`itemTypes.${type}`)}
                   </option>
                 ))}
               </select>
@@ -193,7 +195,7 @@ export default function ShiftAiPlannerClient({
                 onChange={(e) => setForm((current) => ({ ...current, subject: e.target.value }))}
                 className={SA.select}
               >
-                <option value="">Subject (optional)</option>
+                <option value="">{t('subjectOptional')}</option>
                 {subjectOptions.map((subject) => (
                   <option key={subject} value={subject}>
                     {subject}
@@ -203,7 +205,7 @@ export default function ShiftAiPlannerClient({
             </div>
             <input
               type="text"
-              placeholder="Title, e.g. Algebra homework due"
+              placeholder={t('titlePlaceholder')}
               value={form.title}
               onChange={(e) => setForm((current) => ({ ...current, title: e.target.value }))}
               className={SA.input}
@@ -216,7 +218,7 @@ export default function ShiftAiPlannerClient({
             />
             <input
               type="text"
-              placeholder="Notes (optional)"
+              placeholder={t('notesOptional')}
               value={form.notes}
               onChange={(e) => setForm((current) => ({ ...current, notes: e.target.value }))}
               className={SA.input}
@@ -224,11 +226,11 @@ export default function ShiftAiPlannerClient({
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={handleCreate}
+                onClick={() => void handleCreate()}
                 disabled={busy || !form.title || !form.dueDate}
                 className={SA.btnPrimary}
               >
-                Save
+                {t('save')}
               </button>
               <button
                 type="button"
@@ -238,7 +240,7 @@ export default function ShiftAiPlannerClient({
                 }}
                 className={SA.btnSecondary}
               >
-                Cancel
+                {t('cancel')}
               </button>
             </div>
           </div>
@@ -246,30 +248,33 @@ export default function ShiftAiPlannerClient({
 
         {overdue.length > 0 ? (
           <PlannerSection
-            title="⚠️ Overdue"
+            title={t('overdue')}
             items={overdue}
             busy={busy}
-            onToggle={handleToggle}
-            onDelete={handleDelete}
+            locale={locale}
+            onToggle={(item) => void handleToggle(item)}
+            onDelete={(id) => void handleDelete(id)}
           />
         ) : null}
 
         <PlannerSection
-          title="📅 Upcoming"
+          title={t('upcoming')}
           items={upcoming}
           busy={busy}
-          onToggle={handleToggle}
-          onDelete={handleDelete}
-          emptyMsg="Nothing upcoming — add something above!"
+          locale={locale}
+          onToggle={(item) => void handleToggle(item)}
+          onDelete={(id) => void handleDelete(id)}
+          emptyMsg={t('emptyUpcoming')}
         />
 
         {completed.length > 0 ? (
           <PlannerSection
-            title="✅ Completed"
+            title={t('completed')}
             items={completed}
             busy={busy}
-            onToggle={handleToggle}
-            onDelete={handleDelete}
+            locale={locale}
+            onToggle={(item) => void handleToggle(item)}
+            onDelete={(id) => void handleDelete(id)}
           />
         ) : null}
     </div>
@@ -280,6 +285,7 @@ function PlannerSection({
   title,
   items,
   busy,
+  locale,
   onToggle,
   onDelete,
   emptyMsg,
@@ -287,10 +293,13 @@ function PlannerSection({
   title: string;
   items: ShiftPlannerItem[];
   busy: boolean;
+  locale: string;
   onToggle: (item: ShiftPlannerItem) => void;
   onDelete: (id: string) => void;
   emptyMsg?: string;
 }) {
+  const t = useTranslations('planner');
+
   return (
     <section className="mb-6">
       <h2 className={SA.sectionLabel}>{title}</h2>
@@ -319,7 +328,7 @@ function PlannerSection({
                       ? 'border-[var(--sa-navy-800)] bg-[var(--sa-navy-800)]'
                       : 'border-[var(--sa-border)] hover:border-[var(--sa-navy-800)]'
                   }`}
-                  aria-label={item.completed ? 'Mark incomplete' : 'Mark complete'}
+                  aria-label={item.completed ? t('markIncomplete') : t('markComplete')}
                 >
                   {item.completed ? <Check className="h-3 w-3 text-white" /> : null}
                 </button>
@@ -328,7 +337,7 @@ function PlannerSection({
                     <span
                       className={`rounded-full border px-2 py-0.5 text-xs ${TYPE_BADGE_CLASS[itemType]}`}
                     >
-                      {SHIFT_PLANNER_TYPE_ICONS[itemType]} {item.item_type}
+                      {SHIFT_PLANNER_TYPE_ICONS[itemType]} {t(`itemTypes.${itemType}`)}
                     </span>
                     {subject ? (
                       <span className={`text-xs ${SA.muted}`}>{subject}</span>
@@ -342,14 +351,14 @@ function PlannerSection({
                     {item.title}
                   </p>
                   {notes ? <p className={`mt-0.5 text-xs ${SA.muted}`}>{notes}</p> : null}
-                  <p className={`mt-1 text-xs ${SA.muted}`}>📅 {formatDueDate(item.due_date)}</p>
+                  <p className={`mt-1 text-xs ${SA.muted}`}>📅 {formatDueDate(item.due_date, locale)}</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => onDelete(item.id)}
                   disabled={busy}
                   className={`p-1 ${SA.muted} hover:text-red-500 disabled:opacity-60`}
-                  aria-label="Delete planner item"
+                  aria-label={t('deleteItem')}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>

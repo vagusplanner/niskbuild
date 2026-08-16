@@ -1,15 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { Check, Copy, GraduationCap, Loader2, Plus, Users, Volume2 } from 'lucide-react';
 import {
   SHIFT_CURRICULA,
   SHIFT_CURRICULUM_FLAGS,
-  SHIFT_CURRICULUM_LABELS,
   SHIFT_STUDY_LANGUAGES,
-  SHIFT_STUDY_LANGUAGE_LABELS,
-  type ShiftCurriculum,
   type ShiftStudyLanguage,
 } from '@/lib/shift-ai/constants';
 import {
@@ -36,6 +34,8 @@ export default function ShiftAiSettingsClient({
   initialTokens: { parent: InviteTokenInfo[]; mentor: InviteTokenInfo[] };
   appOrigin: string;
 }) {
+  const t = useTranslations('settings');
+  const locale = useLocale();
   const router = useRouter();
   const [curriculum, setCurriculum] = useState(profile.curriculum);
   const [yearGroup, setYearGroup] = useState(profile.year_group);
@@ -94,13 +94,13 @@ export default function ShiftAiSettingsClient({
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) {
-        setError(data.error || 'Could not save settings');
+        setError(data.error || t('errors.saveFailed'));
         return;
       }
       setSaved(true);
       router.refresh();
     } catch {
-      setError('Could not save settings');
+      setError(t('errors.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -113,7 +113,7 @@ export default function ShiftAiSettingsClient({
       const res = await fetch(`/api/shift-ai/settings/tokens/${type}`, { method: 'POST' });
       const data = (await res.json()) as { token?: InviteTokenInfo; error?: string };
       if (!res.ok) {
-        setError(data.error || 'Could not generate link');
+        setError(data.error || t('errors.generateLink'));
         return;
       }
       if (data.token) {
@@ -121,7 +121,7 @@ export default function ShiftAiSettingsClient({
         else setMentorTokens((prev) => [data.token!, ...prev]);
       }
     } catch {
-      setError('Could not generate link');
+      setError(t('errors.generateLink'));
     } finally {
       setGenerating(null);
     }
@@ -148,13 +148,13 @@ export default function ShiftAiSettingsClient({
 
   return (
     <div className={SA.contentNarrow}>
-      <h1 className={SA.heading}>Settings</h1>
+      <h1 className={SA.heading}>{t('title')}</h1>
 
       {error ? <div className={`${SA.error} mt-4`}>{error}</div> : null}
-      {saved ? <div className={`${SA.success} mt-4`}>Settings saved.</div> : null}
+      {saved ? <div className={`${SA.success} mt-4`}>{t('saved')}</div> : null}
 
       <div className={`${SA.cardPadded} mt-6 space-y-4`}>
-        <h2 className={`font-semibold ${SA.text}`}>Curriculum & year group</h2>
+        <h2 className={`font-semibold ${SA.text}`}>{t('curriculumYear')}</h2>
         {profile.canEditCurriculum ? (
           <>
             <div className="space-y-2">
@@ -163,14 +163,14 @@ export default function ShiftAiSettingsClient({
                   key={c}
                   type="button"
                   onClick={() => setCurriculum(c)}
-                  className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left ${
+                  className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-start ${
                     curriculum === c
                       ? 'border-[var(--sa-navy-800)] bg-[var(--sa-navy-800)] text-white'
                       : 'border-[var(--sa-navy-100)]'
                   }`}
                 >
                   <span className="text-2xl">{SHIFT_CURRICULUM_FLAGS[c]}</span>
-                  <span className="text-sm font-semibold">{SHIFT_CURRICULUM_LABELS[c]}</span>
+                  <span className="text-sm font-semibold">{t(`curricula.${c}`)}</span>
                 </button>
               ))}
             </div>
@@ -178,24 +178,24 @@ export default function ShiftAiSettingsClient({
               type="text"
               value={yearGroup}
               onChange={(e) => setYearGroup(e.target.value)}
-              placeholder="Year group (e.g. Year 9, Intermediate 2)"
+              placeholder={t('yearGroupPlaceholder')}
               className={SA.input}
             />
           </>
         ) : (
           <p className={`text-sm ${SA.muted}`}>
-            {SHIFT_CURRICULUM_FLAGS[profile.curriculum]} {SHIFT_CURRICULUM_LABELS[profile.curriculum]} ·{' '}
-            {profile.year_group} — managed by your parent account.
+            {t('managedByParent', {
+              flag: SHIFT_CURRICULUM_FLAGS[profile.curriculum],
+              curriculum: t(`curricula.${profile.curriculum}`),
+              yearGroup: profile.year_group,
+            })}
           </p>
         )}
       </div>
 
       <div className={`${SA.cardPadded} mt-4 space-y-4`}>
-        <h2 className={`font-semibold ${SA.text}`}>Study language</h2>
-        <p className={`text-sm ${SA.muted}`}>
-          AI tools will use this language in a later update. Arabic is the default for Saudi Arabia;
-          you can switch anytime.
-        </p>
+        <h2 className={`font-semibold ${SA.text}`}>{t('studyLanguage')}</h2>
+        <p className={`text-sm ${SA.muted}`}>{t('studyLanguageHint')}</p>
         <div className="grid grid-cols-2 gap-2">
           {SHIFT_STUDY_LANGUAGES.map((lang) => (
             <button
@@ -208,20 +208,20 @@ export default function ShiftAiSettingsClient({
                   : 'border-[var(--sa-navy-100)]'
               }`}
             >
-              {SHIFT_STUDY_LANGUAGE_LABELS[lang]}
+              {t(`languages.${lang}`)}
             </button>
           ))}
         </div>
       </div>
 
       <div className={`${SA.cardPadded} mt-4 space-y-4`}>
-        <h2 className={`font-semibold ${SA.text}`}>Favourite subjects</h2>
+        <h2 className={`font-semibold ${SA.text}`}>{t('favouriteSubjects')}</h2>
         <div className="flex gap-2">
           <input
             type="text"
             value={newSubject}
             onChange={(e) => setNewSubject(e.target.value)}
-            placeholder="Add a subject"
+            placeholder={t('addSubject')}
             className={SA.input}
           />
           <button type="button" onClick={addSubject} className={SA.btnPrimaryIcon}>
@@ -240,7 +240,7 @@ export default function ShiftAiSettingsClient({
                 onClick={() => removeSubject(name)}
                 className="text-xs text-red-600"
               >
-                Remove
+                {t('remove')}
               </button>
             </div>
           ))}
@@ -250,7 +250,7 @@ export default function ShiftAiSettingsClient({
       <div className={`${SA.cardPadded} mt-4 space-y-4`}>
         <h2 className={`flex items-center gap-2 font-semibold ${SA.text}`}>
           <Volume2 className="h-5 w-5" />
-          AI voice
+          {t('aiVoice')}
         </h2>
         <label className="flex items-center gap-2 text-sm">
           <input
@@ -258,7 +258,7 @@ export default function ShiftAiSettingsClient({
             checked={voiceEnabled}
             onChange={(e) => setVoiceEnabled(e.target.checked)}
           />
-          Enable AI voice responses
+          {t('enableVoice')}
         </label>
         {voiceEnabled ? (
           <div className="grid gap-2 sm:grid-cols-2">
@@ -267,7 +267,7 @@ export default function ShiftAiSettingsClient({
                 key={v}
                 type="button"
                 onClick={() => setPreferredVoice(v)}
-                className={`rounded-lg border px-3 py-2 text-left text-sm ${
+                className={`rounded-lg border px-3 py-2 text-start text-sm ${
                   preferredVoice === v
                     ? 'border-[var(--sa-navy-600)] bg-[var(--sa-navy-50)] font-semibold'
                     : 'border-[var(--sa-navy-100)]'
@@ -282,7 +282,7 @@ export default function ShiftAiSettingsClient({
 
       {profile.subjects.length > 0 ? (
         <div className={`${SA.cardPadded} mt-4 space-y-4`}>
-          <h2 className={`font-semibold ${SA.text}`}>AI tutor persona per subject</h2>
+          <h2 className={`font-semibold ${SA.text}`}>{t('personaHeading')}</h2>
           {profile.subjects.map((subject) => (
             <div key={subject.name}>
               <p className={`mb-1 text-sm font-medium ${SA.text}`}>{subject.name}</p>
@@ -295,7 +295,7 @@ export default function ShiftAiSettingsClient({
               >
                 {AI_PERSONA_OPTIONS.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.label}
+                    {t(`personas.${p.id}`)}
                   </option>
                 ))}
               </select>
@@ -308,7 +308,7 @@ export default function ShiftAiSettingsClient({
         <div className="flex items-center justify-between">
           <h2 className={`flex items-center gap-2 font-semibold ${SA.text}`}>
             <Users className="h-5 w-5" />
-            Parent view links
+            {t('parentLinks')}
           </h2>
           <button
             type="button"
@@ -317,14 +317,23 @@ export default function ShiftAiSettingsClient({
             className={SA.btnSecondary}
           >
             {generating === 'parent' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            New link
+            {t('newLink')}
           </button>
         </div>
         {parentTokens.length === 0 ? (
-          <p className={`text-sm ${SA.muted}`}>No parent links yet.</p>
+          <p className={`text-sm ${SA.muted}`}>{t('noParentLinks')}</p>
         ) : (
-          parentTokens.map((t) => (
-            <TokenRow key={t.id} token={t} copied={copied} onCopy={() => void copyLink(t)} />
+          parentTokens.map((token) => (
+            <TokenRow
+              key={token.id}
+              token={token}
+              copied={copied}
+              onCopy={() => void copyLink(token)}
+              createdLabel={t('created', {
+                date: new Date(token.created_at).toLocaleDateString(locale === 'ar' ? 'ar' : 'en'),
+              })}
+              copyLabel={t('copyLink')}
+            />
           ))
         )}
       </div>
@@ -333,7 +342,7 @@ export default function ShiftAiSettingsClient({
         <div className="flex items-center justify-between">
           <h2 className={`flex items-center gap-2 font-semibold ${SA.text}`}>
             <GraduationCap className="h-5 w-5" />
-            Mentor view links
+            {t('mentorLinks')}
           </h2>
           <button
             type="button"
@@ -342,14 +351,23 @@ export default function ShiftAiSettingsClient({
             className={SA.btnSecondary}
           >
             {generating === 'mentor' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            New link
+            {t('newLink')}
           </button>
         </div>
         {mentorTokens.length === 0 ? (
-          <p className={`text-sm ${SA.muted}`}>No mentor links yet.</p>
+          <p className={`text-sm ${SA.muted}`}>{t('noMentorLinks')}</p>
         ) : (
-          mentorTokens.map((t) => (
-            <TokenRow key={t.id} token={t} copied={copied} onCopy={() => void copyLink(t)} />
+          mentorTokens.map((token) => (
+            <TokenRow
+              key={token.id}
+              token={token}
+              copied={copied}
+              onCopy={() => void copyLink(token)}
+              createdLabel={t('created', {
+                date: new Date(token.created_at).toLocaleDateString(locale === 'ar' ? 'ar' : 'en'),
+              })}
+              copyLabel={t('copyLink')}
+            />
           ))
         )}
       </div>
@@ -361,7 +379,7 @@ export default function ShiftAiSettingsClient({
         className={`${SA.btnPrimary} mt-6 w-full`}
       >
         {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-        Save settings
+        {t('saveSettings')}
       </button>
     </div>
   );
@@ -371,19 +389,21 @@ function TokenRow({
   token,
   copied,
   onCopy,
+  createdLabel,
+  copyLabel,
 }: {
   token: InviteTokenInfo;
   copied: string | null;
   onCopy: () => void;
+  createdLabel: string;
+  copyLabel: string;
 }) {
   return (
     <div className="flex items-center justify-between gap-2 rounded-lg bg-[var(--sa-navy-50)] px-3 py-2">
-      <span className="truncate text-xs text-neutral-600">
-        Created {new Date(token.created_at).toLocaleDateString()}
-      </span>
+      <span className="truncate text-xs text-neutral-600">{createdLabel}</span>
       <button type="button" onClick={onCopy} className={SA.btnSecondary}>
         {copied === token.id ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-        Copy link
+        {copyLabel}
       </button>
     </div>
   );

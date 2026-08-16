@@ -3,7 +3,9 @@ import ShiftAiCurriculumPacksClient from '@/app/builder/shift-ai/curriculum-pack
 import { listPublishedPacks } from '@/lib/shift-ai/curriculum-packs';
 import { normalizeCurriculum } from '@/lib/shift-ai/essay-curriculum';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { shiftAiCatalog } from '@/lib/shift-ai/i18n';
 import { needsSubjectOnboarding } from '@/lib/shift-ai/onboarding';
+import { getRequestStudyLanguage } from '@/lib/shift-ai/study-language';
 import { getSafeSession } from '@/lib/supabaseSession.server';
 
 export default async function ShiftAiCurriculumPacksPage() {
@@ -26,8 +28,9 @@ export default async function ShiftAiCurriculumPacksPage() {
     Array.isArray(student.favourite_subjects) ? student.favourite_subjects : []
   ).filter((v): v is string => typeof v === 'string' && v.trim().length > 0);
 
+  const catalog = shiftAiCatalog(await getRequestStudyLanguage());
   const curriculum = normalizeCurriculum(student.curriculum);
-  const yearGroup = student.year_group?.trim() || 'secondary school';
+  const yearGroup = student.year_group?.trim() || catalog.curriculumPacks.secondarySchool;
 
   const initialPacks = await listPublishedPacks({ curriculum, yearGroup });
 
@@ -42,5 +45,8 @@ export default async function ShiftAiCurriculumPacksPage() {
 }
 
 export async function generateMetadata() {
-  return { title: 'Curriculum Packs · Shift AI', robots: 'noindex' };
+  return {
+    title: shiftAiCatalog(await getRequestStudyLanguage()).curriculumPacks.metaTitle,
+    robots: 'noindex',
+  };
 }

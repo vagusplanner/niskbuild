@@ -3,7 +3,9 @@ import ShiftAiMasteryClient from '@/app/builder/shift-ai/mastery/ShiftAiMasteryC
 import type { MasteryTopic } from '@/lib/shift-ai/mastery-shared';
 import { groupMasteryBySubject } from '@/lib/shift-ai/mastery-shared';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { shiftAiCatalog } from '@/lib/shift-ai/i18n';
 import { needsSubjectOnboarding } from '@/lib/shift-ai/onboarding';
+import { getRequestStudyLanguage } from '@/lib/shift-ai/study-language';
 import { getSafeSession } from '@/lib/supabaseSession.server';
 
 export default async function ShiftAiMasteryPage() {
@@ -50,7 +52,7 @@ export default async function ShiftAiMasteryPage() {
 
 export async function generateMetadata() {
   return {
-    title: 'Mastery Map · Shift AI',
+    title: shiftAiCatalog(await getRequestStudyLanguage()).mastery.metaTitle,
     robots: 'noindex',
   };
 }

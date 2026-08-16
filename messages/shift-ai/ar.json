@@ -74,8 +74,81 @@
     "favouritesHint": "· ⭐ المفضّلة",
     "noSubjects": "أضف المواد المفضّلة أثناء الإعداد لتظهر هنا."
   },
-  "planner": {},
-  "settings": {},
+  "planner": {
+    "metaTitle": "المخطّط · Shift AI",
+    "title": "المخطّط",
+    "subtitle": "حصص وواجبات واختبارات ومراجعة",
+    "add": "إضافة",
+    "newItem": "عنصر مخطّط جديد",
+    "subjectOptional": "المادة (اختياري)",
+    "titlePlaceholder": "العنوان، مثلاً واجب الجبر",
+    "notesOptional": "ملاحظات (اختياري)",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "overdue": "⚠️ متأخر",
+    "upcoming": "📅 قادم",
+    "completed": "✅ مكتمل",
+    "emptyUpcoming": "لا شيء قادم — أضف عنصراً أعلاه!",
+    "markIncomplete": "تعيين كغير مكتمل",
+    "markComplete": "تعيين كمكتمل",
+    "deleteItem": "حذف عنصر المخطّط",
+    "itemTypes": {
+      "class": "حصة",
+      "homework": "واجب",
+      "test": "اختبار",
+      "revision": "مراجعة"
+    },
+    "errors": {
+      "saveFailed": "تعذّر حفظ عنصر المخطّط",
+      "updateFailed": "تعذّر تحديث عنصر المخطّط",
+      "deleteFailed": "تعذّر حذف عنصر المخطّط"
+    }
+  },
+  "settings": {
+    "metaTitle": "الإعدادات · Shift AI",
+    "title": "الإعدادات",
+    "saved": "تم حفظ الإعدادات.",
+    "curriculumYear": "المنهج والسنة الدراسية",
+    "yearGroupPlaceholder": "السنة الدراسية (مثلاً السنة 9، متوسط 2)",
+    "managedByParent": "{flag} {curriculum} · {yearGroup} — يُدار من حساب ولي الأمر.",
+    "studyLanguage": "لغة الدراسة",
+    "studyLanguageHint": "ستستخدم أدوات الذكاء الاصطناعي هذه اللغة في تحديث لاحق. العربية هي الافتراضية للسعودية؛ يمكنك التبديل في أي وقت.",
+    "languages": {
+      "en": "الإنجليزية",
+      "ar": "العربية"
+    },
+    "curricula": {
+      "uk": "المملكة المتحدة",
+      "france": "فرنسا",
+      "usa": "الولايات المتحدة",
+      "saudi": "المملكة العربية السعودية"
+    },
+    "favouriteSubjects": "المواد المفضّلة",
+    "addSubject": "أضف مادة",
+    "remove": "إزالة",
+    "aiVoice": "صوت الذكاء الاصطناعي",
+    "enableVoice": "تفعيل الردود الصوتية للذكاء الاصطناعي",
+    "personaHeading": "شخصية المعلّم الذكي لكل مادة",
+    "personas": {
+      "chill": "😎 الأخ الأكبر الهادئ",
+      "strict": "🎓 الأستاذ الصارم",
+      "sassy": "😏 المعلّم الجريء",
+      "excited": "🎉 المتحمّس جداً",
+      "mentor": "🧙 المرشد الحكيم"
+    },
+    "parentLinks": "روابط عرض ولي الأمر",
+    "mentorLinks": "روابط عرض المرشد",
+    "newLink": "رابط جديد",
+    "noParentLinks": "لا روابط لولي الأمر بعد.",
+    "noMentorLinks": "لا روابط للمرشد بعد.",
+    "created": "أُنشئ في {date}",
+    "copyLink": "نسخ الرابط",
+    "saveSettings": "حفظ الإعدادات",
+    "errors": {
+      "saveFailed": "تعذّر حفظ الإعدادات",
+      "generateLink": "تعذّر إنشاء الرابط"
+    }
+  },
   "tutor": {
     "metaTitle": "المعلّم المساعد · Shift AI",
     "title": "المعلّم المساعد",
@@ -197,7 +270,37 @@
       "extend": "تعذّر تمديد الاحتفاظ بالصورة"
     }
   },
-  "curriculumPacks": {},
+  "curriculumPacks": {
+    "metaTitle": "حزم المنهج · Shift AI",
+    "title": "حزم المنهج",
+    "subtitle": "حزم مراجعة متوافقة مع الامتحان لـ {yearGroup} ({curriculum}).",
+    "secondarySchool": "المرحلة الثانوية",
+    "subject": "المادة",
+    "examBoard": "مجلس الامتحان",
+    "packType": "نوع الحزمة",
+    "topic": "الموضوع",
+    "topicPlaceholder": "مثلاً البناء الضوئي، الثورة الفرنسية…",
+    "generating": "جارٍ إنشاء الحزمة…",
+    "generateOne": "أنشئ واحدة لي",
+    "availablePacks": "الحزم المتاحة",
+    "empty": "لا حزم لهذه المادة بعد. أدخل موضوعاً واضغط «أنشئ واحدة لي».",
+    "printSave": "طباعة / حفظ العرض",
+    "revisionPack": "حزمة مراجعة",
+    "examTip": "نصيحة امتحان",
+    "practiceQuestions": "أسئلة تدريبية",
+    "reusedNotice": "يتم استخدام حزمة مشتركة موجودة لهذا الموضوع — لا حاجة لإعادة الإنشاء.",
+    "packTypes": {
+      "fullTopicSummary": "ملخص الموضوع الكامل",
+      "keyFacts": "حقائق وتعريفات أساسية",
+      "commonExamQuestions": "أسئلة امتحان شائعة",
+      "workedExamples": "أمثلة محلولة",
+      "mindMapGuide": "دليل الخريطة الذهنية"
+    },
+    "errors": {
+      "required": "المادة والموضوع مطلوبان",
+      "generateFailed": "تعذّر إنشاء الحزمة"
+    }
+  },
   "voiceBuddy": {},
   "voiceTutor": {},
   "essayMarker": {
@@ -309,8 +412,82 @@
       "feedbackFailed": "تعذّر جلب الملاحظات"
     }
   },
-  "contentGenerator": {},
-  "mastery": {},
+  "contentGenerator": {
+    "metaTitle": "مولّد المحتوى · Shift AI",
+    "title": "مولّد المحتوى",
+    "subtitle": "أنشئ ملخصات مراجعة أو أسئلة تدريبية أو ملاحظات لأي موضوع — بما يناسب {yearGroup} ({curriculum}).",
+    "subtitlePractice": "أسئلة تدريبية بأسلوب الامتحان بالذكاء الاصطناعي — وليست بنكاً لأوراق سابقة.",
+    "subtitlePracticeSubject": "أسئلة تدريبية بأسلوب الامتحان بالذكاء الاصطناعي في {subject} — وليست بنكاً لأوراق سابقة.",
+    "secondarySchool": "المرحلة الثانوية",
+    "subject": "المادة",
+    "examBoard": "مجلس الامتحان",
+    "optional": "(اختياري)",
+    "topic": "الموضوع",
+    "topicPlaceholder": "مثلاً البناء الضوئي، أسباب الحرب العالمية الأولى…",
+    "contentType": "نوع المحتوى",
+    "generating": "جارٍ الإنشاء…",
+    "generate": "أنشئ المحتوى",
+    "saveToNotes": "حفظ في الملاحظات",
+    "savedToNotes": "تم الحفظ في الملاحظات",
+    "marks": "س{n} · {marks} درجة",
+    "answer": "الإجابة: ",
+    "markScheme": "مخطط التصحيح: ",
+    "sections": {
+      "keyConcepts": "المفاهيم الأساسية",
+      "importantTerms": "المصطلحات المهمة",
+      "examTips": "نصائح الامتحان",
+      "commonMistakes": "الأخطاء الشائعة"
+    },
+    "types": {
+      "summary": {
+        "label": "ملخص المراجعة",
+        "desc": "ملاحظات مراجعة موجزة ومنظّمة"
+      },
+      "practice_questions": {
+        "label": "أسئلة تدريبية",
+        "desc": "أسئلة بأسلوب الامتحان مع إجابات نموذجية"
+      },
+      "revision_notes": {
+        "label": "ملاحظات المراجعة",
+        "desc": "ملاحظات مفصّلة مع مصطلحات ونصائح"
+      }
+    },
+    "errors": {
+      "required": "المادة والموضوع مطلوبان",
+      "generateFailed": "تعذّر إنشاء المحتوى",
+      "noSubjectRecord": "تعذّر العثور على سجل مادة لحفظ الملاحظات",
+      "saveFailed": "تعذّر الحفظ في الملاحظات"
+    }
+  },
+  "mastery": {
+    "metaTitle": "خريطة الإتقان · Shift AI",
+    "title": "خريطة الإتقان",
+    "subtitle": "تتبّع تقدّمك في كل موضوع — مرمّز بالألوان حسب مستوى الإتقان",
+    "overallProgress": "التقدّم الإجمالي",
+    "tapToCycle": "· اضغط بطاقة موضوع لتغيير الحالة",
+    "noSubjects": "أضف المواد المفضّلة أثناء الإعداد لبناء خريطة الإتقان.",
+    "subject": "المادة",
+    "masteredCount": "{mastered}/{total} متقن",
+    "generating": "جارٍ إنشاء خريطة الموضوعات…",
+    "regenerate": "أعد إنشاء خريطة الموضوعات",
+    "generate": "أنشئ خريطة الموضوعات",
+    "noTopics": "لا موضوعات بعد لـ {subject}.",
+    "generateHint": "أنشئ خريطة من 12–15 موضوعاً منهجياً للبدء.",
+    "tapToUpdate": "اضغط لتحديث الحالة",
+    "otherSubjects": "مواد أخرى",
+    "topicsMastered": "{topics} موضوعاً · {mastered} متقن",
+    "confirmRegenerate": "إعادة إنشاء واستبدال كل موضوعات هذه المادة؟ ستُصفَّر حالة التقدّم.",
+    "thisSubject": "هذه المادة",
+    "status": {
+      "not_started": "لم يبدأ",
+      "learning": "قيد التعلّم",
+      "mastered": "متقن"
+    },
+    "errors": {
+      "generateFailed": "تعذّر إنشاء خريطة الموضوعات",
+      "updateFailed": "تعذّر تحديث الموضوع"
+    }
+  },
   "specTracker": {
     "metaTitle": "متتبع المنهج · Shift AI",
     "title": "متتبع المنهج",
