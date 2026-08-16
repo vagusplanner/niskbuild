@@ -67,6 +67,7 @@ export default function EventCollaborationPanel({ eventId, onClose }) {
   useEffect(() => {
     const now = new Date();
     const activeRecent = edits.filter(edit => {
+      if (edit.kind === 'history') return false;
       const lastActive = new Date(edit.last_active || edit.created_date);
       return (now - lastActive) < 60000; // Active in last 60 seconds
     });
@@ -107,6 +108,11 @@ export default function EventCollaborationPanel({ eventId, onClose }) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [comments]);
+
+  const historyEdits = (edits || [])
+    .filter((e) => e.kind === 'history' || e.new_value != null)
+    .sort((a, b) => new Date(b.created_date || b.created_at) - new Date(a.created_date || a.created_at))
+    .slice(0, 12);
 
   const otherEditors = activeEditors.filter(e => e.email !== user?.email);
 
@@ -151,6 +157,26 @@ export default function EventCollaborationPanel({ eventId, onClose }) {
           </div>
         )}
       </div>
+
+      {historyEdits.length > 0 && (
+        <div className="px-4 py-2 border-b bg-white max-h-36 overflow-y-auto">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1">Edit history</p>
+          <ul className="space-y-1">
+            {historyEdits.map((edit) => (
+              <li key={edit.id} className="text-xs text-slate-600">
+                <span className="font-medium">{edit.editor_name || edit.editor_email}</span>
+                {' '}changed {edit.field}{' '}
+                <span className="text-slate-400">
+                  {format(new Date(edit.created_date || edit.created_at), 'MMM d, h:mm a')}
+                </span>
+                {edit.new_value != null && (
+                  <span className="block truncate text-slate-500">→ {String(edit.new_value)}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Comments/Messages */}
       <ScrollArea className="flex-1 p-4 bg-slate-50">

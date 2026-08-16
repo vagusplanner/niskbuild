@@ -23,6 +23,19 @@ export default function ShareTaskModal({ isOpen, onClose, task }) {
   const [isSharing, setIsSharing] = useState(false);
   const [sharedWith, setSharedWith] = useState([]);
 
+  useEffect(() => {
+    if (!isOpen || !task?.id) return;
+    base44.entities.TaskShare.filter({ task_id: task.id }).then((rows) => {
+      setSharedWith(
+        (rows || []).map((s) => ({
+          email: s.shared_with || s.shared_with_email,
+          permission: s.permission,
+          delegated: false,
+        }))
+      );
+    }).catch(() => {});
+  }, [isOpen, task?.id]);
+
   const handleShare = async () => {
     if (!email.trim()) return;
 

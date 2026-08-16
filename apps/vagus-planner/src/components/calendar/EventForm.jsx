@@ -80,13 +80,33 @@ export default function EventForm({ isOpen, onClose, onSave, event, selectedDate
   const [isAutoFilling, setIsAutoFilling] = useState(false);
   const [prayerConflict, setPrayerConflict] = useState(null);
   const [showCollabPanel, setShowCollabPanel] = useState(false);
+  const [editLocked, setEditLocked] = useState(false);
 
   const queryClient = useQueryClient();
 
   const saveEventMutation = useMutation({
-    mutationFn: (eventData) => event
-      ? base44.entities.Event.update(event.id, eventData)
-      : base44.entities.Event.create(eventData),
+    mutationFn: async (eventData) => {
+      if (event) {
+        const saved = await base44.entities.Event.update(event.id, eventData)
+        const fields = ['title', 'description', 'location']
+        const historyWrites = fields
+          .filter((field) => String(event[field] ?? '') !== String(eventData[field] ?? ''))
+          .map((field) =>
+            base44.entities.EventEdit.create({
+              event_id: event.id,
+              kind: 'history',
+              field,
+              editor_email: user?.email,
+              editor_name: user?.full_name || user?.email,
+              previous_value: event[field] ?? '',
+              new_value: eventData[field] ?? '',
+            })
+          )
+        await Promise.allSettled(historyWrites)
+        return saved
+      }
+      return base44.entities.Event.create(eventData)
+    },
     onMutate: async (eventData) => {
       await queryClient.cancelQueries({ queryKey: ['events'] });
       const previous = queryClient.getQueryData(['events']);
@@ -552,7 +572,7 @@ Return the most appropriate reminder time in minutes and a brief reason.`,
             <div className="flex-1 overflow-auto p-6 space-y-5 bg-white dark:bg-slate-900">
               {/* Real-time editing indicator */}
               {event && (
-                <RealTimeEventEditor eventId={event.id}>
+                <RealTimeEventEditor eventId={event.id} onLockChange={setEditLocked}>
                   <div />
                 </RealTimeEventEditor>
               )}
@@ -622,6 +642,7 @@ Return the most appropriate reminder time in minutes and a brief reason.`,
                     onChange={(e) => handleChange('title', e.target.value)}
                     activeEdits={activeEdits}
                     user={user}
+                    disabled={editLocked}
                     id="title"
                     placeholder="Enter event title"
                     required
@@ -865,6 +886,7 @@ Return the most appropriate reminder time in minutes and a brief reason.`,
                     onChange={(e) => handleChange('description', e.target.value)}
                     activeEdits={activeEdits}
                     user={user}
+                    disabled={editLocked}
                     id="description"
                     placeholder="Add description"
                     rows={3}
@@ -989,6 +1011,7 @@ Return the most appropriate reminder time in minutes and a brief reason.`,
               </Button>
               <Button
                 onClick={handleSubmit}
+                disabled={editLocked}
                 className="flex-1 h-11 bg-teal-600 hover:bg-teal-700 text-white"
               >
                 {event ? 'Update Event' : 'Create Event'}

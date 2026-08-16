@@ -16,6 +16,8 @@ export default function CollaborativeInput({
   onChange, 
   activeEdits = [],
   user,
+  as,
+  disabled,
   ...inputProps 
 }) {
   const [cursorPosition, setCursorPosition] = useState(0);
@@ -50,7 +52,7 @@ export default function CollaborativeInput({
   // Debounced cursor update
   const debouncedCursorUpdate = useRef(
     debounce((position, selStart, selEnd) => {
-      if (!eventId || !user) return;
+      if (!eventId || !user || disabled) return;
       
       updateCursorMutation.mutate({
         cursor_position: position,
@@ -89,7 +91,7 @@ export default function CollaborativeInput({
 
   // Other users editing this field
   const otherEditors = activeEdits.filter(
-    e => e.field === field && e.editor_email !== user?.email && e.event_id === eventId
+    e => e.field === field && e.kind !== 'history' && e.editor_email !== user?.email && e.event_id === eventId
   );
 
   // Filter out stale edits (older than 60 seconds)
@@ -101,10 +103,11 @@ export default function CollaborativeInput({
   return (
     <div className="relative">
       {/* Render input/textarea based on props */}
-      {inputProps.as === 'textarea' ? (
+      {as === 'textarea' ? (
         <textarea
           ref={inputRef}
           value={value}
+          disabled={disabled}
           onChange={(e) => {
             onChange(e);
             handleSelectionChange();
@@ -115,6 +118,7 @@ export default function CollaborativeInput({
         <input
           ref={inputRef}
           value={value}
+          disabled={disabled}
           onChange={(e) => {
             onChange(e);
             handleSelectionChange();

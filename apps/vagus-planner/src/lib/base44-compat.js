@@ -65,6 +65,13 @@ const ENTITY_TABLES = {
   Chat: 'vp_chats',
   LiveLocation: 'vp_live_locations',
   Hadith: 'vp_saved_hadiths',
+  EventEdit: 'vp_event_edits',
+  EventComment: 'vp_comments',
+  Comment: 'vp_comments',
+  SharedFile: 'vp_shared_files',
+  EventLock: 'vp_event_locks',
+  SyncState: 'vp_sync_states',
+  TaskShare: 'vp_task_shares',
 }
 
 function tableFrom(tableName) {
@@ -142,6 +149,8 @@ function mapPayloadToRow(entityName, payload, userId) {
     if (p.status != null) row.status = mapTaskStatus(p.status)
     else if (userId && row.title) row.status = 'pending'
     if (p.event_id != null && p.event_id !== '') row.event_id = p.event_id
+    if (p.assigned_to != null) row.assigned_to = p.assigned_to
+    if (p.assigned_by != null) row.assigned_by = p.assigned_by
     return row
   }
 
@@ -221,6 +230,100 @@ function mapPayloadToRow(entityName, payload, userId) {
         typeof p.ai_context === 'object' && !Array.isArray(p.ai_context)
           ? p.ai_context
           : { value: p.ai_context }
+    }
+    row.updated_at = new Date().toISOString()
+    return row
+  }
+
+  if (entityName === 'EventEdit') {
+    const row = {}
+    if (userId) row.user_id = userId
+    if (p.event_id != null) row.event_id = p.event_id
+    row.kind = p.kind === 'history' ? 'history' : 'presence'
+    if (p.editor_email != null) row.editor_email = p.editor_email
+    if (p.editor_name != null) row.editor_name = p.editor_name
+    if (p.field != null) row.field = p.field
+    if (p.color != null) row.color = p.color
+    if (p.cursor_position != null) row.cursor_position = p.cursor_position
+    if (p.selection_start != null) row.selection_start = p.selection_start
+    if (p.selection_end != null) row.selection_end = p.selection_end
+    row.last_active = p.last_active ?? new Date().toISOString()
+    if (p.previous_value != null) row.previous_value = String(p.previous_value)
+    if (p.new_value != null) row.new_value = String(p.new_value)
+    row.updated_at = new Date().toISOString()
+    return row
+  }
+
+  if (entityName === 'Comment' || entityName === 'EventComment') {
+    const entityType =
+      p.entity_type ??
+      p.context_type ??
+      (entityName === 'EventComment' || p.event_id ? 'event' : 'event')
+    const entityId = p.entity_id ?? p.context_id ?? p.event_id
+    const content = p.content ?? p.message ?? ''
+    const row = {
+      entity_type: entityType,
+      entity_id: entityId != null ? String(entityId) : '',
+      content,
+      author_email: p.author_email ?? p.user_email ?? null,
+      author_name: p.author_name ?? p.user_name ?? null,
+    }
+    if (userId) row.user_id = userId
+    row.updated_at = new Date().toISOString()
+    return row
+  }
+
+  if (entityName === 'SharedFile') {
+    const row = {
+      file_name: p.file_name ?? p.name ?? 'file',
+      storage_provider: p.storage_provider ?? 'supabase',
+    }
+    if (userId) row.user_id = userId
+    if (p.event_id != null || p.shared_in_event != null) {
+      row.event_id = p.event_id ?? p.shared_in_event
+    }
+    if (p.chat_id != null) row.chat_id = p.chat_id
+    if (p.file_type != null) row.file_type = p.file_type
+    if (p.file_size != null) row.file_size = p.file_size
+    if (p.storage_path != null) row.storage_path = p.storage_path
+    if (p.file_url != null) row.file_url = p.file_url
+    row.updated_at = new Date().toISOString()
+    return row
+  }
+
+  if (entityName === 'EventLock') {
+    const row = {}
+    if (userId) row.user_id = userId
+    if (p.event_id != null) row.event_id = p.event_id
+    if (p.locked_by != null) row.locked_by = p.locked_by
+    row.last_active = p.last_active ?? new Date().toISOString()
+    row.updated_at = new Date().toISOString()
+    return row
+  }
+
+  if (entityName === 'SyncState') {
+    const row = { service: p.service ?? 'googlecalendar' }
+    if (userId) row.user_id = userId
+    if (p.status != null) row.status = p.status
+    if (p.last_synced_at != null) row.last_synced_at = p.last_synced_at
+    if (p.last_attempted_at != null) row.last_attempted_at = p.last_attempted_at
+    if (p.last_error != null) row.last_error = p.last_error
+    if (p.sync_token != null) row.sync_token = p.sync_token
+    if (p.metadata != null) row.metadata = p.metadata
+    row.updated_at = new Date().toISOString()
+    return row
+  }
+
+  if (entityName === 'TaskShare') {
+    const row = {
+      shared_with_email: p.shared_with_email ?? p.shared_with,
+      permission: p.permission === 'edit' ? 'edit' : 'view',
+      status: p.status ?? 'pending',
+    }
+    if (userId) row.user_id = userId
+    if (p.task_id != null) row.task_id = p.task_id
+    if (p.shared_by != null || p.shared_by_email != null) {
+      row.shared_by_email = p.shared_by_email ?? p.shared_by
     }
     row.updated_at = new Date().toISOString()
     return row
@@ -344,7 +447,58 @@ function mapRowFromDb(entityName, row) {
     }
   }
 
-  return row
+  if (entityName === 'Comment' || entityName === 'EventComment') {
+    const content = row.content ?? row.message ?? ''
+    return {
+      ...row,
+      content,
+      message: row.message ?? content,
+      author_email: row.author_email,
+      author_name: row.author_name,
+      user_email: row.user_email ?? row.author_email,
+      user_name: row.user_name ?? row.author_name,
+      event_id: row.event_id ?? (row.entity_type === 'event' ? row.entity_id : null),
+      entity_type: row.entity_type,
+      entity_id: row.entity_id,
+      context_type: row.context_type ?? row.entity_type,
+      context_id: row.context_id ?? row.entity_id,
+      created_date: row.created_at ?? row.created_date,
+      updated_date: row.updated_at ?? row.updated_date,
+    }
+  }
+
+  if (entityName === 'SharedFile') {
+    return {
+      ...row,
+      shared_in_event: row.shared_in_event ?? row.event_id,
+      created_date: row.created_at ?? row.created_date,
+      updated_date: row.updated_at ?? row.updated_date,
+    }
+  }
+
+  if (entityName === 'TaskShare') {
+    return {
+      ...row,
+      shared_with: row.shared_with ?? row.shared_with_email,
+      shared_by: row.shared_by ?? row.shared_by_email,
+      created_date: row.created_at ?? row.created_date,
+      updated_date: row.updated_at ?? row.updated_date,
+    }
+  }
+
+  if (entityName === 'EventEdit' || entityName === 'EventLock' || entityName === 'SyncState') {
+    return {
+      ...row,
+      created_date: row.created_at ?? row.created_date,
+      updated_date: row.updated_at ?? row.updated_date,
+    }
+  }
+
+  return {
+    ...row,
+    created_date: row.created_at ?? row.created_date,
+    updated_date: row.updated_at ?? row.updated_date,
+  }
 }
 
 function mapColumn(column, entityName) {
@@ -370,6 +524,26 @@ function applySort(query, sortField, entityName) {
 function applyFilters(query, criteria, entityName) {
   let next = query
   for (const [key, value] of Object.entries(criteria ?? {})) {
+    if (entityName === 'EventComment' && key === 'event_id') {
+      next = next.eq('entity_type', 'event').eq('entity_id', String(value))
+      continue
+    }
+    if (entityName === 'Comment' && key === 'context_id') {
+      next = next.eq('entity_id', String(value))
+      continue
+    }
+    if (entityName === 'Comment' && key === 'context_type') {
+      next = next.eq('entity_type', value)
+      continue
+    }
+    if (entityName === 'SharedFile' && key === 'shared_in_event') {
+      next = next.eq('event_id', value)
+      continue
+    }
+    if (entityName === 'TaskShare' && (key === 'shared_with' || key === 'shared_by')) {
+      next = next.eq(key === 'shared_with' ? 'shared_with_email' : 'shared_by_email', value)
+      continue
+    }
     next = next.eq(mapColumn(key, entityName), value)
   }
   return next
@@ -435,6 +609,139 @@ function createStubEntityApi() {
     filter: async () => [],
     subscribe: () => () => {},
   }
+}
+
+function subscribeEntity(tableName, entityName, callback) {
+  const channel = supabase
+    .channel(`vp_${tableName}_${entityName}_${Math.random().toString(36).slice(2)}`)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: FIRSTPARTY_SCHEMA, table: tableName },
+      (payload) => {
+        const eventType = payload.eventType
+        const type =
+          eventType === 'INSERT' ? 'create' : eventType === 'UPDATE' ? 'update' : 'delete'
+        const raw = payload.new && Object.keys(payload.new).length ? payload.new : payload.old
+        callback({
+          type,
+          id: raw?.id,
+          data: mapRowFromDb(entityName, raw),
+        })
+      }
+    )
+    .subscribe()
+  return () => {
+    supabase.removeChannel(channel)
+  }
+}
+
+async function listDirectoryUsers(criteria = {}) {
+  const { data, error } = await supabase.rpc('vp_list_directory_users')
+  let users = []
+  if (!error && Array.isArray(data)) {
+    users = data
+  } else if (!error && typeof data === 'string') {
+    try {
+      users = JSON.parse(data)
+    } catch {
+      users = []
+    }
+  } else {
+    const { data: auth } = await supabase.auth.getUser()
+    const me = mapSupabaseUserToVpUser(auth?.user)
+    users = me ? [me] : []
+  }
+
+  if (criteria && typeof criteria === 'object') {
+    for (const [key, value] of Object.entries(criteria)) {
+      users = users.filter((u) => u?.[key] === value)
+    }
+  }
+  return users
+}
+
+function createUserEntityApi() {
+  return {
+    list: async () => listDirectoryUsers(),
+    filter: async (criteria = {}) => listDirectoryUsers(criteria),
+    get: async (id) => {
+      const users = await listDirectoryUsers()
+      return users.find((u) => u.id === id) ?? null
+    },
+    create: async () => {
+      throw new Error('entities.User is a directory lookup, not a CRUD entity')
+    },
+    update: async () => {
+      throw new Error('entities.User is a directory lookup, not a CRUD entity')
+    },
+    delete: async () => {
+      throw new Error('entities.User is a directory lookup, not a CRUD entity')
+    },
+    subscribe: () => () => {},
+  }
+}
+
+async function insertOrUpdateRow(tableName, entityName, payload) {
+  const userId = await getCurrentUserId()
+  const row = mapPayloadToRow(entityName, payload, userId)
+
+  if (entityName === 'EventEdit' && row.kind === 'presence' && row.event_id && row.editor_email && row.field) {
+    const { data: existing } = await tableFrom(tableName)
+      .select('*')
+      .eq('event_id', row.event_id)
+      .eq('editor_email', row.editor_email)
+      .eq('field', row.field)
+      .eq('kind', 'presence')
+      .limit(1)
+    if (existing?.[0]) {
+      const { data, error } = await tableFrom(tableName)
+        .update(row)
+        .eq('id', existing[0].id)
+        .select()
+      if (error) throw error
+      return mapRowFromDb(entityName, data[0])
+    }
+  }
+
+  if (entityName === 'EventLock' && row.event_id && userId) {
+    const { data: existing } = await tableFrom(tableName)
+      .select('*')
+      .eq('event_id', row.event_id)
+      .limit(1)
+    if (existing?.[0]) {
+      const last = new Date(existing[0].last_active || existing[0].created_at).getTime()
+      const stale = Date.now() - last > 90_000
+      if (existing[0].user_id === userId || stale) {
+        const { data, error } = await tableFrom(tableName)
+          .update({ ...row, user_id: userId })
+          .eq('id', existing[0].id)
+          .select()
+        if (error) throw error
+        return mapRowFromDb(entityName, data[0])
+      }
+      return mapRowFromDb(entityName, existing[0])
+    }
+  }
+
+  if (entityName === 'SyncState' && row.service && userId) {
+    const { data: existing } = await tableFrom(tableName)
+      .select('*')
+      .eq('user_id', userId)
+      .eq('service', row.service)
+      .limit(1)
+    if (existing?.[0]) {
+      const { data, error } = await tableFrom(tableName)
+        .update(row)
+        .eq('id', existing[0].id)
+        .select()
+      if (error) throw error
+      return mapRowFromDb(entityName, data[0])
+    }
+  }
+
+  const { data, error } = await tableFrom(tableName).insert([row]).select()
+  if (error) throw error
+  return mapRowFromDb(entityName, data[0])
 }
 
 // =============================================
@@ -554,6 +861,10 @@ export const base44 = {
   
   entities: new Proxy({}, {
     get: (target, entityName) => {
+      if (entityName === 'User') {
+        return createUserEntityApi()
+      }
+
       const tableName = ENTITY_TABLES[entityName]
       
       if (!tableName) {
@@ -589,6 +900,13 @@ export const base44 = {
           return mapRowFromDb(entityName, data)
         },
         create: async (payload) => {
+          if (
+            entityName === 'EventEdit' ||
+            entityName === 'EventLock' ||
+            entityName === 'SyncState'
+          ) {
+            return insertOrUpdateRow(tableName, entityName, payload)
+          }
           const userId = await getCurrentUserId()
           let row
           if (entityName === 'UserSettings') {
@@ -626,8 +944,7 @@ export const base44 = {
           if (error) throw error
           return { success: true }
         },
-        // Realtime not wired in compat layer yet — no-op for legacy subscribers
-        subscribe: () => () => {},
+        subscribe: (callback) => subscribeEntity(tableName, entityName, callback),
       }
     }
   }),

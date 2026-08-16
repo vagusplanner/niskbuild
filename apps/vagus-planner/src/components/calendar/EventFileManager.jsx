@@ -44,7 +44,7 @@ export default function EventFileManager({ eventId }) {
             <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
             <p className="text-sm text-slate-600 mb-3">No documents attached</p>
             <p className="text-xs text-slate-500">
-              Click the paperclip icon to attach files from Google Drive
+              Click the paperclip icon to attach a file
             </p>
           </div>
         )}

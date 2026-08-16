@@ -3,7 +3,7 @@
  * Shows sync status, last sync time, allows manual full sync trigger,
  * and exposes a "Push to Google" button on any event.
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -21,6 +21,11 @@ export default function GoogleCalendarSyncPanel() {
   const [syncing, setSyncing] = useState(false);
   const queryClient = useQueryClient();
 
+  const { data: currentUser } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: () => base44.auth.me()
+  });
+
   const { data: syncStates = [] } = useQuery({
     queryKey: ['syncState'],
     queryFn: () => base44.entities.SyncState.filter({ service: 'googlecalendar' }),
@@ -36,16 +41,52 @@ export default function GoogleCalendarSyncPanel() {
   const syncState = syncStates[0];
   const lastSynced = syncState?.last_synced_at;
 
+  useEffect(() => {
+    if (syncStates === undefined) return;
+    if (syncStates.length > 0) return;
+    base44.entities.SyncState.create({
+      service: 'googlecalendar',
+      status: 'idle',
+    }).then(() => {
+      queryClient.invalidateQueries({ queryKey: ['syncState'] });
+    }).catch(() => {});
+  }, [syncStates, queryClient]);
+
+  const persistSyncAttempt = async (patch) => {
+    const existing = syncState;
+    if (existing?.id) {
+      await base44.entities.SyncState.update(existing.id, patch);
+    } else {
+      await base44.entities.SyncState.create({ service: 'googlecalendar', ...patch });
+    }
+    queryClient.invalidateQueries({ queryKey: ['syncState'] });
+  };
+
   const handleFullSync = async () => {
     setSyncing(true);
     try {
+      await persistSyncAttempt({
+        status: 'syncing',
+        last_attempted_at: new Date().toISOString(),
+        last_error: null,
+      });
       const res = await base44.functions.invoke('initialGCalSync', {});
       const { created, updated, total } = res.data || {};
+      await persistSyncAttempt({
+        status: 'ok',
+        last_synced_at: new Date().toISOString(),
+        last_attempted_at: new Date().toISOString(),
+        last_error: null,
+      });
       toast.success(`Sync complete! ${created} new, ${updated} updated (${total} total events)`);
       queryClient.invalidateQueries({ queryKey: ['events'] });
-      queryClient.invalidateQueries({ queryKey: ['syncState'] });
       queryClient.invalidateQueries({ queryKey: ['gcal-events-count'] });
     } catch (e) {
+      await persistSyncAttempt({
+        status: 'error',
+        last_attempted_at: new Date().toISOString(),
+        last_error: e?.message || 'Sync failed',
+      }).catch(() => {});
       toast.error('Sync failed. Please try again.');
     }
     setSyncing(false);
