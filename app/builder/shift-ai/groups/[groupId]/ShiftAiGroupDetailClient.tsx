@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import {
   Check,
   ChevronLeft,
@@ -24,13 +25,8 @@ import { SA } from '@/lib/shift-ai/theme';
 
 type Tab = 'notes' | 'flashcards' | 'leaderboard';
 
-const TABS: { id: Tab; label: string; icon: typeof FileText }[] = [
-  { id: 'notes', label: 'Notes Board', icon: FileText },
-  { id: 'flashcards', label: 'Flashcards', icon: Layers },
-  { id: 'leaderboard', label: 'Leaderboard', icon: Trophy },
-];
-
 function FlashcardViewer({ set }: { set: GroupFlashcardSet }) {
+  const t = useTranslations('groups');
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const cards = set.cards;
@@ -43,7 +39,7 @@ function FlashcardViewer({ set }: { set: GroupFlashcardSet }) {
       <div className="flex items-center justify-between gap-2">
         <p className={`text-sm font-bold ${SA.text}`}>{set.topic}</p>
         <span className={`text-xs ${SA.muted}`}>
-          by {set.author_name} · {cards.length} cards
+          {t('byAuthorCards', { author: set.author_name ?? '', count: cards.length })}
         </span>
       </div>
       <button
@@ -52,7 +48,7 @@ function FlashcardViewer({ set }: { set: GroupFlashcardSet }) {
         className="flex min-h-[140px] w-full flex-col items-center justify-center rounded-2xl bg-[var(--sa-navy-800)] p-6 text-center text-white transition-transform"
       >
         <p className="text-xs uppercase tracking-wide text-white/50">
-          {flipped ? 'Back' : 'Front'} · tap to flip
+          {flipped ? t('back') : t('front')} · {t('tapToFlip')}
         </p>
         <p className="mt-2 text-base font-medium leading-relaxed">
           {flipped ? card.back : card.front}
@@ -68,7 +64,7 @@ function FlashcardViewer({ set }: { set: GroupFlashcardSet }) {
           }}
           className={SA.btnSecondary}
         >
-          Previous
+          {t('previous')}
         </button>
         <span className={`text-xs ${SA.muted}`}>
           {index + 1} / {cards.length}
@@ -82,7 +78,7 @@ function FlashcardViewer({ set }: { set: GroupFlashcardSet }) {
           }}
           className={SA.btnSecondary}
         >
-          Next
+          {t('next')}
         </button>
       </div>
     </div>
@@ -104,6 +100,7 @@ export default function ShiftAiGroupDetailClient({
   initialFlashcardSets: GroupFlashcardSet[];
   leaderboard: GroupLeaderboardEntry[];
 }) {
+  const t = useTranslations('groups');
   const [tab, setTab] = useState<Tab>('notes');
   const [copied, setCopied] = useState(false);
   const [notes, setNotes] = useState(initialNotes);
@@ -138,7 +135,7 @@ export default function ShiftAiGroupDetailClient({
       });
       const data = (await res.json()) as { note?: GroupNote; error?: string };
       if (!res.ok) {
-        setError(data.error || 'Could not post note');
+        setError(data.error || t('postFailed'));
         return;
       }
       if (data.note) {
@@ -146,7 +143,7 @@ export default function ShiftAiGroupDetailClient({
         setNoteContent('');
       }
     } catch {
-      setError('Could not post note');
+      setError(t('postFailed'));
     } finally {
       setPosting(false);
     }
@@ -164,7 +161,7 @@ export default function ShiftAiGroupDetailClient({
       });
       const data = (await res.json()) as { set?: GroupFlashcardSet; error?: string };
       if (!res.ok) {
-        setError(data.error || 'Could not generate flashcards');
+        setError(data.error || t('generateFailed'));
         return;
       }
       if (data.set) {
@@ -173,11 +170,17 @@ export default function ShiftAiGroupDetailClient({
         setFlashTopic('');
       }
     } catch {
-      setError('Could not generate flashcards');
+      setError(t('generateFailed'));
     } finally {
       setGenerating(false);
     }
   };
+
+  const tabs: { id: Tab; label: string; icon: typeof FileText }[] = [
+    { id: 'notes', label: t('tabNotes'), icon: FileText },
+    { id: 'flashcards', label: t('tabFlashcards'), icon: Layers },
+    { id: 'leaderboard', label: t('tabLeaderboard'), icon: Trophy },
+  ];
 
   return (
     <div className={SA.content}>
@@ -185,8 +188,8 @@ export default function ShiftAiGroupDetailClient({
         href="/builder/shift-ai/groups"
         className={`mb-4 inline-flex items-center gap-1 text-sm ${SA.muted} hover:underline`}
       >
-        <ChevronLeft className="h-4 w-4" />
-        All Groups
+        <ChevronLeft className="h-4 w-4 rtl:-scale-x-100" />
+        {t('allGroups')}
       </Link>
 
       <div className={`${SA.cardPadded} mb-6 flex flex-wrap items-start justify-between gap-4`}>
@@ -198,7 +201,7 @@ export default function ShiftAiGroupDetailClient({
           <div className={`mt-3 flex flex-wrap items-center gap-3 text-xs ${SA.muted}`}>
             <span className="flex items-center gap-1">
               <Users className="h-3.5 w-3.5" />
-              {members.length} member{members.length !== 1 ? 's' : ''}
+              {t('memberCount', { count: members.length })}
             </span>
             {memberNames ? <span>{memberNames}</span> : null}
           </div>
@@ -210,23 +213,23 @@ export default function ShiftAiGroupDetailClient({
           </div>
           <button type="button" onClick={() => void copyCode()} className={SA.btnSecondary}>
             {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-            {copied ? 'Copied!' : 'Copy'}
+            {copied ? t('copied') : t('copy')}
           </button>
         </div>
       </div>
 
       <div className="mb-6 flex gap-1 rounded-xl bg-[var(--sa-navy-50)] p-1">
-        {TABS.map((t) => {
-          const Icon = t.icon;
+        {tabs.map((item) => {
+          const Icon = item.icon;
           return (
             <button
-              key={t.id}
+              key={item.id}
               type="button"
-              onClick={() => setTab(t.id)}
-              className={tab === t.id ? SA.tabActive : SA.tab}
+              onClick={() => setTab(item.id)}
+              className={tab === item.id ? SA.tabActive : SA.tab}
             >
               <Icon className="h-3.5 w-3.5" />
-              {t.label}
+              {item.label}
             </button>
           );
         })}
@@ -240,7 +243,7 @@ export default function ShiftAiGroupDetailClient({
             <textarea
               value={noteContent}
               onChange={(e) => setNoteContent(e.target.value)}
-              placeholder="Share a note with your group…"
+              placeholder={t('notePlaceholder')}
               rows={3}
               className={SA.textarea}
             />
@@ -251,18 +254,18 @@ export default function ShiftAiGroupDetailClient({
               className={SA.btnPrimary}
             >
               {posting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Post note
+              {t('postNote')}
             </button>
           </div>
           {notes.length === 0 ? (
-            <p className={`text-center text-sm ${SA.muted}`}>No notes yet — be the first to post.</p>
+            <p className={`text-center text-sm ${SA.muted}`}>{t('noNotes')}</p>
           ) : (
             notes.map((note) => (
               <div key={note.id} className={SA.cardPadded}>
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <span className={`text-xs font-semibold ${SA.text}`}>
                     {note.author_name}
-                    {note.student_id === currentStudentId ? ' (you)' : ''}
+                    {note.student_id === currentStudentId ? ` ${t('you')}` : ''}
                   </span>
                   <span className={`text-xs ${SA.muted}`}>
                     {new Date(note.created_at).toLocaleString()}
@@ -284,7 +287,7 @@ export default function ShiftAiGroupDetailClient({
               type="text"
               value={flashTopic}
               onChange={(e) => setFlashTopic(e.target.value)}
-              placeholder="Topic for AI flashcards…"
+              placeholder={t('flashTopicPlaceholder')}
               className={SA.input}
             />
             <button
@@ -294,7 +297,7 @@ export default function ShiftAiGroupDetailClient({
               className={SA.btnPrimary}
             >
               {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Layers className="h-4 w-4" />}
-              Generate shared deck
+              {t('generateSharedDeck')}
             </button>
           </div>
           {flashcardSets.length > 0 ? (
@@ -320,22 +323,16 @@ export default function ShiftAiGroupDetailClient({
               <FlashcardViewer set={selectedSet} />
             </div>
           ) : (
-            <p className={`text-center text-sm ${SA.muted}`}>
-              No flashcard sets yet — generate one for the group.
-            </p>
+            <p className={`text-center text-sm ${SA.muted}`}>{t('noFlashcardSets')}</p>
           )}
         </div>
       ) : null}
 
       {tab === 'leaderboard' ? (
         <div className={SA.cardPadded}>
-          <p className={`mb-4 text-sm ${SA.muted}`}>
-            Best Quiz Arcade score per member — only visible within this group.
-          </p>
+          <p className={`mb-4 text-sm ${SA.muted}`}>{t('leaderboardHint')}</p>
           {leaderboard.length === 0 ? (
-            <p className={`text-center text-sm ${SA.muted}`}>
-              No arcade scores yet. Play Quiz Arcade to climb the board.
-            </p>
+            <p className={`text-center text-sm ${SA.muted}`}>{t('noScores')}</p>
           ) : (
             <ol className="space-y-2">
               {leaderboard.map((entry, i) => (
@@ -360,10 +357,10 @@ export default function ShiftAiGroupDetailClient({
                     <div>
                       <p className={`text-sm font-semibold ${SA.text}`}>
                         {entry.full_name}
-                        {entry.student_id === currentStudentId ? ' (you)' : ''}
+                        {entry.student_id === currentStudentId ? ` ${t('you')}` : ''}
                       </p>
                       <p className={`text-xs ${SA.muted}`}>
-                        {entry.games_played} game{entry.games_played !== 1 ? 's' : ''} played
+                        {t('gamesPlayed', { count: entry.games_played })}
                       </p>
                     </div>
                   </div>

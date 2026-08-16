@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import {
   BookOpen,
   FileText,
@@ -14,34 +15,10 @@ import {
   Video,
 } from 'lucide-react';
 import type { ShiftChatMessage } from '@/lib/shift-ai/assistant';
+import type { ShiftCurriculum } from '@/lib/shift-ai/constants';
 import { SA } from '@/lib/shift-ai/theme';
 
 type SubjectTab = 'notes' | 'ai' | 'flashcards' | 'quiz' | 'videos' | 'pastpaper';
-
-const TABS: {
-  id: SubjectTab;
-  label: string;
-  icon: typeof BookOpen;
-  comingSoon?: boolean;
-  href?: (subjectName: string) => string;
-}[] = [
-  { id: 'notes', label: 'Notes', icon: BookOpen },
-  { id: 'ai', label: 'AI Tutor', icon: MessageCircle },
-  { id: 'videos', label: 'Videos', icon: Video, comingSoon: true },
-  {
-    id: 'flashcards',
-    label: 'Flashcards',
-    icon: Layers,
-    href: (name) => `/builder/shift-ai/flashcards?subject=${encodeURIComponent(name)}`,
-  },
-  {
-    id: 'quiz',
-    label: 'Quizzes',
-    icon: Gamepad2,
-    href: (name) => `/builder/shift-ai/arcade?subject=${encodeURIComponent(name)}`,
-  },
-  { id: 'pastpaper', label: 'Past Papers', icon: FileText, comingSoon: true },
-];
 
 type SubjectInfo = {
   dbId: string;
@@ -55,7 +32,7 @@ type SubjectInfo = {
 type ProfileInfo = {
   yearGroup: string;
   keyStage: string;
-  curriculumLabel: string;
+  curriculum: ShiftCurriculum;
 };
 
 function ComingSoonCard({
@@ -67,11 +44,12 @@ function ComingSoonCard({
   description?: string;
   children?: ReactNode;
 }) {
+  const t = useTranslations('subject');
   return (
     <div className={`${SA.cardPadded} text-center`}>
       <p className={`text-lg font-semibold ${SA.text}`}>{title}</p>
       <p className={`mt-2 text-sm ${SA.muted}`}>
-        {description ?? 'Coming soon — this is not available yet.'}
+        {description ?? t('comingSoonDefault')}
       </p>
       {children}
     </div>
@@ -85,6 +63,7 @@ function SubjectNotesPanel({
   subjectDbId: string;
   initialContent: string;
 }) {
+  const t = useTranslations('subject');
   const [content, setContent] = useState(initialContent);
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
@@ -103,7 +82,7 @@ function SubjectNotesPanel({
 
       const data = (await res.json()) as { error?: string };
       if (!res.ok) {
-        throw new Error(data.error || 'Could not save notes');
+        throw new Error(data.error || t('saveError'));
       }
 
       setStatus('saved');
@@ -116,20 +95,18 @@ function SubjectNotesPanel({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <p className={`text-sm ${SA.muted}`}>
-          Jot down ideas, formulas, and reminders for this subject.
-        </p>
+        <p className={`text-sm ${SA.muted}`}>{t('notesHint')}</p>
         <span className={`text-xs ${SA.muted}`}>
-          {status === 'saving' ? 'Saving…' : null}
-          {status === 'saved' ? 'Saved' : null}
-          {status === 'error' ? 'Save failed' : null}
+          {status === 'saving' ? t('saving') : null}
+          {status === 'saved' ? t('saved') : null}
+          {status === 'error' ? t('saveFailed') : null}
         </span>
       </div>
       <textarea
         value={content}
         onChange={(e) => setContent(e.target.value)}
         onBlur={() => void save(content)}
-        placeholder="Your notes…"
+        placeholder={t('notesPlaceholder')}
         rows={14}
         className={`${SA.textarea} resize-y rounded-2xl`}
       />
@@ -144,7 +121,8 @@ function SubjectAiChat({
   subjectName: string;
   initialMessages: ShiftChatMessage[];
 }) {
-  const welcomeMessage = `Hi! I'm your ${subjectName} tutor.\n\nAsk me to explain concepts, walk through problems step by step, or quiz you on topics. I'll guide you — not just give answers.`;
+  const t = useTranslations('subject');
+  const welcomeMessage = t('welcome', { subject: subjectName });
 
   const [messages, setMessages] = useState<ShiftChatMessage[]>(initialMessages);
   const [input, setInput] = useState('');
@@ -182,12 +160,12 @@ function SubjectAiChat({
       };
 
       if (!res.ok || !data.userMessage || !data.assistantMessage) {
-        throw new Error(data.error || 'Could not send message');
+        throw new Error(data.error || t('sendError'));
       }
 
       setMessages((current) => [...current, data.userMessage!, data.assistantMessage!]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not send message');
+      setError(err instanceof Error ? err.message : t('sendError'));
       setInput(text);
     } finally {
       setLoading(false);
@@ -198,41 +176,46 @@ function SubjectAiChat({
 
   return (
     <div className={`${SA.chatPanel} min-h-[420px]`}>
-      {error ? <p className={`border-b ${SA.error} rounded-none px-4 py-2`}>{error}</p> : null}
+      {error ? <p className={`rounded-none border-b ${SA.error} px-4 py-2`}>{error}</p> : null}
 
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
         {showWelcome ? (
-          <div className="flex justify-start">
-            <div className={`${SA.avatar} mr-2 mt-1`}>
-              <GraduationCap className="h-3.5 w-3.5" />
+          <div className="flex w-full">
+            <div className="mr-auto flex max-w-[85%] items-start">
+              <div className={`${SA.avatar} mr-2 mt-1`}>
+                <GraduationCap className="h-3.5 w-3.5" />
+              </div>
+              <div className={`${SA.assistBubble} whitespace-pre-wrap`}>{welcomeMessage}</div>
             </div>
-            <div className={SA.assistBubble}>{welcomeMessage}</div>
           </div>
         ) : null}
 
         {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            {msg.role === 'assistant' ? (
-              <div className={`${SA.avatar} mr-2 mt-1`}>
-                <GraduationCap className="h-3.5 w-3.5" />
+          <div key={msg.id} className="flex w-full">
+            {msg.role === 'user' ? (
+              <div className="ml-auto max-w-[85%]">
+                <div className={SA.userBubble}>{msg.content}</div>
               </div>
-            ) : null}
-            <div className={msg.role === 'user' ? SA.userBubble : SA.assistBubble}>
-              {msg.content}
-            </div>
+            ) : (
+              <div className="mr-auto flex max-w-[85%] items-start">
+                <div className={`${SA.avatar} mr-2 mt-1`}>
+                  <GraduationCap className="h-3.5 w-3.5" />
+                </div>
+                <div className={SA.assistBubble}>{msg.content}</div>
+              </div>
+            )}
           </div>
         ))}
 
         {loading ? (
-          <div className="flex items-center justify-start gap-2">
-            <div className={SA.avatar}>
-              <GraduationCap className="h-3.5 w-3.5" />
-            </div>
-            <div className={`${SA.assistBubble} px-4 py-3`}>
-              <Loader2 className={`h-4 w-4 animate-spin ${SA.muted}`} />
+          <div className="flex w-full">
+            <div className="mr-auto flex items-center gap-2">
+              <div className={SA.avatar}>
+                <GraduationCap className="h-3.5 w-3.5" />
+              </div>
+              <div className={`${SA.assistBubble} px-4 py-3`}>
+                <Loader2 className={`h-4 w-4 animate-spin ${SA.muted}`} />
+              </div>
             </div>
           </div>
         ) : null}
@@ -251,7 +234,7 @@ function SubjectAiChat({
               void send();
             }
           }}
-          placeholder={`Ask about ${subjectName}…`}
+          placeholder={t('placeholder', { subject: subjectName })}
           disabled={loading}
           className={`${SA.input} flex-1 disabled:opacity-60`}
         />
@@ -260,7 +243,7 @@ function SubjectAiChat({
           onClick={() => void send()}
           disabled={!input.trim() || loading}
           className={SA.btnPrimaryIcon}
-          aria-label="Send message"
+          aria-label={t('sendAria')}
         >
           <Send className="h-4 w-4" />
         </button>
@@ -282,7 +265,34 @@ export default function ShiftAiSubjectClient({
   notesUpdatedAt: string | null;
   initialMessages: ShiftChatMessage[];
 }) {
+  const t = useTranslations('subject');
+  const tDash = useTranslations('dashboard');
   const [tab, setTab] = useState<SubjectTab>('notes');
+
+  const tabs: {
+    id: SubjectTab;
+    label: string;
+    icon: typeof BookOpen;
+    comingSoon?: boolean;
+    href?: (subjectName: string) => string;
+  }[] = [
+    { id: 'notes', label: t('tabNotes'), icon: BookOpen },
+    { id: 'ai', label: t('tabAi'), icon: MessageCircle },
+    { id: 'videos', label: t('tabVideos'), icon: Video, comingSoon: true },
+    {
+      id: 'flashcards',
+      label: t('tabFlashcards'),
+      icon: Layers,
+      href: (name) => `/builder/shift-ai/flashcards?subject=${encodeURIComponent(name)}`,
+    },
+    {
+      id: 'quiz',
+      label: t('tabQuizzes'),
+      icon: Gamepad2,
+      href: (name) => `/builder/shift-ai/arcade?subject=${encodeURIComponent(name)}`,
+    },
+    { id: 'pastpaper', label: t('tabPastPapers'), icon: FileText, comingSoon: true },
+  ];
 
   return (
     <div className={SA.content}>
@@ -293,17 +303,17 @@ export default function ShiftAiSubjectClient({
         <div>
           <h1 className={SA.headingMd}>
             {subject.name}
-            {subject.isFavourite ? <span className="ml-2 text-base">⭐</span> : null}
+            {subject.isFavourite ? <span className="ms-2 text-base">⭐</span> : null}
           </h1>
           <p className={`text-sm ${SA.muted}`}>
-            {profile.yearGroup} · {profile.keyStage} · {profile.curriculumLabel}
+            {profile.yearGroup} · {profile.keyStage} · {tDash(`curricula.${profile.curriculum}`)}
             {subject.aiPersona ? <span className={SA.text}> · {subject.aiPersona}</span> : null}
           </p>
         </div>
       </div>
 
       <div className="mb-6 flex gap-1 overflow-x-auto border-b border-[var(--sa-border)]">
-        {TABS.map((item) => {
+        {tabs.map((item) => {
           const Icon = item.icon;
           const active = tab === item.id;
           const className = active ? SA.tabActive : SA.tab;
@@ -339,21 +349,15 @@ export default function ShiftAiSubjectClient({
         ) : null}
 
         {tab === 'videos' ? (
-          <ComingSoonCard
-            title="Videos"
-            description="Lesson videos for this subject are coming soon. Nothing is wired up yet — this is a real content gap, not a hidden tool."
-          />
+          <ComingSoonCard title={t('tabVideos')} description={t('videosSoon')} />
         ) : null}
         {tab === 'pastpaper' ? (
-          <ComingSoonCard
-            title="Past Papers"
-            description="Real past papers are coming — in the meantime, try AI-generated practice questions for this subject."
-          >
+          <ComingSoonCard title={t('tabPastPapers')} description={t('pastPapersSoon')}>
             <Link
               href={`/builder/shift-ai/content-generator?subject=${encodeURIComponent(subject.name)}&type=practice_questions`}
               className={`${SA.btnPrimary} mt-4 inline-flex`}
             >
-              Try practice questions
+              {t('tryPractice')}
             </Link>
           </ComingSoonCard>
         ) : null}
@@ -361,7 +365,7 @@ export default function ShiftAiSubjectClient({
 
       {notesUpdatedAt && tab === 'notes' ? (
         <p className={`mt-3 text-xs ${SA.muted}`}>
-          Last saved {new Date(notesUpdatedAt).toLocaleString()}
+          {t('lastSaved', { when: new Date(notesUpdatedAt).toLocaleString() })}
         </p>
       ) : null}
     </div>

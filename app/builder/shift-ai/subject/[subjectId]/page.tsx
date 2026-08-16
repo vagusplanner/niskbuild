@@ -9,8 +9,10 @@ import {
   type ShiftSubjectRow,
 } from '@/lib/shift-ai/subjects';
 import { needsSubjectOnboarding } from '@/lib/shift-ai/onboarding';
-import { SHIFT_CURRICULUM_LABELS, type ShiftCurriculum } from '@/lib/shift-ai/constants';
+import { type ShiftCurriculum } from '@/lib/shift-ai/constants';
+import { shiftAiCatalog } from '@/lib/shift-ai/i18n';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getRequestStudyLanguage } from '@/lib/shift-ai/study-language';
 import { getSafeSession } from '@/lib/supabaseSession.server';
 
 type PageProps = {
@@ -94,7 +96,7 @@ export default async function ShiftAiSubjectPage({ params }: PageProps) {
       profile={{
         yearGroup: student.year_group,
         keyStage: student.key_stage,
-        curriculumLabel: SHIFT_CURRICULUM_LABELS[curriculum],
+        curriculum,
       }}
       initialNotes={noteRow?.content ?? ''}
       notesUpdatedAt={noteRow?.updated_at ?? null}
@@ -105,7 +107,7 @@ export default async function ShiftAiSubjectPage({ params }: PageProps) {
 
 export async function generateMetadata() {
   return {
-    title: 'Subject · Shift AI',
+    title: shiftAiCatalog(await getRequestStudyLanguage()).subject.metaTitle,
     robots: 'noindex',
   };
 }

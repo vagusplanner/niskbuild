@@ -1,8 +1,10 @@
 import { redirect } from 'next/navigation';
 import ShiftAiGroupsClient from '@/app/builder/shift-ai/groups/ShiftAiGroupsClient';
 import { listGroupsForStudent } from '@/lib/shift-ai/groups';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { shiftAiCatalog } from '@/lib/shift-ai/i18n';
 import { needsSubjectOnboarding } from '@/lib/shift-ai/onboarding';
+import { getRequestStudyLanguage } from '@/lib/shift-ai/study-language';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getSafeSession } from '@/lib/supabaseSession.server';
 
 export default async function ShiftAiGroupsPage() {
@@ -31,5 +33,8 @@ export default async function ShiftAiGroupsPage() {
 }
 
 export async function generateMetadata() {
-  return { title: 'Study Groups · Shift AI', robots: 'noindex' };
+  return {
+    title: shiftAiCatalog(await getRequestStudyLanguage()).groups.metaTitle,
+    robots: 'noindex',
+  };
 }

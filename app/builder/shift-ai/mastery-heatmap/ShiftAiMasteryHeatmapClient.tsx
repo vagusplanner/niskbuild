@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import type { HeatmapDay } from '@/lib/shift-ai/analytics-shared';
 import { SA } from '@/lib/shift-ai/theme';
 
@@ -32,6 +33,7 @@ export default function ShiftAiMasteryHeatmapClient({
   activeDays: number;
   embedded?: boolean;
 }) {
+  const t = useTranslations('analytics.heatmap');
   const maxCount = useMemo(
     () => Math.max(...heatmapDays.map((d) => d.count), 1),
     [heatmapDays]
@@ -48,20 +50,16 @@ export default function ShiftAiMasteryHeatmapClient({
   const heading = embedded ? (
     <div>
       <h2 className={`flex items-center gap-2 text-sm font-bold ${SA.text}`}>
-        <span aria-hidden>🔥</span> Study streak
+        <span aria-hidden>🔥</span> {t('title')}
       </h2>
-      <p className={`mt-1 text-sm ${SA.muted}`}>
-        Activity calendar — planner completions, arcade plays, flashcard reviews, and tutor chat.
-      </p>
+      <p className={`mt-1 text-sm ${SA.muted}`}>{t('subtitle')}</p>
     </div>
   ) : (
     <div>
       <h1 className={`${SA.headingMd} flex items-center gap-2`}>
-        <span aria-hidden>🔥</span> Study streak
+        <span aria-hidden>🔥</span> {t('title')}
       </h1>
-      <p className={`mt-1 text-sm ${SA.muted}`}>
-        Activity calendar — planner completions, arcade plays, flashcard reviews, and tutor chat.
-      </p>
+      <p className={`mt-1 text-sm ${SA.muted}`}>{t('subtitle')}</p>
     </div>
   );
 
@@ -74,9 +72,9 @@ export default function ShiftAiMasteryHeatmapClient({
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {[
-          { label: 'Total activities', value: totalActivity },
-          { label: 'Active days', value: activeDays },
-          { label: 'Weeks shown', value: weeks.length },
+          { label: t('totalActivities'), value: totalActivity },
+          { label: t('activeDays'), value: activeDays },
+          { label: t('weeksShown'), value: weeks.length },
         ].map((stat) => (
           <div key={stat.label} className={`${SA.cardPadded} text-center`}>
             <p className="text-2xl font-extrabold text-[var(--sa-navy-700)]">{stat.value}</p>
@@ -86,34 +84,31 @@ export default function ShiftAiMasteryHeatmapClient({
       </div>
 
       <div className={`${SA.cardPadded} overflow-x-auto`}>
-        <div className="flex gap-1 min-w-max">
+        <div dir="ltr" className="flex min-w-max gap-1">
           {weeks.map((week, wi) => (
             <div key={wi} className="flex flex-col gap-1">
               {week.map((day) => (
                 <div
                   key={day.date}
-                  title={`${day.date}: ${day.count} activities`}
+                  title={t('cellTitle', { date: day.date, count: day.count })}
                   className={`h-3 w-3 rounded-sm ${intensityClass(day.count, maxCount)}`}
                 />
               ))}
             </div>
           ))}
         </div>
-        <div className="mt-4 flex items-center gap-2 text-xs">
-          <span className={SA.muted}>Less</span>
+        <div dir="ltr" className="mt-4 flex items-center gap-2 text-xs">
+          <span className={SA.muted}>{t('less')}</span>
           {INTENSITY.map((cls) => (
             <div key={cls} className={`h-3 w-3 rounded-sm ${cls}`} />
           ))}
-          <span className={SA.muted}>More</span>
+          <span className={SA.muted}>{t('more')}</span>
         </div>
       </div>
 
       {totalActivity === 0 ? (
         <div className={`${SA.cardPadded} text-center`}>
-          <p className={`text-sm ${SA.muted}`}>
-            No activity recorded yet. Complete planner tasks, play Quiz Arcade, review flashcards, or
-            chat with your tutor to fill the heatmap.
-          </p>
+          <p className={`text-sm ${SA.muted}`}>{t('empty')}</p>
         </div>
       ) : null}
     </div>

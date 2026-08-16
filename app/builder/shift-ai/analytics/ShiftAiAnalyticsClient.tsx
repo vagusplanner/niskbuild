@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Bar,
   BarChart,
@@ -45,6 +46,8 @@ export default function ShiftAiAnalyticsClient({
   heatmapTotal: number;
   heatmapActiveDays: number;
 }) {
+  const t = useTranslations('analytics');
+  const tMastery = useTranslations('mastery.status');
   const [filterOpen, setFilterOpen] = useState(false);
   const [subject, setSubject] = useState('');
   const [dateRange, setDateRange] = useState<AnalyticsDateRange>('30');
@@ -54,15 +57,23 @@ export default function ShiftAiAnalyticsClient({
 
   const masteryChartData = useMemo(
     () => [
-      { name: 'Mastered', value: snapshot.masteryBreakdown.mastered, fill: MASTERY_COLORS.mastered },
-      { name: 'Learning', value: snapshot.masteryBreakdown.learning, fill: MASTERY_COLORS.learning },
       {
-        name: 'Not started',
+        name: tMastery('mastered'),
+        value: snapshot.masteryBreakdown.mastered,
+        fill: MASTERY_COLORS.mastered,
+      },
+      {
+        name: tMastery('learning'),
+        value: snapshot.masteryBreakdown.learning,
+        fill: MASTERY_COLORS.learning,
+      },
+      {
+        name: tMastery('not_started'),
         value: snapshot.masteryBreakdown.not_started,
         fill: MASTERY_COLORS.not_started,
       },
     ],
-    [snapshot.masteryBreakdown]
+    [snapshot.masteryBreakdown, tMastery]
   );
 
   const subjectBarData = snapshot.subjectActivity.map((row) => ({
@@ -97,18 +108,16 @@ export default function ShiftAiAnalyticsClient({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className={`${SA.headingMd} flex items-center gap-2`}>
-            <span aria-hidden>📊</span> Analytics
+            <span aria-hidden>📊</span> {t('title')}
           </h1>
-          <p className={`mt-1 text-sm ${SA.muted}`}>
-            Real study activity from your planner, quizzes, flashcards, and mastery updates.
-          </p>
+          <p className={`mt-1 text-sm ${SA.muted}`}>{t('subtitle')}</p>
         </div>
         <button
           type="button"
           onClick={() => setFilterOpen((v) => !v)}
           className={`${SA.btnSecondary} text-sm`}
         >
-          Filters
+          {t('filters')}
         </button>
       </div>
 
@@ -116,14 +125,14 @@ export default function ShiftAiAnalyticsClient({
         <div className={`${SA.cardPadded} grid gap-4 sm:grid-cols-3`}>
           <div className="space-y-2">
             <label className={`block text-xs font-semibold uppercase tracking-wide ${SA.muted}`}>
-              Subject
+              {t('subject')}
             </label>
             <select
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               className={SA.select}
             >
-              <option value="">All subjects</option>
+              <option value="">{t('allSubjects')}</option>
               {subjectOptions.map((s) => (
                 <option key={s} value={s}>
                   {s}
@@ -133,7 +142,7 @@ export default function ShiftAiAnalyticsClient({
           </div>
           <div className="space-y-2">
             <label className={`block text-xs font-semibold uppercase tracking-wide ${SA.muted}`}>
-              Date range
+              {t('dateRange')}
             </label>
             <select
               value={dateRange}
@@ -142,14 +151,14 @@ export default function ShiftAiAnalyticsClient({
             >
               {DATE_RANGE_OPTIONS.map((o) => (
                 <option key={o.id} value={o.id}>
-                  {o.label}
+                  {t(`dateRanges.${o.id}`)}
                 </option>
               ))}
             </select>
           </div>
           <div className="space-y-2">
             <label className={`block text-xs font-semibold uppercase tracking-wide ${SA.muted}`}>
-              Activity type
+              {t('activityType')}
             </label>
             <select
               value={activityType}
@@ -160,7 +169,7 @@ export default function ShiftAiAnalyticsClient({
             >
               {ACTIVITY_TYPE_OPTIONS.map((o) => (
                 <option key={o.id} value={o.id}>
-                  {o.label}
+                  {t(`activityTypes.${o.id}`)}
                 </option>
               ))}
             </select>
@@ -171,7 +180,7 @@ export default function ShiftAiAnalyticsClient({
             disabled={loading}
             className={`${SA.btnPrimary} sm:col-span-3`}
           >
-            {loading ? 'Updating…' : 'Apply filters'}
+            {loading ? t('updating') : t('applyFilters')}
           </button>
         </div>
       ) : null}
@@ -185,10 +194,10 @@ export default function ShiftAiAnalyticsClient({
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { label: 'Planner done', value: snapshot.totals.plannerCompleted },
-          { label: 'Quiz sessions', value: snapshot.totals.arcadeSessions },
-          { label: 'Flashcard reviews', value: snapshot.totals.flashcardReviews },
-          { label: 'Chat messages', value: snapshot.totals.chatMessages },
+          { label: t('statPlanner'), value: snapshot.totals.plannerCompleted },
+          { label: t('statArcade'), value: snapshot.totals.arcadeSessions },
+          { label: t('statFlashcards'), value: snapshot.totals.flashcardReviews },
+          { label: t('statChat'), value: snapshot.totals.chatMessages },
         ].map((stat) => (
           <div key={stat.label} className={`${SA.cardPadded} text-center`}>
             <p className="text-2xl font-extrabold text-[var(--sa-navy-700)]">{stat.value}</p>
@@ -199,7 +208,7 @@ export default function ShiftAiAnalyticsClient({
 
       {subjectBarData.length > 0 ? (
         <div className={`${SA.cardPadded}`}>
-          <p className={`mb-4 text-sm font-bold ${SA.text}`}>Activity by subject</p>
+          <p className={`mb-4 text-sm font-bold ${SA.text}`}>{t('activityBySubject')}</p>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={subjectBarData} barSize={28}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -214,12 +223,12 @@ export default function ShiftAiAnalyticsClient({
 
       <div className="grid gap-5 lg:grid-cols-2">
         <div className={`${SA.cardPadded}`}>
-          <p className={`mb-4 text-sm font-bold ${SA.text}`}>Mastery status breakdown</p>
+          <p className={`mb-4 text-sm font-bold ${SA.text}`}>{t('masteryBreakdown')}</p>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={masteryChartData} layout="vertical" barSize={20}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={80} />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={110} />
               <Tooltip />
               <Bar dataKey="value" radius={[0, 4, 4, 0]} />
             </BarChart>
@@ -227,8 +236,9 @@ export default function ShiftAiAnalyticsClient({
         </div>
 
         <div className={`${SA.cardPadded}`}>
-          <p className={`mb-4 text-sm font-bold ${SA.text}`}>Task completion over time</p>
+          <p className={`mb-4 text-sm font-bold ${SA.text}`}>{t('taskCompletion')}</p>
           {snapshot.taskCompletionOverTime.length > 0 ? (
+            <div dir="ltr">
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={snapshot.taskCompletionOverTime}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -239,7 +249,7 @@ export default function ShiftAiAnalyticsClient({
                 <Line
                   type="monotone"
                   dataKey="completed"
-                  name="Completed"
+                  name={t('legendCompleted')}
                   stroke="#059669"
                   strokeWidth={2}
                   dot={false}
@@ -247,15 +257,16 @@ export default function ShiftAiAnalyticsClient({
                 <Line
                   type="monotone"
                   dataKey="total"
-                  name="Created"
+                  name={t('legendCreated')}
                   stroke="#1e3a5f"
                   strokeWidth={2}
                   dot={false}
                 />
               </LineChart>
             </ResponsiveContainer>
+            </div>
           ) : (
-            <p className={`text-sm ${SA.muted}`}>No planner activity in this period.</p>
+            <p className={`text-sm ${SA.muted}`}>{t('noPlannerActivity')}</p>
           )}
         </div>
       </div>

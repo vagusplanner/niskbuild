@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { ArrowRight, Hash, Loader2, LogIn, Plus, Users } from 'lucide-react';
 import type { StudyGroup } from '@/lib/shift-ai/groups-shared';
 import { SA } from '@/lib/shift-ai/theme';
@@ -16,8 +17,9 @@ export default function ShiftAiGroupsClient({
   subjectOptions: string[];
   initialGroups: StudyGroup[];
 }) {
+  const t = useTranslations('groups');
   const router = useRouter();
-  const [groups, setGroups] = useState(initialGroups);
+  const groups = initialGroups;
   const [tab, setTab] = useState<Tab>('my');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,14 +41,14 @@ export default function ShiftAiGroupsClient({
       });
       const data = (await res.json()) as { group?: StudyGroup; error?: string };
       if (!res.ok) {
-        setError(data.error || 'Could not create group');
+        setError(data.error || t('createFailed'));
         return;
       }
       if (data.group) {
         router.push(`/builder/shift-ai/groups/${data.group.id}`);
       }
     } catch {
-      setError('Could not create group');
+      setError(t('createFailed'));
     } finally {
       setSaving(false);
     }
@@ -64,49 +66,47 @@ export default function ShiftAiGroupsClient({
       });
       const data = (await res.json()) as { group?: StudyGroup; error?: string };
       if (!res.ok) {
-        setError(data.error || 'Could not join group');
+        setError(data.error || t('joinFailed'));
         return;
       }
       if (data.group) {
         router.push(`/builder/shift-ai/groups/${data.group.id}`);
       }
     } catch {
-      setError('Could not join group');
+      setError(t('joinFailed'));
     } finally {
       setSaving(false);
     }
   };
 
   const tabs: { id: Tab; label: string; icon: typeof Users }[] = [
-    { id: 'my', label: 'My Groups', icon: Users },
-    { id: 'create', label: 'Create', icon: Plus },
-    { id: 'join', label: 'Join', icon: LogIn },
+    { id: 'my', label: t('tabMy'), icon: Users },
+    { id: 'create', label: t('tabCreate'), icon: Plus },
+    { id: 'join', label: t('tabJoin'), icon: LogIn },
   ];
 
   return (
     <div className={SA.content}>
       <div className="mb-8">
-        <h1 className={SA.heading}>Study Groups</h1>
-        <p className={`mt-2 text-sm ${SA.muted}`}>
-          Collaborate with classmates — share notes, flashcards, and arcade scores.
-        </p>
+        <h1 className={SA.heading}>{t('title')}</h1>
+        <p className={`mt-2 text-sm ${SA.muted}`}>{t('subtitle')}</p>
       </div>
 
       <div className="mb-6 flex gap-1 rounded-xl bg-[var(--sa-navy-50)] p-1">
-        {tabs.map((t) => {
-          const Icon = t.icon;
+        {tabs.map((item) => {
+          const Icon = item.icon;
           return (
             <button
-              key={t.id}
+              key={item.id}
               type="button"
               onClick={() => {
-                setTab(t.id);
+                setTab(item.id);
                 setError(null);
               }}
-              className={tab === t.id ? SA.tabActive : SA.tab}
+              className={tab === item.id ? SA.tabActive : SA.tab}
             >
               <Icon className="h-3.5 w-3.5" />
-              {t.label}
+              {item.label}
             </button>
           );
         })}
@@ -118,14 +118,14 @@ export default function ShiftAiGroupsClient({
         <div className="space-y-3">
           {groups.length === 0 ? (
             <div className={`${SA.cardPadded} text-center`}>
-              <p className={`text-sm ${SA.muted}`}>You are not in any groups yet.</p>
+              <p className={`text-sm ${SA.muted}`}>{t('empty')}</p>
               <button
                 type="button"
                 onClick={() => setTab('create')}
                 className={`${SA.btnPrimary} mt-4`}
               >
                 <Plus className="h-4 w-4" />
-                Create your first group
+                {t('createFirst')}
               </button>
             </div>
           ) : (
@@ -142,7 +142,7 @@ export default function ShiftAiGroupsClient({
                   ) : null}
                   <p className={`mt-2 flex items-center gap-1 text-xs ${SA.muted}`}>
                     <Users className="h-3.5 w-3.5" />
-                    {group.member_count ?? 1} member{(group.member_count ?? 1) !== 1 ? 's' : ''}
+                    {t('memberCount', { count: group.member_count ?? 1 })}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -150,7 +150,7 @@ export default function ShiftAiGroupsClient({
                     <Hash className="h-3 w-3" />
                     {group.invite_code}
                   </span>
-                  <ArrowRight className={`h-4 w-4 ${SA.muted}`} />
+                  <ArrowRight className={`h-4 w-4 rtl:-scale-x-100 ${SA.muted}`} />
                 </div>
               </Link>
             ))
@@ -162,26 +162,26 @@ export default function ShiftAiGroupsClient({
         <div className={`${SA.cardPadded} max-w-lg space-y-4`}>
           <div>
             <label className={`mb-1 block text-xs font-semibold uppercase tracking-wide ${SA.muted}`}>
-              Group name
+              {t('groupName')}
             </label>
             <input
               type="text"
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              placeholder="e.g. Year 11 Biology Squad"
+              placeholder={t('groupNamePlaceholder')}
               className={SA.input}
             />
           </div>
           <div>
             <label className={`mb-1 block text-xs font-semibold uppercase tracking-wide ${SA.muted}`}>
-              Subject (optional)
+              {t('subjectOptional')}
             </label>
             <select
               value={form.subject}
               onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))}
               className={SA.select}
             >
-              <option value="">No subject</option>
+              <option value="">{t('noSubject')}</option>
               {subjectOptions.map((s) => (
                 <option key={s} value={s}>
                   {s}
@@ -196,7 +196,7 @@ export default function ShiftAiGroupsClient({
             className={SA.btnPrimary}
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            Create group
+            {t('createGroup')}
           </button>
         </div>
       ) : null}
@@ -205,13 +205,13 @@ export default function ShiftAiGroupsClient({
         <div className={`${SA.cardPadded} max-w-lg space-y-4`}>
           <div>
             <label className={`mb-1 block text-xs font-semibold uppercase tracking-wide ${SA.muted}`}>
-              Invite code
+              {t('inviteCode')}
             </label>
             <input
               type="text"
               value={joinCode}
               onChange={(e) => setJoinCode(e.target.value)}
-              placeholder="Enter 8-character code"
+              placeholder={t('invitePlaceholder')}
               className={`${SA.input} font-mono tracking-widest`}
             />
           </div>
@@ -222,7 +222,7 @@ export default function ShiftAiGroupsClient({
             className={SA.btnPrimary}
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
-            Join group
+            {t('joinGroup')}
           </button>
         </div>
       ) : null}

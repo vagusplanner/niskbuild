@@ -1,8 +1,10 @@
 import { redirect } from 'next/navigation';
 import ShiftAiAnalyticsClient from '@/app/builder/shift-ai/analytics/ShiftAiAnalyticsClient';
 import { buildActivityHeatmap, buildAnalyticsSnapshot } from '@/lib/shift-ai/analytics';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { shiftAiCatalog } from '@/lib/shift-ai/i18n';
 import { needsSubjectOnboarding } from '@/lib/shift-ai/onboarding';
+import { getRequestStudyLanguage } from '@/lib/shift-ai/study-language';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getSafeSession } from '@/lib/supabaseSession.server';
 
 export default async function ShiftAiAnalyticsPage() {
@@ -42,5 +44,8 @@ export default async function ShiftAiAnalyticsPage() {
 }
 
 export async function generateMetadata() {
-  return { title: 'Analytics · Shift AI', robots: 'noindex' };
+  return {
+    title: shiftAiCatalog(await getRequestStudyLanguage()).analytics.metaTitle,
+    robots: 'noindex',
+  };
 }
