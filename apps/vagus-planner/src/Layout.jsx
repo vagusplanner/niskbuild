@@ -481,7 +481,7 @@ export default function Layout({ children, currentPageName }) {
   // via App.jsx early-return logic, so this guard only fires for authenticated routes.
   useEffect(() => {
     const routerPath = location.pathname;
-    const publicPaths = ['/', '/Landing', '/PrivacyPolicy', '/TermsOfService', '/Contact', '/login'];
+    const publicPaths = ['/', '/Landing', '/PrivacyPolicy', '/TermsOfService', '/Contact', '/login', '/signup'];
     if (publicPaths.includes(routerPath) || currentPageName === 'Landing') return;
 
     base44.auth.isAuthenticated().then(isAuth => {

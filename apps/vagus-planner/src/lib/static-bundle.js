@@ -42,6 +42,24 @@ export function redirectToVpLogin(nextPath = '/dashboard') {
   window.location.href = `/login?next=${encodeURIComponent(next)}`;
 }
 
+/** VP signup — same host/bundle rules as login. */
+export function redirectToVpSignup(nextPath = '/dashboard') {
+  const next =
+    typeof nextPath === 'string' &&
+    nextPath.length > 0 &&
+    !nextPath.includes('/vp-deploy/') &&
+    !nextPath.includes('/vp-live/') &&
+    !nextPath.includes('index.html')
+      ? nextPath
+      : '/dashboard';
+
+  if (isStaticBundleContext()) {
+    window.location.hash = `/signup?next=${encodeURIComponent(next)}`;
+    return;
+  }
+  window.location.href = `/signup?next=${encodeURIComponent(next)}`;
+}
+
 export function redirectToVpHome() {
   redirectToVpPath('/');
 }

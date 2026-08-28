@@ -791,8 +791,9 @@ export default function Landing() {
     base44.auth.isAuthenticated().then(setIsAuthenticated).catch(() => {});
   }, []);
   const goToLogin = (next = '/dashboard') => base44.auth.redirectToLogin(next);
+  const goToSignup = (next = '/dashboard') => base44.auth.redirectToSignup(next);
   const handleSignIn = () => isAuthenticated ? navigate('/dashboard') : goToLogin('/dashboard');
-  const handleGetStarted = () => isAuthenticated ? navigate('/dashboard') : goToLogin('/dashboard');
+  const handleGetStarted = () => isAuthenticated ? navigate('/dashboard') : goToSignup('/dashboard');
   const handleSelectPlan = (planName) => {
     if (planName?.includes('Enterprise')) { navigate('/Contact'); return; }
     if (isAuthenticated) navigate('/Billing'); else goToLogin('/Billing');
