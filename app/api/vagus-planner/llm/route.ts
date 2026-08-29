@@ -5,6 +5,8 @@ import { getGroqClient } from '@/lib/groq-client';
 import {
   GROQ_JSON_ONLY_INSTRUCTION,
   SHIFT_GROQ_MODEL,
+  isGroqJsonValidationFailure,
+  llmUnstructuredResponsePayload,
   logGroqParseFailure,
   parseGroqJsonContent,
   withGroqTimeout,
@@ -157,30 +159,55 @@ export async function POST(request: NextRequest) {
 
     if (schema) {
       const schemaHint = JSON.stringify(schema);
+      const jsonSystemPrompt =
+        'You are a helpful assistant for the Vagus Planner productivity app. Follow instructions precisely. When you cannot fulfill a request, still respond with valid JSON matching the requested schema — use null, empty arrays, or a brief explanation field if the schema allows it. Never respond with plain prose outside JSON.';
       const userPrompt = `${prompt}\n\n${GROQ_JSON_ONLY_INSTRUCTION}\nRespond with JSON matching this schema:\n${schemaHint}`;
+      const retryUserPrompt = `${userPrompt}\n\nIMPORTANT: Your previous attempt was rejected because it was not valid JSON. Respond with ONLY a JSON object matching the schema — no apologies or prose outside JSON.`;
 
-      const completion = await withGroqTimeout(
-        groq.chat.completions.create({
-          model: SHIFT_GROQ_MODEL,
-          messages: [
-            {
-              role: 'system',
-              content:
-                'You are a helpful assistant for the Vagus Planner productivity app. Follow instructions precisely.',
-            },
-            { role: 'user', content: userPrompt },
-          ],
-          temperature: 0.65,
-          max_tokens: 4096,
-          response_format: { type: 'json_object' },
-        })
-      );
+      const messages = [
+        { role: 'system' as const, content: jsonSystemPrompt },
+        { role: 'user' as const, content: userPrompt },
+      ];
+
+      let completion;
+      try {
+        completion = await withGroqTimeout(
+          groq.chat.completions.create({
+            model: SHIFT_GROQ_MODEL,
+            messages,
+            temperature: 0.65,
+            max_tokens: 4096,
+            response_format: { type: 'json_object' },
+          })
+        );
+      } catch (error) {
+        if (!isGroqJsonValidationFailure(error)) throw error;
+        console.warn('VP LLM json_object mode rejected — retrying without response_format');
+        try {
+          completion = await withGroqTimeout(
+            groq.chat.completions.create({
+              model: SHIFT_GROQ_MODEL,
+              messages: [
+                messages[0],
+                { role: 'user', content: retryUserPrompt },
+              ],
+              temperature: 0.4,
+              max_tokens: 4096,
+            })
+          );
+        } catch (retryError) {
+          if (isGroqJsonValidationFailure(retryError)) {
+            return vpApiJson(request, llmUnstructuredResponsePayload(), { status: 422 });
+          }
+          throw retryError;
+        }
+      }
 
       const raw = completion.choices[0]?.message?.content ?? '';
       const parsed = parseGroqJsonContent(raw, 'Could not parse AI response');
       if (!parsed.ok) {
         logGroqParseFailure('vp-llm', raw, parsed.error);
-        return vpApiJson(request, { error: parsed.error }, { status: 502 });
+        return vpApiJson(request, llmUnstructuredResponsePayload(), { status: 422 });
       }
 
       return vpApiJson(request, parsed.json);
@@ -210,6 +237,9 @@ export async function POST(request: NextRequest) {
     return vpApiJson(request, { text });
   } catch (error) {
     captureApiException(error);
+    if (isGroqJsonValidationFailure(error)) {
+      return vpApiJson(request, llmUnstructuredResponsePayload(), { status: 422 });
+    }
     const message =
       error instanceof Error ? error.message : 'Failed to process AI request';
     const status = message.toLowerCase().includes('timed out') ? 504 : 500;

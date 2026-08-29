@@ -202,7 +202,7 @@ function PrayerCountdown({ settings }) {
 }
 
 // ── Main SidebarTools ─────────────────────────────────────────────────────────
-export default function SidebarTools({ isIslamicEdition, settings, currentPageName, onOpenSearch, onOpenHalal, onOpenPlanner, onOpenMeeting }) {
+export default function SidebarTools({ islamicMode, settings, currentPageName, onOpenSearch, onOpenHalal, onOpenPlanner, onOpenMeeting }) {
   const [openWidget, setOpenWidget] = useState(null);
   const [showWeather, setShowWeather] = useState(false);
   const navigate = useNavigate();
@@ -219,11 +219,13 @@ export default function SidebarTools({ isIslamicEdition, settings, currentPageNa
           window.dispatchEvent(new CustomEvent('open_super_agent'));
           break;
         case 'add_event':
+          navigate(`${createPageUrl('Calendar')}?action=new`);
           window.dispatchEvent(new CustomEvent('open_event_form'));
           break;
         case 'open_meeting':
-          onOpenMeeting?.();
+          navigate(`${createPageUrl('Calendar')}?action=schedule-meeting`);
           window.dispatchEvent(new CustomEvent('open_meeting_scheduler'));
+          onOpenMeeting?.();
           break;
         case 'open_quick_notes':
           toggle('notes');
@@ -244,7 +246,7 @@ export default function SidebarTools({ isIslamicEdition, settings, currentPageNa
       </div>
 
       {/* Prayer countdown (Islamic only) */}
-      {isIslamicEdition && <PrayerCountdown settings={settings} />}
+      {islamicMode && <PrayerCountdown settings={settings} />}
 
       {/* Notes widget */}
       <AnimatePresence>

@@ -15,7 +15,7 @@ export default function UnifiedQuickActions() {
   const { t } = useTranslation();
 
   const QUICK_ACTIONS = [
-    { id: 'new-event',   label: t('events.new'),          icon: Calendar,    color: 'from-blue-500 to-cyan-500',    page: 'Calendar',  queryParam: 'action=new-event' },
+    { id: 'new-event',   label: t('events.new'),          icon: Calendar,    color: 'from-blue-500 to-cyan-500',    page: 'Calendar',  queryParam: 'action=new' },
     { id: 'new-task',    label: t('tasks.addTask'),        icon: CheckSquare, color: 'from-amber-500 to-orange-500', page: 'Wellness',  queryParam: 'tab=tasks&action=new' },
     { id: 'log-prayer',  label: t('quickActions.logPrayer'), icon: Moon,      color: 'from-purple-500 to-indigo-500',page: 'Islam',     queryParam: 'tab=prayer&action=log' },
     { id: 'plan-trip',   label: t('travel.addTrip'),       icon: Plane,       color: 'from-teal-500 to-emerald-500', page: 'Travel',    queryParam: 'action=new' },

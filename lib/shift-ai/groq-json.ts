@@ -66,6 +66,44 @@ export function logGroqParseFailure(feature: string, rawContent: string, reason:
   );
 }
 
+export const LLM_REPHRASE_MESSAGE =
+  "I couldn't process that request — try rephrasing it or asking something else.";
+
+/** Groq JSON mode rejected the model output (refusal, prose, invalid JSON, etc.). */
+export function isGroqJsonValidationFailure(error: unknown): boolean {
+  const parts: string[] = [];
+  if (error instanceof Error) {
+    parts.push(error.message);
+    const groqErr = error as Error & {
+      error?: { code?: string; message?: string };
+      status?: number;
+    };
+    if (groqErr.error?.code) parts.push(groqErr.error.code);
+    if (groqErr.error?.message) parts.push(groqErr.error.message);
+  } else if (typeof error === 'object' && error !== null) {
+    try {
+      parts.push(JSON.stringify(error));
+    } catch {
+      parts.push(String(error));
+    }
+  } else if (error != null) {
+    parts.push(String(error));
+  }
+  const blob = parts.join(' ').toLowerCase();
+  return (
+    blob.includes('json_validate_failed') ||
+    blob.includes('failed to generate json') ||
+    blob.includes('failed to validate json')
+  );
+}
+
+export function llmUnstructuredResponsePayload() {
+  return {
+    error: LLM_REPHRASE_MESSAGE,
+    code: 'LLM_UNSTRUCTURED_RESPONSE' as const,
+  };
+}
+
 export function withGroqTimeout<T>(
   promise: Promise<T>,
   timeoutMessage = 'AI request timed out — please try again'

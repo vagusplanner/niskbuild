@@ -77,7 +77,9 @@ export function useIslamicEdition() {
   const editionPreference = resolveEditionPreference(userSettings);
   // Preference only applies when entitled — otherwise force standard for UI.
   const edition = hasPaidIslamicAccess ? editionPreference : 'standard';
+  /** User has Islamic Edition entitlement (paid plan or platform-owner bypass). */
   const isIslamicEdition = hasPaidIslamicAccess;
+  /** Active Islamic UI mode — entitlement AND user chose Islamic edition in settings. */
   const islamicMode = hasPaidIslamicAccess && edition === 'islamic';
 
   return {

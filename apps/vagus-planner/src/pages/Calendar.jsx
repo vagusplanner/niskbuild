@@ -117,10 +117,15 @@ export default function CalendarPage() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Deep links from Dashboard quick actions (?view=task-timeline, ?new=1)
+  // Deep links from quick actions (?view=task-timeline, ?action=new, ?action=schedule-meeting)
   useEffect(() => {
     const viewParam = searchParams.get('view');
-    const wantsNewEvent = searchParams.get('new') === '1' || searchParams.get('action') === 'new';
+    const actionParam = searchParams.get('action');
+    const wantsNewEvent =
+      searchParams.get('new') === '1' ||
+      actionParam === 'new' ||
+      actionParam === 'new-event';
+    const wantsMeeting = actionParam === 'schedule-meeting';
 
     if (viewParam) {
       setView(viewParam);
@@ -129,8 +134,11 @@ export default function CalendarPage() {
       setEditingEvent(null);
       setShowEventForm(true);
     }
+    if (wantsMeeting) {
+      setShowAdvancedScheduler(true);
+    }
 
-    if (viewParam || wantsNewEvent) {
+    if (viewParam || wantsNewEvent || wantsMeeting) {
       const next = new URLSearchParams(searchParams);
       next.delete('view');
       next.delete('new');
@@ -147,21 +155,30 @@ export default function CalendarPage() {
     threshold: 50
   });
 
-  // Global window events from child components
+  // Global window events from child components / sidebar quick actions
   useEffect(() => {
     const handleConvertEvent = (e) => setShowEventTaskConverter({ type: 'event', data: e.detail });
     const handleConvertTask = (e) => setShowEventTaskConverter({ type: 'task', data: e.detail });
     const handleToggleTask = () => setShowTaskPanel(prev => !prev);
     const handleToggleHabit = () => setShowHabitPanel(prev => !prev);
+    const handleOpenEventForm = () => {
+      setEditingEvent(null);
+      setShowEventForm(true);
+    };
+    const handleOpenMeetingScheduler = () => setShowAdvancedScheduler(true);
     window.addEventListener('convert-event-to-task', handleConvertEvent);
     window.addEventListener('convert-task-to-event', handleConvertTask);
     window.addEventListener('toggle-task-panel', handleToggleTask);
     window.addEventListener('toggle-habit-panel', handleToggleHabit);
+    window.addEventListener('open_event_form', handleOpenEventForm);
+    window.addEventListener('open_meeting_scheduler', handleOpenMeetingScheduler);
     return () => {
       window.removeEventListener('convert-event-to-task', handleConvertEvent);
       window.removeEventListener('convert-task-to-event', handleConvertTask);
       window.removeEventListener('toggle-task-panel', handleToggleTask);
       window.removeEventListener('toggle-habit-panel', handleToggleHabit);
+      window.removeEventListener('open_event_form', handleOpenEventForm);
+      window.removeEventListener('open_meeting_scheduler', handleOpenMeetingScheduler);
     };
   }, []);
 

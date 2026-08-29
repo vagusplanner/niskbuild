@@ -37,7 +37,7 @@ const DEFAULT_COLOR = { gradient: 'linear-gradient(135deg, #E8B84B 0%, #f0c060 1
 
 export default function UnifiedFAB() {
   const { t } = useTranslation();
-  const { isIslamicEdition } = useIslamicEdition();
+  const { islamicMode } = useIslamicEdition();
   const [menuOpen, setMenuOpen] = useState(false);
   const [mode, setMode] = useState(null); // null | 'quickactions' | 'ai' | 'voice' | 'capture_voice' | 'capture_type'
   const [input, setInput] = useState('');
@@ -53,9 +53,9 @@ export default function UnifiedFAB() {
   const aiColors = PAGE_COLORS[currentPage] || DEFAULT_COLOR;
 
   const QUICK_ACTIONS = [
-    { id: 'new-event',  label: t('events.new'),            icon: Calendar,    color: 'from-blue-500 to-cyan-500',    page: 'Calendar',  queryParam: 'action=new-event' },
+    { id: 'new-event',  label: t('events.new'),            icon: Calendar,    color: 'from-blue-500 to-cyan-500',    page: 'Calendar',  queryParam: 'action=new' },
     { id: 'new-task',   label: t('tasks.addTask'),          icon: CheckSquare, color: 'from-amber-500 to-orange-500', page: 'Wellness',  queryParam: 'tab=tasks&action=new' },
-    ...(isIslamicEdition ? [{ id: 'log-prayer', label: t('quickActions.logPrayer'), icon: Moon, color: 'from-purple-500 to-indigo-500', page: 'Islam', queryParam: 'tab=prayer&action=log' }] : []),
+    ...(islamicMode ? [{ id: 'log-prayer', label: t('quickActions.logPrayer'), icon: Moon, color: 'from-purple-500 to-indigo-500', page: 'Islam', queryParam: 'tab=prayer&action=log' }] : []),
     { id: 'itinerary',  label: 'Itinerary AI',                icon: Plane,       color: 'from-sky-500 to-blue-500',    page: 'ItineraryAssistant', queryParam: '' },
     { id: 'new-goal',   label: t('wellness.addGoal'),       icon: Target,      color: 'from-pink-500 to-rose-500',    page: 'Wellness',  queryParam: 'tab=goals&action=new' },
     { id: 'log-health', label: t('quickActions.logHealth'), icon: Heart,       color: 'from-red-500 to-pink-500',     page: 'Wellness',  queryParam: 'tab=health&action=log' },
