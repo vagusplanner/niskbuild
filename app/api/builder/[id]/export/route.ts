@@ -5,7 +5,7 @@ import { getBuilderExportConfig, isExportSupported } from '@/lib/builder-export/
 import { createExportJob } from '@/lib/builder-export/jobs';
 import { startBuilderExportJob } from '@/lib/builder-export/run-export';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
-import { canExportNative } from '@/lib/tier-config';
+import { canExportNative } from '@/lib/tier-access-server';
 
 export const maxDuration = 300;
 

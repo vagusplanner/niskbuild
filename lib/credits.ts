@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isProductGatingBypassActive } from '@/lib/platform-owner-bypass';
 import { maybeSendUsageAlert } from '@/lib/usage-alerts';
 import {
   canSpendCloudCredits,
@@ -14,6 +15,11 @@ export async function deductCloudCredit(
 ): Promise<{ ok: boolean; error?: string; remaining?: number }> {
   if (!userId) {
     return { ok: false, error: 'Unauthorized' };
+  }
+
+  if (isProductGatingBypassActive()) {
+    const profile = await loadCreditProfile(userId);
+    return { ok: true, remaining: profile?.cloud_credits_remaining ?? 999999 };
   }
 
   const profile = await loadCreditProfile(userId);
@@ -64,6 +70,11 @@ export async function deductCloudCredits(
   }
   if (amount <= 0) {
     return { ok: false, error: 'Invalid credit amount' };
+  }
+
+  if (isProductGatingBypassActive()) {
+    const profile = await loadCreditProfile(userId);
+    return { ok: true, remaining: profile?.cloud_credits_remaining ?? 999999 };
   }
 
   const profile = await loadCreditProfile(userId);

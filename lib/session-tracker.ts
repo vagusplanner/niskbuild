@@ -2,7 +2,7 @@ import { createHash } from 'crypto';
 import 'server-only';
 
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getSessionLimit, SESSION_LIMITS } from '@/lib/tier-config';
+import { getSessionLimit, SESSION_LIMITS } from '@/lib/tier-access-server';
 
 export { SESSION_LIMITS };
 

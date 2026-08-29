@@ -8,7 +8,7 @@ import { STRIPE_INJECT_CREDIT_COST } from '@/lib/integrations-config';
 import { logStripeIntegration } from '@/lib/log-stripe-integration';
 import { buildStripeInjectSystemPrompt } from '@/lib/stripe-inject-prompt';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { canUseStripeInject } from '@/lib/tier-config';
+import { canUseStripeInject } from '@/lib/tier-access-server';
 
 async function assertProjectOwner(userId: string, projectId: string) {
   const supabase = createAdminClient();

@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { createClient } from '@/lib/supabase/server';
+import { isPlatformOwner } from '@/lib/platform-owner-auth';
 import { getAdminClientOrNull } from '@/lib/supabase/admin';
 import type { DocArticle, DocArticleStatus, DocArticleSummary } from '@/lib/docs/types';
 import { SEED_DOC_ARTICLES } from '@/lib/docs/seed-articles';
@@ -132,6 +133,10 @@ export async function getUserDocTier(): Promise<string> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return 'free';
+
+  if (await isPlatformOwner()) {
+    return 'sovereign';
+  }
 
   const { data: profile } = await supabase
     .from('profiles')

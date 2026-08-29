@@ -1,3 +1,4 @@
+import { initProductGatingContext } from '@/lib/platform-owner-bypass';
 import { createClient } from '@/lib/supabase/server';
 
 export async function getAuthenticatedProfile() {
@@ -10,6 +11,8 @@ export async function getAuthenticatedProfile() {
   if (authError || !user) {
     return { supabase, user: null, profile: null };
   }
+
+  await initProductGatingContext();
 
   const { data: profile } = await supabase
     .from('profiles')

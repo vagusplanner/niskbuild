@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { guardApiRequest } from '@/lib/api-auth';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
-import { getProjectLimit } from '@/lib/project-limits';
+import { getProjectLimit } from '@/lib/tier-access-server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { assertCanUseOrg, assertCanWriteOrg, userOrgIds } from '@/lib/organization-team';
 

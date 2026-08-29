@@ -10,6 +10,10 @@ import {
   resolvePaidIslamicAccess,
   type IslamicAccessInput,
 } from '@/lib/vp-islamic-access';
+import {
+  isProductGatingBypassActive,
+  PLATFORM_OWNER_VP_PLAN_INFO,
+} from '@/lib/platform-owner-bypass';
 
 export type PlanAccessInput = IslamicAccessInput;
 
@@ -23,6 +27,10 @@ export type EffectivePlanResult = {
 };
 
 export function resolveEffectivePlan(input: PlanAccessInput): EffectivePlanResult {
+  if (isProductGatingBypassActive()) {
+    return PLATFORM_OWNER_VP_PLAN_INFO;
+  }
+
   const islamic = resolvePaidIslamicAccess(input);
 
   const subs = input.subscriptions ?? [];

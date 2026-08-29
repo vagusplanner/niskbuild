@@ -5,8 +5,9 @@ import { guardApiRequest } from '@/lib/api-auth';
 import { compileBlueprint } from '@/lib/blueprint-compiler';
 import { generateBlueprint } from '@/lib/blueprint-generator';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
-import { getProjectLimit } from '@/lib/project-limits';
-import { getCloudCreditsForTier, isPaidAndActive } from '@/lib/tier-config';
+import { getProjectLimit, isPaidAndActive } from '@/lib/tier-access-server';
+import { getCloudCreditsForTier } from '@/lib/tier-config';
+import { isProductGatingBypassActive } from '@/lib/platform-owner-bypass';
 import { generateArchitecturePlan } from '@/lib/plan-mode';
 import { ensureCloudCreditsInitialized } from '@/lib/credits';
 
@@ -131,6 +132,7 @@ async function handleBootGuard() {
 
   const tier = profile?.subscription_tier ?? 'free';
   const status = profile?.subscription_status ?? 'inactive';
+  const platformOwnerBypass = isProductGatingBypassActive();
   const paidActive = isPaidAndActive(tier, status);
 
   await ensureCloudCreditsInitialized(user.id);
@@ -157,11 +159,12 @@ async function handleBootGuard() {
   const limit = getProjectLimit(tier);
   const atCap = projectCount >= limit;
 
-  const isSandbox = tier === 'free';
+  const isSandbox = tier === 'free' && !platformOwnerBypass;
 
   return NextResponse.json({
     canBoot: !atCap && (isSandbox || paidActive),
     paidActive,
+    platformOwnerBypass,
     isSandbox,
     atCap,
     projectCount,

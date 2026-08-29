@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
-import { canUseSupportTickets } from '@/lib/support-access';
+import { canUseSupportTickets } from '@/lib/tier-access-server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createSupportTicket, notifyAdminNewTicket } from '@/lib/support-tickets';
 

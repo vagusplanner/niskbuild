@@ -5,7 +5,7 @@ import { generateCode } from '@/lib/ai-providers';
 import { logVisualEdit } from '@/lib/log-visual-edit';
 import { buildVisualEditPrompt } from '@/lib/visual-editor-prompt';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { canUseOwnApiKeys, isPaidAndActive } from '@/lib/tier-config';
+import { canUseOwnApiKeys, isPaidAndActive } from '@/lib/tier-access-server';
 import type { StyleChanges } from '@/lib/visual-editor-types';
 import { VISUAL_EDIT_CREDIT_COST } from '@/lib/visual-editor-types';
 import {

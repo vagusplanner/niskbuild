@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { guardApiRequest } from '@/lib/api-auth';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
 import { captureApiException } from '@/lib/api-error';
-import { canUseOrgSso } from '@/lib/tier-config';
+import { canUseOrgSso } from '@/lib/tier-access-server';
 import {
   assertOwnerCanConfigureSso,
   createSupabaseSsoProvider,

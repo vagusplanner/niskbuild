@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { User } from '@supabase/supabase-js';
+import { initProductGatingContext } from '@/lib/platform-owner-bypass';
 import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/rate-limit';
 
@@ -115,6 +116,8 @@ export async function guardApiRequest(
     if (!checkRateLimit(key, maxRequests, windowMs)) {
       return { ok: false, response: rateLimitExceededResponse() };
     }
+
+    await initProductGatingContext();
 
     return { ok: true, user: auth.user };
   }

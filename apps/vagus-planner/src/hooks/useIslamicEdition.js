@@ -70,7 +70,9 @@ export function useIslamicEdition() {
 
   const isLoading = settingsQuery.isLoading || accessQuery.isLoading;
   const userSettings = settingsQuery.data?.[0] ?? null;
-  const hasPaidIslamicAccess = accessQuery.data?.hasPaidIslamicAccess === true;
+  const hasPaidIslamicAccess =
+    accessQuery.data?.hasPaidIslamicAccess === true ||
+    accessQuery.data?.platformOwnerBypass === true;
 
   const editionPreference = resolveEditionPreference(userSettings);
   // Preference only applies when entitled — otherwise force standard for UI.
@@ -89,6 +91,7 @@ export function useIslamicEdition() {
     subscriptionPlan: accessQuery.data?.plan ?? null,
     subscriptionStatus: accessQuery.data?.status ?? null,
     accessSource: accessQuery.data?.source ?? null,
+    platformOwnerBypass: accessQuery.data?.platformOwnerBypass === true,
     error: accessQuery.error ?? settingsQuery.error ?? null,
   };
 }

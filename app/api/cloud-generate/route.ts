@@ -14,7 +14,7 @@ import { recordUsageEvent } from '@/lib/usage-events';
 import { recordPromptCategoryStat } from '@/lib/prompt-category-stats';
 import { touchLastBuildAt } from '@/lib/build-activity';
 import { clientIpFromHeaders } from '@/lib/coarse-town';
-import { canUseOwnApiKeys } from '@/lib/tier-config';
+import { canUseOwnApiKeys } from '@/lib/tier-access-server';
 
 async function getUserProfile(userId: string) {
   const supabase = createAdminClient();

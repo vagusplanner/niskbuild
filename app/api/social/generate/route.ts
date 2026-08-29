@@ -9,7 +9,7 @@ import {
   parseSocialPosts,
 } from '@/lib/social-publisher';
 import type { ComponentBlueprint } from '@/lib/blueprint-schema';
-import { canCopySocialPosts } from '@/lib/tier-config';
+import { canCopySocialPosts } from '@/lib/tier-access-server';
 
 export async function POST(request: NextRequest) {
   const guard = await guardApiRequest(request, { rateLimit: 10 });

@@ -4,7 +4,7 @@ import { guardApiRequest } from '@/lib/api-auth';
 import { GROQ_CODE_MODEL, getGroqClient } from '@/lib/groq-client';
 import { computeSeoScore } from '@/lib/seo-score';
 import type { SeoAiSuggestion } from '@/lib/seo-types';
-import { canGenerateSeoAi } from '@/lib/tier-config';
+import { canGenerateSeoAi } from '@/lib/tier-access-server';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 async function getProfile(userId: string) {

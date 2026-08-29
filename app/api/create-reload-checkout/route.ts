@@ -5,7 +5,7 @@ import { guardApiRequest } from '@/lib/api-auth';
 import { createClient } from '@/lib/supabase/server';
 import { getReloadPack, PACK_ID_TO_BOOST } from '@/lib/reload-packs';
 import { getReloadPriceId, getReloadPriceIdByPackId } from '@/lib/stripe-price-ids';
-import { isPaidAndActive } from '@/lib/tier-config';
+import { isPaidAndActive } from '@/lib/tier-access-server';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 

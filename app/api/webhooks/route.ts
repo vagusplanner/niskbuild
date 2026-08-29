@@ -4,7 +4,12 @@ import type { PostgrestError } from '@supabase/supabase-js';
 import { captureApiException } from '@/lib/api-error';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { addCloudCredits } from '@/lib/credits';
-import { canUseOwnApiKeys, canUseWhiteLabelBranding, getCloudCreditsForTier, isAgencyStudioOrAbove } from '@/lib/tier-config';
+import { getCloudCreditsForTier } from '@/lib/tier-config';
+import {
+  canUseOwnApiKeys,
+  canUseWhiteLabelBranding,
+  isAgencyStudioOrAbove,
+} from '@/lib/tier-access-server';
 import {
   deactivatePreviewsByEmail,
   deactivatePreviewsForUser,

@@ -4,6 +4,7 @@ import {
   isUnlimitedFeature,
   periodStartForFeature,
 } from '@/lib/vp-feature-limits';
+import { isProductGatingBypassActive, PLATFORM_OWNER_VP_PLAN } from '@/lib/platform-owner-bypass';
 import { resolveEffectivePlan } from '@/lib/vp-plan-access';
 
 export type UsageSnapshot = {
@@ -19,6 +20,16 @@ export type ConsumeUsageResult = UsageSnapshot & {
 };
 
 type AdminClient = SupabaseClient;
+
+function unlimitedUsageSnapshot(feature: string): UsageSnapshot {
+  return {
+    feature,
+    count: 0,
+    limit: 999999,
+    allowed: true,
+    unlimited: true,
+  };
+}
 
 async function readUsageRow(
   admin: AdminClient,
@@ -44,6 +55,10 @@ export async function getUsageSnapshot(
   admin: AdminClient,
   opts: { userId: string; plan: string; feature: string }
 ): Promise<UsageSnapshot> {
+  if (isProductGatingBypassActive()) {
+    return unlimitedUsageSnapshot(opts.feature);
+  }
+
   const limit = getFeatureLimit(opts.plan, opts.feature);
   const unlimited = isUnlimitedFeature(opts.plan, opts.feature);
   if (unlimited) {
@@ -77,6 +92,10 @@ export async function consumeUsage(
     feature: string;
   }
 ): Promise<ConsumeUsageResult> {
+  if (isProductGatingBypassActive()) {
+    return unlimitedUsageSnapshot(opts.feature);
+  }
+
   const limit = getFeatureLimit(opts.plan, opts.feature);
   const unlimited = isUnlimitedFeature(opts.plan, opts.feature);
 
@@ -200,6 +219,14 @@ export async function requireFeatureUsage(
   admin: AdminClient,
   opts: { userId: string; email?: string | null; feature: string }
 ): Promise<FeatureGateOk | FeatureGateDenied> {
+  if (isProductGatingBypassActive()) {
+    return {
+      ok: true,
+      plan: PLATFORM_OWNER_VP_PLAN,
+      usage: unlimitedUsageSnapshot(opts.feature),
+    };
+  }
+
   const { subscriptions, profile } = await loadUserPlanContext(admin, opts.userId);
   const planInfo = resolveEffectivePlan({ subscriptions, profile });
   const email =

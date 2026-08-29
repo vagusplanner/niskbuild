@@ -13,7 +13,7 @@ import type {
 import { logGooglePlacesImport } from '@/lib/log-google-places-import';
 import { resolvePlacesPhotoUrls } from '@/lib/google-places-photos';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { canImportGooglePlaces, canUseCompetitorIntel, canUseSocialProofAggregator, isPaidAndActive } from '@/lib/tier-config';
+import { canImportGooglePlaces, canUseCompetitorIntel, canUseSocialProofAggregator, isPaidAndActive } from '@/lib/tier-access-server';
 
 function formatBusinessType(types?: string[]): string | undefined {
   if (!types?.length) return undefined;

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { guardApiRequest } from '@/lib/api-auth';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
-import { canUseCustomDomains } from '@/lib/tier-config';
+import { canUseCustomDomains } from '@/lib/tier-access-server';
 import {
   claimCustomDomain,
   customDomainPublicMeta,

@@ -6,7 +6,7 @@ import {
   canUseLocalOllama,
   canUseSandboxLocalGenerate,
   LOCAL_OLLAMA_LOCKED_MESSAGE,
-} from '@/lib/tier-config';
+} from '@/lib/tier-access-server';
 import { recordUsageEvent } from '@/lib/usage-events';
 import { recordPromptCategoryStat } from '@/lib/prompt-category-stats';
 import { logBuildPerformance } from '@/lib/build-performance-server';

@@ -3,6 +3,7 @@ import {
   listingIncludedInTier,
   type MarketplaceTemplate,
 } from '@/lib/marketplace-types';
+import { isProductGatingBypassActive } from '@/lib/platform-owner-bypass';
 
 export type MarketplaceListingRow = {
   id: string;
@@ -228,6 +229,7 @@ export function isListingOwned(
   purchasedListingIds: string[],
   legacyPurchasedIds: string[]
 ): boolean {
+  if (isProductGatingBypassActive()) return true;
   if (listing.price === 0) return true;
   if (listingIncludedInTier(listing, tier, legacyPurchasedIds)) return true;
   if (purchasedListingIds.includes(listing.id)) return true;

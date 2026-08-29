@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { canViewStripeRevenue } from '@/lib/tier-config';
+import { canViewStripeRevenue } from '@/lib/tier-access-server';
 
 export async function GET(request: NextRequest) {
   const guard = await guardApiRequest(request);

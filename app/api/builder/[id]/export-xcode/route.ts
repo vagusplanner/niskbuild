@@ -6,7 +6,7 @@ import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { resolveBuilderApp } from '@/lib/builder-apps/handlers';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
-import { canExportNative } from '@/lib/tier-config';
+import { canExportNative } from '@/lib/tier-access-server';
 
 export const maxDuration = 300;
 

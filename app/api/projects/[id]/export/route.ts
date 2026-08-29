@@ -4,7 +4,7 @@ import { guardApiRequest } from '@/lib/api-auth';
 import { createProjectExportJob } from '@/lib/project-export/jobs';
 import { startProjectExportJob } from '@/lib/project-export/run-export';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
-import { canExportMobileProject } from '@/lib/tier-config';
+import { canExportMobileProject } from '@/lib/tier-access-server';
 import { recordUsageEvent } from '@/lib/usage-events';
 import { clientIpFromHeaders } from '@/lib/coarse-town';
 import type { ComponentBlueprint } from '@/lib/blueprint-schema';

@@ -143,6 +143,11 @@ export async function proxy(request: NextRequest) {
   const tier = profile?.subscription_tier ?? 'free';
   const paid = hasPaidTier(tier) && profile?.subscription_status === 'active';
 
+  const { data: isOwner } = await supabase.rpc('is_platform_owner').single();
+  if (isOwner) {
+    return supabaseResponse;
+  }
+
   // Platform-owner routes (3-layer admin + VP studio) — no paid tier required
   if (isPlatformOwnerPath(pathname)) {
     const { data: isOwner } = await supabase.rpc('is_platform_owner').single();

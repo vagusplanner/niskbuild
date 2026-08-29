@@ -12,7 +12,7 @@ import {
   type GameTemplateId,
 } from '@/lib/game-templates';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { canUseGameTemplates } from '@/lib/tier-config';
+import { canUseGameTemplates } from '@/lib/tier-access-server';
 
 const GAME_SYSTEM_PROMPT = `You are an expert Phaser.js game developer. Generate complete, working Phaser.js 3 game code based on the description.
 Always use Phaser.AUTO renderer, include preload/create/update scenes or a single scene class, and use arcade physics.

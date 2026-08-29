@@ -3,6 +3,11 @@
  * Paid access must come from a real subscription record — never localStorage / edition prefs alone.
  */
 
+import {
+  isProductGatingBypassActive,
+  PLATFORM_OWNER_ISLAMIC_ACCESS,
+} from '@/lib/platform-owner-bypass';
+
 export const PAID_ISLAMIC_PLANS = [
   'basic_islamic',
   'pro_islamic',
@@ -59,6 +64,10 @@ export type IslamicAccessResult = {
  * checkouts that update the NiskBuild profile instead of vp_subscriptions.
  */
 export function resolvePaidIslamicAccess(input: IslamicAccessInput): IslamicAccessResult {
+  if (isProductGatingBypassActive()) {
+    return PLATFORM_OWNER_ISLAMIC_ACCESS;
+  }
+
   const subs = input.subscriptions ?? [];
   for (const sub of subs) {
     const plan = normalizePlanId(sub.plan);

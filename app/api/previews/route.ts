@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { isPaidAndActive } from '@/lib/tier-config';
+import { isPaidAndActive } from '@/lib/tier-access-server';
 import { getPreviewStatusForUser, upsertPreview } from '@/lib/preview-links';
 
 export async function GET(request: NextRequest) {

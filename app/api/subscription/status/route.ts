@@ -3,8 +3,10 @@ import { captureApiException } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { hasFullNavAccess } from '@/lib/nav-access';
-import { getCloudCreditsForTier, isPaidAndActive } from '@/lib/tier-config';
+import { getCloudCreditsForTier } from '@/lib/tier-config';
+import { isPaidAndActive } from '@/lib/tier-access-server';
 import { ensureCloudCreditsInitialized } from '@/lib/credits';
+import { isPlatformOwner } from '@/lib/platform-owner-auth';
 
 export async function GET(request: NextRequest) {
   const guard = await guardApiRequest(request);
@@ -60,7 +62,8 @@ export async function GET(request: NextRequest) {
 
     const tier = profile?.subscription_tier || 'free';
     const status = profile?.subscription_status || 'inactive';
-    const paidActive = isPaidAndActive(tier, status);
+    const platformOwnerBypass = await isPlatformOwner();
+    const paidActive = isPaidAndActive(tier, status) || platformOwnerBypass;
 
     await ensureCloudCreditsInitialized(user.id);
 
@@ -81,12 +84,13 @@ export async function GET(request: NextRequest) {
       paid: paidActive,
       tier,
       status,
+      platformOwnerBypass,
       phoneVerified,
       fullNavAccess: hasFullNavAccess({
         subscription_tier: tier,
         subscription_status: status,
         phone_verified: phoneVerified,
-      }),
+      }) || platformOwnerBypass,
       credits,
       creditsAllowance: getCloudCreditsForTier(tier),
       purchasedTemplates: Array.isArray(refreshed?.purchased_templates ?? profile?.purchased_templates)

@@ -3,7 +3,7 @@ import { guardApiRequest } from '@/lib/api-auth';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { captureApiException } from '@/lib/api-error';
-import { canUseWhiteLabelBranding } from '@/lib/tier-config';
+import { canUseWhiteLabelBranding } from '@/lib/tier-access-server';
 import {
   ensureSoloOrganizationForUser,
   getPrimaryOrgIdForBillingOwner,

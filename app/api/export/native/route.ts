@@ -4,7 +4,7 @@ import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { buildNativeZip, slugifyFilename, type PwaProjectInput } from '@/lib/pwa-generator';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
-import { canExportNative } from '@/lib/tier-config';
+import { canExportNative } from '@/lib/tier-access-server';
 import type { ComponentBlueprint } from '@/lib/blueprint-schema';
 
 type InlineExportBody = {

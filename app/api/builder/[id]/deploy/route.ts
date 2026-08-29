@@ -3,7 +3,7 @@ import { captureApiException } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { resolveBuilderApp } from '@/lib/builder-apps/handlers';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
-import { isPaidAndActive } from '@/lib/tier-config';
+import { isPaidAndActive } from '@/lib/tier-access-server';
 import { deployVagusPlanner } from '@/lib/vp-deploy';
 
 /**

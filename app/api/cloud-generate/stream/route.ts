@@ -14,7 +14,7 @@ import { streamBuildNarration } from '@/lib/generate-narration';
 import { derivePromptNarrationFallback } from '@/lib/narration-shared';
 import { HTML_CODE_SYSTEM_PROMPT } from '@/lib/html-code-system-prompt';
 import { logBuildPerformance } from '@/lib/build-performance-server';
-import { canUseOwnApiKeys } from '@/lib/tier-config';
+import { canUseOwnApiKeys } from '@/lib/tier-access-server';
 import { getStreamProviderOrder } from '@/lib/ai-providers';
 import { recordUsageEvent } from '@/lib/usage-events';
 import { recordPromptCategoryStat } from '@/lib/prompt-category-stats';

@@ -5,7 +5,7 @@ import { guardApiRequest } from '@/lib/api-auth';
 import { createNiskBuildConfig } from '@/lib/niskbuild-config';
 import { applyExportWatermark } from '@/lib/export-policy';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
-import { canExportCleanZip } from '@/lib/tier-config';
+import { canExportCleanZip } from '@/lib/tier-access-server';
 import { cleanGeneratedCode } from '@/lib/cleanGeneratedCode';
 import {
   buildRobotsTxt,

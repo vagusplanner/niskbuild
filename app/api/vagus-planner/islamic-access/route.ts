@@ -4,6 +4,7 @@ import { guardApiRequest } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { resolveEffectivePlan } from '@/lib/vp-plan-access';
 import { loadUserPlanContext } from '@/lib/vp-usage-meter';
+import { isPlatformOwner } from '@/lib/platform-owner-auth';
 import {
   vpApiCorsPreflightResponse,
   vpApiJson,
@@ -28,12 +29,14 @@ export async function GET(request: NextRequest) {
     const userId = guard.user!.id;
     const { subscriptions, profile } = await loadUserPlanContext(admin, userId);
     const planInfo = resolveEffectivePlan({ subscriptions, profile });
+    const platformOwnerBypass = await isPlatformOwner();
 
     return vpApiJson(request, {
       hasPaidIslamicAccess: planInfo.hasPaidIslamicAccess,
       plan: planInfo.hasPaidIslamicAccess ? planInfo.plan : null,
       status: planInfo.hasPaidIslamicAccess ? planInfo.status : null,
       source: planInfo.hasPaidIslamicAccess ? planInfo.source : null,
+      platformOwnerBypass,
     });
   } catch (error) {
     captureApiException(error);

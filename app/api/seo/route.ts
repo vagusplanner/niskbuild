@@ -4,7 +4,7 @@ import { getAuthenticatedProfile } from '@/lib/server-profile';
 import { computeSeoScore } from '@/lib/seo-score';
 import { buildSchemaJson } from '@/lib/seo-schema';
 import { DEFAULT_SEO_SETTINGS, type ProjectSeoSettings } from '@/lib/seo-types';
-import { canSaveSeoSettings } from '@/lib/tier-config';
+import { canSaveSeoSettings } from '@/lib/tier-access-server';
 
 function rowToSettings(row: Record<string, unknown> | null): ProjectSeoSettings {
   if (!row) return { ...DEFAULT_SEO_SETTINGS };

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createClient } from '@/lib/supabase/server';
-import { canUseOwnApiKeys } from '@/lib/tier-config';
+import { canUseOwnApiKeys } from '@/lib/tier-access-server';
 
 export async function GET(request: NextRequest) {
   const guard = await guardApiRequest(request);

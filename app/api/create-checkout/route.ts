@@ -5,7 +5,7 @@ import { guardApiRequest } from '@/lib/api-auth';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
 import { createClient } from '@/lib/supabase/server';
 import { getReloadPack } from '@/lib/reload-packs';
-import { isPaidAndActive } from '@/lib/tier-config';
+import { isPaidAndActive } from '@/lib/tier-access-server';
 import {
   getPriceId,
   getReloadPriceId,

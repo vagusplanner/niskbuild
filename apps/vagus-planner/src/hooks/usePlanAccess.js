@@ -35,6 +35,7 @@ export function usePlanAccess() {
     plan: data?.plan ?? 'free',
     isPaid: data?.isPaid === true,
     hasPaidIslamicAccess: data?.hasPaidIslamicAccess === true,
+    platformOwnerBypass: data?.platformOwnerBypass === true,
     usage,
     aiCalendarSummary: usage.ai_calendar_summary ?? null,
     aiScheduler: usage.ai_scheduler ?? null,
