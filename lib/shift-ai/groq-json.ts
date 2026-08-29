@@ -2,7 +2,7 @@ import 'server-only';
 
 import { GROQ_CODE_MODEL } from '@/lib/groq-models';
 export const SHIFT_GROQ_MODEL = process.env.GROQ_AGENT_MODEL?.trim() || GROQ_CODE_MODEL;
-export const GROQ_TIMEOUT_MS = 25_000;
+export const GROQ_TIMEOUT_MS = 50_000;
 
 export const GROQ_JSON_ONLY_INSTRUCTION =
   'Respond with ONLY the raw JSON object. No markdown, no code fences, no explanation text before or after.';

@@ -329,6 +329,41 @@ function mapPayloadToRow(entityName, payload, userId) {
     return row
   }
 
+  if (entityName === 'SharedCalendar') {
+    const row = {
+      owner_email: p.owner_email,
+      shared_with_email: (p.shared_with_email ?? '').toLowerCase().trim(),
+      permission: ['view', 'edit', 'invite'].includes(p.permission) ? p.permission : 'view',
+      notify_on_changes: p.notify_on_changes !== false,
+      calendar_type: p.calendar_type === 'group' ? 'group' : 'personal',
+    }
+    if (userId) row.user_id = userId
+    if (p.group_calendar_id != null) row.group_calendar_id = p.group_calendar_id
+    row.updated_at = new Date().toISOString()
+    return row
+  }
+
+  if (entityName === 'Notification') {
+    const row = {
+      recipient_email: (p.recipient_email ?? p.user_email ?? '').toLowerCase().trim(),
+      type: p.type ?? 'general',
+      title: p.title ?? 'Notification',
+      message: p.message ?? null,
+      priority: p.priority ?? 'medium',
+      is_read: p.is_read === true,
+      dismissed: p.dismissed === true,
+    }
+    if (userId) row.user_id = userId
+    if (p.icon != null) row.icon = p.icon
+    if (p.entity_type != null) row.entity_type = p.entity_type
+    if (p.entity_id != null) row.entity_id = String(p.entity_id)
+    if (p.scheduled_for != null) row.scheduled_for = p.scheduled_for
+    if (p.metadata != null) row.metadata = p.metadata
+    else if (p.action_url != null) row.metadata = { action_url: p.action_url }
+    row.updated_at = new Date().toISOString()
+    return row
+  }
+
   const row = { ...p }
   if (userId && row.user_id == null) row.user_id = userId
   return row
@@ -542,6 +577,16 @@ function applyFilters(query, criteria, entityName) {
     }
     if (entityName === 'TaskShare' && (key === 'shared_with' || key === 'shared_by')) {
       next = next.eq(key === 'shared_with' ? 'shared_with_email' : 'shared_by_email', value)
+      continue
+    }
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      const col = mapColumn(key, entityName)
+      if (value.$gte != null) next = next.gte(col, value.$gte)
+      if (value.$lte != null) next = next.lte(col, value.$lte)
+      if (value.$gt != null) next = next.gt(col, value.$gt)
+      if (value.$lt != null) next = next.lt(col, value.$lt)
+      if (value.$ne != null) next = next.neq(col, value.$ne)
+      if (value.$in != null) next = next.in(col, value.$in)
       continue
     }
     next = next.eq(mapColumn(key, entityName), value)

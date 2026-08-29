@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Sparkles, Loader2, Check, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
+import { aiFailureMessage } from '@/lib/ai-error-messages';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function NaturalLanguageInput({ onEventCreated, onClose }) {
@@ -27,7 +28,7 @@ export default function NaturalLanguageInput({ onEventCreated, onClose }) {
         toast.error('Could not understand that. Try: "Lunch with Sarah tomorrow at 1pm"');
       }
     } catch (error) {
-      toast.error('Failed to parse event');
+      toast.error(aiFailureMessage(error, 'Failed to parse event'));
     } finally {
       setParsing(false);
     }

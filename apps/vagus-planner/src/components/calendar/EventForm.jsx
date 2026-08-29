@@ -19,6 +19,7 @@ import {
 import { format } from 'date-fns';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
+import { aiFailureMessage } from '@/lib/ai-error-messages';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import InviteParser from './InviteParser';
 import debounce from 'lodash/debounce';
@@ -43,7 +44,7 @@ const CATEGORIES = [
   { value: 'other',    label: 'Other',    color: 'bg-slate-500' }
 ];
 
-export default function EventForm({ isOpen, onClose, onSave, event, selectedDate, allEvents = [], settings = {} }) {
+export default function EventForm({ isOpen, onClose, onSave, event, selectedDate, allEvents = [], settings = {}, embedded = false }) {
   const [showAutoReschedule, setShowAutoReschedule] = useState(false);
   const [detectedConflicts, setDetectedConflicts] = useState([]);
 
@@ -476,7 +477,7 @@ Be smart about patterns - if most similar events happen at same time, suggest th
       setSuggestions(result);
       toast.success('AI suggestions ready!');
     } catch (error) {
-      toast.error('Could not generate suggestions');
+      toast.error(aiFailureMessage(error, 'Could not generate suggestions'));
     } finally {
       setAiSuggesting(false);
     }
@@ -527,19 +528,25 @@ Return the most appropriate reminder time in minutes and a brief reason.`,
     <AnimatePresence>
       {isOpen && (
         <>
+          {!embedded && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[105]"
+              onClick={onClose}
+            />
+          )}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[105]"
-            onClick={onClose}
-          />
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
+            initial={{ opacity: 0, y: embedded ? 0 : 40 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 40 }}
+            exit={{ opacity: 0, y: embedded ? 0 : 40 }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 md:inset-auto md:bottom-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-2xl max-h-[95dvh] bg-white dark:bg-slate-900 rounded-t-2xl md:rounded-2xl shadow-2xl z-[110] overflow-hidden flex flex-col"
+            className={
+              embedded
+                ? 'flex flex-col h-full min-h-0 bg-white dark:bg-slate-900 overflow-hidden'
+                : 'fixed inset-x-0 bottom-0 md:inset-x-auto md:inset-y-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-2xl max-h-[95dvh] bg-white dark:bg-slate-900 rounded-t-2xl md:rounded-2xl shadow-2xl z-[110] overflow-hidden flex flex-col'
+            }
           >
             {/* Drag handle — mobile only */}
             <div className="md:hidden mx-auto mt-3 mb-0 h-1.5 w-12 rounded-full bg-slate-200 dark:bg-slate-700 flex-shrink-0" />

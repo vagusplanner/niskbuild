@@ -44,30 +44,36 @@ export default function CalendarSharingModal({ isOpen, onClose, groupCalendarId 
 
   const shareMutation = useMutation({
     mutationFn: async (data) => {
-      // Check if already shared
-      const existing = sharedWith.find(s => s.shared_with_email === data.shared_with_email);
+      const existing = sharedWith.find(
+        (s) => s.shared_with_email?.toLowerCase() === data.shared_with_email
+      );
       if (existing) {
-        toast.error('Calendar already shared with this user');
-        return;
+        throw new Error('Calendar already shared with this user');
       }
 
       await base44.entities.SharedCalendar.create(data);
-      
-      // Send notification
-      await base44.entities.Notification.create({
-        user_email: data.shared_with_email,
-        type: 'calendar_shared',
-        title: 'Calendar Shared',
-        message: `${user.full_name || user.email} shared a calendar with you`,
-        priority: 'medium',
-        action_url: '/Calendar'
-      });
+
+      try {
+        await base44.entities.Notification.create({
+          recipient_email: data.shared_with_email,
+          type: 'calendar_shared',
+          title: 'Calendar Shared',
+          message: `${user.full_name || user.email} shared a calendar with you`,
+          priority: 'medium',
+          action_url: '/Calendar',
+        });
+      } catch (notifyError) {
+        console.warn('Calendar shared but notification failed:', notifyError);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shared-calendars'] });
       setEmail('');
       toast.success('Calendar shared successfully!');
-    }
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Failed to share calendar');
+    },
   });
 
   const updatePermissionMutation = useMutation({

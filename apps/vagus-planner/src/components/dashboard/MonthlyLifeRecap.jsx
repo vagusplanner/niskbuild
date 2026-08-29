@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Sparkles, Loader2, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 import { startOfMonth, endOfMonth, format, subMonths } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
+import { aiFailureMessage } from '@/lib/ai-error-messages';
 
 export default function MonthlyLifeRecap({ islamicMode = false }) {
   const [expanded, setExpanded] = useState(false);
@@ -68,7 +69,7 @@ Keep it personal, warm, and under 200 words total. ${islamicMode ? 'Include an I
       setRecap(result);
       setExpanded(true);
     } catch (e) {
-      setRecap('Could not generate recap. Please try again.');
+      setRecap(aiFailureMessage(e, 'Could not generate recap. Please try again.'));
       setExpanded(true);
     } finally {
       setLoading(false);

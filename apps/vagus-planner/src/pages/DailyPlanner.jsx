@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { aiFailureMessage } from '@/lib/ai-error-messages';
 import { format, addDays, subDays, isToday } from 'date-fns';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import {
@@ -491,7 +492,7 @@ export default function DailyPlanner() {
         added++;
       }
       toast.success(`✨ AI added ${added} suggestions!`);
-    } catch { toast.error('AI planning failed'); }
+    } catch (e) { toast.error(aiFailureMessage(e, 'AI planning failed')); }
     setAiLoading(false);
   };
 

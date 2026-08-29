@@ -189,6 +189,7 @@ export default function MobileCalendarView() {
         snapPoints={[0.9]}
       >
         <EventForm
+          embedded
           isOpen={true}
           onClose={() => setShowNewEvent(false)}
           onSave={() => setShowNewEvent(false)}
@@ -205,6 +206,7 @@ export default function MobileCalendarView() {
       >
         {selectedEvent && (
           <EventForm
+            embedded
             isOpen={true}
             event={selectedEvent}
             onClose={() => setSelectedEvent(null)}

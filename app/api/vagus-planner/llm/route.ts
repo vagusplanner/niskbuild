@@ -23,6 +23,8 @@ import {
 import { loadUserPlanContext, requireFeatureUsage } from '@/lib/vp-usage-meter';
 import { resolvePaidIslamicAccess } from '@/lib/vp-islamic-access';
 
+export const maxDuration = 60;
+
 const MAX_PROMPT_CHARS = 32_000;
 
 export async function OPTIONS(request: NextRequest) {

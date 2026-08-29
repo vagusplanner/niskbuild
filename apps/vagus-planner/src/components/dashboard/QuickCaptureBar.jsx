@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { aiFailureMessage } from '@/lib/ai-error-messages';
 
 const EXAMPLES = [
   'Dentist Friday 3pm',
@@ -75,7 +76,7 @@ Return JSON with:
       if (res?.title) setResult(res);
       else toast.error('Could not understand. Try: "Dentist Friday 3pm" or "Buy milk tomorrow"');
     } catch (e) {
-      toast.error('Parse failed, try again');
+      toast.error(aiFailureMessage(e, 'Parse failed, try again'));
     } finally {
       setParsing(false);
     }

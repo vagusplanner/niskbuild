@@ -70,8 +70,8 @@ const NSC_GRADIENTS = [
   'linear-gradient(135deg, #0A3333 0%, #0D4F6C 100%)',   // deep teal→navy
 ];
 
-function QuickLink({ icon: Icon, label, page, gradient, hash, _idx = 0 }) {
-  const url = createPageUrl(page) + (hash ? hash : '');
+function QuickLink({ icon: Icon, label, page, gradient, hash, query, _idx = 0 }) {
+  const url = createPageUrl(page) + (query || '') + (hash ? hash : '');
   const bg = NSC_GRADIENTS[_idx % NSC_GRADIENTS.length];
   return (
     <Link to={url}>
@@ -168,14 +168,14 @@ export default function DashboardPage() {
 
   // Quick actions — differ by edition
   const QUICK_LINKS = filterNavItems(islamicMode ? [
-    { icon: Moon,         label: 'Log Prayer',  page: 'Islam',    gradient: '' },
-    { icon: BookOpen,     label: 'Read Quran',  page: 'Islam',    gradient: '' },
+    { icon: Moon,         label: 'Log Prayer',  page: 'Islam',    query: '?section=prayer', gradient: '' },
+    { icon: BookOpen,     label: 'Read Quran',  page: 'Islam',    query: '?section=quran', gradient: '' },
     { icon: Target,       label: 'Add Goal',    page: 'Goals',    gradient: '' },
-    { icon: Plus,         label: t('calendar.addEvent'), page: 'Calendar', gradient: '' },
+    { icon: Plus,         label: t('calendar.addEvent'), page: 'Calendar', query: '?new=1', gradient: '' },
     { icon: Heart,        label: 'Wellness',    page: 'Wellness', gradient: '' },
     { icon: Plane,        label: t('nav.travel'),   page: 'Travel',   gradient: '' },
   ] : [
-    { icon: Plus,         label: t('calendar.addEvent'), page: 'Calendar',      gradient: '' },
+    { icon: Plus,         label: t('calendar.addEvent'), page: 'Calendar',      query: '?new=1', gradient: '' },
     { icon: Target,       label: 'Add Goal',             page: 'Goals',         gradient: '' },
     { icon: Users,        label: 'Teams',                page: 'TeamWorkspace', gradient: '' },
     { icon: DollarSign,   label: 'Finance',              page: 'Finance',       gradient: '' },

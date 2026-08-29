@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -59,6 +60,7 @@ import AISchedulePlanner from '@/components/calendar/AISchedulePlanner';
 
 export default function CalendarPage() {
   const { t } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [view, setView] = useState('month');
@@ -114,6 +116,28 @@ export default function CalendarPage() {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Deep links from Dashboard quick actions (?view=task-timeline, ?new=1)
+  useEffect(() => {
+    const viewParam = searchParams.get('view');
+    const wantsNewEvent = searchParams.get('new') === '1' || searchParams.get('action') === 'new';
+
+    if (viewParam) {
+      setView(viewParam);
+    }
+    if (wantsNewEvent) {
+      setEditingEvent(null);
+      setShowEventForm(true);
+    }
+
+    if (viewParam || wantsNewEvent) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('view');
+      next.delete('new');
+      next.delete('action');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   // Swipe navigation
   useSwipeGestureOnElement({
@@ -600,33 +624,18 @@ export default function CalendarPage() {
 
         <AITaskScheduler isOpen={showAITaskScheduler} onClose={() => setShowAITaskScheduler(false)} tasks={tasks} events={events} />
 
-        {/* Event Form */}
-        <AnimatePresence>
-          {showEventForm && (
-            <>
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
-                onClick={() => { setShowEventForm(false); setEditingEvent(null); }} />
-              <div className="fixed inset-0 z-[101] flex items-end sm:items-center justify-center sm:p-4 pointer-events-none">
-                <motion.div
-                  initial={{ opacity: 0, y: isMobile ? 60 : 20 }} animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: isMobile ? 60 : 20 }}
-                  transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-                  className="pointer-events-auto w-full sm:max-w-2xl max-h-[92vh] overflow-auto rounded-t-2xl sm:rounded-2xl">
-                  <EventForm isOpen onClose={() => { setShowEventForm(false); setEditingEvent(null); }}
-                    onSave={handleSaveEvent} event={editingEvent} selectedDate={selectedDate}
-                    allEvents={events} settings={settings}
-                    renderExtraComponents={(formEvent) =>
-                      formEvent && !editingEvent ? (
-                        <AIEventCategorizer event={formEvent}
-                          onCategorize={(cat) => handleSaveEvent({ ...formEvent, category: cat.category, priority: cat.priority })} />
-                      ) : null
-                    } />
-                </motion.div>
-              </div>
-            </>
-          )}
-        </AnimatePresence>
+        {/* Event Form — EventForm renders its own centered overlay; do not wrap in a transformed container */}
+        {showEventForm && (
+          <EventForm
+            isOpen
+            onClose={() => { setShowEventForm(false); setEditingEvent(null); }}
+            onSave={handleSaveEvent}
+            event={editingEvent}
+            selectedDate={selectedDate}
+            allEvents={events}
+            settings={settings}
+          />
+        )}
 
         {/* Day Hourly View */}
         <AnimatePresence>
