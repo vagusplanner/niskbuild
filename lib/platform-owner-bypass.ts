@@ -39,8 +39,8 @@ export function isProductGatingBypassActive(): boolean {
  * Resolve platform-owner bypass via Supabase is_platform_owner() and store it
  * for the remainder of the current async request context.
  */
-export async function initProductGatingContext(): Promise<boolean> {
-  const bypass = await isPlatformOwner();
+export async function initProductGatingContext(userId?: string): Promise<boolean> {
+  const bypass = await isPlatformOwner(userId);
   gatingStore.enterWith({ bypass });
   return bypass;
 }

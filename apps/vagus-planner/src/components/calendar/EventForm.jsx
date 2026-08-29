@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import AutoRescheduleEngine from '@/components/calendar/AutoRescheduleEngine';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Calendar, Clock, MapPin, Bell, Repeat, Tag, FileText, Sparkles, Loader2, Mail, Wand2, MessageSquare, Paperclip } from 'lucide-react';
@@ -524,7 +525,7 @@ Return the most appropriate reminder time in minutes and a brief reason.`,
     }
   };
 
-  return (
+  const overlay = (
     <AnimatePresence>
       {isOpen && (
         <>
@@ -1054,4 +1055,14 @@ Return the most appropriate reminder time in minutes and a brief reason.`,
       )}
     </AnimatePresence>
   );
+
+  if (embedded) {
+    return overlay;
+  }
+
+  if (typeof document === 'undefined') {
+    return null;
+  }
+
+  return createPortal(overlay, document.body);
 }

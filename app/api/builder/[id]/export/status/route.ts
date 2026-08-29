@@ -11,7 +11,7 @@ async function canReadJob(
   userId: string
 ): Promise<boolean> {
   if (job.requested_by === userId) return true;
-  return isPlatformOwner();
+  return isPlatformOwner(userId);
 }
 
 export async function GET(request: NextRequest, context: RouteContext) {

@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
 
     const tier = profile?.subscription_tier || 'free';
     const status = profile?.subscription_status || 'inactive';
-    const platformOwnerBypass = await isPlatformOwner();
+    const platformOwnerBypass = await isPlatformOwner(user.id);
     const paidActive = isPaidAndActive(tier, status) || platformOwnerBypass;
 
     await ensureCloudCreditsInitialized(user.id);

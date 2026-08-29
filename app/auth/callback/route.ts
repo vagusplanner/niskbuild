@@ -3,6 +3,7 @@ import type { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { resolvePostAuthPath } from '@/lib/post-auth-redirect';
+import { isPlatformOwner } from '@/lib/platform-owner-auth';
 import { recordSignupIfNewUser } from '@/lib/usage-events';
 import { sendWelcomeEmail } from '@/lib/email/lifecycle';
 import { clientIpFromHeaders } from '@/lib/coarse-town';
@@ -78,7 +79,11 @@ export async function GET(request: Request) {
       .eq('id', userId)
       .single();
 
-    let destinationPath = resolvePostAuthPath(profile ?? {}, next);
+    const platformOwner = await isPlatformOwner(userId);
+
+    let destinationPath = resolvePostAuthPath(profile ?? {}, next, {
+      isPlatformOwner: platformOwner,
+    });
     const destination = new URL(destinationPath, origin);
 
     const ssoLogin = ssoFlag || isSsoUser(user);

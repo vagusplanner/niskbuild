@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     const userId = guard.user!.id;
     const { subscriptions, profile } = await loadUserPlanContext(admin, userId);
     const planInfo = resolveEffectivePlan({ subscriptions, profile });
-    const platformOwnerBypass = await isPlatformOwner();
+    const platformOwnerBypass = await isPlatformOwner(guard.user!.id);
 
     return vpApiJson(request, {
       hasPaidIslamicAccess: planInfo.hasPaidIslamicAccess,

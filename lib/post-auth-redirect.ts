@@ -20,7 +20,8 @@ export function sanitizeNextPath(next: string | null | undefined): string | null
  */
 export function resolvePostAuthPath(
   profile: PostAuthProfile,
-  requestedNext?: string | null
+  requestedNext?: string | null,
+  options?: { isPlatformOwner?: boolean }
 ): string {
   const paid =
     hasPaidTier(profile.subscription_tier ?? undefined) &&
@@ -30,6 +31,17 @@ export function resolvePostAuthPath(
 
   if (safeNext?.startsWith('/reset-password')) {
     return safeNext;
+  }
+
+  if (options?.isPlatformOwner) {
+    if (
+      safeNext &&
+      !safeNext.startsWith('/verify-phone') &&
+      !isPublicPath(safeNext.split('?')[0])
+    ) {
+      return safeNext;
+    }
+    return '/dashboard';
   }
 
   if (!paid && !profile.phone_verified) {

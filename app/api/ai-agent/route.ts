@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
   }
 
   const mode = request.nextUrl.searchParams.get('mode') === 'admin' ? 'admin' : 'user';
-  if (mode === 'admin' && !(await isPlatformOwner())) {
+  if (mode === 'admin' && !(await isPlatformOwner(guard.user.id))) {
     return NextResponse.json({ error: 'Platform owner access required' }, { status: 403 });
   }
 
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Please sign in to use the assistant' }, { status: 401 });
     }
 
-    if (mode === 'admin' && !(await isPlatformOwner())) {
+    if (mode === 'admin' && !(await isPlatformOwner(user.id))) {
       return NextResponse.json({ error: 'Platform owner access required' }, { status: 403 });
     }
 

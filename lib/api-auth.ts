@@ -117,7 +117,7 @@ export async function guardApiRequest(
       return { ok: false, response: rateLimitExceededResponse() };
     }
 
-    await initProductGatingContext();
+    await initProductGatingContext(auth.user.id);
 
     return { ok: true, user: auth.user };
   }

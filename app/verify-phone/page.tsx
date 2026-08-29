@@ -8,6 +8,7 @@ import PhoneVerification from '@/app/components/PhoneVerification';
 import { getSafeSession } from '@/lib/supabaseSession';
 import { createClient } from '@/lib/supabase/client';
 import { hasPaidTier } from '@/lib/access';
+import { isPlatformOwnerClient } from '@/lib/platform-owner-client';
 
 function VerifyPhoneContent() {
   const router = useRouter();
@@ -32,7 +33,9 @@ function VerifyPhoneContent() {
         hasPaidTier(profile?.subscription_tier) &&
         profile?.subscription_status === 'active';
 
-      if (paid || profile?.phone_verified) {
+      const platformOwner = await isPlatformOwnerClient();
+
+      if (paid || profile?.phone_verified || platformOwner) {
         router.replace('/dashboard');
         return;
       }

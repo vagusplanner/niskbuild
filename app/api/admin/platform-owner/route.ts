@@ -8,6 +8,6 @@ export async function GET(request: NextRequest) {
   const guard = await guardApiRequest(request, { rateLimit: 30 });
   if (!guard.ok) return guard.response;
 
-  const owner = await isPlatformOwner();
+  const owner = await isPlatformOwner(guard.user!.id);
   return NextResponse.json({ isOwner: owner, userId: owner ? guard.user!.id : undefined });
 }

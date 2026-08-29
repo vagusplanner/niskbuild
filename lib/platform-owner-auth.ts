@@ -5,9 +5,36 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import type { User } from '@supabase/supabase-js';
 import { guardApiRequest, unauthorizedResponse } from '@/lib/api-auth';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 
-export async function isPlatformOwner(): Promise<boolean> {
+/**
+ * Platform-owner check. Prefer `userId` when the caller already authenticated
+ * via Bearer token (VP cross-origin API) — cookie session RPC cannot see auth.uid().
+ */
+export async function isPlatformOwner(userId?: string): Promise<boolean> {
+  if (userId) {
+    try {
+      const admin = createAdminClient();
+      const { data, error } = await admin
+        .schema('firstparty')
+        .from('platform_owners')
+        .select('user_id')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('platform_owners lookup failed:', error.message);
+        return false;
+      }
+
+      return Boolean(data?.user_id);
+    } catch (error) {
+      console.error('platform_owners lookup failed:', error);
+      return false;
+    }
+  }
+
   const supabase = await createClient();
   const { data, error } = await supabase.rpc('is_platform_owner').single();
 
@@ -41,7 +68,7 @@ export async function requirePlatformOwner(
   const guard = await guardApiRequest(request);
   if (!guard.ok) return guard;
 
-  const owner = await isPlatformOwner();
+  const owner = await isPlatformOwner(guard.user?.id);
   if (!owner || !guard.user) {
     return { ok: false, response: unauthorizedResponse() };
   }
