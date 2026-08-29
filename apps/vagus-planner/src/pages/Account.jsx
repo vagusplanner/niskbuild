@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { base44, supabase } from '@/api/base44Client';
+import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import ExternalCalendarManager from '@/components/integrations/ExternalCalendarManager';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -109,26 +109,24 @@ export default function Account() {
         throw new Error('Not signed in');
       }
 
-      // Direct update on the edition column
-      const { data, error } = await supabase
-        .schema('firstparty')
-        .from('vp_user_settings')
-        .update({ edition, islamic_mode: edition === 'islamic' })
-        .eq('user_id', user.id)
-        .select('id');
+      const islamicMode = edition === 'islamic';
+      const existingPrefs =
+        settingsRecord?.preferences && typeof settingsRecord.preferences === 'object'
+          ? settingsRecord.preferences
+          : {};
+      const payload = {
+        edition,
+        islamic_mode: islamicMode,
+        preferences: { ...existingPrefs, edition },
+      };
 
-      if (error) throw error;
-
-      if (!data?.length) {
-        const { error: insertError } = await supabase
-          .schema('firstparty')
-          .from('vp_user_settings')
-          .insert({ user_id: user.id, edition, islamic_mode: edition === 'islamic' });
-
-        if (insertError) throw insertError;
+      if (settingsRecord?.id) {
+        await base44.entities.UserSettings.update(settingsRecord.id, payload);
+      } else {
+        await base44.entities.UserSettings.create(payload);
       }
 
-      setSettings((prev) => ({ ...prev, edition, islamic_mode: edition === 'islamic' }));
+      setSettings((prev) => ({ ...prev, edition, islamic_mode: islamicMode }));
       console.log('✅ Edition saved:', edition);
       return true;
     } catch (err) {

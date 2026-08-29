@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { 
@@ -152,16 +153,25 @@ export default function EventDetailsModal({ event, isOpen, onClose, onEdit, onDe
 
   if (!event || !isOpen) return null;
 
-  return (
+  const overlay = (
     <AnimatePresence>
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[120] flex items-end sm:items-center justify-center sm:p-4">
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 40 }}
-          transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-          className="bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-3xl max-h-[92vh] sm:max-h-[90vh] overflow-hidden flex flex-col"
-        >
+      {isOpen && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[120]"
+            onClick={onClose}
+          />
+          <div className="fixed inset-x-0 bottom-0 sm:inset-0 sm:flex sm:items-center sm:justify-center sm:p-4 z-[121] pointer-events-none">
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 40 }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className="pointer-events-auto bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-3xl max-h-[92vh] sm:max-h-[90vh] overflow-hidden flex flex-col"
+            >
           {/* Header */}
           <div className="sticky top-0 bg-gradient-to-r from-teal-500 to-cyan-600 p-6 text-white z-10">
             <div className="flex items-start justify-between">
@@ -536,7 +546,8 @@ export default function EventDetailsModal({ event, isOpen, onClose, onEdit, onDe
             </div>
           </div>
         </motion.div>
-        
+          </div>
+
         {/* Group Chat Modal */}
         <EventGroupChat
           event={event}
@@ -549,7 +560,14 @@ export default function EventDetailsModal({ event, isOpen, onClose, onEdit, onDe
             handleAddTask(taskData.title || taskData.description);
           }}
         />
-      </div>
+        </>
+      )}
     </AnimatePresence>
   );
+
+  if (typeof document === 'undefined') {
+    return null;
+  }
+
+  return createPortal(overlay, document.body);
 }

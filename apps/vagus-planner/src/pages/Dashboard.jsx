@@ -102,9 +102,7 @@ export default function DashboardPage() {
     retry: false,
     staleTime: 60000,
   });
-  const { isIslamicEdition, isLoading: islamicEditionLoading } = useIslamicEdition();
-  // islamicMode requires BOTH an Islamic plan AND the toggle enabled — never true for Standard users
-  const islamicMode = !islamicEditionLoading && isIslamicEdition && (settingsList[0]?.islamic_mode ?? false);
+  const { isIslamicEdition, isLoading: islamicEditionLoading, islamicMode } = useIslamicEdition();
 
   const { data: events = [] } = useQuery({
     queryKey: ['todayEvents'],

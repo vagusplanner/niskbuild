@@ -538,6 +538,13 @@ Return the most appropriate reminder time in minutes and a brief reason.`,
               onClick={onClose}
             />
           )}
+          <div
+            className={
+              embedded
+                ? 'flex flex-col h-full min-h-0'
+                : 'fixed inset-x-0 bottom-0 md:inset-0 md:flex md:items-center md:justify-center md:p-4 z-[110] pointer-events-none'
+            }
+          >
           <motion.div
             initial={{ opacity: 0, y: embedded ? 0 : 40 }}
             animate={{ opacity: 1, y: 0 }}
@@ -546,7 +553,7 @@ Return the most appropriate reminder time in minutes and a brief reason.`,
             className={
               embedded
                 ? 'flex flex-col h-full min-h-0 bg-white dark:bg-slate-900 overflow-hidden'
-                : 'fixed inset-x-0 bottom-0 md:inset-x-auto md:inset-y-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-2xl max-h-[95dvh] bg-white dark:bg-slate-900 rounded-t-2xl md:rounded-2xl shadow-2xl z-[110] overflow-hidden flex flex-col'
+                : 'pointer-events-auto w-full md:max-w-2xl max-h-[95dvh] bg-white dark:bg-slate-900 rounded-t-2xl md:rounded-2xl shadow-2xl overflow-hidden flex flex-col'
             }
           >
             {/* Drag handle — mobile only */}
@@ -1041,6 +1048,7 @@ Return the most appropriate reminder time in minutes and a brief reason.`,
               </div>
             )}
           </motion.div>
+          </div>
 
           {/* Collaboration Panel */}
           <AnimatePresence>
