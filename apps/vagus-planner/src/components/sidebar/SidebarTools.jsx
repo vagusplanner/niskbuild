@@ -276,6 +276,7 @@ export default function SidebarTools({ islamicMode, settings, currentPageName, o
           <p className="px-3 text-[9px] font-bold uppercase tracking-widest mb-1.5" style={{color:`${C.ice}30`}}>{group.label}</p>
           <div className="grid grid-cols-3 gap-1 px-2">
             {group.tools.filter(tool => {
+              if (tool.id === 'islam' && !islamicMode) return false;
               if (!tool.action.startsWith('nav:')) return true;
               const page = tool.action.split(':')[1];
               return !isPageHiddenFromNav(page);

@@ -836,6 +836,7 @@ export default function Layout({ children, currentPageName }) {
         <KeyboardShortcutsModal isOpen={showKeyboardShortcuts} onClose={() => setShowKeyboardShortcuts(false)} />
         {showHelpCenter && <HelpCenter isOpen={showHelpCenter} onClose={() => setShowHelpCenter(false)} />}
         {showHalalFinder && <HalalRestaurantFinder isOpen={showHalalFinder} onClose={() => setShowHalalFinder(false)} />}
+        <SuperAgentManager />
         <UnifiedFAB />
         {islamicMode && <ArabicKeyboardHelper />}
       </React.Suspense>
