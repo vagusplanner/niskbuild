@@ -30,6 +30,11 @@ import {
   suggestPrayerAwareMeetingTimes,
 } from './handlers/calendar-ai';
 import { transcribeAudio } from './handlers/transcribe-audio';
+import {
+  parseVoiceCommand,
+  suggestOptimalEventTimes,
+  suggestTaskTimeSlots,
+} from './handlers/voice-and-slots';
 import { onNewUserWelcome, trackAnalytics } from './handlers/stubs';
 
 export const VP_FUNCTION_REGISTRY = new Map<string, VpFunctionHandler>([
@@ -60,6 +65,9 @@ export const VP_FUNCTION_REGISTRY = new Map<string, VpFunctionHandler>([
   ['trackAnalytics', trackAnalytics],
   ['onNewUserWelcome', onNewUserWelcome],
   ['aiEventSummary', aiEventSummary],
+  ['parseVoiceCommand', parseVoiceCommand],
+  ['suggestOptimalEventTimes', suggestOptimalEventTimes],
+  ['suggestTaskTimeSlots', suggestTaskTimeSlots],
 ]);
 
 export function getVpFunctionHandler(name: string): VpFunctionHandler | undefined {

@@ -10,7 +10,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { requireFeatureUsage } from '@/lib/vp-usage-meter';
 import type { VpFunctionHandler, VpFunctionResult } from '../types';
 
-async function gateFeature(
+export async function gateFeature(
   user: { id: string; email?: string | null },
   feature: string
 ): Promise<{ ok: true } | { ok: false; result: VpFunctionResult }> {
@@ -29,7 +29,7 @@ async function gateFeature(
   return { ok: true };
 }
 
-async function groqJson<T extends Record<string, unknown>>(
+export async function groqJson<T extends Record<string, unknown>>(
   system: string,
   userPrompt: string,
   label: string
