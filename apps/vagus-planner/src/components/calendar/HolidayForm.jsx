@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plane, Calendar, MapPin, DollarSign, Hotel, FileText, ExternalLink, Sparkles, Users } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -97,7 +98,7 @@ export default function HolidayForm({ isOpen, onClose, onSave, holiday }) {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  return (
+  const overlay = (
     <AnimatePresence>
       {isOpen && (
         <>
@@ -108,12 +109,13 @@ export default function HolidayForm({ isOpen, onClose, onSave, holiday }) {
             className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
             onClick={onClose}
           />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed inset-x-4 top-[5%] bottom-[5%] md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-lg bg-white rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col"
-          >
+          <div className="fixed inset-x-4 top-[5%] bottom-[5%] md:inset-0 md:flex md:items-center md:justify-center md:p-4 z-50 pointer-events-none">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="pointer-events-auto w-full md:max-w-lg h-full md:h-auto md:max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+            >
             <div className="p-6 border-b bg-gradient-to-r from-amber-50 to-orange-50 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-white rounded-xl shadow-sm">
@@ -465,9 +467,16 @@ export default function HolidayForm({ isOpen, onClose, onSave, holiday }) {
                 {holiday ? 'Update Holiday' : 'Save Holiday'}
               </Button>
             </div>
-          </motion.div>
+            </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>
   );
+
+  if (!isOpen || typeof document === 'undefined') {
+    return null;
+  }
+
+  return createPortal(overlay, document.body);
 }

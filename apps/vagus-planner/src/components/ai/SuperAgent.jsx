@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -140,22 +141,25 @@ Respond in 2-3 sentences max unless the user asks for detail.`;
 
   if (!isOpen) return null;
 
-  return (
+  const overlay = (
     <AnimatePresence>
+      {isOpen && (
+        <>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[48] flex items-end sm:items-center justify-center p-0 sm:p-4"
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[48]"
         onClick={onClose}
-      >
+      />
+      <div className="fixed inset-0 z-[48] flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-none">
         <motion.div
           initial={{ y: '100%', opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: '100%', opacity: 0 }}
           transition={{ type: 'spring', damping: 25 }}
           onClick={(e) => e.stopPropagation()}
-          className="w-full sm:max-w-lg h-[85vh] sm:h-[600px] bg-white dark:bg-slate-900 sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+          className="pointer-events-auto w-full sm:max-w-lg h-[85vh] sm:h-[600px] bg-white dark:bg-slate-900 sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden"
         >
           {/* Header */}
           <div className={`relative overflow-hidden bg-gradient-to-r ${agentRole.color} p-4 sm:rounded-t-2xl`}>
@@ -253,7 +257,15 @@ Respond in 2-3 sentences max unless the user asks for detail.`;
             </div>
           </div>
         </motion.div>
-      </motion.div>
+      </div>
+        </>
+      )}
     </AnimatePresence>
   );
+
+  if (typeof document === 'undefined') {
+    return null;
+  }
+
+  return createPortal(overlay, document.body);
 }

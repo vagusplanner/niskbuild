@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, MicOff, Loader2, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,7 +18,6 @@ export default function VoiceCommandCapture() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    // Initialize Web Speech API
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       recognitionRef.current = new SpeechRecognition();
@@ -66,7 +66,7 @@ export default function VoiceCommandCapture() {
     setResult(null);
     setShowPanel(true);
     setIsListening(true);
-    
+
     try {
       recognitionRef.current.start();
     } catch (error) {
@@ -90,7 +90,7 @@ export default function VoiceCommandCapture() {
 
       if (data.success) {
         setResult(data);
-        
+
         if (data.created) {
           queryClient.invalidateQueries({ queryKey: ['events'] });
           queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -114,19 +114,19 @@ export default function VoiceCommandCapture() {
 
     try {
       const parsed = result.parsed;
-      
+
       if (parsed.type === 'event') {
         const eventData = {
           title: parsed.title,
           description: parsed.description,
           start_date: parsed.date ? `${parsed.date}T${parsed.start_time || '09:00'}:00` : new Date().toISOString(),
-          end_date: parsed.date && parsed.end_time 
+          end_date: parsed.date && parsed.end_time
             ? `${parsed.date}T${parsed.end_time}:00`
             : new Date(Date.now() + 3600000).toISOString(),
           category: parsed.category || 'personal',
           location: parsed.location
         };
-        
+
         await base44.entities.Event.create(eventData);
         queryClient.invalidateQueries({ queryKey: ['events'] });
         toast.success('Event created!');
@@ -139,12 +139,12 @@ export default function VoiceCommandCapture() {
           priority: parsed.priority || 'medium',
           status: 'todo'
         };
-        
+
         await base44.entities.Task.create(taskData);
         queryClient.invalidateQueries({ queryKey: ['tasks'] });
         toast.success('Task created!');
       }
-      
+
       setShowPanel(false);
       setTranscript('');
       setResult(null);
@@ -153,9 +153,139 @@ export default function VoiceCommandCapture() {
     }
   };
 
+  const panelOverlay = showPanel ? (
+    <AnimatePresence>
+      <>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50"
+          onClick={() => !processing && setShowPanel(false)}
+        />
+        <div className="fixed inset-x-0 bottom-0 md:inset-0 md:flex md:items-center md:justify-center md:p-4 z-50 pointer-events-none">
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="pointer-events-auto w-full md:max-w-2xl p-4 md:p-0"
+          >
+            <Card className="p-6 space-y-4 bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-purple-600" />
+                  Voice Command
+                </h3>
+                <button
+                  onClick={() => setShowPanel(false)}
+                  disabled={processing || isListening}
+                  className="text-slate-500 hover:text-slate-700"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="text-center">
+                {isListening ? (
+                  <div className="space-y-2">
+                    <motion.div
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ repeat: Infinity, duration: 1.5 }}
+                      className="w-20 h-20 mx-auto bg-red-600 rounded-full flex items-center justify-center"
+                    >
+                      <Mic className="w-10 h-10 text-white" />
+                    </motion.div>
+                    <p className="text-sm font-medium text-slate-700">Listening...</p>
+                    <p className="text-xs text-slate-500">Speak your command naturally</p>
+                  </div>
+                ) : processing ? (
+                  <div className="space-y-2">
+                    <Loader2 className="w-12 h-12 mx-auto animate-spin text-purple-600" />
+                    <p className="text-sm font-medium text-slate-700">Processing with AI...</p>
+                  </div>
+                ) : result ? (
+                  <div className="space-y-2">
+                    {result.created ? (
+                      <CheckCircle2 className="w-12 h-12 mx-auto text-green-600" />
+                    ) : (
+                      <AlertCircle className="w-12 h-12 mx-auto text-amber-600" />
+                    )}
+                  </div>
+                ) : null}
+              </div>
+
+              {transcript && (
+                <div className="p-4 bg-white rounded-lg border border-purple-200">
+                  <p className="text-sm text-slate-600 mb-1 font-medium">You said:</p>
+                  <p className="text-slate-800">{transcript}</p>
+                </div>
+              )}
+
+              {result?.parsed && (
+                <div className="space-y-3">
+                  <div className="p-4 bg-white rounded-lg border border-purple-200 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold text-slate-700">Parsed Command</p>
+                      <span className="text-xs text-slate-500">
+                        {result.parsed.confidence}% confident
+                      </span>
+                    </div>
+
+                    <div className="space-y-1 text-sm">
+                      <p><span className="font-medium">Type:</span> {result.parsed.type}</p>
+                      <p><span className="font-medium">Title:</span> {result.parsed.title}</p>
+                      {result.parsed.date && (
+                        <p><span className="font-medium">Date:</span> {result.parsed.date}</p>
+                      )}
+                      {result.parsed.start_time && (
+                        <p><span className="font-medium">Time:</span> {result.parsed.start_time}</p>
+                      )}
+                      {result.parsed.category && (
+                        <p><span className="font-medium">Category:</span> {result.parsed.category}</p>
+                      )}
+                      {result.parsed.priority && (
+                        <p><span className="font-medium">Priority:</span> {result.parsed.priority}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {!result.created && (
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={manualCreateFromParsed}
+                        className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600"
+                      >
+                        Create {result.parsed.type}
+                      </Button>
+                      <Button
+                        onClick={startListening}
+                        variant="outline"
+                        className="flex-1"
+                      >
+                        Try Again
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!transcript && !result && !isListening && (
+                <div className="text-xs text-slate-600 space-y-1">
+                  <p className="font-medium text-slate-700">Try saying:</p>
+                  <p className="text-slate-500">• "Schedule team meeting tomorrow after Asr prayer for 30 minutes"</p>
+                  <p className="text-slate-500">• "Add task to call client today urgent priority"</p>
+                  <p className="text-slate-500">• "Create reminder to read Quran before Fajr daily"</p>
+                </div>
+              )}
+            </Card>
+          </motion.div>
+        </div>
+      </>
+    </AnimatePresence>
+  ) : null;
+
   return (
     <>
-      {/* Floating Voice Button */}
       <motion.div
         className="fixed bottom-24 right-6 z-40"
         initial={{ scale: 0 }}
@@ -167,8 +297,8 @@ export default function VoiceCommandCapture() {
           onClick={isListening ? stopListening : startListening}
           disabled={processing}
           className={`w-16 h-16 rounded-full shadow-2xl ${
-            isListening 
-              ? 'bg-red-600 hover:bg-red-700 animate-pulse' 
+            isListening
+              ? 'bg-red-600 hover:bg-red-700 animate-pulse'
               : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700'
           }`}
         >
@@ -182,139 +312,9 @@ export default function VoiceCommandCapture() {
         </Button>
       </motion.div>
 
-      {/* Voice Command Panel */}
-      <AnimatePresence>
-        {showPanel && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50"
-              onClick={() => !processing && setShowPanel(false)}
-            />
-            <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 50 }}
-              className="fixed bottom-0 left-0 right-0 z-50 p-4 md:bottom-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:max-w-2xl"
-            >
-              <Card className="p-6 space-y-4 bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-purple-600" />
-                    Voice Command
-                  </h3>
-                  <button
-                    onClick={() => setShowPanel(false)}
-                    disabled={processing || isListening}
-                    className="text-slate-500 hover:text-slate-700"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                {/* Status */}
-                <div className="text-center">
-                  {isListening ? (
-                    <div className="space-y-2">
-                      <motion.div
-                        animate={{ scale: [1, 1.2, 1] }}
-                        transition={{ repeat: Infinity, duration: 1.5 }}
-                        className="w-20 h-20 mx-auto bg-red-600 rounded-full flex items-center justify-center"
-                      >
-                        <Mic className="w-10 h-10 text-white" />
-                      </motion.div>
-                      <p className="text-sm font-medium text-slate-700">Listening...</p>
-                      <p className="text-xs text-slate-500">Speak your command naturally</p>
-                    </div>
-                  ) : processing ? (
-                    <div className="space-y-2">
-                      <Loader2 className="w-12 h-12 mx-auto animate-spin text-purple-600" />
-                      <p className="text-sm font-medium text-slate-700">Processing with AI...</p>
-                    </div>
-                  ) : result ? (
-                    <div className="space-y-2">
-                      {result.created ? (
-                        <CheckCircle2 className="w-12 h-12 mx-auto text-green-600" />
-                      ) : (
-                        <AlertCircle className="w-12 h-12 mx-auto text-amber-600" />
-                      )}
-                    </div>
-                  ) : null}
-                </div>
-
-                {/* Transcript */}
-                {transcript && (
-                  <div className="p-4 bg-white rounded-lg border border-purple-200">
-                    <p className="text-sm text-slate-600 mb-1 font-medium">You said:</p>
-                    <p className="text-slate-800">{transcript}</p>
-                  </div>
-                )}
-
-                {/* Parsed Result */}
-                {result?.parsed && (
-                  <div className="space-y-3">
-                    <div className="p-4 bg-white rounded-lg border border-purple-200 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-semibold text-slate-700">Parsed Command</p>
-                        <span className="text-xs text-slate-500">
-                          {result.parsed.confidence}% confident
-                        </span>
-                      </div>
-                      
-                      <div className="space-y-1 text-sm">
-                        <p><span className="font-medium">Type:</span> {result.parsed.type}</p>
-                        <p><span className="font-medium">Title:</span> {result.parsed.title}</p>
-                        {result.parsed.date && (
-                          <p><span className="font-medium">Date:</span> {result.parsed.date}</p>
-                        )}
-                        {result.parsed.start_time && (
-                          <p><span className="font-medium">Time:</span> {result.parsed.start_time}</p>
-                        )}
-                        {result.parsed.category && (
-                          <p><span className="font-medium">Category:</span> {result.parsed.category}</p>
-                        )}
-                        {result.parsed.priority && (
-                          <p><span className="font-medium">Priority:</span> {result.parsed.priority}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    {!result.created && (
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={manualCreateFromParsed}
-                          className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600"
-                        >
-                          Create {result.parsed.type}
-                        </Button>
-                        <Button
-                          onClick={startListening}
-                          variant="outline"
-                          className="flex-1"
-                        >
-                          Try Again
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Example Commands */}
-                {!transcript && !result && !isListening && (
-                  <div className="text-xs text-slate-600 space-y-1">
-                    <p className="font-medium text-slate-700">Try saying:</p>
-                    <p className="text-slate-500">• "Schedule team meeting tomorrow after Asr prayer for 30 minutes"</p>
-                    <p className="text-slate-500">• "Add task to call client today urgent priority"</p>
-                    <p className="text-slate-500">• "Create reminder to read Quran before Fajr daily"</p>
-                  </div>
-                )}
-              </Card>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      {typeof document !== 'undefined' && panelOverlay
+        ? createPortal(panelOverlay, document.body)
+        : null}
     </>
   );
 }

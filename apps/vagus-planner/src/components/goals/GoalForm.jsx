@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { X, Target, Save } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { base44 } from '@/api/base44Client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -52,21 +53,24 @@ export default function GoalForm({ isOpen, onClose, goal, onSave }) {
 
   if (!isOpen) return null;
 
-  return (
-    <>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
-        onClick={onClose}
-      />
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="fixed inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-lg z-[101] max-h-[90vh] overflow-auto"
-      >
+  const overlay = (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
+            onClick={onClose}
+          />
+          <div className="fixed inset-0 flex items-center justify-center p-4 z-[101] pointer-events-none">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="pointer-events-auto w-full max-w-lg max-h-[90vh] overflow-auto"
+            >
         <Card>
           <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white">
             <div className="flex items-center justify-between">
@@ -187,7 +191,16 @@ export default function GoalForm({ isOpen, onClose, goal, onSave }) {
             </form>
           </CardContent>
         </Card>
-      </motion.div>
-    </>
+            </motion.div>
+          </div>
+        </>
+      )}
+    </AnimatePresence>
   );
+
+  if (typeof document === 'undefined') {
+    return null;
+  }
+
+  return createPortal(overlay, document.body);
 }

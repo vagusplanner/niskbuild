@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, Calendar, Clock, Users, MapPin, Sparkles, Loader2, 
@@ -345,7 +346,7 @@ Make the tasks specific, actionable, and relevant to the meeting context.`,
     }
   };
 
-  return (
+  const overlay = (
     <AnimatePresence>
       {isOpen && (
         <>
@@ -356,12 +357,13 @@ Make the tasks specific, actionable, and relevant to the meeting context.`,
             className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
             onClick={onClose}
           />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed inset-x-4 top-[5%] bottom-[5%] md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-2xl bg-white rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col"
-          >
+          <div className="fixed inset-x-4 top-[5%] bottom-[5%] md:inset-0 md:flex md:items-center md:justify-center md:p-4 z-50 pointer-events-none">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="pointer-events-auto w-full md:max-w-2xl h-full md:h-auto md:max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+            >
             <div className="p-6 border-b bg-gradient-to-r from-emerald-500 to-teal-600 text-white">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -846,9 +848,16 @@ Make the tasks specific, actionable, and relevant to the meeting context.`,
                 Attendees will receive an email with proposed times
               </p>
             </div>
-          </motion.div>
+            </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>
   );
+
+  if (!isOpen || typeof document === 'undefined') {
+    return null;
+  }
+
+  return createPortal(overlay, document.body);
 }

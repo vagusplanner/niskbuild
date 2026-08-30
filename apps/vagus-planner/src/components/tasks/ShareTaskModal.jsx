@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Share2, Mail, UserPlus } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -80,7 +81,7 @@ export default function ShareTaskModal({ isOpen, onClose, task }) {
     }
   };
 
-  return (
+  const overlay = (
     <AnimatePresence>
       {isOpen && (
         <>
@@ -91,12 +92,13 @@ export default function ShareTaskModal({ isOpen, onClose, task }) {
             className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
             onClick={onClose}
           />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-2xl shadow-2xl z-50 overflow-hidden"
-          >
+          <div className="fixed inset-0 flex items-center justify-center p-4 z-50 pointer-events-none">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="pointer-events-auto w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+            >
             <div className="p-6 border-b bg-gradient-to-r from-emerald-500 to-teal-600 text-white">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold flex items-center gap-2">
@@ -178,9 +180,16 @@ export default function ShareTaskModal({ isOpen, onClose, task }) {
                 </div>
               )}
             </div>
-          </motion.div>
+            </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>
   );
+
+  if (!isOpen || typeof document === 'undefined') {
+    return null;
+  }
+
+  return createPortal(overlay, document.body);
 }

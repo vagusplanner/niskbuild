@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -59,7 +60,7 @@ export default function MorningBriefingAfterFajr() {
     setShow(false);
   };
 
-  return (
+  const overlay = (
     <AnimatePresence>
       {show && briefing && (
         <>
@@ -70,12 +71,13 @@ export default function MorningBriefingAfterFajr() {
             className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
             onClick={dismiss}
           />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="fixed inset-2 sm:inset-4 md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:inset-auto z-[150] w-auto md:w-full md:max-w-2xl max-h-[90vh] overflow-y-auto safe-area-top safe-area-bottom"
-          >
+          <div className="fixed inset-2 sm:inset-4 md:inset-0 md:flex md:items-center md:justify-center md:p-4 z-[150] pointer-events-none safe-area-top safe-area-bottom">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="pointer-events-auto w-full md:max-w-2xl max-h-full md:max-h-[90vh] overflow-y-auto"
+            >
             <Card className="bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 border-amber-200 shadow-2xl h-full md:h-auto overflow-y-auto max-h-[90vh]">
               <CardHeader className="p-4 sm:p-6">
                 <CardTitle className="flex items-center gap-2 sm:gap-3">
@@ -190,9 +192,16 @@ export default function MorningBriefingAfterFajr() {
                 </button>
               </CardContent>
             </Card>
-          </motion.div>
+            </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>
   );
+
+  if (!(show && briefing) || typeof document === 'undefined') {
+    return null;
+  }
+
+  return createPortal(overlay, document.body);
 }

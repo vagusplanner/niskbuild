@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -655,23 +656,26 @@ export default function CalendarPage() {
         )}
 
         {/* Day Hourly View */}
-        <AnimatePresence>
-          {showDayView && (
+        {showDayView && typeof document !== 'undefined' && createPortal(
+          <AnimatePresence>
             <>
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100]"
                 onClick={() => setShowDayView(false)} />
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-                className="fixed inset-4 md:inset-0 m-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-4xl md:h-fit max-h-[95vh] z-[101]">
-                <DayHourlyView selectedDate={selectedDate} events={selectedDateEvents}
-                  onAddEvent={() => { setShowDayView(false); setEditingEvent(null); setShowEventForm(true); }}
-                  onEditEvent={(e) => { setShowDayView(false); handleEditEvent(e); }}
-                  onClose={() => setShowDayView(false)} />
-              </motion.div>
+              <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 pointer-events-none">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+                  className="pointer-events-auto w-full max-w-4xl max-h-[95vh]">
+                  <DayHourlyView selectedDate={selectedDate} events={selectedDateEvents}
+                    onAddEvent={() => { setShowDayView(false); setEditingEvent(null); setShowEventForm(true); }}
+                    onEditEvent={(e) => { setShowDayView(false); handleEditEvent(e); }}
+                    onClose={() => setShowDayView(false)} />
+                </motion.div>
+              </div>
             </>
-          )}
-        </AnimatePresence>
+          </AnimatePresence>,
+          document.body
+        )}
 
         {/* Advanced Scheduler */}
         <AnimatePresence>

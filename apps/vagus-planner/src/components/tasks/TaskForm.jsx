@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, Trash2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,7 @@ import AITaskGenerator from './AITaskGenerator';
 import AIPrioritySuggester from './AIPrioritySuggester';
 import PrayerAwareTaskScheduler from './PrayerAwareTaskScheduler';
 
-export default function TaskForm({ isOpen, onClose, onSubmit, task = null, showAIGenerator = false }) {
+export default function TaskForm({ isOpen, onClose, onSubmit, task = null, showAIGenerator = false, embedded = false }) {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -103,26 +104,41 @@ export default function TaskForm({ isOpen, onClose, onSubmit, task = null, showA
     }));
   };
 
-  return (
+  const overlay = (
     <AnimatePresence>
       {isOpen && (
         <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
-            onClick={onClose}
-          />
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 40 }}
-            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[calc(100%-2rem)] w-full max-w-2xl bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl shadow-2xl z-50 max-h-[92dvh] flex flex-col"
+          {!embedded && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
+              onClick={onClose}
+            />
+          )}
+          <div
+            className={
+              embedded
+                ? 'flex flex-col h-full min-h-0'
+                : 'fixed inset-x-0 bottom-0 sm:inset-0 sm:flex sm:items-center sm:justify-center sm:p-4 z-50 pointer-events-none'
+            }
           >
-            {/* Drag handle — mobile only */}
-            <div className="sm:hidden mx-auto mt-3 mb-0 h-1.5 w-12 rounded-full bg-slate-200 dark:bg-slate-700 flex-shrink-0" />
+            <motion.div
+              initial={{ opacity: 0, y: embedded ? 0 : 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: embedded ? 0 : 40 }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className={
+                embedded
+                  ? 'flex flex-col h-full min-h-0 bg-white dark:bg-slate-900 overflow-hidden'
+                  : 'pointer-events-auto w-full sm:max-w-2xl max-h-[92dvh] bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col'
+              }
+            >
+            {!embedded && (
+              <div className="sm:hidden mx-auto mt-3 mb-0 h-1.5 w-12 rounded-full bg-slate-200 dark:bg-slate-700 flex-shrink-0" />
+            )}
+            {!embedded && (
             <div className="p-5 border-b bg-gradient-to-r from-emerald-500 to-teal-600 text-white">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold">
@@ -133,6 +149,7 @@ export default function TaskForm({ isOpen, onClose, onSubmit, task = null, showA
                 </button>
               </div>
             </div>
+            )}
 
             <form onSubmit={handleSubmit} className="flex-1 overflow-auto p-4 sm:p-6 space-y-4">
               {/* AI Task Generator */}
@@ -416,9 +433,20 @@ export default function TaskForm({ isOpen, onClose, onSubmit, task = null, showA
               </>
               )}
             </form>
-          </motion.div>
+            </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>
   );
+
+  if (embedded) {
+    return isOpen ? overlay : null;
+  }
+
+  if (!isOpen || typeof document === 'undefined') {
+    return null;
+  }
+
+  return createPortal(overlay, document.body);
 }

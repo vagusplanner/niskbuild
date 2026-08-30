@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -36,7 +37,7 @@ export default function MobileBottomSheet({
     }
   };
 
-  return (
+  const overlay = (
     <AnimatePresence>
       {isOpen && (
         <>
@@ -52,7 +53,7 @@ export default function MobileBottomSheet({
           {/* Bottom Sheet */}
           <motion.div
             initial={{ y: '100%' }}
-            animate={{ 
+            animate={{
               y: `${100 - (snapPoints[snapIndex] * 100)}%`,
             }}
             exit={{ y: '100%' }}
@@ -97,4 +98,10 @@ export default function MobileBottomSheet({
       )}
     </AnimatePresence>
   );
+
+  if (!isOpen || typeof document === 'undefined') {
+    return null;
+  }
+
+  return createPortal(overlay, document.body);
 }

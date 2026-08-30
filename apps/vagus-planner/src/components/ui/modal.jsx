@@ -1,4 +1,5 @@
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -25,34 +26,43 @@ export function Modal({ isOpen, onClose, children, className, size = "default" }
     };
   }, [isOpen]);
 
-  return (
+  const overlay = (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-          onClick={onClose}
-        >
+        <>
           <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className={cn(
-              "bg-white rounded-2xl shadow-2xl w-full max-h-[90vh] overflow-hidden relative",
-              sizeClasses[size],
-              className
-            )}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {children}
-          </motion.div>
-        </motion.div>
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+            onClick={onClose}
+          />
+          <div className="fixed inset-0 flex items-center justify-center p-4 z-50 pointer-events-none">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className={cn(
+                "pointer-events-auto bg-white rounded-2xl shadow-2xl w-full max-h-[90vh] overflow-hidden relative",
+                sizeClasses[size],
+                className
+              )}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {children}
+            </motion.div>
+          </div>
+        </>
       )}
     </AnimatePresence>
   );
+
+  if (!isOpen || typeof document === 'undefined') {
+    return null;
+  }
+
+  return createPortal(overlay, document.body);
 }
 
 export function ModalHeader({ children, onClose, className }) {

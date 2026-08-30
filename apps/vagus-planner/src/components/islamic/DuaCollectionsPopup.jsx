@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -64,7 +65,7 @@ export default function DuaCollectionsPopup() {
 
   if (!currentDua) return null;
 
-  return (
+  const overlay = (
     <AnimatePresence>
       {show && (
         <>
@@ -75,13 +76,14 @@ export default function DuaCollectionsPopup() {
             className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[200]"
             onClick={() => setShow(false)}
           />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            onClick={(e) => e.stopPropagation()}
-            className="fixed inset-2 sm:inset-4 md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:inset-auto z-[201] w-auto md:w-full md:max-w-lg max-h-[90vh] overflow-y-auto safe-area-top safe-area-bottom"
-          >
+          <div className="fixed inset-2 sm:inset-4 md:inset-0 md:flex md:items-center md:justify-center md:p-4 z-[201] pointer-events-none safe-area-top safe-area-bottom">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="pointer-events-auto w-full md:max-w-lg max-h-full md:max-h-[90vh] overflow-y-auto"
+            >
             <Card className="p-4 sm:p-6 bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 border-2 border-emerald-200 relative max-h-[90vh] overflow-y-auto">
               <button
                 onClick={() => setShow(false)}
@@ -119,9 +121,16 @@ export default function DuaCollectionsPopup() {
                 </Button>
               </div>
             </Card>
-          </motion.div>
+            </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>
   );
+
+  if (!currentDua || typeof document === 'undefined') {
+    return null;
+  }
+
+  return createPortal(overlay, document.body);
 }

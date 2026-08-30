@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, Keyboard } from 'lucide-react';
 
@@ -59,7 +60,7 @@ export default function KeyboardShortcutsModal({ isOpen, onClose }) {
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  return (
+  const overlay = (
     <AnimatePresence>
       {isOpen && (
         <>
@@ -70,12 +71,13 @@ export default function KeyboardShortcutsModal({ isOpen, onClose }) {
             className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100]"
             onClick={onClose}
           />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed inset-x-4 top-1/2 -translate-y-1/2 md:inset-auto md:left-1/2 md:-translate-x-1/2 md:w-[560px] max-h-[80vh] overflow-y-auto z-[101] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700"
-          >
+          <div className="fixed inset-0 flex items-center justify-center p-4 z-[101] pointer-events-none">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="pointer-events-auto w-full max-w-[560px] max-h-[80vh] overflow-y-auto bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700"
+            >
             <div className="sticky top-0 flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 z-10">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 bg-teal-50 dark:bg-teal-900/30 rounded-xl">
@@ -110,9 +112,16 @@ export default function KeyboardShortcutsModal({ isOpen, onClose }) {
                 </div>
               ))}
             </div>
-          </motion.div>
+            </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>
   );
+
+  if (!isOpen || typeof document === 'undefined') {
+    return null;
+  }
+
+  return createPortal(overlay, document.body);
 }

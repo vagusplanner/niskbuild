@@ -83,6 +83,7 @@ import Settings from './pages/Settings';
 import Social from './pages/Social';
 import SubscriptionManagement from './pages/SubscriptionManagement';
 import Support from './pages/Support';
+import Tasks from './pages/Tasks';
 import TermsOfService from './pages/TermsOfService';
 import TimeIntelligence from './pages/TimeIntelligence';
 import Travel from './pages/Travel';
@@ -130,6 +131,7 @@ export const PAGES = {
     "Social": Social,
     "SubscriptionManagement": SubscriptionManagement,
     "Support": Support,
+    "Tasks": Tasks,
     "TermsOfService": TermsOfService,
     "TimeIntelligence": TimeIntelligence,
     "Travel": Travel,

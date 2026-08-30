@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { X, GitCompare, ArrowRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -16,21 +17,22 @@ export default function VersionDiffModal({ versionA, versionB, onClose }) {
   const changedKeys = allKeys.filter(k => JSON.stringify(snapshotA[k]) !== JSON.stringify(snapshotB[k]));
   const unchangedKeys = allKeys.filter(k => JSON.stringify(snapshotA[k]) === JSON.stringify(snapshotB[k]));
 
-  return (
+  const overlay = (
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
         onClick={onClose}
-      >
+      />
+      <div className="fixed inset-0 flex items-center justify-center p-4 z-50 pointer-events-none">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 12 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 12 }}
           transition={{ duration: 0.2 }}
-          className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden"
+          className="pointer-events-auto bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden"
           onClick={e => e.stopPropagation()}
         >
           {/* Header */}
@@ -109,9 +111,15 @@ export default function VersionDiffModal({ versionA, versionB, onClose }) {
             )}
           </div>
         </motion.div>
-      </motion.div>
+      </div>
     </AnimatePresence>
   );
+
+  if (typeof document === 'undefined') {
+    return null;
+  }
+
+  return createPortal(overlay, document.body);
 }
 
 function DiffRow({ fieldName, oldValue, newValue, changed }) {

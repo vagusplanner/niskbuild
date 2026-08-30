@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -7,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Palette, Eye, Layout, Sparkles, X, Check } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
 const COLOR_THEMES = {
@@ -131,21 +132,24 @@ export default function CalendarDisplaySettings({ isOpen, onClose, onApply }) {
 
   if (!isOpen) return null;
 
-  return (
-    <>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
-        onClick={onClose}
-      />
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="fixed inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-3xl z-[101] max-h-[90vh] overflow-hidden"
-      >
+  const overlay = (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
+            onClick={onClose}
+          />
+          <div className="fixed inset-0 flex items-center justify-center p-4 z-[101] pointer-events-none">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="pointer-events-auto w-full max-w-3xl max-h-[90vh] overflow-hidden"
+            >
         <Card className="h-full flex flex-col shadow-2xl">
           <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white flex-shrink-0">
             <div className="flex items-center justify-between">
@@ -424,7 +428,16 @@ export default function CalendarDisplaySettings({ isOpen, onClose, onApply }) {
             </Button>
           </div>
         </Card>
-      </motion.div>
-    </>
+            </motion.div>
+          </div>
+        </>
+      )}
+    </AnimatePresence>
   );
+
+  if (typeof document === 'undefined') {
+    return null;
+  }
+
+  return createPortal(overlay, document.body);
 }

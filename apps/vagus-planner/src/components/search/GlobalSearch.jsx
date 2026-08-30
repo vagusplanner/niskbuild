@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { base44 } from '@/api/base44Client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -302,8 +303,10 @@ export default function GlobalSearch({ isOpen, onOpenChange }) {
 
   if (!isOpen) return null;
 
-  return (
+  const overlay = (
     <AnimatePresence>
+      {isOpen && (
+        <>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -311,13 +314,14 @@ export default function GlobalSearch({ isOpen, onOpenChange }) {
         onClick={() => onOpenChange(false)}
         className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[500]"
       />
+      <div className="fixed inset-0 z-[500] flex items-start justify-center px-4 pt-[5vh] sm:pt-[8vh] pointer-events-none">
       <motion.div
         initial={{ opacity: 0, scale: 0.97, y: -16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.97, y: -16 }}
         transition={{ duration: 0.18, ease: [0.25, 0.46, 0.45, 0.94] }}
         onClick={e => e.stopPropagation()}
-        className="fixed top-[5vh] sm:top-[8vh] left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-2xl max-h-[88vh] sm:max-h-[84vh] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl shadow-black/20 z-[500] flex flex-col overflow-hidden border border-slate-200/60 dark:border-slate-700/60 mx-auto"
+        className="pointer-events-auto w-full sm:max-w-2xl max-h-[88vh] sm:max-h-[84vh] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl shadow-black/20 flex flex-col overflow-hidden border border-slate-200/60 dark:border-slate-700/60"
       >
         {/* ── Header / Search bar ── */}
         <div className="p-4 border-b border-slate-100 dark:border-slate-800">
@@ -528,8 +532,17 @@ export default function GlobalSearch({ isOpen, onOpenChange }) {
           <p className="text-xs text-slate-400 dark:text-slate-500">Searching events, tasks, goals, travel & more</p>
         </div>
       </motion.div>
+      </div>
+        </>
+      )}
     </AnimatePresence>
   );
+
+  if (typeof document === 'undefined') {
+    return null;
+  }
+
+  return createPortal(overlay, document.body);
 }
 
 function EmptyState() {
