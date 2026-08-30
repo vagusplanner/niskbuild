@@ -19,7 +19,8 @@ import { format, isAfter, isBefore, parseISO } from 'date-fns';
 const ICON_MAP = {
   event: Calendar, task: CheckSquare, goal: Target,
   contact: User, holiday: Plane, meeting: Users,
-  habit: Repeat, quran_verse: BookOpen, hadith: BookOpen, prayer: Heart
+  habit: Repeat, quran_verse: BookOpen, hadith: BookOpen, prayer: Heart,
+  page: Search,
 };
 
 const CATEGORY_COLORS = {
@@ -32,13 +33,46 @@ const CATEGORY_COLORS = {
   quran_verses: 'bg-amber-100  text-amber-800  dark:bg-amber-900/40  dark:text-amber-200',
   hadiths:      'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200',
   prayers:      'bg-rose-100   text-rose-800   dark:bg-rose-900/40   dark:text-rose-200',
+  pages:        'bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-200',
 };
 
 const CATEGORY_LABELS = {
   events: 'Calendar Events', tasks: 'Tasks', goals: 'Goals',
   holidays: 'Travel & Holidays', meetings: 'Meetings', habits: 'Habits',
   quran_verses: 'Quran Verses', hadiths: 'Hadiths', prayers: 'Prayer Logs',
+  pages: 'Quick Navigation',
 };
+
+const PAGE_SHORTCUTS = [
+  {
+    id: 'nav-tasks',
+    type: 'page',
+    title: 'Tasks',
+    subtitle: 'View and manage your task list',
+    page: 'Tasks',
+    keywords: ['task', 'tasks', 'todo', 'todos', 'to-do'],
+  },
+  {
+    id: 'nav-calendar',
+    type: 'page',
+    title: 'Calendar',
+    subtitle: 'Events, schedule, and meetings',
+    page: 'Calendar',
+    keywords: ['calendar', 'cal', 'schedule', 'event', 'events', 'meeting', 'meetings'],
+  },
+];
+
+function matchPageShortcuts(query) {
+  if (!query || query.trim().length < 2) return [];
+  const q = query.trim().toLowerCase();
+  const tokens = q.split(/[/,\s]+/).filter((t) => t.length >= 2);
+  const terms = new Set([q, ...tokens]);
+  return PAGE_SHORTCUTS.filter((sc) =>
+    sc.keywords.some((kw) =>
+      [...terms].some((t) => t === kw || t.includes(kw) || kw.includes(t))
+    )
+  );
+}
 
 const ENTITY_TYPES = [
   { value: 'all',    label: 'All' },
@@ -164,6 +198,12 @@ function getDisplayInfo(item) {
         secondary: item.notes,
         meta: item.date ? format(parseISO(item.date), 'MMM d') : null,
       };
+    case 'page':
+      return {
+        primary: item.title,
+        secondary: item.subtitle,
+        meta: 'Go to page',
+      };
     default:
       return { primary: item.title || 'Untitled', secondary: null, meta: null };
   }
@@ -259,9 +299,13 @@ export default function GlobalSearch({ isOpen, onOpenChange }) {
 
   const handleResultClick = (item) => {
     onOpenChange(false);
+    if (item.type === 'page') {
+      navigate(createPageUrl(item.page));
+      return;
+    }
     const routes = {
-      event: 'Calendar', task: 'Profile', goal: 'Profile',
-      holiday: 'Travel', meeting: 'Connect', habit: 'Wellness',
+      event: 'Calendar', task: 'Tasks', goal: 'Profile',
+      holiday: 'Travel', meeting: 'Calendar', habit: 'Wellness',
       quran_verse: 'Islam', hadith: 'Islam', prayer: 'Islam',
     };
     navigate(createPageUrl(routes[item.type] || 'Dashboard'));
@@ -293,9 +337,16 @@ export default function GlobalSearch({ isOpen, onOpenChange }) {
     return out;
   }, [results, activeType, dateFrom, dateTo, participantFilter]);
 
-  const totalCount = filteredResults
+  const pageShortcuts = React.useMemo(
+    () => (activeType === 'all' ? matchPageShortcuts(query) : []),
+    [query, activeType]
+  );
+
+  const entityCount = filteredResults
     ? Object.values(filteredResults).reduce((s, a) => s + (Array.isArray(a) ? a.length : 0), 0)
     : 0;
+
+  const totalCount = entityCount + pageShortcuts.length;
 
   const activeFilterCount = [
     activeType !== 'all', dateFrom, dateTo, selectedStatus, selectedCategory, participantFilter
@@ -503,6 +554,23 @@ export default function GlobalSearch({ isOpen, onOpenChange }) {
                 {totalCount} result{totalCount !== 1 ? 's' : ''} found
                 {activeFilterCount > 0 && ` (${activeFilterCount} filter${activeFilterCount > 1 ? 's' : ''} active)`}
               </p>
+
+              {/* Page shortcuts */}
+              {pageShortcuts.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge className={`text-xs ${CATEGORY_COLORS.pages}`}>
+                      {CATEGORY_LABELS.pages}
+                    </Badge>
+                    <span className="text-xs text-slate-400">({pageShortcuts.length})</span>
+                  </div>
+                  <div className="space-y-0.5">
+                    {pageShortcuts.map(item => (
+                      <ResultItem key={item.id} item={item} onResultClick={handleResultClick} />
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Groups */}
               {Object.entries(filteredResults).map(([cat, items]) =>

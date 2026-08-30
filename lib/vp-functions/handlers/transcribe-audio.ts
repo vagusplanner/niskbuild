@@ -1,10 +1,12 @@
-import { getGroqClient } from '@/lib/groq-client';
-import { withGroqTimeout } from '@/lib/shift-ai/groq-json';
+import {
+  isAnyVpTranscriptionProviderConfigured,
+  VP_TRANSCRIPTION_UNAVAILABLE_MESSAGE,
+  vpTranscribeAudio,
+} from '@/lib/vp-ai-providers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireFeatureUsage } from '@/lib/vp-usage-meter';
 import type { VpFunctionHandler } from '../types';
 
-const WHISPER_MODEL = 'whisper-large-v3-turbo';
 const SIGNED_URL_TTL_SEC = 3600;
 
 function readAudioUrl(payload: Record<string, unknown>): string | null {
@@ -55,7 +57,7 @@ function guessFilename(url: string, contentType: string | null): string {
   return 'audio.webm';
 }
 
-/** Download audio from signed URL (client or server-generated) and transcribe via Groq Whisper. */
+/** Download audio from signed URL (client or server-generated) and transcribe via Groq Whisper (+ OpenAI fallback). */
 export const transcribeAudio: VpFunctionHandler = async ({ user, payload }) => {
   const admin = createAdminClient();
   const gate = await requireFeatureUsage(admin, {
@@ -78,9 +80,12 @@ export const transcribeAudio: VpFunctionHandler = async ({ user, payload }) => {
 
   const audioUrl = resolved.url;
 
-  const groq = getGroqClient();
-  if (!groq) {
-    return { ok: false, error: 'AI transcription is temporarily unavailable', status: 503 };
+  if (!isAnyVpTranscriptionProviderConfigured()) {
+    return {
+      ok: false,
+      error: VP_TRANSCRIPTION_UNAVAILABLE_MESSAGE,
+      status: 503,
+    };
   }
 
   let audioRes: Response;
@@ -105,31 +110,21 @@ export const transcribeAudio: VpFunctionHandler = async ({ user, payload }) => {
     type: contentType?.split(';')[0]?.trim() || 'audio/webm',
   });
 
-  try {
-    const transcription = await withGroqTimeout(
-      groq.audio.transcriptions.create({
-        file,
-        model: WHISPER_MODEL,
-        language: typeof payload.language === 'string' ? payload.language : undefined,
-        response_format: 'json',
-        temperature: 0,
-      })
-    );
+  const transcription = await vpTranscribeAudio(file, {
+    language: typeof payload.language === 'string' ? payload.language : undefined,
+    label: 'vp-transcribe-audio',
+  });
 
-    const text =
-      typeof transcription === 'string'
-        ? transcription
-        : typeof transcription === 'object' && transcription && 'text' in transcription
-          ? String((transcription as { text?: string }).text ?? '')
-          : '';
-
-    if (!text.trim()) {
-      return { ok: false, error: 'Transcription was empty', status: 502 };
-    }
-
-    return { ok: true, data: { success: true, transcript: text.trim() } };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Transcription failed';
-    return { ok: false, error: message, status: 502 };
+  if (!transcription.ok) {
+    return { ok: false, error: transcription.error, status: 502 };
   }
+
+  return {
+    ok: true,
+    data: {
+      success: true,
+      transcript: transcription.transcript,
+      provider: transcription.provider,
+    },
+  };
 };

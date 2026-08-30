@@ -1,29 +1,30 @@
 import { NextRequest } from 'next/server';
 import { captureApiException } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
-import { getGroqClient } from '@/lib/groq-client';
 import {
   GROQ_JSON_ONLY_INSTRUCTION,
-  SHIFT_GROQ_MODEL,
   isGroqJsonValidationFailure,
+  isGroqRateLimitError,
   llmUnstructuredResponsePayload,
   logGroqParseFailure,
   parseGroqJsonContent,
-  withGroqTimeout,
 } from '@/lib/shift-ai/groq-json';
+import {
+  isAnyVpChatProviderConfigured,
+  vpChatCompletion,
+  vpChatCompletionJson,
+} from '@/lib/vp-ai-providers';
 import {
   vpApiCorsPreflightResponse,
   vpApiJson,
   withVpApiCors,
 } from '@/lib/vp-api-cors';
-import { createAdminClient } from '@/lib/supabase/admin';
 import {
-  canSendArt9CategoryToAi,
-  parseVpGdprConsents,
-  type VpArt9Category,
-} from '@/lib/vp-gdpr/tables';
-import { loadUserPlanContext, requireFeatureUsage } from '@/lib/vp-usage-meter';
-import { resolvePaidIslamicAccess } from '@/lib/vp-islamic-access';
+  VP_ART9_GROQ_UNAVAILABLE_MESSAGE,
+  verifyArt9AiAccess,
+} from '@/lib/vp-gdpr/art9-ai-gate';
+import type { VpArt9Category } from '@/lib/vp-gdpr/tables';
+import { requireFeatureUsage } from '@/lib/vp-usage-meter';
 
 export const maxDuration = 60;
 
@@ -36,6 +37,8 @@ export async function OPTIONS(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const guard = await guardApiRequest(request, { rateLimit: 24 });
   if (!guard.ok) return withVpApiCors(request, guard.response);
+
+  let art9Categories: VpArt9Category[] = [];
 
   try {
     const body = await request.json().catch(() => null);
@@ -51,8 +54,7 @@ export async function POST(request: NextRequest) {
       return vpApiJson(request, { error: 'prompt is too long' }, { status: 400 });
     }
 
-    const groq = getGroqClient();
-    if (!groq) {
+    if (!isAnyVpChatProviderConfigured()) {
       return vpApiJson(request, { error: 'AI is temporarily unavailable' }, { status: 503 });
     }
 
@@ -68,86 +70,52 @@ export async function POST(request: NextRequest) {
     void body.model;
 
     // Article 9 gate: callers may declare gdpr_categories: ['religious'|'health'].
-    // If consent was withdrawn (or never given), refuse before forwarding to Groq.
+    // If consent was withdrawn (or never given), refuse before forwarding to any AI provider.
     const rawCategories = Array.isArray(body.gdpr_categories)
       ? (body.gdpr_categories as unknown[])
       : [];
     const categories = rawCategories.filter(
       (c): c is VpArt9Category => c === 'religious' || c === 'health'
     );
-    if (categories.length > 0) {
-      try {
-        const admin = createAdminClient();
-        const { data: settingsRows } = await admin
-          .schema('firstparty')
-          .from('vp_user_settings')
-          .select('preferences')
-          .eq('user_id', guard.user!.id)
-          .limit(1);
-        const consents = parseVpGdprConsents(settingsRows?.[0]?.preferences);
-        for (const cat of categories) {
-          if (!canSendArt9CategoryToAi(consents, cat)) {
-            return vpApiJson(
-              request,
-              {
-                error:
-                  'AI processing of this data category is blocked because Article 9 consent is not active. You can update consents in Account → Privacy & Consent.',
-                code: 'GDPR_ART9_CONSENT_REQUIRED',
-                category: cat,
-              },
-              { status: 403 }
-            );
-          }
-        }
-
-        // Religious AI also requires a paid Islamic Edition plan (server-verified).
-        if (categories.includes('religious')) {
-          const { subscriptions, profile } = await loadUserPlanContext(admin, guard.user!.id);
-          const islamic = resolvePaidIslamicAccess({ subscriptions, profile });
-          if (!islamic.hasPaidIslamicAccess) {
-            return vpApiJson(
-              request,
-              {
-                error:
-                  'Islamic AI features require an active Islamic Edition subscription. Upgrade in Billing.',
-                code: 'ISLAMIC_PLAN_REQUIRED',
-              },
-              { status: 402 }
-            );
-          }
-        }
-      } catch (err) {
-        console.error('VP GDPR consent check failed:', err);
-        return vpApiJson(
-          request,
-          { error: 'Unable to verify privacy consents for this AI request' },
-          { status: 503 }
-        );
-      }
+    art9Categories = categories;
+    const art9Access = await verifyArt9AiAccess(guard.user!.id, categories);
+    if (!art9Access.ok) {
+      return vpApiJson(
+        request,
+        {
+          error: art9Access.error,
+          code: art9Access.code,
+          ...(art9Access.category ? { category: art9Access.category } : {}),
+        },
+        { status: art9Access.status }
+      );
     }
 
     // Meter general AI requests against the user's plan (featureGating ai_requests).
+    let userPlan = 'free';
     try {
+      const { createAdminClient } = await import('@/lib/supabase/admin');
       const admin = createAdminClient();
-      const gate = await requireFeatureUsage(admin, {
+      const usageGate = await requireFeatureUsage(admin, {
         userId: guard.user!.id,
         email: guard.user!.email,
         feature: 'ai_requests',
       });
-      if (!gate.ok) {
+      if (!usageGate.ok) {
         return vpApiJson(
           request,
           {
             error:
-              gate.usage.deniedCode === 'FEATURE_LOCKED'
+              usageGate.usage.deniedCode === 'FEATURE_LOCKED'
                 ? 'AI requests are not available on your plan. Upgrade in Billing.'
                 : 'Monthly AI request limit reached. Upgrade in Billing for a higher quota.',
-            code: gate.usage.deniedCode || 'QUOTA_EXCEEDED',
-            usage: gate.usage,
+            code: usageGate.usage.deniedCode || 'QUOTA_EXCEEDED',
+            usage: usageGate.usage,
           },
           { status: 402 }
         );
       }
+      userPlan = usageGate.plan;
     } catch (err) {
       console.error('VP AI usage metering failed:', err);
       return vpApiJson(
@@ -164,72 +132,69 @@ export async function POST(request: NextRequest) {
       const userPrompt = `${prompt}\n\n${GROQ_JSON_ONLY_INSTRUCTION}\nRespond with JSON matching this schema:\n${schemaHint}`;
       const retryUserPrompt = `${userPrompt}\n\nIMPORTANT: Your previous attempt was rejected because it was not valid JSON. Respond with ONLY a JSON object matching the schema — no apologies or prose outside JSON.`;
 
-      const messages = [
-        { role: 'system' as const, content: jsonSystemPrompt },
-        { role: 'user' as const, content: userPrompt },
-      ];
-
-      let completion;
-      try {
-        completion = await withGroqTimeout(
-          groq.chat.completions.create({
-            model: SHIFT_GROQ_MODEL,
-            messages,
-            temperature: 0.65,
-            max_tokens: 4096,
-            response_format: { type: 'json_object' },
-          })
-        );
-      } catch (error) {
-        if (!isGroqJsonValidationFailure(error)) throw error;
-        console.warn('VP LLM json_object mode rejected — retrying without response_format');
-        try {
-          completion = await withGroqTimeout(
-            groq.chat.completions.create({
-              model: SHIFT_GROQ_MODEL,
-              messages: [
-                messages[0],
-                { role: 'user', content: retryUserPrompt },
-              ],
-              temperature: 0.4,
-              max_tokens: 4096,
-            })
-          );
-        } catch (retryError) {
-          if (isGroqJsonValidationFailure(retryError)) {
-            return vpApiJson(request, llmUnstructuredResponsePayload(), { status: 422 });
-          }
-          throw retryError;
+      let result = await vpChatCompletionJson(
+        jsonSystemPrompt,
+        userPrompt,
+        {
+          userTier: userPlan,
+          label: 'vp-llm-json',
+          temperature: 0.65,
+          schemaHint,
+          art9Categories: categories,
         }
+      );
+
+      if (!result.ok) {
+        throw new Error(result.error);
       }
 
-      const raw = completion.choices[0]?.message?.content ?? '';
-      const parsed = parseGroqJsonContent(raw, 'Could not parse AI response');
+      let parsed = parseGroqJsonContent(result.content, 'Could not parse AI response');
       if (!parsed.ok) {
-        logGroqParseFailure('vp-llm', raw, parsed.error);
+        const retry = await vpChatCompletion({
+          messages: [
+            { role: 'system', content: jsonSystemPrompt },
+            { role: 'user', content: retryUserPrompt },
+          ],
+          userTier: userPlan,
+          label: 'vp-llm-json-retry',
+          temperature: 0.4,
+          jsonMode: true,
+          art9Categories,
+        });
+        if (!retry.ok) {
+          throw new Error(retry.error);
+        }
+        parsed = parseGroqJsonContent(retry.content, 'Could not parse AI response');
+      }
+
+      if (!parsed.ok) {
+        logGroqParseFailure('vp-llm', result.content, parsed.error);
         return vpApiJson(request, llmUnstructuredResponsePayload(), { status: 422 });
       }
 
       return vpApiJson(request, parsed.json);
     }
 
-    const completion = await withGroqTimeout(
-      groq.chat.completions.create({
-        model: SHIFT_GROQ_MODEL,
-        messages: [
-          {
-            role: 'system',
-            content:
-              'You are a helpful assistant for the Vagus Planner productivity app. Be clear and concise.',
-          },
-          { role: 'user', content: prompt },
-        ],
-        temperature: 0.65,
-        max_tokens: 4096,
-      })
-    );
+    const result = await vpChatCompletion({
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are a helpful assistant for the Vagus Planner productivity app. Be clear and concise.',
+        },
+        { role: 'user', content: prompt },
+      ],
+      userTier: userPlan,
+      label: 'vp-llm-text',
+      temperature: 0.65,
+      art9Categories,
+    });
 
-    const text = completion.choices[0]?.message?.content?.trim() ?? '';
+    if (!result.ok) {
+      throw new Error(result.error);
+    }
+
+    const text = result.content.trim();
     if (!text) {
       return vpApiJson(request, { error: 'Empty AI response' }, { status: 502 });
     }
@@ -239,6 +204,29 @@ export async function POST(request: NextRequest) {
     captureApiException(error);
     if (isGroqJsonValidationFailure(error)) {
       return vpApiJson(request, llmUnstructuredResponsePayload(), { status: 422 });
+    }
+    if (isGroqRateLimitError(error)) {
+      return vpApiJson(
+        request,
+        {
+          error:
+            art9Categories.length > 0
+              ? VP_ART9_GROQ_UNAVAILABLE_MESSAGE
+              : 'AI is temporarily busy due to high demand. Please try again in a moment.',
+          code: art9Categories.length > 0 ? 'VP_ART9_GROQ_ONLY_UNAVAILABLE' : 'GROQ_RATE_LIMIT',
+        },
+        { status: 429 }
+      );
+    }
+    if (error instanceof Error && error.message === VP_ART9_GROQ_UNAVAILABLE_MESSAGE) {
+      return vpApiJson(
+        request,
+        {
+          error: VP_ART9_GROQ_UNAVAILABLE_MESSAGE,
+          code: 'VP_ART9_GROQ_ONLY_UNAVAILABLE',
+        },
+        { status: 503 }
+      );
     }
     const message =
       error instanceof Error ? error.message : 'Failed to process AI request';

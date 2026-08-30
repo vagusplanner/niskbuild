@@ -1,11 +1,15 @@
-import { getGroqClient } from '@/lib/groq-client';
 import {
   GROQ_JSON_ONLY_INSTRUCTION,
-  SHIFT_GROQ_MODEL,
   logGroqParseFailure,
   parseGroqJsonContent,
-  withGroqTimeout,
 } from '@/lib/shift-ai/groq-json';
+import { vpChatCompletionJson } from '@/lib/vp-ai-providers';
+import {
+  aiUnavailableMessage,
+  mergeArt9Categories,
+  verifyArt9AiAccess,
+} from '@/lib/vp-gdpr/art9-ai-gate';
+import type { VpArt9Category } from '@/lib/vp-gdpr/tables';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireFeatureUsage } from '@/lib/vp-usage-meter';
 import type { VpFunctionHandler, VpFunctionResult } from '../types';
@@ -13,7 +17,7 @@ import type { VpFunctionHandler, VpFunctionResult } from '../types';
 export async function gateFeature(
   user: { id: string; email?: string | null },
   feature: string
-): Promise<{ ok: true } | { ok: false; result: VpFunctionResult }> {
+): Promise<{ ok: true; plan: string } | { ok: false; result: VpFunctionResult }> {
   const admin = createAdminClient();
   const gate = await requireFeatureUsage(admin, {
     userId: user.id,
@@ -26,31 +30,60 @@ export async function gateFeature(
       result: { ok: false, error: gate.error, status: gate.status },
     };
   }
-  return { ok: true };
+  return { ok: true, plan: gate.plan };
+}
+
+/** Usage gate + Art.9 consent check for handlers carrying special-category data. */
+export async function gateFeatureWithArt9(
+  user: { id: string; email?: string | null },
+  feature: string,
+  art9Categories: VpArt9Category[]
+): Promise<
+  | { ok: true; plan: string; art9Categories: VpArt9Category[] }
+  | { ok: false; result: VpFunctionResult }
+> {
+  const gate = await gateFeature(user, feature);
+  if (!gate.ok) return gate;
+
+  if (art9Categories.length === 0) {
+    return { ok: true, plan: gate.plan, art9Categories: [] };
+  }
+
+  const art9 = await verifyArt9AiAccess(user.id, art9Categories);
+  if (!art9.ok) {
+    return {
+      ok: false,
+      result: {
+        ok: false,
+        error: art9.error,
+        status: art9.status,
+      },
+    };
+  }
+
+  return { ok: true, plan: gate.plan, art9Categories };
 }
 
 export async function groqJson<T extends Record<string, unknown>>(
   system: string,
   userPrompt: string,
-  label: string
+  label: string,
+  userTier = 'free',
+  art9Categories: VpArt9Category[] = []
 ): Promise<T | null> {
-  const groq = getGroqClient();
-  if (!groq) return null;
+  const result = await vpChatCompletionJson(system, userPrompt, {
+    userTier,
+    label,
+    temperature: 0.4,
+    art9Categories,
+  });
 
-  const completion = await withGroqTimeout(
-    groq.chat.completions.create({
-      model: SHIFT_GROQ_MODEL,
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: `${userPrompt}\n\n${GROQ_JSON_ONLY_INSTRUCTION}` },
-      ],
-      temperature: 0.4,
-      max_tokens: 4096,
-      response_format: { type: 'json_object' },
-    })
-  );
+  if (!result.ok) {
+    console.warn(`VP AI [${label}] all providers failed:`, result.error);
+    return null;
+  }
 
-  const raw = completion.choices[0]?.message?.content ?? '';
+  const raw = result.content;
   const parsed = parseGroqJsonContent(raw, 'Could not parse AI response');
   if (!parsed.ok) {
     logGroqParseFailure(label, raw, parsed.error);
@@ -58,6 +91,8 @@ export async function groqJson<T extends Record<string, unknown>>(
   }
   return parsed.json as T;
 }
+
+export { aiUnavailableMessage, mergeArt9Categories, verifyArt9AiAccess };
 
 function readText(payload: Record<string, unknown>): string {
   if (typeof payload.text === 'string' && payload.text.trim()) return payload.text.trim();
@@ -115,7 +150,8 @@ Return JSON:
 }
 
 If you cannot parse it, return { "success": false, "event": null }.`,
-    'vp-parseNaturalLanguageEvent'
+    'vp-parseNaturalLanguageEvent',
+    gate.plan
   );
 
   if (!result) {
@@ -148,13 +184,14 @@ If you cannot parse it, return { "success": false, "event": null }.`,
 
 /** Full schedule plan (AISchedulePlanner). */
 export const aiSchedulePlanner: VpFunctionHandler = async ({ user, payload }) => {
-  const gate = await gateFeature(user, 'ai_scheduler');
+  const islamicMode = payload.islamic_mode === true;
+  const art9Categories = islamicMode ? (['religious'] as VpArt9Category[]) : [];
+  const gate = await gateFeatureWithArt9(user, 'ai_scheduler', art9Categories);
   if (!gate.ok) return gate.result;
 
   const period = typeof payload.period === 'string' ? payload.period : 'week';
   const style = typeof payload.style === 'string' ? payload.style : 'balanced';
   const today = typeof payload.today === 'string' ? payload.today : new Date().toISOString().split('T')[0];
-  const islamicMode = payload.islamic_mode === true;
 
   const pastEvents = Array.isArray(payload.past_events) ? payload.past_events : [];
   const upcomingEvents = Array.isArray(payload.upcoming_events) ? payload.upcoming_events : [];
@@ -197,11 +234,17 @@ Return JSON:
 }
 
 Generate 4–8 suggested_events for the period and 2–3 alternatives.`,
-    'vp-aiSchedulePlanner'
+    'vp-aiSchedulePlanner',
+    gate.plan,
+    gate.art9Categories
   );
 
   if (!result) {
-    return { ok: false, error: 'AI is temporarily unavailable', status: 503 };
+    return {
+      ok: false,
+      error: aiUnavailableMessage(gate.art9Categories),
+      status: 503,
+    };
   }
 
   return {
@@ -247,7 +290,8 @@ Return JSON:
     }
   ]
 }`,
-    'vp-aiSchedulingSuggestions'
+    'vp-aiSchedulingSuggestions',
+    gate.plan
   );
 
   if (!result) {
@@ -302,7 +346,8 @@ Return JSON:
 }
 
 Return 3–5 suggestions.`,
-    'vp-advancedMeetingScheduler'
+    'vp-advancedMeetingScheduler',
+    gate.plan
   );
 
   if (!result) {
@@ -358,7 +403,8 @@ export const aiMeetingAssistant: VpFunctionHandler = async ({ user, payload }) =
 Meeting ID: ${String(meetingId ?? 'unknown')}
 Transcript:
 ${transcript}`,
-      'vp-aiMeetingAssistant-analyze'
+      'vp-aiMeetingAssistant-analyze',
+      gate.plan
     );
 
     if (!result?.analysis) {
@@ -408,7 +454,9 @@ type MeetingSlot = {
 
 async function groqMeetingSlots(
   label: string,
-  userPrompt: string
+  userPrompt: string,
+  userTier: string,
+  art9Categories: VpArt9Category[] = []
 ): Promise<MeetingSlot[] | null> {
   const result = await groqJson<{ suggestions?: MeetingSlot[]; optimal_slots?: MeetingSlot[] }>(
     'You are an expert meeting scheduler. Propose realistic open time slots.',
@@ -423,7 +471,9 @@ Return JSON with a "suggestions" array (3–5 items). Each item:
   "reasoning": "short explanation",
   "confidence": 0.0-1.0
 }`,
-    label
+    label,
+    userTier,
+    art9Categories
   );
   if (!result) return null;
   return Array.isArray(result.suggestions)
@@ -469,7 +519,8 @@ export const findOptimalMeetingTimes: VpFunctionHandler = async ({ user, payload
     'vp-findOptimalMeetingTimes',
     `Find optimal ${duration}-minute meeting slots in the next ${dateRange} days.
 Participants: ${participants.length ? participants.join(', ') : 'organizer only'}
-Today: ${today}`
+Today: ${today}`,
+    gate.plan
   );
 
   if (!slots) {
@@ -501,7 +552,8 @@ export const suggestOptimalMeetingTime: VpFunctionHandler = async ({ user, paylo
   const slots = await groqMeetingSlots(
     'vp-suggestOptimalMeetingTime',
     `Suggest optimal ${duration}-minute slots for "${title}".
-Attendees: ${attendees.length ? attendees.join(', ') : 'organizer only'}`
+Attendees: ${attendees.length ? attendees.join(', ') : 'organizer only'}`,
+    gate.plan
   );
 
   if (!slots) {
@@ -531,7 +583,8 @@ export const suggestMeetingTimes: VpFunctionHandler = async ({ user, payload }) 
   const slots = await groqMeetingSlots(
     'vp-suggestMeetingTimes',
     `Suggest ${duration}-minute collaboration meeting times.
-Attendees: ${attendees.length ? attendees.join(', ') : 'team'}`
+Attendees: ${attendees.length ? attendees.join(', ') : 'team'}`,
+    gate.plan
   );
 
   if (!slots) {
@@ -543,7 +596,7 @@ Attendees: ${attendees.length ? attendees.join(', ') : 'team'}`
 
 /** PrayerAwareScheduler — slots that avoid prayer times. */
 export const suggestPrayerAwareMeetingTimes: VpFunctionHandler = async ({ user, payload }) => {
-  const gate = await gateFeature(user, 'ai_requests');
+  const gate = await gateFeatureWithArt9(user, 'ai_requests', ['religious']);
   if (!gate.ok) return gate.result;
 
   const duration =
@@ -564,11 +617,17 @@ export const suggestPrayerAwareMeetingTimes: VpFunctionHandler = async ({ user, 
   const slots = await groqMeetingSlots(
     'vp-suggestPrayerAwareMeetingTimes',
     `Suggest ${duration}-minute meeting slots on ${date} that avoid these prayer times (leave ${buffer} min buffer):
-${JSON.stringify(prayerTimes)}`
+${JSON.stringify(prayerTimes)}`,
+    gate.plan,
+    gate.art9Categories
   );
 
   if (!slots) {
-    return { ok: false, error: 'AI is temporarily unavailable', status: 503 };
+    return {
+      ok: false,
+      error: aiUnavailableMessage(gate.art9Categories),
+      status: 503,
+    };
   }
 
   return { ok: true, data: { suggestions: normalizeMeetingSlots(slots) } };
@@ -614,7 +673,8 @@ Return JSON:
 }
 
 If no event details were provided, still return a helpful generic summary for the period.`,
-      'vp-aiEventSummary-period'
+      'vp-aiEventSummary-period',
+      gate.plan
     );
 
     if (!result) {
@@ -656,7 +716,8 @@ Return JSON:
   "overview": "1-2 sentence summary of ${title}",
   "suggestions": ["string"]
 }`,
-    'vp-aiEventSummary-event'
+    'vp-aiEventSummary-event',
+    gate.plan
   );
 
   return {
@@ -718,7 +779,8 @@ Return JSON:
 }
 
 Only include suggestions you can justify from the event data. Do not invent attendees or constraints.`,
-    'vp-detectConflicts'
+    'vp-detectConflicts',
+    gate.plan
   );
 
   if (!result) {

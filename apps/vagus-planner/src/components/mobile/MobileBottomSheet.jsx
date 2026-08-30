@@ -47,10 +47,10 @@ export default function MobileBottomSheet({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100]"
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[150]"
           />
 
-          {/* Bottom Sheet */}
+          {/* Bottom Sheet — sits above mobile tab bar (Layout z-[52], height 3.5rem + safe area) */}
           <motion.div
             initial={{ y: '100%' }}
             animate={{
@@ -63,10 +63,11 @@ export default function MobileBottomSheet({
             onDragStart={() => setIsDragging(true)}
             onDragEnd={handleDragEnd}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 z-[101] bg-white dark:bg-slate-900 rounded-t-3xl shadow-2xl"
+            className="fixed left-0 right-0 z-[151] bg-white dark:bg-slate-900 rounded-t-3xl shadow-2xl flex flex-col"
             style={{
-              maxHeight: `${snapPoints[snapPoints.length - 1] * 100}vh`,
-              touchAction: 'none'
+              bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px))',
+              maxHeight: `calc(${snapPoints[snapPoints.length - 1] * 100}vh - 3.5rem - env(safe-area-inset-bottom, 0px))`,
+              touchAction: 'none',
             }}
           >
             {/* Drag Handle */}
@@ -89,8 +90,8 @@ export default function MobileBottomSheet({
               </Button>
             </div>
 
-            {/* Content */}
-            <div className="overflow-y-auto px-6 py-4" style={{ maxHeight: 'calc(90vh - 120px)' }}>
+            {/* Content — overflow hidden so embedded forms manage their own scroll + footer */}
+            <div className="flex-1 min-h-0 overflow-hidden flex flex-col px-6 py-4">
               {children}
             </div>
           </motion.div>

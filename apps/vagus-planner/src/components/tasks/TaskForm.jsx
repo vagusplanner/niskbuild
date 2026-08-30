@@ -151,7 +151,14 @@ export default function TaskForm({ isOpen, onClose, onSubmit, task = null, showA
             </div>
             )}
 
-            <form onSubmit={handleSubmit} className="flex-1 overflow-auto p-4 sm:p-6 space-y-4">
+            <form
+              onSubmit={handleSubmit}
+              className={
+                embedded
+                  ? 'flex flex-col flex-1 min-h-0 overflow-hidden'
+                  : 'flex-1 overflow-auto p-4 sm:p-6 space-y-4'
+              }
+            >
               {/* AI Task Generator */}
               {showAIGen && !task && (
                 <AITaskGenerator
@@ -171,6 +178,7 @@ export default function TaskForm({ isOpen, onClose, onSubmit, task = null, showA
 
               {!showAIGen && (
                 <>
+              <div className={embedded ? 'flex-1 overflow-y-auto p-4 space-y-4 min-h-0' : 'contents'}>
               <div className="space-y-2">
                 <Label htmlFor="title">Task Title *</Label>
                 <Input
@@ -422,7 +430,15 @@ export default function TaskForm({ isOpen, onClose, onSubmit, task = null, showA
                 />
               )}
 
-              <div className="flex gap-3 pt-4">
+              </div>
+
+              <div
+                className={
+                  embedded
+                    ? 'shrink-0 flex gap-3 p-4 pt-3 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]'
+                    : 'flex gap-3 pt-4'
+                }
+              >
                 <Button type="button" variant="outline" onClick={onClose} className="flex-1 h-12">
                   Cancel
                 </Button>

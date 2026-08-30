@@ -1,8 +1,12 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import {
+  detectArt9CategoriesFromText,
+  mergeArt9Categories,
+} from '@/lib/vp-gdpr/art9-ai-gate';
 import type { VpFunctionHandler } from '../types';
 import {
   findOptimalMeetingTimes,
-  gateFeature,
+  gateFeatureWithArt9,
   groqJson,
   suggestPrayerAwareMeetingTimes,
 } from './calendar-ai';
@@ -285,13 +289,14 @@ async function handleReadIntent(
 
 /** Voice/text command parser — events, tasks, expenses, and read-back intents. */
 export const parseVoiceCommand: VpFunctionHandler = async ({ user, payload }) => {
-  const gate = await gateFeature(user, 'ai_requests');
-  if (!gate.ok) return gate.result;
-
   const command = readCommand(payload);
   if (!command) {
     return { ok: false, error: 'command is required', status: 400 };
   }
+
+  const art9Categories = detectArt9CategoriesFromText(command);
+  const gate = await gateFeatureWithArt9(user, 'ai_requests', art9Categories);
+  if (!gate.ok) return gate.result;
 
   const today = new Date().toISOString().split('T')[0];
   const parsed = await groqJson<ParsedCommand>(
@@ -327,7 +332,9 @@ Examples:
 - "What's on my calendar" → read_events
 
 If unclear, set intent to unknown and confidence below 40.`,
-    'vp-parseVoiceCommand'
+    'vp-parseVoiceCommand',
+    gate.plan,
+    gate.art9Categories
   );
 
   if (!parsed || parsed.success === false) {
@@ -479,6 +486,17 @@ async function loadUserCity(userId: string): Promise<string | null> {
 
 /** TaskForm prayer-aware scheduler — adapter over suggestPrayerAwareMeetingTimes. */
 export const suggestTaskTimeSlots: VpFunctionHandler = async (ctx) => {
+  const taskCategory =
+    typeof ctx.payload.category === 'string' ? ctx.payload.category.toLowerCase() : '';
+  const title = typeof ctx.payload.title === 'string' ? ctx.payload.title : 'Task';
+  const art9Categories = mergeArt9Categories(
+    ['religious'],
+    taskCategory === 'health' ? (['health'] as const) : [],
+    detectArt9CategoriesFromText(title)
+  );
+  const gate = await gateFeatureWithArt9(ctx.user, 'ai_requests', art9Categories);
+  if (!gate.ok) return gate.result;
+
   const duration =
     typeof ctx.payload.estimated_minutes === 'number' && ctx.payload.estimated_minutes > 0
       ? ctx.payload.estimated_minutes
@@ -489,7 +507,6 @@ export const suggestTaskTimeSlots: VpFunctionHandler = async (ctx) => {
       : typeof ctx.payload.due_date === 'string' && ctx.payload.due_date
         ? ctx.payload.due_date.split('T')[0]
         : new Date().toISOString().split('T')[0];
-  const title = typeof ctx.payload.title === 'string' ? ctx.payload.title : 'Task';
 
   const city = await loadUserCity(ctx.user.id);
   let prayerTimes: Record<string, string> = {};
@@ -499,7 +516,9 @@ export const suggestTaskTimeSlots: VpFunctionHandler = async (ctx) => {
       'You provide approximate daily Muslim prayer times for scheduling.',
       `Prayer times on ${targetDate} in ${city}. Return JSON:
 { "prayer_times": { "Fajr": "HH:mm", "Dhuhr": "HH:mm", "Asr": "HH:mm", "Maghrib": "HH:mm", "Isha": "HH:mm" } }`,
-      'vp-suggestTaskTimeSlots-prayer'
+      'vp-suggestTaskTimeSlots-prayer',
+      gate.plan,
+      gate.art9Categories
     );
     if (prayerJson?.prayer_times && typeof prayerJson.prayer_times === 'object') {
       prayerTimes = prayerJson.prayer_times;

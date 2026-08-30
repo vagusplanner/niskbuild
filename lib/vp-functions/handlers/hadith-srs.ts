@@ -1,11 +1,10 @@
-import { getGroqClient } from '@/lib/groq-client';
 import {
-  GROQ_JSON_ONLY_INSTRUCTION,
-  SHIFT_GROQ_MODEL,
   parseGroqJsonContent,
-  withGroqTimeout,
 } from '@/lib/shift-ai/groq-json';
+import { vpChatCompletionJson } from '@/lib/vp-ai-providers';
+import { aiUnavailableMessage } from '@/lib/vp-gdpr/art9-ai-gate';
 import { createClient } from '@/lib/supabase/server';
+import { gateFeatureWithArt9 } from './calendar-ai';
 import type { VpFunctionHandler } from '../types';
 
 function addDays(date: Date, days: number): Date {
@@ -256,6 +255,9 @@ export const hadithSRSChallenge: VpFunctionHandler = async ({ user, payload }) =
   }
 
   if (action === 'ai_challenge') {
+    const gate = await gateFeatureWithArt9(user, 'ai_requests', ['religious']);
+    if (!gate.ok) return gate.result;
+
     const hadith_text =
       typeof payload.hadith_text === 'string' ? payload.hadith_text.trim() : '';
     const hadith_narrator =
@@ -265,36 +267,32 @@ export const hadithSRSChallenge: VpFunctionHandler = async ({ user, payload }) =
       return { ok: false, error: 'hadith_text is required', status: 400 };
     }
 
-    const groq = getGroqClient();
-    if (!groq) {
-      return { ok: false, error: 'AI is temporarily unavailable', status: 503 };
-    }
-
     const prompt = `Create a multiple-choice quiz question about this hadith.
 Narrator: ${hadith_narrator}
 Hadith: ${hadith_text}
 
-${GROQ_JSON_ONLY_INSTRUCTION}
 Return JSON: {"question":"...","options":["A","B","C","D"],"correct_index":0,"explanation":"..."}`;
 
-    const completion = await withGroqTimeout(
-      groq.chat.completions.create({
-        model: SHIFT_GROQ_MODEL,
-        messages: [
-          {
-            role: 'system',
-            content: 'You create Islamic knowledge quiz questions. Be accurate and respectful.',
-          },
-          { role: 'user', content: prompt },
-        ],
+    const aiResult = await vpChatCompletionJson(
+      'You create Islamic knowledge quiz questions. Be accurate and respectful.',
+      prompt,
+      {
+        userTier: gate.plan,
+        label: 'vp-hadith-srs-quiz',
         temperature: 0.5,
-        max_tokens: 1024,
-        response_format: { type: 'json_object' },
-      })
+        art9Categories: gate.art9Categories,
+      }
     );
 
-    const raw = completion.choices[0]?.message?.content ?? '';
-    const parsed = parseGroqJsonContent(raw, 'Could not parse quiz response');
+    if (!aiResult.ok) {
+      return {
+        ok: false,
+        error: aiUnavailableMessage(gate.art9Categories),
+        status: 503,
+      };
+    }
+
+    const parsed = parseGroqJsonContent(aiResult.content, 'Could not parse quiz response');
     if (!parsed.ok) {
       return { ok: false, error: parsed.error, status: 502 };
     }

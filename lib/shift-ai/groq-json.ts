@@ -117,3 +117,100 @@ export function withGroqTimeout<T>(
     }),
   ]);
 }
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getGroqErrorDetails(error: unknown): {
+  status?: number;
+  message: string;
+  retryAfterMs?: number;
+} {
+  const groqErr = error as {
+    status?: number;
+    message?: string;
+    error?: { message?: string; code?: string };
+    headers?: Record<string, string | undefined>;
+  };
+
+  const message = [
+    error instanceof Error ? error.message : '',
+    groqErr.message ?? '',
+    groqErr.error?.message ?? '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  let retryAfterMs: number | undefined;
+  const retryAfterHeader =
+    groqErr.headers?.['retry-after'] ?? groqErr.headers?.['Retry-After'];
+  if (retryAfterHeader) {
+    const secs = parseFloat(retryAfterHeader);
+    if (!Number.isNaN(secs)) retryAfterMs = Math.ceil(secs * 1000);
+  }
+
+  const msMatch = message.match(/try again in ([\d.]+)\s*ms/i);
+  if (msMatch) retryAfterMs = Math.ceil(parseFloat(msMatch[1]));
+
+  const secMatch = message.match(/try again in ([\d.]+)\s*s(?:ec(?:ond)?s?)?/i);
+  if (secMatch) retryAfterMs = Math.ceil(parseFloat(secMatch[1]) * 1000);
+
+  return { status: groqErr.status, message, retryAfterMs };
+}
+
+/** Groq TPM/RPM rate limit (HTTP 429). */
+export function isGroqRateLimitError(error: unknown): boolean {
+  const { status, message } = getGroqErrorDetails(error);
+  if (status === 429) return true;
+  const blob = message.toLowerCase();
+  return blob.includes('rate limit') || blob.includes('tokens per minute');
+}
+
+export function parseGroqRetryAfterMs(error: unknown, fallbackMs = 750): number {
+  const { retryAfterMs } = getGroqErrorDetails(error);
+  if (typeof retryAfterMs === 'number' && retryAfterMs > 0) {
+    return Math.min(Math.max(retryAfterMs, 500), 30_000);
+  }
+  return fallbackMs;
+}
+
+const GROQ_RATE_LIMIT_MAX_RETRIES = 2;
+
+/**
+ * Run a Groq API call with per-attempt timeout and automatic 429 retry/backoff.
+ * Pass a factory so each retry starts a fresh request.
+ */
+export async function withGroqCall<T>(
+  operation: () => Promise<T>,
+  options?: {
+    timeoutMessage?: string;
+    maxRetries?: number;
+    label?: string;
+  }
+): Promise<T> {
+  const maxRetries = options?.maxRetries ?? GROQ_RATE_LIMIT_MAX_RETRIES;
+  const timeoutMessage =
+    options?.timeoutMessage ?? 'AI request timed out — please try again';
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await withGroqTimeout(operation(), timeoutMessage);
+    } catch (error) {
+      lastError = error;
+      if (!isGroqRateLimitError(error) || attempt >= maxRetries) {
+        throw error;
+      }
+
+      const delayMs = parseGroqRetryAfterMs(error);
+      const label = options?.label ? ` (${options.label})` : '';
+      console.warn(
+        `Groq rate limit${label}: retry ${attempt + 1}/${maxRetries} after ${delayMs}ms`
+      );
+      await sleep(delayMs);
+    }
+  }
+
+  throw lastError;
+}
