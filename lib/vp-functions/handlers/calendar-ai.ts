@@ -452,7 +452,7 @@ type MeetingSlot = {
   confidence?: number;
 };
 
-async function groqMeetingSlots(
+export async function groqMeetingSlots(
   label: string,
   userPrompt: string,
   userTier: string,
@@ -483,7 +483,7 @@ Return JSON with a "suggestions" array (3–5 items). Each item:
       : [];
 }
 
-function normalizeMeetingSlots(slots: MeetingSlot[]) {
+export function normalizeMeetingSlots(slots: MeetingSlot[]) {
   return slots.map((slot, idx) => {
     const start = slot.start_time ?? slot.start ?? null;
     const end = slot.end_time ?? slot.end ?? null;

@@ -5,10 +5,13 @@ import {
 } from '@/lib/vp-gdpr/art9-ai-gate';
 import type { VpFunctionHandler } from '../types';
 import {
+  aiUnavailableMessage,
   findOptimalMeetingTimes,
   gateFeatureWithArt9,
   groqJson,
-  suggestPrayerAwareMeetingTimes,
+  groqMeetingSlots,
+  normalizeMeetingSlots,
+  verifyArt9AiAccess,
 } from './calendar-ai';
 
 const TASK_PRIORITY_MAP: Record<string, number> = {
@@ -484,13 +487,12 @@ async function loadUserCity(userId: string): Promise<string | null> {
   return city;
 }
 
-/** TaskForm prayer-aware scheduler — adapter over suggestPrayerAwareMeetingTimes. */
+/** TaskForm smart scheduler — productivity slots, optionally prayer-gap-aware when permitted. */
 export const suggestTaskTimeSlots: VpFunctionHandler = async (ctx) => {
   const taskCategory =
     typeof ctx.payload.category === 'string' ? ctx.payload.category.toLowerCase() : '';
   const title = typeof ctx.payload.title === 'string' ? ctx.payload.title : 'Task';
   const art9Categories = mergeArt9Categories(
-    ['religious'],
     taskCategory === 'health' ? (['health'] as const) : [],
     detectArt9CategoriesFromText(title)
   );
@@ -512,38 +514,51 @@ export const suggestTaskTimeSlots: VpFunctionHandler = async (ctx) => {
   let prayerTimes: Record<string, string> = {};
 
   if (city) {
-    const prayerJson = await groqJson<{ prayer_times?: Record<string, string> }>(
-      'You provide approximate daily Muslim prayer times for scheduling.',
-      `Prayer times on ${targetDate} in ${city}. Return JSON:
+    const religiousAccess = await verifyArt9AiAccess(ctx.user.id, ['religious']);
+    if (religiousAccess.ok) {
+      const prayerJson = await groqJson<{ prayer_times?: Record<string, string> }>(
+        'You provide approximate daily Muslim prayer times for scheduling.',
+        `Prayer times on ${targetDate} in ${city}. Return JSON:
 { "prayer_times": { "Fajr": "HH:mm", "Dhuhr": "HH:mm", "Asr": "HH:mm", "Maghrib": "HH:mm", "Isha": "HH:mm" } }`,
-      'vp-suggestTaskTimeSlots-prayer',
-      gate.plan,
-      gate.art9Categories
-    );
-    if (prayerJson?.prayer_times && typeof prayerJson.prayer_times === 'object') {
-      prayerTimes = prayerJson.prayer_times;
+        'vp-suggestTaskTimeSlots-prayer',
+        gate.plan,
+        ['religious']
+      );
+      if (prayerJson?.prayer_times && typeof prayerJson.prayer_times === 'object') {
+        prayerTimes = prayerJson.prayer_times;
+      }
     }
   }
 
-  const inner = await suggestPrayerAwareMeetingTimes({
-    ...ctx,
-    payload: {
-      duration_minutes: duration,
-      buffer_minutes: 15,
-      date: targetDate,
-      prayer_times: prayerTimes,
-      task_title: title,
-    },
-  });
+  const slotArt9Categories = mergeArt9Categories(
+    art9Categories,
+    Object.keys(prayerTimes).length > 0 ? (['religious'] as const) : []
+  );
 
-  if (!inner.ok) return inner;
+  const prayerContext =
+    Object.keys(prayerTimes).length > 0
+      ? `Avoid these prayer times (leave 15 min buffer):\n${JSON.stringify(prayerTimes)}\n`
+      : '';
 
-  const data = inner.data as Record<string, unknown>;
-  const rawSlots = (
-    Array.isArray(data.suggestions) ? data.suggestions : []
-  ) as Array<Record<string, unknown>>;
+  const rawSlots = await groqMeetingSlots(
+    'vp-suggestTaskTimeSlots',
+    `Suggest 3 optimal ${duration}-minute focus blocks on ${targetDate} for task "${title}".
+${prayerContext}Prefer realistic working hours and balanced energy across the day.`,
+    gate.plan,
+    slotArt9Categories
+  );
 
-  const slots = rawSlots.slice(0, 3).map((slot, idx) => {
+  if (!rawSlots || rawSlots.length === 0) {
+    return {
+      ok: false,
+      error: aiUnavailableMessage(slotArt9Categories),
+      status: 503,
+    };
+  }
+
+  const normalized = normalizeMeetingSlots(rawSlots);
+
+  const slots = normalized.slice(0, 3).map((slot, idx) => {
     const startIso = typeof slot.start_time === 'string' ? slot.start_time : null;
     const endIso = typeof slot.end_time === 'string' ? slot.end_time : null;
     const startTime = formatTime24(startIso);
@@ -556,7 +571,7 @@ export const suggestTaskTimeSlots: VpFunctionHandler = async (ctx) => {
 
     const hour = Number(startTime.split(':')[0]);
     const period = productivityPeriod(Number.isNaN(hour) ? 9 : hour);
-    const reason = String(slot.reasoning ?? slot.reason ?? 'Balanced slot for focused work');
+    const reason = String(slot.reasoning ?? 'Balanced slot for focused work');
 
     return {
       start_time: startTime,

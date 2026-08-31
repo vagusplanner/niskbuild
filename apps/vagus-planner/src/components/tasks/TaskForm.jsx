@@ -435,7 +435,7 @@ export default function TaskForm({ isOpen, onClose, onSubmit, task = null, showA
               <div
                 className={
                   embedded
-                    ? 'shrink-0 flex gap-3 p-4 pt-3 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]'
+                    ? 'relative z-[2] shrink-0 flex gap-3 p-4 pt-3 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 pointer-events-auto touch-manipulation'
                     : 'flex gap-3 pt-4'
                 }
               >
