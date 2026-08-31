@@ -9,9 +9,7 @@ import {
   findOptimalMeetingTimes,
   gateFeatureWithArt9,
   groqJson,
-  groqMeetingSlots,
-  normalizeMeetingSlots,
-  verifyArt9AiAccess,
+  runSuggestTimeSlotsCore,
 } from './calendar-ai';
 
 const TASK_PRIORITY_MAP: Record<string, number> = {
@@ -470,23 +468,6 @@ export const suggestOptimalEventTimes: VpFunctionHandler = async (ctx) => {
   };
 };
 
-async function loadUserCity(userId: string): Promise<string | null> {
-  const admin = createAdminClient();
-  const { data } = await admin
-    .schema('firstparty')
-    .from('vp_user_settings')
-    .select('preferences')
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  const prefs = data?.preferences as Record<string, unknown> | undefined;
-  const city =
-    (typeof prefs?.location_city === 'string' && prefs.location_city) ||
-    (typeof prefs?.city === 'string' && prefs.city) ||
-    null;
-  return city;
-}
-
 /** TaskForm smart scheduler — productivity slots, optionally prayer-gap-aware when permitted. */
 export const suggestTaskTimeSlots: VpFunctionHandler = async (ctx) => {
   const taskCategory =
@@ -510,53 +491,29 @@ export const suggestTaskTimeSlots: VpFunctionHandler = async (ctx) => {
         ? ctx.payload.due_date.split('T')[0]
         : new Date().toISOString().split('T')[0];
 
-  const city = await loadUserCity(ctx.user.id);
-  let prayerTimes: Record<string, string> = {};
+  const core = await runSuggestTimeSlotsCore({
+    label: 'vp-suggestTaskTimeSlots',
+    promptKind: 'task_focus',
+    duration,
+    targetDate,
+    title,
+    userTier: gate.plan,
+    art9Categories: gate.art9Categories,
+    resolvePrayerTimesFromProfile: true,
+    userId: ctx.user.id,
+    bufferMinutes: 15,
+  });
 
-  if (city) {
-    const religiousAccess = await verifyArt9AiAccess(ctx.user.id, ['religious']);
-    if (religiousAccess.ok) {
-      const prayerJson = await groqJson<{ prayer_times?: Record<string, string> }>(
-        'You provide approximate daily Muslim prayer times for scheduling.',
-        `Prayer times on ${targetDate} in ${city}. Return JSON:
-{ "prayer_times": { "Fajr": "HH:mm", "Dhuhr": "HH:mm", "Asr": "HH:mm", "Maghrib": "HH:mm", "Isha": "HH:mm" } }`,
-        'vp-suggestTaskTimeSlots-prayer',
-        gate.plan,
-        ['religious']
-      );
-      if (prayerJson?.prayer_times && typeof prayerJson.prayer_times === 'object') {
-        prayerTimes = prayerJson.prayer_times;
-      }
-    }
-  }
-
-  const slotArt9Categories = mergeArt9Categories(
-    art9Categories,
-    Object.keys(prayerTimes).length > 0 ? (['religious'] as const) : []
-  );
-
-  const prayerContext =
-    Object.keys(prayerTimes).length > 0
-      ? `Avoid these prayer times (leave 15 min buffer):\n${JSON.stringify(prayerTimes)}\n`
-      : '';
-
-  const rawSlots = await groqMeetingSlots(
-    'vp-suggestTaskTimeSlots',
-    `Suggest 3 optimal ${duration}-minute focus blocks on ${targetDate} for task "${title}".
-${prayerContext}Prefer realistic working hours and balanced energy across the day.`,
-    gate.plan,
-    slotArt9Categories
-  );
-
-  if (!rawSlots || rawSlots.length === 0) {
+  if (!core.ok) {
     return {
       ok: false,
-      error: aiUnavailableMessage(slotArt9Categories),
-      status: 503,
+      error: aiUnavailableMessage(core.slotArt9Categories),
+      status: core.status,
     };
   }
 
-  const normalized = normalizeMeetingSlots(rawSlots);
+  const prayerTimes = core.prayerTimes;
+  const normalized = core.normalized;
 
   const slots = normalized.slice(0, 3).map((slot, idx) => {
     const startIso = typeof slot.start_time === 'string' ? slot.start_time : null;

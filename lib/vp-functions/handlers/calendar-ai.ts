@@ -316,49 +316,28 @@ export const advancedMeetingScheduler: VpFunctionHandler = async ({ user, payloa
     typeof payload.constraints === 'string' ? payload.constraints.trim() : '';
   const duration =
     typeof payload.duration === 'number' && payload.duration > 0 ? payload.duration : 60;
-  const attendees = Array.isArray(payload.attendeeEmails) ? payload.attendeeEmails : [];
-  const today = new Date().toISOString().split('T')[0];
+  const attendees = Array.isArray(payload.attendeeEmails)
+    ? (payload.attendeeEmails as string[])
+    : [];
 
-  const result = await groqJson<{
-    suggestions?: Array<Record<string, unknown>>;
-    team_insights?: Record<string, unknown>;
-  }>(
-    'You are an expert meeting scheduler. Propose realistic open time slots.',
-    `Find optimal ${duration}-minute meeting slots.
-Constraints: ${constraints || 'Next 2 weeks, business hours preferred'}
-Attendees: ${attendees.length ? attendees.join(', ') : 'solo organizer'}
-Today: ${today}
+  const core = await runSuggestTimeSlotsCore({
+    label: 'vp-advancedMeetingScheduler',
+    promptKind: 'advanced',
+    duration,
+    constraints,
+    attendees,
+    userTier: gate.plan,
+  });
 
-Return JSON:
-{
-  "suggestions": [
-    {
-      "start_time": "ISO 8601 datetime",
-      "end_time": "ISO 8601 datetime",
-      "confidence": 0.0,
-      "reasoning": "short explanation"
-    }
-  ],
-  "team_insights": {
-    "busiest_day": "string",
-    "recommendation": "string"
-  }
-}
-
-Return 3–5 suggestions.`,
-    'vp-advancedMeetingScheduler',
-    gate.plan
-  );
-
-  if (!result) {
-    return { ok: false, error: 'AI is temporarily unavailable', status: 503 };
+  if (!core.ok) {
+    return { ok: false, error: core.error, status: core.status };
   }
 
   return {
     ok: true,
     data: {
-      suggestions: Array.isArray(result.suggestions) ? result.suggestions : [],
-      team_insights: result.team_insights ?? null,
+      suggestions: core.rawSuggestions ?? [],
+      team_insights: core.teamInsights ?? null,
     },
   };
 };
@@ -503,36 +482,250 @@ export function normalizeMeetingSlots(slots: MeetingSlot[]) {
   });
 }
 
+export type SuggestTimeSlotsPromptKind =
+  | 'meeting_range'
+  | 'meeting_titled'
+  | 'meeting_collab'
+  | 'meeting_prayer'
+  | 'task_focus'
+  | 'advanced';
+
+export type SuggestTimeSlotsParams = {
+  label: string;
+  promptKind: SuggestTimeSlotsPromptKind;
+  duration: number;
+  userTier: string;
+  dateRangeDays?: number;
+  targetDate?: string;
+  title?: string;
+  participants?: string[];
+  attendees?: string[];
+  constraints?: string;
+  prayerTimes?: Record<string, string>;
+  bufferMinutes?: number;
+  art9Categories?: VpArt9Category[];
+  resolvePrayerTimesFromProfile?: boolean;
+  userId?: string;
+};
+
+export type SuggestTimeSlotsCoreResult =
+  | {
+      ok: true;
+      normalized: ReturnType<typeof normalizeMeetingSlots>;
+      rawSuggestions?: Array<Record<string, unknown>>;
+      teamInsights?: Record<string, unknown> | null;
+      prayerTimes: Record<string, string>;
+      slotArt9Categories: VpArt9Category[];
+    }
+  | { ok: false; error: string; status: number; slotArt9Categories: VpArt9Category[] };
+
+async function loadUserCityForSlots(userId: string): Promise<string | null> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .schema('firstparty')
+    .from('vp_user_settings')
+    .select('preferences')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  const prefs = data?.preferences as Record<string, unknown> | undefined;
+  return (
+    (typeof prefs?.location_city === 'string' && prefs.location_city) ||
+    (typeof prefs?.city === 'string' && prefs.city) ||
+    null
+  );
+}
+
+function peopleLabel(names: string[], fallback: string): string {
+  return names.length ? names.join(', ') : fallback;
+}
+
+function buildSuggestTimeSlotsPrompt(
+  params: SuggestTimeSlotsParams,
+  prayerTimes: Record<string, string>
+): string {
+  const today = new Date().toISOString().split('T')[0];
+  const dateRangeDays = params.dateRangeDays ?? 7;
+  const targetDate = params.targetDate ?? today;
+  const title = params.title ?? 'Meeting';
+  const people = params.participants?.length
+    ? params.participants
+    : params.attendees ?? [];
+  const bufferMinutes = params.bufferMinutes ?? 15;
+
+  switch (params.promptKind) {
+    case 'advanced':
+      return `Find optimal ${params.duration}-minute meeting slots.
+Constraints: ${params.constraints?.trim() || 'Next 2 weeks, business hours preferred'}
+Attendees: ${peopleLabel(people, 'solo organizer')}
+Today: ${today}`;
+    case 'task_focus':
+      return `Suggest 3 optimal ${params.duration}-minute focus blocks on ${targetDate} for task "${title}".
+${
+  Object.keys(prayerTimes).length > 0
+    ? `Avoid these prayer times (leave ${bufferMinutes} min buffer):\n${JSON.stringify(prayerTimes)}\n`
+    : ''
+}Prefer realistic working hours and balanced energy across the day.`;
+    case 'meeting_prayer':
+      return `Suggest ${params.duration}-minute meeting slots on ${targetDate} that avoid these prayer times (leave ${bufferMinutes} min buffer):
+${JSON.stringify(prayerTimes)}`;
+    case 'meeting_titled':
+      return `Suggest optimal ${params.duration}-minute slots for "${title}".
+Attendees: ${peopleLabel(people, 'organizer only')}`;
+    case 'meeting_collab':
+      return `Suggest ${params.duration}-minute collaboration meeting times.
+Attendees: ${peopleLabel(people, 'team')}`;
+    case 'meeting_range':
+    default:
+      return `Find optimal ${params.duration}-minute meeting slots in the next ${dateRangeDays} days.
+Participants: ${peopleLabel(people, 'organizer only')}
+Today: ${today}`;
+  }
+}
+
+/** Unified AI time-slot generation — single Groq call per request. */
+export async function runSuggestTimeSlotsCore(
+  params: SuggestTimeSlotsParams
+): Promise<SuggestTimeSlotsCoreResult> {
+  let prayerTimes = params.prayerTimes ?? {};
+  let slotArt9Categories = [...(params.art9Categories ?? [])];
+
+  if (params.resolvePrayerTimesFromProfile && params.userId) {
+    const targetDate = params.targetDate ?? new Date().toISOString().split('T')[0];
+    const city = await loadUserCityForSlots(params.userId);
+    if (city) {
+      const religiousAccess = await verifyArt9AiAccess(params.userId, ['religious']);
+      if (religiousAccess.ok) {
+        const prayerJson = await groqJson<{ prayer_times?: Record<string, string> }>(
+          'You provide approximate daily Muslim prayer times for scheduling.',
+          `Prayer times on ${targetDate} in ${city}. Return JSON:
+{ "prayer_times": { "Fajr": "HH:mm", "Dhuhr": "HH:mm", "Asr": "HH:mm", "Maghrib": "HH:mm", "Isha": "HH:mm" } }`,
+          'vp-suggestTaskTimeSlots-prayer',
+          params.userTier,
+          ['religious']
+        );
+        if (prayerJson?.prayer_times && typeof prayerJson.prayer_times === 'object') {
+          prayerTimes = prayerJson.prayer_times;
+          slotArt9Categories = mergeArt9Categories(slotArt9Categories, ['religious']);
+        }
+      }
+    }
+  }
+
+  if (
+    params.promptKind === 'meeting_prayer' ||
+    (params.promptKind === 'task_focus' && Object.keys(prayerTimes).length > 0)
+  ) {
+    slotArt9Categories = mergeArt9Categories(slotArt9Categories, ['religious']);
+  }
+
+  const prompt = buildSuggestTimeSlotsPrompt(params, prayerTimes);
+
+  if (params.promptKind === 'advanced') {
+    const result = await groqJson<{
+      suggestions?: Array<Record<string, unknown>>;
+      team_insights?: Record<string, unknown>;
+    }>(
+      'You are an expert meeting scheduler. Propose realistic open time slots.',
+      `${prompt}
+
+Return JSON:
+{
+  "suggestions": [
+    {
+      "start_time": "ISO 8601 datetime",
+      "end_time": "ISO 8601 datetime",
+      "confidence": 0.0,
+      "reasoning": "short explanation"
+    }
+  ],
+  "team_insights": {
+    "busiest_day": "string",
+    "recommendation": "string"
+  }
+}
+
+Return 3–5 suggestions.`,
+      params.label,
+      params.userTier,
+      slotArt9Categories
+    );
+
+    if (!result) {
+      return {
+        ok: false,
+        error: 'AI is temporarily unavailable',
+        status: 503,
+        slotArt9Categories,
+      };
+    }
+
+    const rawSuggestions = Array.isArray(result.suggestions) ? result.suggestions : [];
+    return {
+      ok: true,
+      normalized: normalizeMeetingSlots(rawSuggestions as MeetingSlot[]),
+      rawSuggestions,
+      teamInsights: result.team_insights ?? null,
+      prayerTimes,
+      slotArt9Categories,
+    };
+  }
+
+  const slots = await groqMeetingSlots(
+    params.label,
+    prompt,
+    params.userTier,
+    slotArt9Categories
+  );
+
+  if (!slots || slots.length === 0) {
+    return {
+      ok: false,
+      error: 'AI is temporarily unavailable',
+      status: 503,
+      slotArt9Categories,
+    };
+  }
+
+  return {
+    ok: true,
+    normalized: normalizeMeetingSlots(slots),
+    prayerTimes,
+    slotArt9Categories,
+  };
+}
+
 /** SmartMeetingScheduler — find optimal meeting windows. */
 export const findOptimalMeetingTimes: VpFunctionHandler = async ({ user, payload }) => {
   const gate = await gateFeature(user, 'ai_requests');
   if (!gate.ok) return gate.result;
 
-  const participants = Array.isArray(payload.participants) ? payload.participants : [];
+  const participants = Array.isArray(payload.participants)
+    ? (payload.participants as string[])
+    : [];
   const duration =
     typeof payload.duration === 'number' && payload.duration > 0 ? payload.duration : 60;
-  const dateRange =
+  const dateRangeDays =
     typeof payload.dateRange === 'number' && payload.dateRange > 0 ? payload.dateRange : 7;
-  const today = new Date().toISOString().split('T')[0];
 
-  const slots = await groqMeetingSlots(
-    'vp-findOptimalMeetingTimes',
-    `Find optimal ${duration}-minute meeting slots in the next ${dateRange} days.
-Participants: ${participants.length ? participants.join(', ') : 'organizer only'}
-Today: ${today}`,
-    gate.plan
-  );
+  const core = await runSuggestTimeSlotsCore({
+    label: 'vp-findOptimalMeetingTimes',
+    promptKind: 'meeting_range',
+    duration,
+    dateRangeDays,
+    participants,
+    userTier: gate.plan,
+  });
 
-  if (!slots) {
-    return { ok: false, error: 'AI is temporarily unavailable', status: 503 };
+  if (!core.ok) {
+    return { ok: false, error: core.error, status: core.status };
   }
 
-  const normalized = normalizeMeetingSlots(slots);
   return {
     ok: true,
     data: {
-      optimal_slots: normalized,
-      suggestions: normalized,
+      optimal_slots: core.normalized,
+      suggestions: core.normalized,
     },
   };
 };
@@ -543,30 +736,33 @@ export const suggestOptimalMeetingTime: VpFunctionHandler = async ({ user, paylo
   if (!gate.ok) return gate.result;
 
   const title = typeof payload.meeting_title === 'string' ? payload.meeting_title : 'Meeting';
-  const attendees = Array.isArray(payload.attendee_emails) ? payload.attendee_emails : [];
+  const attendees = Array.isArray(payload.attendee_emails)
+    ? (payload.attendee_emails as string[])
+    : [];
   const duration =
     typeof payload.duration_minutes === 'number' && payload.duration_minutes > 0
       ? payload.duration_minutes
       : 30;
 
-  const slots = await groqMeetingSlots(
-    'vp-suggestOptimalMeetingTime',
-    `Suggest optimal ${duration}-minute slots for "${title}".
-Attendees: ${attendees.length ? attendees.join(', ') : 'organizer only'}`,
-    gate.plan
-  );
+  const core = await runSuggestTimeSlotsCore({
+    label: 'vp-suggestOptimalMeetingTime',
+    promptKind: 'meeting_titled',
+    duration,
+    title,
+    attendees,
+    userTier: gate.plan,
+  });
 
-  if (!slots) {
-    return { ok: false, error: 'AI is temporarily unavailable', status: 503 };
+  if (!core.ok) {
+    return { ok: false, error: core.error, status: core.status };
   }
 
-  const normalized = normalizeMeetingSlots(slots);
   return {
     ok: true,
     data: {
       analysis: `Analyzed schedules for ${attendees.length || 1} participant(s).`,
-      optimal_slots: normalized,
-      recommendations: normalized.slice(0, 2).map((s) => s.reasoning).filter(Boolean),
+      optimal_slots: core.normalized,
+      recommendations: core.normalized.slice(0, 2).map((s) => s.reasoning).filter(Boolean),
     },
   };
 };
@@ -578,20 +774,21 @@ export const suggestMeetingTimes: VpFunctionHandler = async ({ user, payload }) 
 
   const duration =
     typeof payload.duration === 'number' && payload.duration > 0 ? payload.duration : 60;
-  const attendees = Array.isArray(payload.attendees) ? payload.attendees : [];
+  const attendees = Array.isArray(payload.attendees) ? (payload.attendees as string[]) : [];
 
-  const slots = await groqMeetingSlots(
-    'vp-suggestMeetingTimes',
-    `Suggest ${duration}-minute collaboration meeting times.
-Attendees: ${attendees.length ? attendees.join(', ') : 'team'}`,
-    gate.plan
-  );
+  const core = await runSuggestTimeSlotsCore({
+    label: 'vp-suggestMeetingTimes',
+    promptKind: 'meeting_collab',
+    duration,
+    attendees,
+    userTier: gate.plan,
+  });
 
-  if (!slots) {
-    return { ok: false, error: 'AI is temporarily unavailable', status: 503 };
+  if (!core.ok) {
+    return { ok: false, error: core.error, status: core.status };
   }
 
-  return { ok: true, data: { suggestions: normalizeMeetingSlots(slots) } };
+  return { ok: true, data: { suggestions: core.normalized } };
 };
 
 /** PrayerAwareScheduler — slots that avoid prayer times. */
@@ -614,23 +811,26 @@ export const suggestPrayerAwareMeetingTimes: VpFunctionHandler = async ({ user, 
       ? (payload.prayer_times as Record<string, string>)
       : {};
 
-  const slots = await groqMeetingSlots(
-    'vp-suggestPrayerAwareMeetingTimes',
-    `Suggest ${duration}-minute meeting slots on ${date} that avoid these prayer times (leave ${buffer} min buffer):
-${JSON.stringify(prayerTimes)}`,
-    gate.plan,
-    gate.art9Categories
-  );
+  const core = await runSuggestTimeSlotsCore({
+    label: 'vp-suggestPrayerAwareMeetingTimes',
+    promptKind: 'meeting_prayer',
+    duration,
+    targetDate: date,
+    prayerTimes,
+    bufferMinutes: buffer,
+    userTier: gate.plan,
+    art9Categories: gate.art9Categories,
+  });
 
-  if (!slots) {
+  if (!core.ok) {
     return {
       ok: false,
-      error: aiUnavailableMessage(gate.art9Categories),
-      status: 503,
+      error: aiUnavailableMessage(core.slotArt9Categories),
+      status: core.status,
     };
   }
 
-  return { ok: true, data: { suggestions: normalizeMeetingSlots(slots) } };
+  return { ok: true, data: { suggestions: core.normalized } };
 };
 
 /**
