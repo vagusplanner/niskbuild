@@ -519,7 +519,7 @@ export default function Layout({ children, currentPageName }) {
       <WelcomeEmailTrigger />
       {showSplash && <SplashScreen onDone={() => { sessionStorage.setItem('splash_shown', '1'); setShowSplash(false); }} />}
     <div className="min-h-screen bg-transparent dark:bg-transparent" style={{background: 'transparent'}}>
-      <Toaster position={isMobile ? "bottom-center" : "top-center"} richColors />
+      <Toaster position="top-center" richColors />
       
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex fixed left-0 top-0 bottom-0 w-56 flex-col z-[42] shadow-xl shadow-black/30" style={{background:'linear-gradient(180deg, #2D4A65 0%, #1B2A4A 30%, #0D4F6C 60%, #0A3333 100%)', borderRight:'2px solid rgba(41,171,226,0.35)'}}>

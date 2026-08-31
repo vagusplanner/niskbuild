@@ -104,57 +104,56 @@ export default function TaskForm({ isOpen, onClose, onSubmit, task = null, showA
     }));
   };
 
-  const overlay = (
+  const overlay = embedded ? (
+    isOpen ? (
+      <div className="flex flex-col h-full min-h-0 overflow-hidden">
+        {renderFormBody()}
+      </div>
+    ) : null
+  ) : (
     <AnimatePresence>
       {isOpen && (
         <>
-          {!embedded && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
+            onClick={onClose}
+          />
+          <div className="fixed inset-x-0 bottom-0 sm:inset-0 sm:flex sm:items-center sm:justify-center sm:p-4 z-50 pointer-events-none">
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
-              onClick={onClose}
-            />
-          )}
-          <div
-            className={
-              embedded
-                ? 'flex flex-col h-full min-h-0'
-                : 'fixed inset-x-0 bottom-0 sm:inset-0 sm:flex sm:items-center sm:justify-center sm:p-4 z-50 pointer-events-none'
-            }
-          >
-            <motion.div
-              initial={{ opacity: 0, y: embedded ? 0 : 40 }}
+              initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: embedded ? 0 : 40 }}
+              exit={{ opacity: 0, y: 40 }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className={
-                embedded
-                  ? 'flex flex-col h-full min-h-0 bg-white dark:bg-slate-900 overflow-hidden'
-                  : 'pointer-events-auto w-full sm:max-w-2xl max-h-[92dvh] bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col'
-              }
+              className="pointer-events-auto w-full sm:max-w-2xl max-h-[92dvh] bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col"
             >
-            {!embedded && (
               <div className="sm:hidden mx-auto mt-3 mb-0 h-1.5 w-12 rounded-full bg-slate-200 dark:bg-slate-700 flex-shrink-0" />
-            )}
-            {!embedded && (
-            <div className="p-5 border-b bg-gradient-to-r from-emerald-500 to-teal-600 text-white">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold">
-                  {task ? 'Edit Task' : 'Create New Task'}
-                </h2>
-                <button onClick={onClose} className="p-2 rounded-full hover:bg-white/20 min-w-[44px] min-h-[44px] flex items-center justify-center">
-                  <X className="w-5 h-5" />
-                </button>
+              <div className="p-5 border-b bg-gradient-to-r from-emerald-500 to-teal-600 text-white">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-semibold">
+                    {task ? 'Edit Task' : 'Create New Task'}
+                  </h2>
+                  <button onClick={onClose} className="p-2 rounded-full hover:bg-white/20 min-w-[44px] min-h-[44px] flex items-center justify-center">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
-            </div>
-            )}
+              {renderFormBody(false)}
+            </motion.div>
+          </div>
+        </>
+      )}
+    </AnimatePresence>
+  );
 
+  function renderFormBody(isEmbedded = embedded) {
+    return (
             <form
               onSubmit={handleSubmit}
               className={
-                embedded
+                isEmbedded
                   ? 'flex flex-col flex-1 min-h-0 overflow-hidden'
                   : 'flex-1 overflow-auto p-4 sm:p-6 space-y-4'
               }
@@ -178,7 +177,7 @@ export default function TaskForm({ isOpen, onClose, onSubmit, task = null, showA
 
               {!showAIGen && (
                 <>
-              <div className={embedded ? 'flex-1 overflow-y-auto p-4 space-y-4 min-h-0' : 'contents'}>
+              <div className={isEmbedded ? 'flex-1 overflow-y-auto p-4 space-y-4 min-h-0' : 'contents'}>
               <div className="space-y-2">
                 <Label htmlFor="title">Task Title *</Label>
                 <Input
@@ -434,7 +433,7 @@ export default function TaskForm({ isOpen, onClose, onSubmit, task = null, showA
 
               <div
                 className={
-                  embedded
+                  isEmbedded
                     ? 'relative z-[2] shrink-0 flex gap-3 p-4 pt-3 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 pointer-events-auto touch-manipulation'
                     : 'flex gap-3 pt-4'
                 }
@@ -449,12 +448,8 @@ export default function TaskForm({ isOpen, onClose, onSubmit, task = null, showA
               </>
               )}
             </form>
-            </motion.div>
-          </div>
-        </>
-      )}
-    </AnimatePresence>
-  );
+    );
+  }
 
   if (embedded) {
     return isOpen ? overlay : null;
