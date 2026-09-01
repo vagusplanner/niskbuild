@@ -23,6 +23,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, isToday, isTomorrow, isPast } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import TaskForm from '@/components/tasks/TaskForm';
 
 const priorityColors = {
@@ -100,6 +101,39 @@ export default function CalendarTaskPanel({ selectedDate, onTaskClick, onAISched
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     }
   });
+
+  const createTaskMutation = useMutation({
+    mutationFn: (data) => base44.entities.Task.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      setShowForm(false);
+      setEditingTask(null);
+      toast.success('Task created!');
+    },
+    onError: () => toast.error('Failed to create task'),
+  });
+
+  const saveTaskMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.Task.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      setShowForm(false);
+      setEditingTask(null);
+      toast.success('Task updated!');
+    },
+    onError: () => toast.error('Failed to update task'),
+  });
+
+  const handleTaskSubmit = (data) => {
+    const payload = selectedDate && !data.due_date
+      ? { ...data, due_date: format(selectedDate, 'yyyy-MM-dd') }
+      : data;
+    if (editingTask?.id) {
+      saveTaskMutation.mutate({ id: editingTask.id, data: payload });
+    } else {
+      createTaskMutation.mutate(payload);
+    }
+  };
 
   const toggleTask = (task) => {
     const newStatus = task.status === 'completed' ? 'todo' : 'completed';
@@ -394,6 +428,7 @@ export default function CalendarTaskPanel({ selectedDate, onTaskClick, onAISched
           setShowForm(false);
           setEditingTask(null);
         }}
+        onSubmit={handleTaskSubmit}
         task={editingTask}
         selectedDate={selectedDate}
       />

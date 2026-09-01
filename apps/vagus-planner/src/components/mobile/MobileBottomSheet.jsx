@@ -3,9 +3,9 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { MOBILE_NAV_CLEARANCE, MOBILE_OVERLAY_Z } from '@/lib/mobile-layout';
 
-/** Layout mobile tab bar: 3.5rem bar + safe-area padding + extra gap above nav. */
-const MOBILE_NAV_CLEARANCE = 'calc(4rem + env(safe-area-inset-bottom, 0px))';
+/** Layout mobile tab bar clearance — keep in sync with Layout.jsx bottom nav. */
 
 export default function MobileBottomSheet({
   isOpen,
@@ -33,7 +33,8 @@ export default function MobileBottomSheet({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[150] pointer-events-auto"
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto"
+            style={{ zIndex: MOBILE_OVERLAY_Z }}
           />
 
           <motion.div
@@ -42,8 +43,9 @@ export default function MobileBottomSheet({
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 32, stiffness: 320 }}
-            className="fixed left-0 right-0 z-[151] bg-white dark:bg-slate-900 rounded-t-3xl shadow-2xl flex flex-col pointer-events-auto touch-manipulation"
+            className="fixed left-0 right-0 bg-white dark:bg-slate-900 rounded-t-3xl shadow-2xl flex flex-col pointer-events-auto"
             style={{
+              zIndex: MOBILE_OVERLAY_Z + 1,
               bottom: MOBILE_NAV_CLEARANCE,
               height: sheetHeight,
               maxHeight: sheetHeight,
@@ -64,8 +66,8 @@ export default function MobileBottomSheet({
               </Button>
             </div>
 
-            {/* Content — forms own scroll; footer actions stay in-form but outside drag/transform gestures */}
-            <div className="relative z-[1] flex-1 min-h-0 overflow-hidden flex flex-col px-6 pb-4">
+            {/* Content — forms own scroll; avoid overflow:hidden so native date/time pickers work on iOS */}
+            <div className="relative z-[1] flex-1 min-h-0 flex flex-col px-6 pb-4">
               {children}
             </div>
           </motion.div>

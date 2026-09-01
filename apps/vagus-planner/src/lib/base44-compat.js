@@ -1025,7 +1025,10 @@ export const base44 = {
 
         return data
       } catch (error) {
-        console.error('❌ Error invoking function:', error)
+        const message = error instanceof Error ? error.message : String(error)
+        if (!/not implemented/i.test(message)) {
+          console.error('❌ Error invoking function:', error)
+        }
         throw error
       }
     }

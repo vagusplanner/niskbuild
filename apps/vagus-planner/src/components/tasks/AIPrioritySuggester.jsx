@@ -50,13 +50,19 @@ export default function AIPrioritySuggester({
         category
       });
 
-      if (data.success) {
+      if (data?.success) {
         setSuggestion(data);
-      } else if (data.limit_exceeded) {
+      } else if (data?.limit_exceeded) {
         toast.error(data.error);
       }
     } catch (error) {
-      console.error('Priority analysis error:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      if (/not implemented/i.test(message)) {
+        return;
+      }
+      if (import.meta.env.DEV) {
+        console.debug('Priority analysis unavailable:', message);
+      }
     } finally {
       setIsAnalyzing(false);
     }

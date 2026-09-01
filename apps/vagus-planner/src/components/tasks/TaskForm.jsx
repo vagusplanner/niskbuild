@@ -20,6 +20,19 @@ import AIRecurringTaskHelper from './AIRecurringTaskHelper';
 import AITaskGenerator from './AITaskGenerator';
 import AIPrioritySuggester from './AIPrioritySuggester';
 import PrayerAwareTaskScheduler from './PrayerAwareTaskScheduler';
+import { cn } from '@/lib/utils';
+import { MOBILE_OVERLAY_Z } from '@/lib/mobile-layout';
+
+function openNativeDateOrTimePicker(event) {
+  const input = event.currentTarget;
+  if (input && typeof input.showPicker === 'function') {
+    try {
+      input.showPicker();
+    } catch {
+      input.focus();
+    }
+  }
+}
 
 export default function TaskForm({ isOpen, onClose, onSubmit, task = null, showAIGenerator = false, embedded = false }) {
   const [formData, setFormData] = useState({
@@ -73,6 +86,12 @@ export default function TaskForm({ isOpen, onClose, onSubmit, task = null, showA
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (typeof onSubmit !== 'function') {
+      if (import.meta.env.DEV) {
+        console.error('TaskForm: missing onSubmit handler');
+      }
+      return;
+    }
     onSubmit(formData);
   };
 
@@ -118,10 +137,17 @@ export default function TaskForm({ isOpen, onClose, onSubmit, task = null, showA
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm"
+            style={{ zIndex: MOBILE_OVERLAY_Z }}
             onClick={onClose}
           />
-          <div className="fixed inset-x-0 bottom-0 sm:inset-0 sm:flex sm:items-center sm:justify-center sm:p-4 z-50 pointer-events-none">
+          <div
+            className={cn(
+              'fixed inset-x-0 pointer-events-none sm:inset-0 sm:flex sm:items-center sm:justify-center sm:p-4',
+              'bottom-[calc(3.5rem+2px+env(safe-area-inset-bottom,0px))] sm:bottom-0'
+            )}
+            style={{ zIndex: MOBILE_OVERLAY_Z }}
+          >
             <motion.div
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
@@ -154,8 +180,8 @@ export default function TaskForm({ isOpen, onClose, onSubmit, task = null, showA
               onSubmit={handleSubmit}
               className={
                 isEmbedded
-                  ? 'flex flex-col flex-1 min-h-0 overflow-hidden'
-                  : 'flex-1 overflow-auto p-4 sm:p-6 space-y-4'
+                  ? 'flex flex-col flex-1 min-h-0'
+                  : 'flex-1 overflow-auto p-4 sm:p-6 space-y-4 max-h-full'
               }
             >
               {/* AI Task Generator */}
@@ -273,6 +299,8 @@ export default function TaskForm({ isOpen, onClose, onSubmit, task = null, showA
                     type="date"
                     value={formData.due_date}
                     onChange={(e) => setFormData(prev => ({ ...prev, due_date: e.target.value }))}
+                    onClick={openNativeDateOrTimePicker}
+                    onFocus={openNativeDateOrTimePicker}
                     className="h-12"
                   />
                 </div>
@@ -284,6 +312,8 @@ export default function TaskForm({ isOpen, onClose, onSubmit, task = null, showA
                     type="time"
                     value={formData.due_time}
                     onChange={(e) => setFormData(prev => ({ ...prev, due_time: e.target.value }))}
+                    onClick={openNativeDateOrTimePicker}
+                    onFocus={openNativeDateOrTimePicker}
                     className="h-12"
                   />
                 </div>

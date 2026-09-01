@@ -80,7 +80,7 @@ async function main() {
 
   const ctx = {
     request: {} as import('next/server').NextRequest,
-    user: { id: userId, email: 'verify@local.test' },
+    user: { id: userId, email: 'verify@local.test' } as import('@supabase/supabase-js').User,
     payload: {} as Record<string, unknown>,
   };
 
