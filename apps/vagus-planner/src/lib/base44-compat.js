@@ -87,8 +87,12 @@ const COLUMN_ALIASES = {
 }
 
 const ENTITY_COLUMN_ALIASES = {
-  Event: { start_date: 'event_date' },
+  Event: { start_date: 'event_date', created_by: '__skip__' },
   Task: { description: 'notes' },
+  Holiday: { start_date: 'holiday_date', title: 'name', created_by: '__skip__' },
+  PrayerLog: { date: 'prayed_at' },
+  Goal: { due_date: 'target_date' },
+  IslamicEvent: { date: 'gregorian_date' },
 }
 
 const TASK_PRIORITY_MAP = { low: 1, medium: 2, high: 3, urgent: 3 }
@@ -467,6 +471,50 @@ function mapRowFromDb(entityName, row) {
       ...row,
       title: row.name ?? row.title,
       start_date: row.holiday_date ?? row.start_date,
+      status: row.status ?? 'planned',
+      created_by: row.created_by_email ?? row.created_by,
+    }
+  }
+
+  if (entityName === 'Goal' || entityName === 'LifeGoal') {
+    const progress = typeof row.progress === 'number' ? row.progress : 0
+    let status = row.status
+    if (status === 'active') {
+      status = progress > 0 ? 'in_progress' : 'not_started'
+    }
+    return {
+      ...row,
+      status,
+      priority: row.priority ?? 'medium',
+      due_date: row.target_date ?? row.due_date,
+    }
+  }
+
+  if (entityName === 'PrayerLog') {
+    const prayedAt = row.prayed_at ?? row.date
+    return {
+      ...row,
+      date: prayedAt,
+      prayed_at: prayedAt,
+      created_date: row.created_at ?? row.created_date,
+    }
+  }
+
+  if (entityName === 'IslamicEvent') {
+    return {
+      ...row,
+      date: row.gregorian_date ?? row.date,
+      created_date: row.created_at ?? row.created_date,
+      updated_date: row.updated_at ?? row.updated_date,
+    }
+  }
+
+  if (entityName === 'Habit') {
+    return {
+      ...row,
+      completion_dates: Array.isArray(row.completion_dates) ? row.completion_dates : [],
+      created_date: row.created_at ?? row.created_date,
+      updated_date: row.updated_at ?? row.updated_date,
     }
   }
 
@@ -552,8 +600,40 @@ function parseSortString(sort) {
 function applySort(query, sortField, entityName) {
   const parsed = parseSortString(sortField)
   if (!parsed) return query
-  const column = mapColumn(parsed.column, entityName)
+  let column = mapColumn(parsed.column, entityName)
+  if (column === '__skip__') return query
+  if (entityName === 'Goal' && column === 'priority') {
+    column = 'target_date'
+  }
+  if (entityName === 'Task' && column === 'priority') {
+    column = 'priority'
+  }
   return query.order(column, { ascending: parsed.ascending, nullsFirst: false })
+}
+
+function mapGoalStatusValue(value) {
+  const map = {
+    not_started: 'active',
+    in_progress: 'active',
+    active: 'active',
+    completed: 'completed',
+    archived: 'archived',
+  }
+  if (typeof value === 'string') return map[value] ?? value
+  return value
+}
+
+function mapTaskStatusFilterValue(value) {
+  const map = {
+    todo: 'pending',
+    pending: 'pending',
+    in_progress: 'in_progress',
+    completed: 'completed',
+    cancelled: 'cancelled',
+    blocked: 'pending',
+  }
+  if (typeof value === 'string') return map[value] ?? value
+  return value
 }
 
 function applyFilters(query, criteria, entityName) {
@@ -579,17 +659,55 @@ function applyFilters(query, criteria, entityName) {
       next = next.eq(key === 'shared_with' ? 'shared_with_email' : 'shared_by_email', value)
       continue
     }
+    if (entityName === 'PrayerLog' && key === 'date') {
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        const col = 'prayed_at'
+        if (value.$gte != null) next = next.gte(col, value.$gte)
+        if (value.$lte != null) next = next.lte(col, value.$lte)
+        continue
+      }
+      if (typeof value === 'string') {
+        const day = value.split('T')[0]
+        next = next.gte('prayed_at', `${day}T00:00:00`).lt('prayed_at', `${day}T23:59:59.999`)
+        continue
+      }
+    }
+    const mappedCol = mapColumn(key, entityName)
+    if (mappedCol === '__skip__') {
+      continue
+    }
     if (value && typeof value === 'object' && !Array.isArray(value)) {
-      const col = mapColumn(key, entityName)
+      const col = mappedCol
       if (value.$gte != null) next = next.gte(col, value.$gte)
       if (value.$lte != null) next = next.lte(col, value.$lte)
       if (value.$gt != null) next = next.gt(col, value.$gt)
       if (value.$lt != null) next = next.lt(col, value.$lt)
       if (value.$ne != null) next = next.neq(col, value.$ne)
-      if (value.$in != null) next = next.in(col, value.$in)
+      if (value.$regex != null) {
+        next = next.ilike(col, `%${String(value.$regex).replace(/%/g, '')}%`)
+        continue
+      }
+      if (value.$in != null) {
+        let values = value.$in
+        if (entityName === 'Goal' && key === 'status') {
+          values = [...new Set(values.map(mapGoalStatusValue))]
+        }
+        if (entityName === 'Task' && key === 'status') {
+          values = [...new Set(values.map(mapTaskStatusFilterValue))]
+        }
+        next = next.in(col, values)
+      }
       continue
     }
-    next = next.eq(mapColumn(key, entityName), value)
+    if (entityName === 'Goal' && key === 'status') {
+      next = next.eq(mappedCol, mapGoalStatusValue(value))
+      continue
+    }
+    if (entityName === 'Task' && key === 'status') {
+      next = next.eq(mappedCol, mapTaskStatusFilterValue(value))
+      continue
+    }
+    next = next.eq(mappedCol, value)
   }
   return next
 }

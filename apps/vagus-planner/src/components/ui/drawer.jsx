@@ -4,6 +4,9 @@ import * as React from "react"
 import { Drawer as DrawerPrimitive } from "vaul"
 
 import { cn } from "@/lib/utils"
+import { MOBILE_OVERLAY_Z } from "@/lib/mobile-layout"
+
+const DRAWER_Z_INDEX = MOBILE_OVERLAY_Z + 20
 
 const Drawer = ({
   shouldScaleBackground = true,
@@ -22,7 +25,8 @@ const DrawerClose = DrawerPrimitive.Close
 const DrawerOverlay = React.forwardRef(({ className, ...props }, ref) => (
   <DrawerPrimitive.Overlay
     ref={ref}
-    className={cn("fixed inset-0 z-50 bg-black/80", className)}
+    className={cn("fixed inset-0 bg-black/80", className)}
+    style={{ zIndex: DRAWER_Z_INDEX }}
     {...props} />
 ))
 DrawerOverlay.displayName = DrawerPrimitive.Overlay.displayName
@@ -33,9 +37,10 @@ const DrawerContent = React.forwardRef(({ className, children, ...props }, ref) 
     <DrawerPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[10px] border bg-background",
+        "fixed inset-x-0 bottom-0 mt-24 flex h-auto flex-col rounded-t-[10px] border bg-background",
         className
       )}
+      style={{ zIndex: DRAWER_Z_INDEX }}
       {...props}>
       <div className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted" />
       {children}

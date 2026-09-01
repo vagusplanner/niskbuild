@@ -125,7 +125,7 @@ export default function TaskForm({ isOpen, onClose, onSubmit, task = null, showA
 
   const overlay = embedded ? (
     isOpen ? (
-      <div className="flex flex-col h-full min-h-0 overflow-hidden">
+      <div className="flex flex-col h-full min-h-0">
         {renderFormBody()}
       </div>
     ) : null

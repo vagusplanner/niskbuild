@@ -1,3 +1,4 @@
+-- DEPRECATED: use vp-jwt-email-rls-systemic-migration.sql instead (covers all email-keyed tables).
 -- Fix vp_notifications (and related email-keyed VP tables) RLS:
 -- authenticated users cannot SELECT auth.users, so recipient_email policies
 -- must use the JWT email claim instead.
