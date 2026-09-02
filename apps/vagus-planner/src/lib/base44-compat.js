@@ -90,10 +90,19 @@ const ENTITY_COLUMN_ALIASES = {
   Event: { start_date: 'event_date', created_by: '__skip__' },
   Task: { description: 'notes' },
   Holiday: { start_date: 'holiday_date', title: 'name', created_by: '__skip__' },
+  Expense: { created_by: '__skip__' },
   PrayerLog: { date: 'prayed_at' },
   Goal: { due_date: 'target_date' },
   IslamicEvent: { date: 'gregorian_date' },
+  NotificationPreference: { user_email: '__skip__' },
 }
+
+const NOTIFICATION_PREFERENCE_METADATA_KEYS = new Set([
+  'billing_emails',
+  'renewal_reminders',
+  'payment_alerts',
+  'upgrade_confirmations',
+])
 
 const TASK_PRIORITY_MAP = { low: 1, medium: 2, high: 3, urgent: 3 }
 const TASK_STATUS_MAP = {
@@ -190,6 +199,7 @@ function mapPayloadToRow(entityName, payload, userId) {
 
   if (entityName === 'Goal' || entityName === 'LifeGoal') {
     const statusMap = {
+      not_started: 'active',
       in_progress: 'active',
       active: 'active',
       completed: 'completed',
@@ -200,9 +210,15 @@ function mapPayloadToRow(entityName, payload, userId) {
     if (p.description != null) row.description = p.description
     if (p.target_date != null) row.target_date = p.target_date
     else if (p.due_date != null) row.target_date = p.due_date
+    else if (p.deadline != null && p.deadline !== '') row.target_date = p.deadline
     if (p.status != null) row.status = statusMap[p.status] ?? p.status
     if (p.progress != null) row.progress = p.progress
+    if (p.priority != null) row.priority = p.priority
     return row
+  }
+
+  if (entityName === 'NotificationPreference') {
+    return mapNotificationPreferencePayloadToRow(p, null, userId)
   }
 
   if (entityName === 'Hadith') {
@@ -373,6 +389,32 @@ function mapPayloadToRow(entityName, payload, userId) {
   return row
 }
 
+function mapNotificationPreferencePayloadToRow(payload, existingRow, userId) {
+  const p = payload ?? {}
+  const metadata = {
+    ...(existingRow?.metadata && typeof existingRow.metadata === 'object'
+      ? existingRow.metadata
+      : {}),
+  }
+  for (const key of NOTIFICATION_PREFERENCE_METADATA_KEYS) {
+    if (key in p) metadata[key] = p[key]
+  }
+
+  const row = {}
+  if (userId) row.user_id = userId
+  if (p.notification_type != null) row.notification_type = p.notification_type
+  if (p.enabled != null) row.enabled = p.enabled !== false
+  else if (p.billing_emails != null) row.enabled = p.billing_emails !== false
+  if (p.priority != null) row.priority = p.priority
+  if (p.advance_notice_minutes != null) {
+    row.advance_notice_minutes = p.advance_notice_minutes
+  }
+  if (p.channels != null) row.channels = p.channels
+  if (Object.keys(metadata).length > 0) row.metadata = metadata
+  row.updated_at = new Date().toISOString()
+  return row
+}
+
 const USER_SETTINGS_COLUMN_MAP = {
   notifications_enabled: 'push_notifications_enabled',
   email_notifications: 'email_notifications_enabled',
@@ -513,6 +555,18 @@ function mapRowFromDb(entityName, row) {
     return {
       ...row,
       completion_dates: Array.isArray(row.completion_dates) ? row.completion_dates : [],
+      created_date: row.created_at ?? row.created_date,
+      updated_date: row.updated_at ?? row.updated_date,
+    }
+  }
+
+  if (entityName === 'NotificationPreference') {
+    const metadata =
+      row.metadata && typeof row.metadata === 'object' ? row.metadata : {}
+    return {
+      ...row,
+      ...metadata,
+      channels: Array.isArray(row.channels) ? row.channels : [],
       created_date: row.created_at ?? row.created_date,
       updated_date: row.updated_at ?? row.updated_date,
     }
@@ -902,7 +956,7 @@ async function insertOrUpdateRow(tableName, entityName, payload) {
     }
   }
 
-  const { data, error } = await tableFrom(tableName).insert([row]).select()
+  const { data, error } = await tableFrom(tableName).insert(row).select()
   if (error) throw error
   return mapRowFromDb(entityName, data[0])
 }
@@ -1081,7 +1135,7 @@ export const base44 = {
             row = mapPayloadToRow(entityName, payload, userId)
           }
           const { data, error } = await tableFrom(tableName)
-            .insert([row])
+            .insert(row)
             .select()
           if (error) throw error
           return mapRowFromDb(entityName, data[0])
@@ -1095,6 +1149,13 @@ export const base44 = {
               .single()
             if (readError) throw readError
             row = mapUserSettingsPayloadToRow(payload, existing, null)
+          } else if (entityName === 'NotificationPreference') {
+            const { data: existing, error: readError } = await tableFrom(tableName)
+              .select('*')
+              .eq('id', id)
+              .single()
+            if (readError) throw readError
+            row = mapNotificationPreferencePayloadToRow(payload, existing, null)
           } else {
             row = mapPayloadToRow(entityName, payload, null)
           }
