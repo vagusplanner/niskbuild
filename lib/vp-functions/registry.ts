@@ -35,6 +35,12 @@ import {
   suggestOptimalEventTimes,
   suggestTaskTimeSlots,
 } from './handlers/voice-and-slots';
+import {
+  analyzeChatForActions,
+  generateRecurringTaskDescription,
+  suggestTaskPriority,
+  translateContent,
+} from './handlers/task-and-content-ai';
 import { onNewUserWelcome, trackAnalytics } from './handlers/stubs';
 
 export const VP_FUNCTION_REGISTRY = new Map<string, VpFunctionHandler>([
@@ -68,6 +74,10 @@ export const VP_FUNCTION_REGISTRY = new Map<string, VpFunctionHandler>([
   ['parseVoiceCommand', parseVoiceCommand],
   ['suggestOptimalEventTimes', suggestOptimalEventTimes],
   ['suggestTaskTimeSlots', suggestTaskTimeSlots],
+  ['suggestTaskPriority', suggestTaskPriority],
+  ['translateContent', translateContent],
+  ['analyzeChatForActions', analyzeChatForActions],
+  ['generateRecurringTaskDescription', generateRecurringTaskDescription],
 ]);
 
 export function getVpFunctionHandler(name: string): VpFunctionHandler | undefined {
