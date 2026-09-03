@@ -130,6 +130,12 @@ create index if not exists idx_vp_islamic_events_user_gregorian
 alter table firstparty.vp_goals
   add column if not exists priority text not null default 'medium';
 
+alter table firstparty.vp_goals
+  add column if not exists progress smallint not null default 0;
+
+alter table firstparty.vp_goals
+  add column if not exists category text not null default 'personal';
+
 alter table firstparty.vp_holidays
   add column if not exists status text not null default 'planned';
 

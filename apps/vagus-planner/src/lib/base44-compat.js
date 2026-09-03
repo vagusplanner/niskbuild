@@ -221,6 +221,14 @@ function mapPayloadToRow(entityName, payload, userId) {
       if (Number.isFinite(n)) row.progress = Math.min(100, Math.max(0, n))
     }
     if (p.priority != null && p.priority !== '') row.priority = p.priority
+    if (p.category != null && p.category !== '') row.category = p.category
+    if (p.motivation != null) row.motivation = p.motivation
+    if (p.obstacles != null) row.obstacles = p.obstacles
+    if (p.notes != null) row.notes = p.notes
+    if (Array.isArray(p.tags)) row.tags = p.tags
+    if (Array.isArray(p.resources_needed)) row.resources_needed = p.resources_needed
+    if (Array.isArray(p.action_steps)) row.action_steps = p.action_steps
+    row.updated_at = new Date().toISOString()
     return row
   }
 
@@ -535,7 +543,15 @@ function mapRowFromDb(entityName, row) {
       ...row,
       status,
       priority: row.priority ?? 'medium',
+      category: row.category ?? 'personal',
+      progress,
+      progress_percentage: progress,
       due_date: row.target_date ?? row.due_date,
+      tags: Array.isArray(row.tags) ? row.tags : [],
+      resources_needed: Array.isArray(row.resources_needed) ? row.resources_needed : [],
+      action_steps: Array.isArray(row.action_steps) ? row.action_steps : [],
+      created_date: row.created_at ?? row.created_date,
+      updated_date: row.updated_at ?? row.updated_date,
     }
   }
 
