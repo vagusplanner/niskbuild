@@ -11,9 +11,9 @@ import {
 } from "@/components/ui/drawer"
 
 import { cn } from "@/lib/utils"
-import { MOBILE_OVERLAY_Z } from "@/lib/mobile-layout"
+import { NESTED_MENU_Z } from "@/lib/mobile-layout"
 
-const SELECT_MENU_Z_INDEX = MOBILE_OVERLAY_Z + 20
+const SELECT_MENU_Z_INDEX = NESTED_MENU_Z
 
 const useIsMobile = () => {
   const [isMobile, setIsMobile] = React.useState(false);

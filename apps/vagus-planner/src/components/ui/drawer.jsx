@@ -4,9 +4,9 @@ import * as React from "react"
 import { Drawer as DrawerPrimitive } from "vaul"
 
 import { cn } from "@/lib/utils"
-import { MOBILE_OVERLAY_Z } from "@/lib/mobile-layout"
+import { NESTED_MENU_Z } from "@/lib/mobile-layout"
 
-const DRAWER_Z_INDEX = MOBILE_OVERLAY_Z + 20
+const DRAWER_Z_INDEX = NESTED_MENU_Z
 
 const Drawer = ({
   shouldScaleBackground = true,

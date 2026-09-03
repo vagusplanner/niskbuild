@@ -34,7 +34,11 @@ export default function GoalFormModal({ isOpen, onClose, goal }) {
       queryClient.invalidateQueries({ queryKey: ['goals'] });
       toast.success(goal ? 'Goal updated!' : 'Goal created!');
       onClose();
-    }
+    },
+    onError: (error) => {
+      console.error('Goal save failed:', error);
+      toast.error(error?.message || 'Failed to save goal');
+    },
   });
 
   const addStep = () => {

@@ -201,6 +201,7 @@ function mapPayloadToRow(entityName, payload, userId) {
     const statusMap = {
       not_started: 'active',
       in_progress: 'active',
+      on_hold: 'active',
       active: 'active',
       completed: 'completed',
       archived: 'archived',
@@ -208,12 +209,18 @@ function mapPayloadToRow(entityName, payload, userId) {
     const row = { title: p.title ?? 'Goal' }
     if (userId) row.user_id = userId
     if (p.description != null) row.description = p.description
-    if (p.target_date != null) row.target_date = p.target_date
-    else if (p.due_date != null) row.target_date = p.due_date
-    else if (p.deadline != null && p.deadline !== '') row.target_date = p.deadline
-    if (p.status != null) row.status = statusMap[p.status] ?? p.status
-    if (p.progress != null) row.progress = p.progress
-    if (p.priority != null) row.priority = p.priority
+    // Empty string is invalid for timestamptz — omit rather than send "".
+    const rawTarget = p.target_date ?? p.due_date ?? p.deadline
+    if (rawTarget != null && String(rawTarget).trim() !== '') {
+      row.target_date = rawTarget
+    }
+    if (p.status != null) row.status = statusMap[p.status] ?? 'active'
+    const progress = p.progress ?? p.progress_percentage
+    if (progress != null && progress !== '') {
+      const n = Number(progress)
+      if (Number.isFinite(n)) row.progress = Math.min(100, Math.max(0, n))
+    }
+    if (p.priority != null && p.priority !== '') row.priority = p.priority
     return row
   }
 

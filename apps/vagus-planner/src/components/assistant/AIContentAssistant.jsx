@@ -62,16 +62,21 @@ export default function AIContentAssistant({
       const fullContext = `${context}${additionalInput ? ` Additional details: ${additionalInput}` : ''}`;
       const prompt = modeConfig.prompt(contentType, fullContext, currentContent);
 
-      const { data } = await base44.functions.invoke('aiContentGenerator', {
+      const data = await base44.functions.invoke('aiContentGenerator', {
         prompt,
         mode,
         content_type: contentType
       });
 
-      setGeneratedContent(data.content);
+      setGeneratedContent(data?.content ?? (typeof data === 'string' ? data : ''));
       toast.success('Content generated!');
     } catch (error) {
-      toast.error('Failed to generate content');
+      const message = error instanceof Error ? error.message : String(error);
+      if (/not implemented/i.test(message) || /501/.test(message)) {
+        toast.error("AI Content Assistant isn't available yet. We're still building this feature.");
+      } else {
+        toast.error('Failed to generate content');
+      }
       console.error(error);
     } finally {
       setLoading(false);

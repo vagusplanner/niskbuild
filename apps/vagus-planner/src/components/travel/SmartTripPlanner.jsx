@@ -241,45 +241,71 @@ export default function SmartTripPlanner() {
     }
     setLoading(true);
     setResult(null);
-    const { data } = await base44.functions.invoke('smartTripPlanner', {
-      destination: form.destination, origin: form.origin,
-      start_date: form.start_date, end_date: form.end_date,
-      trip_type: form.trip_type, num_travelers: parseInt(form.num_travelers),
-      halal_mode: form.halal_mode,
-    });
-    setResult(data);
-    if (data?.created_events_count > 0) {
-      toast.success(`✅ Itinerary generated & ${data.created_events_count} calendar slots blocked!`);
-      queryClient.invalidateQueries({ queryKey: ['events'] });
-    } else {
-      toast.success('✅ Trip plan generated!');
+    try {
+      const data = await base44.functions.invoke('smartTripPlanner', {
+        destination: form.destination, origin: form.origin,
+        start_date: form.start_date, end_date: form.end_date,
+        trip_type: form.trip_type, num_travelers: parseInt(form.num_travelers),
+        halal_mode: form.halal_mode,
+      });
+      setResult(data);
+      if (data?.created_events_count > 0) {
+        toast.success(`✅ Itinerary generated & ${data.created_events_count} calendar slots blocked!`);
+        queryClient.invalidateQueries({ queryKey: ['events'] });
+      } else {
+        toast.success('✅ Trip plan generated!');
+      }
+      setActiveTab('itinerary');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (/not implemented/i.test(message) || /501/.test(message)) {
+        toast.error("Smart Trip Planner isn't available yet. We're still building this feature.");
+      } else {
+        toast.error(message || 'Failed to generate trip plan');
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-    setActiveTab('itinerary');
   };
 
   const handleFindHalalSpots = async () => {
     if (!form.destination) { toast.error('Enter a destination first'); return; }
     setLoadingHalal(true);
     setHalalData(null);
-    const { data } = await base44.functions.invoke('getHalalAndPrayerLocations', { location: form.destination });
-    setHalalData(data);
-    setActiveTab('halal');
-    setLoadingHalal(false);
-    toast.success(`🕌 Halal spots found in ${form.destination}!`);
+    try {
+      const data = await base44.functions.invoke('getHalalAndPrayerLocations', { location: form.destination });
+      setHalalData(data);
+      setActiveTab('halal');
+      toast.success(`🕌 Halal spots found in ${form.destination}!`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error(message || 'Failed to find halal spots');
+    } finally {
+      setLoadingHalal(false);
+    }
   };
 
   const handleScanGmail = async () => {
     setLoadingGmail(true);
     setGmailData(null);
-    const { data } = await base44.functions.invoke('scanTravelEmails', {
-      destination: form.destination, start_date: form.start_date,
-    });
-    setGmailData(data);
-    setActiveTab('gmail');
-    setLoadingGmail(false);
-    const count = data?.bookings?.length || data?.events?.length || 0;
-    toast.success(`📧 Found ${count} booking confirmation${count !== 1 ? 's' : ''} in Gmail`);
+    try {
+      const data = await base44.functions.invoke('scanTravelEmails', {
+        destination: form.destination, start_date: form.start_date,
+      });
+      setGmailData(data);
+      setActiveTab('gmail');
+      const count = data?.bookings?.length || data?.events?.length || 0;
+      toast.success(`📧 Found ${count} booking confirmation${count !== 1 ? 's' : ''} in Gmail`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (/not implemented/i.test(message) || /501/.test(message)) {
+        toast.error("Gmail travel scan isn't available yet.");
+      } else {
+        toast.error(message || 'Failed to scan Gmail');
+      }
+    } finally {
+      setLoadingGmail(false);
+    }
   };
 
   const handleSaveBookingToCalendar = async (booking) => {

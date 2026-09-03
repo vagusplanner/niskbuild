@@ -48,7 +48,11 @@ export default function Goals() {
       queryClient.invalidateQueries(['lifeGoals']);
       toast.success('Goal created!');
       setShowForm(false);
-    }
+    },
+    onError: (error) => {
+      console.error('Goal create failed:', error);
+      toast.error(error?.message || 'Failed to create goal');
+    },
   });
 
   const updateMutation = useMutation({
@@ -57,7 +61,11 @@ export default function Goals() {
       queryClient.invalidateQueries(['lifeGoals']);
       setShowForm(false);
       setEditingGoal(null);
-    }
+    },
+    onError: (error) => {
+      console.error('Goal update failed:', error);
+      toast.error(error?.message || 'Failed to update goal');
+    },
   });
 
   const deleteMutation = useMutation({

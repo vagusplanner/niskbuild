@@ -61,15 +61,20 @@ export default function AITripPlanner({ open, onClose }) {
 
     setLoading(true);
     try {
-      const { data } = await base44.functions.invoke('generatePersonalizedTripSuggestions', {
+      const data = await base44.functions.invoke('generatePersonalizedTripSuggestions', {
         budget: parseInt(preferences.budget),
         duration_days: parseInt(preferences.duration),
         travel_style: preferences.style
       });
-      setDestinations(data.suggestions);
+      setDestinations(data?.suggestions ?? data);
       setStep(2);
     } catch (error) {
-      toast.error('Failed to generate suggestions');
+      const message = error instanceof Error ? error.message : String(error);
+      if (/not implemented/i.test(message) || /501/.test(message)) {
+        toast.error("AI Trip Planner isn't available yet. We're still building this feature.");
+      } else {
+        toast.error('Failed to generate suggestions');
+      }
     } finally {
       setLoading(false);
     }
@@ -88,16 +93,21 @@ export default function AITripPlanner({ open, onClose }) {
 
     setLoading(true);
     try {
-      const { data } = await base44.functions.invoke('generateSmartPackingList', {
+      const data = await base44.functions.invoke('generateSmartPackingList', {
         destination: selectedDestination.destination,
         duration_days: parseInt(preferences.duration),
         activities: selectedDestination.activities || [],
         start_date: preferences.start_date
       });
-      setPackingList(data.packing_list);
+      setPackingList(data?.packing_list ?? data);
       setShowPacking(true);
     } catch (error) {
-      toast.error('Failed to generate packing list');
+      const message = error instanceof Error ? error.message : String(error);
+      if (/not implemented/i.test(message) || /501/.test(message)) {
+        toast.error("Smart packing list isn't available yet.");
+      } else {
+        toast.error('Failed to generate packing list');
+      }
     } finally {
       setLoading(false);
     }
