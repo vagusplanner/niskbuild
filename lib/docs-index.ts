@@ -8,6 +8,13 @@ export type DocsIndexEntry = {
 
 export const DOCS_INDEX: DocsIndexEntry[] = [
   {
+    id: 'tips',
+    title: 'Tips',
+    section: 'Getting Started',
+    href: '/tips',
+    keywords: ['tips', 'howto', 'help', 'quick', 'guide'],
+  },
+  {
     id: 'pwa',
     title: 'Progressive Web Apps (PWA)',
     section: 'Mobile',

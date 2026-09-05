@@ -301,6 +301,16 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
         <div className="flex items-center gap-2">
           {(variant === 'app' || isBuilder) && user && (
             <>
+              <Link
+                href="/tips"
+                className="flex items-center justify-center h-9 w-9 rounded-lg border border-nisk text-nisk-muted hover:text-[var(--foreground)] hover:border-[var(--primary)]/35 hover:bg-[var(--surface-elevated)] transition-colors"
+                aria-label="Open Tips"
+                title="Tips"
+              >
+                <span className="text-base leading-none" aria-hidden>
+                  💡
+                </span>
+              </Link>
               <button
                 type="button"
                 onClick={openDocsPanel}

@@ -36,15 +36,23 @@ export default async function DocsIndexPage() {
               <p className="text-xs uppercase tracking-wider text-nisk-muted mb-2">{featured.category}</p>
               <h2 className="text-xl font-semibold text-[var(--foreground)] mb-2">{featured.title}</h2>
               <p className="text-sm text-nisk-muted mb-4">
-                Start here if you are new to NiskBuild or want a quick orientation.
-              </p>
+              Start here if you are new to NiskBuild or want a quick orientation.
+            </p>
+            <div className="flex flex-wrap gap-3">
               <Link
                 href={`/docs/${featured.slug}`}
                 className="inline-flex items-center text-sm font-medium text-[var(--copper-melt)] hover:underline"
               >
                 Read guide →
               </Link>
-            </section>
+              <Link
+                href="/tips"
+                className="inline-flex items-center text-sm font-medium text-nisk-muted hover:text-[var(--copper-melt)] hover:underline"
+              >
+                Prefer short tips? →
+              </Link>
+            </div>
+          </section>
           ) : (
             <p className="text-nisk-muted">No articles available yet.</p>
           )}

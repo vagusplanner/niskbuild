@@ -155,6 +155,13 @@ export default function CommandPalette() {
         href: '/docs',
         run: () => router.push('/docs'),
       },
+      {
+        id: 'qa-tips',
+        label: 'Open Tips',
+        section: 'Quick Actions',
+        href: '/tips',
+        run: () => router.push('/tips'),
+      },
     ],
     [mod, router]
   );
