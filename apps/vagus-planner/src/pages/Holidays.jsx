@@ -59,29 +59,23 @@ export default function HolidaysPage() {
     }
   });
 
-  const handleSave = async (data) => {
-    if (editingHoliday) {
-      updateMutation.mutate({ id: editingHoliday.id, data });
-    } else {
-      // Create holiday and auto-block calendar
-      createMutation.mutate(data);
-      
-      // Auto-create calendar event for the trip
-      try {
-        await base44.entities.Event.create({
-          title: `🏖️ ${data.title}`,
-          description: data.notes || `Trip to ${data.destination}`,
-          date: data.start_date,
-          start_time: '00:00',
-          end_time: '23:59',
-          is_all_day: true,
-          category: 'holiday',
-          location: data.destination,
-          notes: `Budget: $${data.budget || 0}\nAccommodation: ${data.accommodation || 'TBD'}\nFlight: ${data.flight_details || 'TBD'}`
-        });
-      } catch (error) {
-        console.error('Failed to create calendar event:', error);
-      }
+  /** HolidayForm already persists — only run calendar side-effects here. */
+  const handleSave = async (saved) => {
+    queryClient.invalidateQueries({ queryKey: ['holidays'] });
+    if (editingHoliday) return;
+    try {
+      await base44.entities.Event.create({
+        title: `🏖️ ${saved.title || saved.name}`,
+        description: saved.notes || `Trip to ${saved.destination || ''}`.trim(),
+        start_date: `${saved.start_date || saved.holiday_date}T00:00:00`,
+        end_date: `${saved.end_date || saved.start_date || saved.holiday_date}T23:59:59`,
+        is_all_day: true,
+        category: 'holiday',
+        location: saved.destination || '',
+      });
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+    } catch (error) {
+      console.error('Failed to create calendar event:', error);
     }
   };
 

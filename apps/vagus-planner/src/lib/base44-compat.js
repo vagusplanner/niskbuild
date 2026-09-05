@@ -247,13 +247,105 @@ function mapPayloadToRow(entityName, payload, userId) {
   }
 
   if (entityName === 'Holiday') {
+    // Base table: name, holiday_date, notes, recurring_yearly (+ optional trip columns from migration).
+    // Trip extras are also embedded in notes so saves work before/without new columns.
+    const destination = p.destination != null ? String(p.destination).trim() : ''
+    const endRaw = p.end_date
+    const end_date =
+      endRaw != null && String(endRaw).trim() !== ''
+        ? String(endRaw).split('T')[0]
+        : null
+    const status =
+      p.status != null && String(p.status).trim() !== ''
+        ? String(p.status).trim()
+        : 'planned'
+    const accommodation = p.accommodation != null ? String(p.accommodation) : ''
+    const flight_details = p.flight_details != null ? String(p.flight_details) : ''
+    let budget = null
+    if (p.budget != null && p.budget !== '') {
+      const n = Number(p.budget)
+      if (Number.isFinite(n)) budget = n
+    }
+    const userNotes =
+      p.notes != null
+        ? typeof p.notes === 'string'
+          ? p.notes
+          : JSON.stringify(p.notes)
+        : p.description != null
+          ? String(p.description)
+          : ''
+
+    const tripMeta = {
+      destination: destination || undefined,
+      end_date: end_date || undefined,
+      status,
+      budget: budget ?? undefined,
+      accommodation: accommodation || undefined,
+      flight_details: flight_details || undefined,
+    }
+    const hasTripMeta = Object.values(tripMeta).some((v) => v !== undefined)
+    const notesPayload = hasTripMeta
+      ? JSON.stringify({ _vp_trip: tripMeta, text: userNotes })
+      : userNotes || null
+
     const row = { name: p.name ?? p.title ?? 'Holiday' }
     if (userId) row.user_id = userId
     const start = p.holiday_date ?? p.start_date
-    if (start != null) row.holiday_date = String(start).split('T')[0]
-    const notes = p.notes ?? p.description
-    if (notes != null) row.notes = notes
+    if (start != null && String(start).trim() !== '') {
+      row.holiday_date = String(start).split('T')[0]
+    } else if (userId) {
+      row.holiday_date = new Date().toISOString().split('T')[0]
+    }
+    // Prefer real columns when migration applied; PostgREST ignores unknown keys only if we don't send them.
+    // Send optional trip columns — if migration not applied, strip on error is handled by create retry below? 
+    // Keep notes packing as source of truth for extras; only send base + status (added in vp-missing-tables).
+    if (notesPayload != null) row.notes = notesPayload
     if (p.recurring_yearly != null) row.recurring_yearly = p.recurring_yearly
+    if (userId) row.status = status
+    if (destination) row.destination = destination
+    if (end_date) row.end_date = end_date
+    if (budget != null) row.budget = budget
+    if (accommodation) row.accommodation = accommodation
+    if (flight_details) row.flight_details = flight_details
+    row.updated_at = new Date().toISOString()
+    return row
+  }
+
+  if (entityName === 'IslamicEvent') {
+    const row = {
+      title: p.title ?? 'Milestone',
+      category: p.category ?? 'personal',
+      event_type: p.event_type ?? p.milestone_type ?? 'custom',
+    }
+    if (userId) row.user_id = userId
+    const gregorian = p.gregorian_date ?? p.date ?? p.start_date
+    if (gregorian != null && String(gregorian).trim() !== '') {
+      row.gregorian_date = String(gregorian).split('T')[0]
+    }
+    if (p.description != null) row.description = p.description
+    if (p.hijri_month != null) row.hijri_month = p.hijri_month
+    if (p.hijri_day != null) row.hijri_day = p.hijri_day
+    if (p.hijri_year != null) row.hijri_year = String(p.hijri_year)
+    if (p.is_recurring != null) row.is_recurring = p.is_recurring
+    if (p.recurrence_type != null) row.recurrence_type = p.recurrence_type
+    if (p.color != null) row.color = p.color
+    if (p.reminder_enabled != null) row.reminder_enabled = p.reminder_enabled
+    if (p.milestone_type != null || p.notes != null) {
+      const meta = {
+        timeline: true,
+        milestone_type: p.milestone_type ?? undefined,
+      }
+      try {
+        if (typeof p.notes === 'string' && p.notes.trim().startsWith('{')) {
+          Object.assign(meta, JSON.parse(p.notes))
+        }
+      } catch {
+        /* keep meta */
+      }
+      const descParts = [p.description, `<!--timeline:${JSON.stringify(meta)}-->`].filter(Boolean)
+      row.description = descParts.join('\n')
+    }
+    row.updated_at = new Date().toISOString()
     return row
   }
 
@@ -641,11 +733,42 @@ function mapRowFromDb(entityName, row) {
   }
 
   if (entityName === 'Holiday') {
+    let destination = row.destination ?? ''
+    let end_date = row.end_date ?? null
+    let status = row.status ?? 'planned'
+    let budget = row.budget ?? null
+    let accommodation = row.accommodation ?? ''
+    let flight_details = row.flight_details ?? ''
+    let notesText = row.notes ?? ''
+    if (typeof row.notes === 'string' && row.notes.trim().startsWith('{')) {
+      try {
+        const parsed = JSON.parse(row.notes)
+        if (parsed && typeof parsed === 'object' && parsed._vp_trip) {
+          const t = parsed._vp_trip
+          if (!destination && t.destination) destination = t.destination
+          if (!end_date && t.end_date) end_date = t.end_date
+          if (t.status) status = t.status
+          if (budget == null && t.budget != null) budget = t.budget
+          if (!accommodation && t.accommodation) accommodation = t.accommodation
+          if (!flight_details && t.flight_details) flight_details = t.flight_details
+          notesText = parsed.text ?? ''
+        }
+      } catch {
+        /* plain notes */
+      }
+    }
+    const start = row.holiday_date ?? row.start_date
     return {
       ...row,
       title: row.name ?? row.title,
-      start_date: row.holiday_date ?? row.start_date,
-      status: row.status ?? 'planned',
+      start_date: start,
+      end_date: end_date ?? start,
+      destination,
+      status,
+      budget,
+      accommodation,
+      flight_details,
+      notes: notesText,
       created_by: row.created_by_email ?? row.created_by,
     }
   }
@@ -692,9 +815,26 @@ function mapRowFromDb(entityName, row) {
   }
 
   if (entityName === 'IslamicEvent') {
+    let milestone_type = row.event_type && row.event_type !== 'custom' ? row.event_type : null
+    let notes = row.notes ?? null
+    const desc = typeof row.description === 'string' ? row.description : ''
+    const metaMatch = desc.match(/<!--timeline:(\{[\s\S]*?\})-->/)
+    if (metaMatch) {
+      try {
+        const meta = JSON.parse(metaMatch[1])
+        if (meta.milestone_type) milestone_type = meta.milestone_type
+        notes = JSON.stringify({ timeline: true, type: meta.milestone_type ?? milestone_type })
+      } catch {
+        /* ignore */
+      }
+    }
     return {
       ...row,
       date: row.gregorian_date ?? row.date,
+      start_date: row.gregorian_date ?? row.start_date,
+      milestone_type: milestone_type ?? row.milestone_type,
+      notes: notes ?? row.notes,
+      description: desc.replace(/\n?<!--timeline:\{[\s\S]*?\}-->/, '').trim() || row.description,
       created_date: row.created_at ?? row.created_date,
       updated_date: row.updated_at ?? row.updated_date,
     }
@@ -1287,9 +1427,26 @@ export const base44 = {
           } else {
             row = mapPayloadToRow(entityName, payload, userId)
           }
-          const { data, error } = await tableFrom(tableName)
+          let { data, error } = await tableFrom(tableName)
             .insert(row)
             .select()
+          // Trip columns may be missing until vp-holidays-trip-fields-migration.sql is applied.
+          if (
+            error &&
+            entityName === 'Holiday' &&
+            /destination|end_date|budget|accommodation|flight_details|status|updated_at|schema cache|Could not find/i.test(
+              error.message || ''
+            )
+          ) {
+            const fallback = {
+              name: row.name,
+              holiday_date: row.holiday_date,
+              notes: row.notes,
+              recurring_yearly: row.recurring_yearly ?? true,
+            }
+            if (row.user_id) fallback.user_id = row.user_id
+            ;({ data, error } = await tableFrom(tableName).insert(fallback).select())
+          }
           if (error) throw error
           return mapRowFromDb(entityName, data[0])
         },
@@ -1325,10 +1482,24 @@ export const base44 = {
           } else {
             row = mapPayloadToRow(entityName, payload, null)
           }
-          const { data, error } = await tableFrom(tableName)
+          let { data, error } = await tableFrom(tableName)
             .update(row)
             .eq('id', id)
             .select()
+          if (
+            error &&
+            entityName === 'Holiday' &&
+            /destination|end_date|budget|accommodation|flight_details|status|updated_at|schema cache|Could not find/i.test(
+              error.message || ''
+            )
+          ) {
+            const fallback = {}
+            if (row.name != null) fallback.name = row.name
+            if (row.holiday_date != null) fallback.holiday_date = row.holiday_date
+            if (row.notes != null) fallback.notes = row.notes
+            if (row.recurring_yearly != null) fallback.recurring_yearly = row.recurring_yearly
+            ;({ data, error } = await tableFrom(tableName).update(fallback).eq('id', id).select())
+          }
           if (error) throw error
           return mapRowFromDb(entityName, data[0])
         },

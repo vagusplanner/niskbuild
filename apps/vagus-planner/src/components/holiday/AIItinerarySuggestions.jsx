@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, MapPin, Calendar, Clock, Sparkles } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
+import { format } from 'date-fns';
 
 export default function AIItinerarySuggestions({ onCreateTrip }) {
   const [loading, setLoading] = useState(false);
@@ -148,7 +149,13 @@ For each suggestion, provide:
                   onClick={() => onCreateTrip?.({
                     destination: suggestion.destination,
                     title: `Trip to ${suggestion.destination}`,
-                    status: 'planned'
+                    status: 'planned',
+                    start_date: format(new Date(), 'yyyy-MM-dd'),
+                    end_date: format(
+                      new Date(Date.now() + (Number(suggestion.duration_days) || 7) * 86400000),
+                      'yyyy-MM-dd'
+                    ),
+                    notes: suggestion.match_reason || '',
                   })}
                   className="w-full"
                   variant="outline"

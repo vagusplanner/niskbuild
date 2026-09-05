@@ -21,6 +21,7 @@ import SmartTripPlanner from '@/components/travel/SmartTripPlanner';
 import GmailBookingScanner from '@/components/travel/GmailBookingScanner';
 import IslamicItineraryBuilder from '@/components/travel/IslamicItineraryBuilder';
 import { isPageHiddenFromNav } from '@/lib/nav-v1-scope';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 import TravelMessageParser from '@/components/travel/TravelMessageParser';
 import TravelItineraryBuilder from '@/components/travel/TravelItineraryBuilder';
 import IslamicTravelDashboard from '@/components/travel/IslamicTravelDashboard';
@@ -96,13 +97,13 @@ export default function TravelPage() {
       setEditingHoliday(null);
       try {
         await base44.entities.Event.create({
-          title: `🏖️ ${holiday.title}`,
-          description: holiday.notes || `Trip to ${holiday.destination}`,
-          start_date: `${holiday.start_date}T00:00:00`,
-          end_date: `${holiday.end_date}T23:59:59`,
+          title: `🏖️ ${holiday.title || holiday.name}`,
+          description: holiday.notes || `Trip to ${holiday.destination || ''}`.trim(),
+          start_date: `${holiday.start_date || holiday.holiday_date}T00:00:00`,
+          end_date: `${holiday.end_date || holiday.start_date || holiday.holiday_date}T23:59:59`,
           is_all_day: true,
           category: 'holiday',
-          location: holiday.destination
+          location: holiday.destination || ''
         });
         queryClient.invalidateQueries({ queryKey: ['events'] });
       } catch {}
@@ -115,6 +116,25 @@ export default function TravelPage() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['holidays'] }); setShowHolidayForm(false); setEditingHoliday(null); }
   });
 
+  /** Side-effects after HolidayForm already persisted the row (do not create again). */
+  const handleHolidaySaved = async (holiday) => {
+    queryClient.invalidateQueries({ queryKey: ['holidays'] });
+    try {
+      await base44.entities.Event.create({
+        title: `🏖️ ${holiday.title || holiday.name}`,
+        description: holiday.notes || `Trip to ${holiday.destination || ''}`.trim(),
+        start_date: `${holiday.start_date || holiday.holiday_date}T00:00:00`,
+        end_date: `${holiday.end_date || holiday.start_date || holiday.holiday_date}T23:59:59`,
+        is_all_day: true,
+        category: 'holiday',
+        location: holiday.destination || ''
+      });
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+    } catch {}
+    if (isIslamicEdition && holiday.destination) setIslamicBuilderHoliday(holiday);
+  };
+
+  /** Create/update from AI panels / importers (raw form-like payloads). */
   const handleSaveHoliday = (data) => {
     if (editingHoliday) updateHolidayMutation.mutate({ id: editingHoliday.id, data });
     else createHolidayMutation.mutate(data);
@@ -141,7 +161,15 @@ export default function TravelPage() {
                 <p className="text-sm text-amber-100 mt-0.5">Plan, book, explore — AI-powered travel</p>
               </div>
               <div className="flex gap-2">
-                <Button size="sm" onClick={() => setShowTripPlanner(true)}
+                <Button size="sm" onClick={() => {
+                  // AI planner is P0-gated when its LLM functions are unregistered.
+                  if (requireVpAiFunctions('generatePersonalizedTripSuggestions', 'generateSmartPackingList')) {
+                    setShowTripPlanner(true);
+                  } else {
+                    setEditingHoliday(null);
+                    setShowHolidayForm(true);
+                  }
+                }}
                   className="bg-white/20 hover:bg-white/30 text-white border-0 gap-1.5">
                   <Globe className="w-3.5 h-3.5" /> AI Plan
                 </Button>
@@ -327,7 +355,7 @@ export default function TravelPage() {
         <HolidayForm
           isOpen={showHolidayForm}
           onClose={() => { setShowHolidayForm(false); setEditingHoliday(null); }}
-          onSave={handleSaveHoliday}
+          onSave={handleHolidaySaved}
           holiday={editingHoliday}
         />
         <AITripPlanner open={showTripPlanner} onClose={() => setShowTripPlanner(false)} />

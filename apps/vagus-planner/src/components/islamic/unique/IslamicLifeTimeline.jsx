@@ -66,7 +66,12 @@ export default function IslamicLifeTimeline() {
   const { data: milestones = [], isLoading } = useQuery({
     queryKey: ['lifeTimeline'],
     queryFn: () => base44.entities.IslamicEvent.filter({ category: 'personal' }, 'date', 100)
-      .then(r => r.filter(e => MILESTONE_TYPES.some(t => e.milestone_type === t.value || e.notes?.includes('"timeline":true'))))
+      .then(r => r.filter(e => {
+        const type = e.milestone_type || e.event_type;
+        return MILESTONE_TYPES.some(t => type === t.value)
+          || e.notes?.includes('"timeline":true')
+          || (typeof e.description === 'string' && e.description.includes('<!--timeline:'));
+      }))
       .catch(() => []),
   });
 
@@ -77,50 +82,59 @@ export default function IslamicLifeTimeline() {
   const save = async () => {
     if (!form.title) return toast.error('Title is required');
     setSaving(true);
-    await base44.entities.IslamicEvent.create({
-      title: form.title,
-      category: 'personal',
-      start_date: form.date ? `${form.date}T00:00:00` : new Date().toISOString(),
-      date: form.date || format(new Date(), 'yyyy-MM-dd'),
-      description: form.description,
-      milestone_type: form.milestone_type,
-      notes: JSON.stringify({ timeline: true, type: form.milestone_type }),
-    });
-    qc.invalidateQueries(['lifeTimeline']);
-    toast.success('✨ Milestone added to your Islamic Life Timeline!');
-    setForm({ title: '', milestone_type: 'first_prayer', date: '', description: '' });
-    setShowAdd(false);
-    setSaving(false);
+    try {
+      await base44.entities.IslamicEvent.create({
+        title: form.title,
+        category: 'personal',
+        start_date: form.date ? `${form.date}T00:00:00` : new Date().toISOString(),
+        date: form.date || format(new Date(), 'yyyy-MM-dd'),
+        description: form.description,
+        milestone_type: form.milestone_type,
+        notes: JSON.stringify({ timeline: true, type: form.milestone_type }),
+      });
+      await qc.invalidateQueries({ queryKey: ['lifeTimeline'] });
+      toast.success('✨ Milestone added to your Islamic Life Timeline!');
+      setForm({ title: '', milestone_type: 'first_prayer', date: '', description: '' });
+      setShowAdd(false);
+    } catch (err) {
+      toast.error(err?.message ? `Failed to add milestone: ${err.message}` : 'Failed to add milestone');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const autoPopulate = async () => {
     setGenerating(true);
-    // Auto-detect milestones from existing data
-    const auto = [];
-    if (prayerLogs.length > 0) {
-      const first = [...prayerLogs].sort((a,b) => a.date?.localeCompare(b.date))[0];
-      auto.push({ title: 'First Prayer Logged', milestone_type: 'first_prayer', date: first?.date || '', description: 'Your journey of consistent prayer began.' });
-    }
-    if (quranMemory.filter(q => q.status === 'memorized').length > 0) {
-      const q = quranMemory.find(q => q.status === 'memorized');
-      auto.push({ title: `Memorized Surah ${q?.surah_name}`, milestone_type: 'memorized_surah', date: q?.last_reviewed || '', description: `Alhamdulillah — ${q?.surah_name} memorized!` });
-    }
-    if (hajjFeedback.length > 0) {
-      auto.push({ title: 'Hajj / Umrah Journey', milestone_type: 'hajj', date: hajjFeedback[0]?.created_date?.split('T')[0] || '', description: 'A blessed pilgrimage completed.' });
-    }
+    try {
+      const auto = [];
+      if (prayerLogs.length > 0) {
+        const first = [...prayerLogs].sort((a,b) => a.date?.localeCompare(b.date))[0];
+        auto.push({ title: 'First Prayer Logged', milestone_type: 'first_prayer', date: first?.date || '', description: 'Your journey of consistent prayer began.' });
+      }
+      if (quranMemory.filter(q => q.status === 'memorized').length > 0) {
+        const q = quranMemory.find(q => q.status === 'memorized');
+        auto.push({ title: `Memorized Surah ${q?.surah_name}`, milestone_type: 'memorized_surah', date: q?.last_reviewed || '', description: `Alhamdulillah — ${q?.surah_name} memorized!` });
+      }
+      if (hajjFeedback.length > 0) {
+        auto.push({ title: 'Hajj / Umrah Journey', milestone_type: 'hajj', date: hajjFeedback[0]?.created_date?.split('T')[0] || '', description: 'A blessed pilgrimage completed.' });
+      }
 
-    for (const m of auto) {
-      await base44.entities.IslamicEvent.create({
-        title: m.title, category: 'personal',
-        start_date: m.date ? `${m.date}T00:00:00` : new Date().toISOString(),
-        date: m.date || format(new Date(), 'yyyy-MM-dd'),
-        description: m.description, milestone_type: m.milestone_type,
-        notes: JSON.stringify({ timeline: true, type: m.milestone_type }),
-      });
+      for (const m of auto) {
+        await base44.entities.IslamicEvent.create({
+          title: m.title, category: 'personal',
+          start_date: m.date ? `${m.date}T00:00:00` : new Date().toISOString(),
+          date: m.date || format(new Date(), 'yyyy-MM-dd'),
+          description: m.description, milestone_type: m.milestone_type,
+          notes: JSON.stringify({ timeline: true, type: m.milestone_type }),
+        });
+      }
+      await qc.invalidateQueries({ queryKey: ['lifeTimeline'] });
+      toast.success(`✅ Auto-added ${auto.length} milestones from your activity data!`);
+    } catch (err) {
+      toast.error(err?.message ? `Auto-add failed: ${err.message}` : 'Auto-add failed');
+    } finally {
+      setGenerating(false);
     }
-    qc.invalidateQueries(['lifeTimeline']);
-    toast.success(`✅ Auto-added ${auto.length} milestones from your activity data!`);
-    setGenerating(false);
   };
 
   return (

@@ -40,15 +40,23 @@ export default function HolidayForm({ isOpen, onClose, onSave, holiday }) {
       );
       return { previous };
     },
-    onError: (_err, _vars, context) => {
+    onError: (err, _vars, context) => {
       queryClient.setQueryData(['holidays'], context?.previous);
-      toast.error('Failed to save holiday');
+      const detail = err?.message || err?.error_description || '';
+      toast.error(detail ? `Failed to save holiday: ${detail}` : 'Failed to save holiday');
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['holidays'] });
     },
-    onSuccess: (saved) => {
-      onSave(saved);
+    onSuccess: async (saved) => {
+      toast.success(holiday ? 'Holiday updated' : 'Holiday saved');
+      // Side-effects only — do not re-create. Wrap so a rejecting onSave cannot fail this mutation.
+      try {
+        await onSave?.(saved);
+      } catch (e) {
+        console.warn('HolidayForm onSave side-effect failed', e);
+      }
+      onClose?.();
     }
   });
 
@@ -461,10 +469,14 @@ export default function HolidayForm({ isOpen, onClose, onSave, holiday }) {
                 Cancel
               </Button>
               <Button
+                type="button"
                 onClick={handleSubmit}
+                disabled={saveHolidayMutation.isPending}
                 className="flex-1 bg-amber-600 hover:bg-amber-700"
               >
-                {holiday ? 'Update Holiday' : 'Save Holiday'}
+                {saveHolidayMutation.isPending
+                  ? (holiday ? 'Updating…' : 'Saving…')
+                  : (holiday ? 'Update Holiday' : 'Save Holiday')}
               </Button>
             </div>
             </motion.div>

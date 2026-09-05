@@ -15,6 +15,7 @@ import {
 import { format, addDays } from 'date-fns';
 import { toast } from 'sonner';
 import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
+import { cn } from '@/lib/utils';
 
 export default function SmartTravelPlanner({ isOpen, onClose, selectedDate }) {
   const available = requireVpAiFunctions('adjustPrayerTimesForTravel', 'generatePackingList', 'scanTravelBookings', 'suggestTravelDestinations');
@@ -111,25 +112,35 @@ export default function SmartTravelPlanner({ isOpen, onClose, selectedDate }) {
         notes: data.notes
       });
 
-      // Auto-adjust prayer times for destination
-      await base44.functions.invoke('adjustPrayerTimesForTravel', {
-        destination: data.destination,
-        start_date: data.start_date,
-        end_date: data.end_date
-      });
+      // Auto-adjust prayer times for destination (optional — may be unregistered)
+      try {
+        if (available) {
+          await base44.functions.invoke('adjustPrayerTimesForTravel', {
+            destination: data.destination,
+            start_date: data.start_date,
+            end_date: data.end_date
+          });
+        }
+      } catch {
+        /* non-blocking */
+      }
 
       // Create calendar events for each itinerary item
       if (itinerary.length > 0) {
         for (const item of itinerary) {
-          await base44.entities.Event.create({
-            title: item.activity,
-            description: item.notes,
-            start_date: `${item.date}T${item.time}:00`,
-            end_date: `${item.date}T${item.end_time || item.time}:00`,
-            location: item.location || data.destination,
-            category: 'holiday',
-            is_all_day: false
-          });
+          try {
+            await base44.entities.Event.create({
+              title: item.activity,
+              description: item.notes,
+              start_date: `${item.date}T${item.time}:00`,
+              end_date: `${item.date}T${item.end_time || item.time}:00`,
+              location: item.location || data.destination,
+              category: 'holiday',
+              is_all_day: false
+            });
+          } catch {
+            /* skip bad itinerary rows */
+          }
         }
       }
 
@@ -140,6 +151,9 @@ export default function SmartTravelPlanner({ isOpen, onClose, selectedDate }) {
       queryClient.invalidateQueries({ queryKey: ['events'] });
       toast.success('Trip created and added to calendar! 🌍');
       onClose();
+    },
+    onError: (err) => {
+      toast.error(err?.message ? `Failed to create trip: ${err.message}` : 'Failed to create trip');
     }
   });
 
@@ -149,7 +163,8 @@ export default function SmartTravelPlanner({ isOpen, onClose, selectedDate }) {
 
   if (!isOpen) return null;
 
-  if (!available) return null;
+  // Manual trip details always work; AI tabs are gated separately below.
+  const aiExtras = available;
 
   return (
     <AnimatePresence>
@@ -186,11 +201,11 @@ export default function SmartTravelPlanner({ isOpen, onClose, selectedDate }) {
 
           <div className="p-6">
             <Tabs defaultValue="details" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className={cn('grid w-full', aiExtras ? 'grid-cols-4' : 'grid-cols-1')}>
                 <TabsTrigger value="details">Trip Details</TabsTrigger>
-                <TabsTrigger value="email">Email Import</TabsTrigger>
-                <TabsTrigger value="suggestions">AI Suggestions</TabsTrigger>
-                <TabsTrigger value="packing">Packing List</TabsTrigger>
+                {aiExtras && <TabsTrigger value="email">Email Import</TabsTrigger>}
+                {aiExtras && <TabsTrigger value="suggestions">AI Suggestions</TabsTrigger>}
+                {aiExtras && <TabsTrigger value="packing">Packing List</TabsTrigger>}
               </TabsList>
 
               {/* Trip Details */}
@@ -342,6 +357,8 @@ export default function SmartTravelPlanner({ isOpen, onClose, selectedDate }) {
                 </Button>
               </TabsContent>
 
+              {aiExtras && (
+              <>
               {/* Email Import */}
               <TabsContent value="email" className="space-y-4">
                 <Card>
@@ -483,6 +500,8 @@ export default function SmartTravelPlanner({ isOpen, onClose, selectedDate }) {
                   </CardContent>
                 </Card>
               </TabsContent>
+              </>
+              )}
             </Tabs>
           </div>
         </motion.div>
