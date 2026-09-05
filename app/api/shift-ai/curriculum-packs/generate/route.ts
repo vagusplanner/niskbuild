@@ -8,7 +8,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 const VALID_PACK_TYPES = new Set<string>(PACK_TYPES);
 
 export async function POST(request: NextRequest) {
-  const auth = await getShiftStudentForRequest();
+  const auth = await getShiftStudentForRequest(request);
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }

@@ -3,7 +3,7 @@ import { createStudyGroup } from '@/lib/shift-ai/groups';
 import { getShiftStudentForRequest } from '@/lib/shift-ai/student-auth';
 
 export async function POST(request: NextRequest) {
-  const auth = await getShiftStudentForRequest();
+  const auth = await getShiftStudentForRequest(request);
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }

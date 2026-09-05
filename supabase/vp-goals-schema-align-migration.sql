@@ -36,4 +36,8 @@ alter table firstparty.vp_goals
 alter table firstparty.vp_goals
   add column if not exists action_steps jsonb not null default '[]'::jsonb;
 
+-- LifeGoalDetails stores milestone checklist items separately from action steps.
+alter table firstparty.vp_goals
+  add column if not exists milestones jsonb not null default '[]'::jsonb;
+
 notify pgrst, 'reload schema';

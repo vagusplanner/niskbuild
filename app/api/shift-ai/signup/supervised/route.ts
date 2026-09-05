@@ -1,16 +1,24 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isShiftCurriculum, defaultStudyLanguageForCurriculum, normalizeEmail } from '@/lib/shift-ai/constants';
 import { parseFavouriteSubjects } from '@/lib/shift-ai/onboarding';
 import { defaultAgeRangeForAccount, deriveKeyStage } from '@/lib/shift-ai/year-group';
 import { sendParentalConsentRequestEmail } from '@/lib/shift-ai/emails';
+import {
+  shiftAiApiCorsPreflightResponse,
+  shiftAiApiJson,
+} from '@/lib/shift-ai-api-cors';
+
+export async function OPTIONS(request: NextRequest) {
+  return shiftAiApiCorsPreflightResponse(request);
+}
 
 export async function POST(request: NextRequest) {
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    return shiftAiApiJson(request, { error: 'Invalid JSON body' }, { status: 400 });
   }
 
   const payload = body as Record<string, unknown>;
@@ -24,19 +32,20 @@ export async function POST(request: NextRequest) {
   const favouriteSubjects = parseFavouriteSubjects(payload.favouriteSubjects);
 
   if (!childFirstName || !yearGroup || !parentEmailRaw) {
-    return NextResponse.json(
+    return shiftAiApiJson(
+      request,
       { error: 'Child name, year group, and parent email are required' },
       { status: 400 }
     );
   }
 
   if (!isShiftCurriculum(curriculum)) {
-    return NextResponse.json({ error: 'Invalid curriculum' }, { status: 400 });
+    return shiftAiApiJson(request, { error: 'Invalid curriculum' }, { status: 400 });
   }
 
   const parentEmail = normalizeEmail(parentEmailRaw);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(parentEmail)) {
-    return NextResponse.json({ error: 'Invalid parent email' }, { status: 400 });
+    return shiftAiApiJson(request, { error: 'Invalid parent email' }, { status: 400 });
   }
 
   const admin = createAdminClient();
@@ -66,7 +75,11 @@ export async function POST(request: NextRequest) {
 
   if (studentError || !student) {
     console.error('Shift AI supervised student insert failed:', studentError?.message);
-    return NextResponse.json({ error: 'Could not create pending student profile' }, { status: 500 });
+    return shiftAiApiJson(
+      request,
+      { error: 'Could not create pending student profile' },
+      { status: 500 }
+    );
   }
 
   const { data: consentRequest, error: consentError } = await admin
@@ -82,7 +95,11 @@ export async function POST(request: NextRequest) {
   if (consentError || !consentRequest?.consent_token) {
     console.error('Shift AI consent request insert failed:', consentError?.message);
     await admin.schema('firstparty').from('shift_students').delete().eq('id', student.id);
-    return NextResponse.json({ error: 'Could not create consent request' }, { status: 500 });
+    return shiftAiApiJson(
+      request,
+      { error: 'Could not create consent request' },
+      { status: 500 }
+    );
   }
 
   const emailResult = await sendParentalConsentRequestEmail({
@@ -96,7 +113,7 @@ export async function POST(request: NextRequest) {
     console.error('Shift AI consent email failed:', emailResult.error);
   }
 
-  return NextResponse.json({
+  return shiftAiApiJson(request, {
     ok: true,
     message:
       'We emailed the parent a consent link. The account stays inactive until they approve.',

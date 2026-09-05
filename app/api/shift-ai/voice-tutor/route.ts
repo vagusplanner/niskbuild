@@ -11,7 +11,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
  * no audio blobs or recordings are ever sent to the server.
  */
 export async function POST(request: NextRequest) {
-  const auth = await getShiftStudentForRequest();
+  const auth = await getShiftStudentForRequest(request);
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }

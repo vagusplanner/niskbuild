@@ -391,21 +391,31 @@ Be smart about patterns - if most similar events happen at same time, suggest th
       suggestSmartReminder();
     }
 
-    // Check for prayer time conflict when start_time or date changes
+    // Check for prayer time conflict when start_time or date changes.
+    // checkPrayerConflict is async — must await or we store a Promise (always truthy)
+    // and render "Conflicts with ()" with empty prayer/time.
     if ((field === 'start_time' || field === 'date') && settings?.prayer_enabled !== false) {
       const timeToCheck = field === 'start_time' ? value : formData.start_time;
       const dateToCheck = field === 'date' ? new Date(value) : new Date(formData.date);
-      
+
       if (timeToCheck) {
-        const conflict = checkPrayerConflict(timeToCheck, dateToCheck, settings);
-        setPrayerConflict(conflict);
-        
-        if (conflict) {
-          toast.warning(`This time conflicts with ${conflict.prayer} prayer at ${conflict.time}`, {
-            description: 'Prayer times are reserved for 10 minutes. Consider choosing a different time.',
-            duration: 5000
-          });
-        }
+        void (async () => {
+          try {
+            const conflict = await checkPrayerConflict(timeToCheck, dateToCheck, settings);
+            setPrayerConflict(conflict);
+            if (conflict?.prayer) {
+              toast.warning(`This time conflicts with ${conflict.prayer} prayer at ${conflict.time}`, {
+                description: 'Prayer times are reserved for 10 minutes. Consider choosing a different time.',
+                duration: 5000
+              });
+            }
+          } catch (err) {
+            console.warn('Prayer conflict check failed:', err);
+            setPrayerConflict(null);
+          }
+        })();
+      } else {
+        setPrayerConflict(null);
       }
     }
   };
@@ -847,9 +857,9 @@ Return the most appropriate reminder time in minutes and a brief reason.`,
                       type="time"
                       value={formData.start_time}
                       onChange={(e) => handleChange('start_time', e.target.value)}
-                      className={`h-11 ${prayerConflict ? 'border-amber-400 ring-1 ring-amber-400' : ''}`}
+                      className={`h-11 ${prayerConflict?.prayer ? 'border-amber-400 ring-1 ring-amber-400' : ''}`}
                     />
-                    {prayerConflict && (
+                    {prayerConflict?.prayer && (
                       <motion.p
                         initial={{ opacity: 0, y: -5 }}
                         animate={{ opacity: 1, y: 0 }}

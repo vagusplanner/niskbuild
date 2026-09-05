@@ -5,7 +5,7 @@ import { getOwnedPlannerItem, getShiftStudentForRequest } from '@/lib/shift-ai/s
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PATCH(_request: NextRequest, context: RouteContext) {
-  const auth = await getShiftStudentForRequest();
+  const auth = await getShiftStudentForRequest(request);
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
@@ -34,7 +34,7 @@ export async function PATCH(_request: NextRequest, context: RouteContext) {
 }
 
 export async function DELETE(_request: NextRequest, context: RouteContext) {
-  const auth = await getShiftStudentForRequest();
+  const auth = await getShiftStudentForRequest(request);
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }

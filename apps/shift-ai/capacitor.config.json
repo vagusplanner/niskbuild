@@ -1,0 +1,8 @@
+{
+  "appId": "com.niskbuild.shiftai",
+  "appName": "Shift Learning",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}

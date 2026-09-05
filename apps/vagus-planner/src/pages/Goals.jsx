@@ -269,7 +269,10 @@ export default function Goals() {
         goal={selectedGoal}
         isOpen={!!selectedGoal}
         onClose={() => setSelectedGoal(null)}
-        onUpdate={(updated) => updateMutation.mutate({ id: updated.id, data: updated })}
+        onUpdate={(updated) => {
+          setSelectedGoal(updated)
+          updateMutation.mutate({ id: updated.id, data: updated })
+        }}
       />
       <AIGoalAssistant isOpen={showAIAssistant} onClose={() => setShowAIAssistant(false)} />
     </div>

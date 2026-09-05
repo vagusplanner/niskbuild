@@ -295,7 +295,43 @@ function mapPayloadToRow(entityName, payload, userId) {
     if (p.notes != null) row.notes = p.notes
     if (Array.isArray(p.tags)) row.tags = p.tags
     if (Array.isArray(p.resources_needed)) row.resources_needed = p.resources_needed
+    // LifeGoalDetails uses action_tasks; GoalFormModal uses action_steps — same jsonb column.
     if (Array.isArray(p.action_steps)) row.action_steps = p.action_steps
+    else if (Array.isArray(p.action_tasks)) row.action_steps = p.action_tasks
+    if (Array.isArray(p.milestones)) row.milestones = p.milestones
+    row.updated_at = new Date().toISOString()
+    return row
+  }
+
+  if (entityName === 'Habit') {
+    const row = {}
+    if (userId) row.user_id = userId
+    // Schema column is `name`; many UI call sites still send `title`.
+    const name = p.name ?? p.title
+    if (name != null && String(name).trim()) row.name = String(name).trim()
+    else if (userId) row.name = 'Habit'
+    const desc = p.description ?? p.notes
+    if (desc != null) {
+      row.description = typeof desc === 'string' ? desc : JSON.stringify(desc)
+    } else if (p.target_count != null) {
+      row.description = JSON.stringify({
+        target_count: p.target_count,
+        unit: p.unit ?? 'times',
+      })
+    }
+    if (p.frequency != null) row.frequency = p.frequency
+    if (p.category != null && p.category !== '') row.category = p.category
+    if (p.color != null) row.color = p.color
+    if (p.is_active != null) row.is_active = p.is_active !== false
+    else if (userId) row.is_active = true
+    if (Array.isArray(p.target_days)) row.target_days = p.target_days
+    if (p.target_day_of_month != null) row.target_day_of_month = p.target_day_of_month
+    if (Array.isArray(p.completion_dates)) row.completion_dates = p.completion_dates
+    else if (userId) row.completion_dates = []
+    if (p.streak != null) row.streak = p.streak
+    if (p.best_streak != null) row.best_streak = p.best_streak
+    if (p.auto_schedule != null) row.auto_schedule = !!p.auto_schedule
+    if (p.reminder_enabled != null) row.reminder_enabled = !!p.reminder_enabled
     row.updated_at = new Date().toISOString()
     return row
   }
@@ -619,6 +655,12 @@ function mapRowFromDb(entityName, row) {
     if (status === 'active') {
       status = progress > 0 ? 'in_progress' : 'not_started'
     }
+    const actionSteps = Array.isArray(row.action_steps)
+      ? row.action_steps
+      : Array.isArray(row.action_tasks)
+        ? row.action_tasks
+        : []
+    const milestones = Array.isArray(row.milestones) ? row.milestones : []
     return {
       ...row,
       status,
@@ -629,7 +671,10 @@ function mapRowFromDb(entityName, row) {
       due_date: row.target_date ?? row.due_date,
       tags: Array.isArray(row.tags) ? row.tags : [],
       resources_needed: Array.isArray(row.resources_needed) ? row.resources_needed : [],
-      action_steps: Array.isArray(row.action_steps) ? row.action_steps : [],
+      action_steps: actionSteps,
+      // Alias for LifeGoalDetails / LifeGoalCard
+      action_tasks: actionSteps,
+      milestones,
       created_date: row.created_at ?? row.created_date,
       updated_date: row.updated_at ?? row.updated_date,
     }
@@ -655,8 +700,11 @@ function mapRowFromDb(entityName, row) {
   }
 
   if (entityName === 'Habit') {
+    const name = row.name ?? row.title ?? ''
     return {
       ...row,
+      name,
+      title: name,
       completion_dates: Array.isArray(row.completion_dates) ? row.completion_dates : [],
       created_date: row.created_at ?? row.created_date,
       updated_date: row.updated_at ?? row.updated_date,

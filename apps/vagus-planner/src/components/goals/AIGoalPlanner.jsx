@@ -224,6 +224,7 @@ Generate:
       for (const habit of (plan.habits || [])) {
         if (existingTitles.has(habit.title?.toLowerCase())) continue;
         await base44.entities.Habit.create({
+          name: habit.title,
           title: habit.title,
           category: plan.category === 'spiritual' ? 'spiritual' : 'personal',
           frequency: habit.frequency || 'daily',
@@ -268,8 +269,10 @@ Generate:
       queryClient.invalidateQueries({ queryKey: ['events'] });
       toast.success(`✅ Goal plan synced! ${habitCount} habits, ${taskCount} tasks, ${eventCount} calendar milestones created.`);
       setPhase('done');
-    } catch (_) {
-      toast.error('Sync failed. Please try again.');
+    } catch (err) {
+      console.error('Goal plan sync failed:', err);
+      const detail = err?.message || err?.error_description || String(err);
+      toast.error(detail ? `Sync failed: ${detail}` : 'Sync failed. Please try again.');
       setPhase('result');
     }
   };

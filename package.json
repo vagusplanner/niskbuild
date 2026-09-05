@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "dev:vp": "npm run dev --prefix apps/vagus-planner -- --port 5175 --host",
+    "dev:shift-ai": "npm run dev --prefix apps/shift-ai -- --port 5176 --host",
+    "build:shift-ai": "npm run build --prefix apps/shift-ai",
     "dev:all": "npm run dev & npm run dev:vp",
     "build": "next build",
     "generate:logo-pdf": "node scripts/generate-logo-pdf.mjs",

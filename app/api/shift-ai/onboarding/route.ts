@@ -1,29 +1,33 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { createClient } from '@/lib/supabase/server';
 import {
   isShiftAgeRange,
   isShiftCurriculum,
   defaultStudyLanguageForCurriculum,
 } from '@/lib/shift-ai/constants';
 import { getFavouriteSubjects, parseFavouriteSubjects } from '@/lib/shift-ai/onboarding';
+import { resolveRequestUser } from '@/lib/shift-ai/student-auth';
 import { deriveKeyStage } from '@/lib/shift-ai/year-group';
+import {
+  shiftAiApiCorsPreflightResponse,
+  shiftAiApiJson,
+} from '@/lib/shift-ai-api-cors';
+
+export async function OPTIONS(request: NextRequest) {
+  return shiftAiApiCorsPreflightResponse(request);
+}
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await resolveRequestUser(request);
   if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return shiftAiApiJson(request, { error: 'Unauthorized' }, { status: 401 });
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    return shiftAiApiJson(request, { error: 'Invalid JSON body' }, { status: 400 });
   }
 
   const payload = body as Record<string, unknown>;
@@ -34,15 +38,19 @@ export async function POST(request: NextRequest) {
   const favouriteSubjects = parseFavouriteSubjects(payload.favouriteSubjects);
 
   if (!fullName || !yearGroup) {
-    return NextResponse.json({ error: 'Name and year group are required' }, { status: 400 });
+    return shiftAiApiJson(
+      request,
+      { error: 'Name and year group are required' },
+      { status: 400 }
+    );
   }
 
   if (!isShiftCurriculum(curriculum)) {
-    return NextResponse.json({ error: 'Invalid curriculum' }, { status: 400 });
+    return shiftAiApiJson(request, { error: 'Invalid curriculum' }, { status: 400 });
   }
 
   if (!isShiftAgeRange(ageRange)) {
-    return NextResponse.json({ error: 'Invalid age range' }, { status: 400 });
+    return shiftAiApiJson(request, { error: 'Invalid age range' }, { status: 400 });
   }
 
   const admin = createAdminClient();
@@ -56,11 +64,19 @@ export async function POST(request: NextRequest) {
 
   if (existing) {
     if (getFavouriteSubjects(existing).length > 0) {
-      return NextResponse.json({ error: 'Student profile already exists' }, { status: 409 });
+      return shiftAiApiJson(
+        request,
+        { error: 'Student profile already exists' },
+        { status: 409 }
+      );
     }
 
     if (favouriteSubjects.length === 0) {
-      return NextResponse.json({ error: 'At least one favourite subject is required' }, { status: 400 });
+      return shiftAiApiJson(
+        request,
+        { error: 'At least one favourite subject is required' },
+        { status: 400 }
+      );
     }
 
     const { error } = await admin
@@ -71,10 +87,14 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Shift AI onboarding update failed:', error.message);
-      return NextResponse.json({ error: 'Could not save your subjects' }, { status: 500 });
+      return shiftAiApiJson(
+        request,
+        { error: 'Could not save your subjects' },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json({ ok: true });
+    return shiftAiApiJson(request, { ok: true });
   }
 
   const { error } = await admin.schema('firstparty').from('shift_students').insert({
@@ -93,8 +113,12 @@ export async function POST(request: NextRequest) {
 
   if (error) {
     console.error('Shift AI onboarding insert failed:', error.message);
-    return NextResponse.json({ error: 'Could not create student profile' }, { status: 500 });
+    return shiftAiApiJson(
+      request,
+      { error: 'Could not create student profile' },
+      { status: 500 }
+    );
   }
 
-  return NextResponse.json({ ok: true });
+  return shiftAiApiJson(request, { ok: true });
 }
