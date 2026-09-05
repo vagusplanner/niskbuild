@@ -24,8 +24,10 @@ import PilgrimagePlanDisplay from './PilgrimagePlanDisplay';
 import PilgrimageConcierge from '../pilgrimage/PilgrimageConcierge';
 import OfflineContentManager from '../pilgrimage/OfflineContentManager';
 import OfflineDataViewer from '../pilgrimage/OfflineDataViewer';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function HajjUmrahPlanner() {
+  const available = requireVpAiFunctions('analyzePilgrimagePlanFeedback', 'generatePersonalizedPilgrimagePlan', 'hajjUmrahAIAssistant');
   const [pilgrimageType, setPilgrimageType] = useState('umrah');
   const [startDate, setStartDate] = useState('');
   const [duration, setDuration] = useState('7');
@@ -130,6 +132,8 @@ export default function HajjUmrahPlanner() {
       toast.error('Failed to save plan');
     }
   };
+
+  if (!available) return null;
 
   return (
     <div className="space-y-6">

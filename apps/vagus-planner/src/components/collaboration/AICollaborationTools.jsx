@@ -13,8 +13,11 @@ import {
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function AICollaborationTools({ holiday }) {
+  const summaryAvailable = requireVpAiFunctions('generateCollaborationSummary');
+  const proposalAvailable = requireVpAiFunctions('draftExpenseProposal');
   const [summary, setSummary] = useState(null);
   const [meetingTimes, setMeetingTimes] = useState(null);
   const [expenseProposal, setExpenseProposal] = useState(null);
@@ -79,6 +82,7 @@ export default function AICollaborationTools({ holiday }) {
   return (
     <div className="space-y-4">
       {/* Discussion Summary */}
+      {summaryAvailable && (
       <Card className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -146,6 +150,7 @@ export default function AICollaborationTools({ holiday }) {
           )}
         </AnimatePresence>
       </Card>
+      )}
 
       {/* Meeting Time Suggestions */}
       <Card className="p-4 bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">
@@ -200,6 +205,7 @@ export default function AICollaborationTools({ holiday }) {
       </Card>
 
       {/* Expense Proposal Draft */}
+      {proposalAvailable && (
       <Card className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
         <div className="flex items-center gap-2 mb-3">
           <DollarSign className="w-5 h-5 text-green-600" />
@@ -311,6 +317,7 @@ export default function AICollaborationTools({ holiday }) {
           )}
         </AnimatePresence>
       </Card>
+      )}
     </div>
   );
 }

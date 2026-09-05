@@ -5,11 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
   TrendingUp, Target, Zap, Calendar, 
   CheckCircle, AlertCircle, Clock, RefreshCw, Sparkles
 } from 'lucide-react';
 
 export default function WeeklySummaryCard() {
+  const available = requireVpAiFunctions('analyzeUserWeek');
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -43,6 +45,8 @@ export default function WeeklySummaryCard() {
   }
 
   if (!summary) return null;
+
+  if (!available) return null;
 
   return (
     <Card className="bg-gradient-to-br from-teal-50 to-cyan-50 border-teal-100 overflow-hidden">

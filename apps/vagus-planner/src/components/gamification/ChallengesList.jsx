@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Trophy, Target, Clock, Sparkles, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const DIFFICULTY_COLORS = {
   easy: 'bg-green-100 text-green-700',
@@ -25,6 +26,7 @@ const CATEGORY_ICONS = {
 };
 
 export default function ChallengesList() {
+  const generateChallengesAvailable = requireVpAiFunctions('generatePersonalizedChallenges');
   const queryClient = useQueryClient();
 
   const { data: user } = useQuery({
@@ -110,14 +112,16 @@ export default function ChallengesList() {
           <h2 className="text-2xl font-bold text-slate-800">Your Active Challenges</h2>
           <p className="text-slate-600">Complete challenges to earn points and level up</p>
         </div>
-        <Button
-          onClick={() => generateChallengesMutation.mutate()}
-          disabled={generateChallengesMutation.isPending}
-          className="bg-teal-600 hover:bg-teal-700"
-        >
-          <Sparkles className="w-4 h-4 mr-2" />
-          Generate New Challenges
-        </Button>
+        {generateChallengesAvailable && (
+          <Button
+            onClick={() => generateChallengesMutation.mutate()}
+            disabled={generateChallengesMutation.isPending}
+            className="bg-teal-600 hover:bg-teal-700"
+          >
+            <Sparkles className="w-4 h-4 mr-2" />
+            Generate New Challenges
+          </Button>
+        )}
       </div>
 
       {/* Challenges Grid */}
@@ -125,15 +129,21 @@ export default function ChallengesList() {
         <Card className="p-12 text-center">
           <Trophy className="w-16 h-16 mx-auto mb-4 text-slate-300" />
           <h3 className="text-xl font-semibold text-slate-800 mb-2">No Active Challenges</h3>
-          <p className="text-slate-600 mb-4">Generate personalized challenges based on your activity!</p>
-          <Button
-            onClick={() => generateChallengesMutation.mutate()}
-            disabled={generateChallengesMutation.isPending}
-            className="bg-teal-600 hover:bg-teal-700"
-          >
-            <Sparkles className="w-4 h-4 mr-2" />
-            Get Started
-          </Button>
+          <p className="text-slate-600 mb-4">
+            {generateChallengesAvailable
+              ? 'Generate personalized challenges based on your activity!'
+              : 'Complete challenges to earn points and level up.'}
+          </p>
+          {generateChallengesAvailable && (
+            <Button
+              onClick={() => generateChallengesMutation.mutate()}
+              disabled={generateChallengesMutation.isPending}
+              className="bg-teal-600 hover:bg-teal-700"
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              Get Started
+            </Button>
+          )}
         </Card>
       ) : (
         <div className="grid md:grid-cols-2 gap-4">

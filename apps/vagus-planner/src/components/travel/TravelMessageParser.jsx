@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const TYPE_ICONS = {
   flight:   { icon: Plane,     color: 'text-sky-400',    bg: 'bg-sky-400/10 border-sky-400/20' },
@@ -151,6 +152,7 @@ function BookingCard({ booking, contextId }) {
 }
 
 export default function TravelMessageParser() {
+  const available = requireVpAiFunctions('parseTravelMessage');
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -178,6 +180,8 @@ export default function TravelMessageParser() {
   };
 
   const handleClear = () => { setMessage(''); setResult(null); };
+
+  if (!available) return null;
 
   return (
     <div className="bg-white/[0.03] border border-white/10 rounded-3xl overflow-hidden">

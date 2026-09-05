@@ -10,6 +10,7 @@ import {
   RefreshCw, Lightbulb, FileText, Scissors, Maximize2
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const CONTENT_MODES = {
   brainstorm: {
@@ -47,6 +48,7 @@ export default function AIContentAssistant({
   context = '',
   onApply
 }) {
+  const available = requireVpAiFunctions('aiContentGenerator');
   const [mode, setMode] = useState('draft');
   const [additionalInput, setAdditionalInput] = useState('');
   const [generatedContent, setGeneratedContent] = useState('');
@@ -96,6 +98,8 @@ export default function AIContentAssistant({
       onClose();
     }
   };
+
+  if (!available) return null;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>

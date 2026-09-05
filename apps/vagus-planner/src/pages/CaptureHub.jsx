@@ -16,14 +16,16 @@ import { Input } from '@/components/ui/input';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
-const TABS = [
+const ALL_TABS = [
   {
     id: 'voice',
     icon: Mic,
     label: 'Voice',
     color: 'from-[#1D6FB8] to-[#29ABE2]',
     tip: '🎙️ Tap the microphone and speak naturally — say things like "Doctor appointment Tuesday 3pm" or "Buy groceries, call mum, finish report by Friday". AI extracts every task & event automatically.',
+    requires: 'voiceTaskExtractor',
   },
   {
     id: 'type',
@@ -38,6 +40,7 @@ const TABS = [
     label: 'Travel',
     color: 'from-[#2D4A65] to-[#4A6E8A]',
     tip: '✈️ Paste your flight/hotel confirmation email or booking text. AI reads it, extracts all dates and events, and adds them to your Calendar automatically — with optional prayer time reminders.',
+    requires: 'parseTravelMessage',
   },
   {
     id: 'whatsapp',
@@ -47,6 +50,8 @@ const TABS = [
     tip: '💬 Connect your WhatsApp to Vagus Planner. Once connected, send a message like "Add gym tomorrow 7am" directly from WhatsApp and it will appear in your Calendar & Tasks instantly.',
   },
 ];
+
+const TABS = ALL_TABS.filter((t) => !t.requires || requireVpAiFunctions(t.requires));
 
 // ── Type/Text command tab ─────────────────────────────────────────────────────
 function TypeTab() {
@@ -279,10 +284,17 @@ function WhatsAppTab() {
 
 // ── Main CaptureHub ───────────────────────────────────────────────────────────
 export default function CaptureHub() {
-  const [activeTab, setActiveTab] = useState('voice');
+  const [activeTab, setActiveTab] = useState(() => TABS[0]?.id || 'type');
   const [showTip, setShowTip] = useState(true);
 
   const tab = TABS.find(t => t.id === activeTab);
+
+  // Keep selection valid if tabs were filtered for unavailable AI
+  useEffect(() => {
+    if (!TABS.some((t) => t.id === activeTab) && TABS[0]) {
+      setActiveTab(TABS[0].id);
+    }
+  }, [activeTab]);
 
   // Auto-hide tip after 8s
   useEffect(() => {

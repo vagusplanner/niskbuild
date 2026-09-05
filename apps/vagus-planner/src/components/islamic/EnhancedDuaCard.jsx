@@ -5,8 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Heart, RefreshCw, Zap, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function EnhancedDuaCard() {
+  const available = requireVpAiFunctions('enhancedDuaSuggestion');
   const [duaData, setDuaData] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -63,6 +65,8 @@ export default function EnhancedDuaCard() {
       </Card>
     );
   }
+
+  if (!available) return null;
 
   return (
     <motion.div

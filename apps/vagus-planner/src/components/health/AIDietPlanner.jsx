@@ -14,8 +14,10 @@ import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { useAIScheduling } from '@/components/assistant/AISchedulingBridge';
 import { addDays, format } from 'date-fns';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function AIDietPlanner() {
+  const available = requireVpAiFunctions('generatePersonalizedDietPlan');
   const [generating, setGenerating] = useState(false);
   const [selectedMeal, setSelectedMeal] = useState(null);
   const [showShoppingList, setShowShoppingList] = useState(false);
@@ -72,6 +74,8 @@ export default function AIDietPlanner() {
       </Card>
     );
   }
+
+  if (!available) return null;
 
   return (
     <div className="space-y-6">

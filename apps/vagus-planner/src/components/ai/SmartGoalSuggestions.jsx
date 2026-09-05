@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Target, Plus, Loader2, Sparkles, Clock, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const DIFFICULTY_COLORS = {
   easy: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
@@ -16,6 +17,7 @@ const DIFFICULTY_COLORS = {
 };
 
 export default function SmartGoalSuggestions() {
+  const available = requireVpAiFunctions('generateGoalSuggestions');
   const queryClient = useQueryClient();
 
   const { data: suggestions, isLoading } = useQuery({
@@ -70,6 +72,8 @@ export default function SmartGoalSuggestions() {
       </Card>
     );
   }
+
+  if (!available) return null;
 
   return (
     <Card>

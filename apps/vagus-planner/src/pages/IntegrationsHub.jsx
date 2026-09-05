@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const INTEGRATIONS = [
   {
@@ -68,6 +69,7 @@ const INTEGRATIONS = [
 export default function IntegrationsHub() {
   const queryClient = useQueryClient();
   const [syncing, setSyncing] = useState({});
+  const gmailScanAvailable = requireVpAiFunctions('scanGmailForEvents');
 
   const { data: settings = [] } = useQuery({
     queryKey: ['userSettings'],
@@ -82,6 +84,9 @@ export default function IntegrationsHub() {
         const { data } = await base44.functions.invoke('fullCalendarSync', {});
         return data;
       } else if (integrationType === 'gmail') {
+        if (!gmailScanAvailable) {
+          throw new Error('Gmail event scan is not available yet');
+        }
         const { data } = await base44.functions.invoke('scanGmailForEvents', {});
         return data;
       }
@@ -156,7 +161,7 @@ export default function IntegrationsHub() {
 
       {/* Integrations Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {INTEGRATIONS.map((integration, idx) => {
+        {INTEGRATIONS.filter((integration) => integration.id !== 'gmail' || gmailScanAvailable).map((integration, idx) => {
           const Icon = integration.icon;
           const isActive = integration.status === 'active';
           const isSyncing = syncing[integration.id];

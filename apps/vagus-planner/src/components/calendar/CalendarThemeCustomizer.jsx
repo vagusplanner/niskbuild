@@ -9,6 +9,7 @@ import { Palette, Check, Sparkles, Save, Type, Layout } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const THEMES = [
   {
@@ -94,6 +95,7 @@ const DENSITIES = [
 ];
 
 export default function CalendarThemeCustomizer() {
+  const aiSuggestAvailable = requireVpAiFunctions('suggestCalendarTheme');
   const [open, setOpen] = useState(false);
   const [selectedTheme, setSelectedTheme] = useState('default');
   const [selectedFont, setSelectedFont] = useState('default');
@@ -282,16 +284,18 @@ export default function CalendarThemeCustomizer() {
           <TabsContent value="colors" className="space-y-3 py-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-slate-700">Choose a color palette</h3>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleAISuggestTheme}
-                disabled={aiSuggesting}
-                className="gap-2"
-              >
-                <Sparkles className="w-4 h-4" />
-                {aiSuggesting ? 'Suggesting...' : 'AI Suggest'}
-              </Button>
+              {aiSuggestAvailable && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAISuggestTheme}
+                  disabled={aiSuggesting}
+                  className="gap-2"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  {aiSuggesting ? 'Suggesting...' : 'AI Suggest'}
+                </Button>
+              )}
             </div>
             
             {THEMES.map(theme => (

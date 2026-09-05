@@ -7,8 +7,10 @@ import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function EmailEventDetector() {
+  const available = requireVpAiFunctions('scanEmailForEvents');
   const [scanning, setScanning] = useState(false);
   const queryClient = useQueryClient();
 
@@ -65,6 +67,8 @@ export default function EmailEventDetector() {
       old.filter((_, i) => i !== index)
     );
   };
+
+  if (!available) return null;
 
   return (
     <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50">

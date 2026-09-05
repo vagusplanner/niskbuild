@@ -3,8 +3,10 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Zap, TrendingUp, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function ContextAwareScheduling() {
+  const available = requireVpAiFunctions('contextAwareScheduling');
   const [scheduling, setScheduling] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -27,6 +29,8 @@ export default function ContextAwareScheduling() {
   if (loading) return <div className="p-4 text-slate-500">Analyzing your patterns...</div>;
   if (error) return <div className="p-4 text-red-500">Error: {error}</div>;
   if (!scheduling) return null;
+
+  if (!available) return null;
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">

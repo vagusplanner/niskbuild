@@ -11,6 +11,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { createPageUrl } from '../../utils';
 import { Link } from 'react-router-dom';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const ICON_MAP = {
   calendar: Calendar,
@@ -23,6 +24,7 @@ const ICON_MAP = {
 };
 
 export default function OnboardingResults({ onboardingData, onComplete }) {
+  const available = requireVpAiFunctions('generatePersonalizedOnboarding');
   const [recommendations, setRecommendations] = useState(null);
   const [loading, setLoading] = useState(true);
   const [completedQuickWins, setCompletedQuickWins] = useState([]);
@@ -76,6 +78,8 @@ export default function OnboardingResults({ onboardingData, onComplete }) {
   if (!recommendations) {
     return null;
   }
+
+  if (!available) return null;
 
   return (
     <motion.div

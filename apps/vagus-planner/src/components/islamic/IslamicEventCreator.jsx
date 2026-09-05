@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Calendar, Repeat2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const HIJRI_MONTHS = [
   'Muharram', 'Safar', "Rabi' al-Awwal", "Rabi' al-Thani",
@@ -30,6 +31,7 @@ const EVENT_TYPES = [
 ];
 
 export default function IslamicEventCreator({ onEventCreated }) {
+  const suggestionsAvailable = requireVpAiFunctions('suggestIslamicDates');
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
@@ -135,7 +137,7 @@ export default function IslamicEventCreator({ onEventCreated }) {
 
         <div className="space-y-4">
           {/* Quick Suggestions */}
-          {!suggestions ? (
+          {suggestionsAvailable && (!suggestions ? (
             <Button
               onClick={loadSuggestions}
               disabled={loadingSuggestions || !hijriDate}
@@ -186,7 +188,7 @@ export default function IslamicEventCreator({ onEventCreated }) {
                 Create Custom Event
               </Button>
             </motion.div>
-          )}
+          ))}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">

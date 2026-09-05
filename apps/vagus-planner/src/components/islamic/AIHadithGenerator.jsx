@@ -9,8 +9,10 @@ import { Badge } from '@/components/ui/badge';
 import { Sparkles, BookOpen, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function AIHadithGenerator() {
+  const available = requireVpAiFunctions('generatePersonalizedIslamicContent');
   const [interests, setInterests] = useState('');
   const [challenges, setChallenges] = useState('');
   const [loading, setLoading] = useState(false);
@@ -72,6 +74,8 @@ export default function AIHadithGenerator() {
       return {};
     }
   };
+
+  if (!available) return null;
 
   return (
     <div className="space-y-6">

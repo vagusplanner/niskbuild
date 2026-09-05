@@ -8,8 +8,10 @@ import { BookOpen, RefreshCw, Heart, Lightbulb, Loader2, Sparkles } from 'lucide
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function EnhancedDailyInspiration({ compact = false }) {
+  const available = requireVpAiFunctions('generateDailyQuranVerse');
   const [verse, setVerse] = useState(null);
   const [reflection, setReflection] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -144,6 +146,8 @@ Be concise, warm, and actionable.`,
       </motion.div>
     );
   }
+
+  if (!available) return null;
 
   return (
     <Card className="bg-gradient-to-br from-teal-50 via-cyan-50 to-emerald-50 dark:from-teal-950/40 dark:via-cyan-950/40 dark:to-emerald-950/40 border-teal-200 dark:border-teal-800 shadow-lg overflow-hidden">

@@ -7,8 +7,10 @@ import { Watch, Mic, Bell, Volume2, VolumeX } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function SmartDeviceIntegrations() {
+  const available = requireVpAiFunctions('processVoiceQuery', 'sendContextualWearableNotification');
   const [voiceQuery, setVoiceQuery] = useState('');
   const [voiceResponse, setVoiceResponse] = useState(null);
 
@@ -44,6 +46,8 @@ export default function SmartDeviceIntegrations() {
       }
     }
   });
+
+  if (!available) return null;
 
   return (
     <div className="space-y-4">

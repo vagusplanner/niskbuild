@@ -8,8 +8,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Loader2, Heart, TrendingUp, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function AIZakatRecommendations() {
+  const available = requireVpAiFunctions('aiZakatRecommendations');
   const [recommendations, setRecommendations] = useState(null);
   const [loading, setLoading] = useState(false);
   const [selectedRec, setSelectedRec] = useState(null);
@@ -65,6 +67,8 @@ export default function AIZakatRecommendations() {
       toast.error('Failed to record donation');
     }
   };
+
+  if (!available) return null;
 
   return (
     <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">

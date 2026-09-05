@@ -10,8 +10,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function MeetingAIAssistant({ meeting, onCreateTask, onCreateMeeting }) {
+  const available = requireVpAiFunctions('analyzeMeetingContent', 'draftFollowUpEmail', 'generateMeetingAgenda', 'suggestMeetingFollowups');
   const [generatedAgenda, setGeneratedAgenda] = useState(null);
   const [followUpSuggestions, setFollowUpSuggestions] = useState(null);
   const [analyzedContent, setAnalyzedContent] = useState(null);
@@ -218,6 +220,8 @@ export default function MeetingAIAssistant({ meeting, onCreateTask, onCreateMeet
     });
     toast.success('Follow-up meeting created!');
   };
+
+  if (!available) return null;
 
   return (
     <div className="space-y-4">

@@ -26,8 +26,10 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function EnhancedHajjUmrahPlanner() {
+  const available = requireVpAiFunctions('generateHajjUmrahGuidance');
   const [pilgrimageType, setPilgrimageType] = useState('Umrah');
   const [departureDate, setDepartureDate] = useState('');
   const [returnDate, setReturnDate] = useState('');
@@ -139,6 +141,8 @@ export default function EnhancedHajjUmrahPlanner() {
     { value: 'at_mina', label: 'At Mina' },
     { value: 'general_duas', label: 'General Duas' }
   ];
+
+  if (!available) return null;
 
   return (
     <div className="space-y-6">

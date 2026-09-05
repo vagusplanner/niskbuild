@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { motion } from 'framer-motion';
 import { Sparkles, Loader2, BookOpen, Lightbulb, Heart } from 'lucide-react';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const HIJRI_MONTHS = [
   'Muharram', 'Safar', "Rabi' al-Awwal", "Rabi' al-Thani",
@@ -14,6 +15,7 @@ const HIJRI_MONTHS = [
 ];
 
 export default function IslamicDateContextViewer({ event, isOpen, onClose }) {
+  const available = requireVpAiFunctions('aiIslamicEventSuggestions');
   const [context, setContext] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -43,6 +45,8 @@ export default function IslamicDateContextViewer({ event, isOpen, onClose }) {
   };
 
   if (!event) return null;
+
+  if (!available) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

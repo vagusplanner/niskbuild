@@ -7,8 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function AIAgendaGenerator({ meetingTitle, description, attendees, duration, onApplyAgenda }) {
+  const available = requireVpAiFunctions('generateMeetingAgenda');
   const [agenda, setAgenda] = useState(null);
   const [copied, setCopied] = useState(false);
 
@@ -70,6 +72,8 @@ export default function AIAgendaGenerator({ meetingTitle, description, attendees
 
     return text;
   };
+
+  if (!available) return null;
 
   return (
     <Card className="border-purple-200">

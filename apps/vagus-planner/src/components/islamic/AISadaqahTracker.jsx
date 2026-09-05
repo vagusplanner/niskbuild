@@ -7,8 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Loader2, Hand, Lightbulb } from 'lucide-react';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function AISadaqahTracker() {
+  const available = requireVpAiFunctions('aiSadaqahOpportunities');
   const [opportunities, setOpportunities] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -67,6 +69,8 @@ export default function AISadaqahTracker() {
       toast.error('Failed to record Sadaqah');
     }
   };
+
+  if (!available) return null;
 
   return (
     <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">

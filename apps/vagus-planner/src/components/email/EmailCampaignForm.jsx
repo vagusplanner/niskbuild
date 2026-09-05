@@ -10,8 +10,10 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Sparkles, Loader2, Wand2, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function EmailCampaignForm({ campaign, onClose, onSave }) {
+  const draftAiAvailable = requireVpAiFunctions('draftEmailCampaign');
   const [formData, setFormData] = useState({
     name: campaign?.name || '',
     goal: campaign?.goal || '',
@@ -155,26 +157,28 @@ export default function EmailCampaignForm({ campaign, onClose, onSave }) {
           </div>
 
           {/* Generate Button */}
-          <Button
-            onClick={handleGenerateContent}
-            disabled={loading}
-            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Generating with AI...
-              </>
-            ) : (
-              <>
-                <Wand2 className="w-4 h-4 mr-2" />
-                Generate Email & Subject Lines
-              </>
-            )}
-          </Button>
+          {draftAiAvailable && (
+            <Button
+              onClick={handleGenerateContent}
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Generating with AI...
+                </>
+              ) : (
+                <>
+                  <Wand2 className="w-4 h-4 mr-2" />
+                  Generate Email & Subject Lines
+                </>
+              )}
+            </Button>
+          )}
 
           {/* Generated Subject Lines */}
-          {formData.alternative_subjects.length > 0 && (
+          {draftAiAvailable && formData.alternative_subjects.length > 0 && (
             <div>
               <Label className="mb-2 block">AI-Generated Subject Lines (Select One)</Label>
               <div className="space-y-2">

@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, Send, MapPin, Sparkles, Navigation, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const QUICK_QUESTIONS = [
   { icon: '🍽️', text: 'Best halal restaurant nearby' },
@@ -31,6 +32,7 @@ const POPULAR_CITIES = [
 ];
 
 export default function MuslimTravelAssistant() {
+  const available = requireVpAiFunctions('generateLocalRecommendations', 'pilgrimageConcierge');
   const [messages, setMessages] = useState([
     {
       id: 'intro',
@@ -186,6 +188,8 @@ export default function MuslimTravelAssistant() {
       text: '🌍 Where would you like to travel? Select a city or enter a custom location.'
     }]);
   };
+
+  if (!available) return null;
 
   return (
     <div className="h-full flex flex-col bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl overflow-hidden">

@@ -20,6 +20,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { format, startOfWeek, addWeeks, subWeeks } from 'date-fns';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const MEAL_ICONS = { breakfast: Coffee, lunch: Sun, dinner: Moon, snack: Sunset };
@@ -285,6 +286,7 @@ function FitnessGoalBanner({ onApplyMacros }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function BudgetMealPlanner() {
+  const available = requireVpAiFunctions('generateBudgetMealPlan');
   const qc = useQueryClient();
   const [weekOffset, setWeekOffset] = useState(0);
   const weekStart = startOfWeek(
@@ -415,6 +417,8 @@ export default function BudgetMealPlanner() {
   const symbol = currency === 'GBP' ? '£' : '$';
   const bs = planData?.budget_summary || {};
   const ns = planData?.nutrition_summary || {};
+
+  if (!available) return null;
 
   return (
     <div className="space-y-5">

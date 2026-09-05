@@ -10,8 +10,10 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function ItineraryImporter({ onItineraryImported }) {
+  const available = requireVpAiFunctions('scanTravelEmails');
   const [importing, setImporting] = useState(false);
   const [foundItineraries, setFoundItineraries] = useState([]);
   const [showResults, setShowResults] = useState(false);
@@ -50,6 +52,8 @@ export default function ItineraryImporter({ onItineraryImported }) {
       toast.error('Failed to import itinerary');
     }
   };
+
+  if (!available) return null;
 
   return (
     <div className="space-y-4">

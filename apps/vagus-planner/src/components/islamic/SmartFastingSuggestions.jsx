@@ -6,8 +6,10 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Sparkles, TrendingUp, Heart, Calendar, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function SmartFastingSuggestions() {
+  const available = requireVpAiFunctions('suggestOptimalFastingDays');
   const [suggestions, setSuggestions] = useState(null);
   const [loading, setLoading] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toLocaleString('default', { month: 'long' }));
@@ -50,6 +52,8 @@ export default function SmartFastingSuggestions() {
       toast.error('Failed to add to calendar');
     }
   };
+
+  if (!available) return null;
 
   return (
     <div className="space-y-4">

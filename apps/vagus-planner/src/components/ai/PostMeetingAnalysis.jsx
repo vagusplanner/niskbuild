@@ -6,8 +6,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { CheckCircle2, AlertCircle, Target, Loader } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function PostMeetingAnalysis({ meetingTitle, onSave }) {
+  const available = requireVpAiFunctions('postMeetingAI');
   const [notes, setNotes] = useState('');
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -54,6 +56,8 @@ export default function PostMeetingAnalysis({ meetingTitle, onSave }) {
       toast.error('Failed to save action items');
     }
   };
+
+  if (!available) return null;
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">

@@ -7,8 +7,10 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { FloatingButton, useFloatingManager } from '@/components/ui/floating-manager';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function EnhancedVoiceInterface() {
+  const available = requireVpAiFunctions('voiceCommandProcessor');
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [processing, setProcessing] = useState(false);
@@ -124,6 +126,8 @@ export default function EnhancedVoiceInterface() {
       setTranscript('');
     }
   };
+
+  if (!available) return null;
 
   return (
     <>

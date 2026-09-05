@@ -7,6 +7,7 @@ import { base44 } from '@/api/base44Client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const CATEGORY_COLORS = {
   work: 'bg-blue-100 text-blue-700',
@@ -81,6 +82,7 @@ function ExtractedItem({ item, onRemove, onToggleType }) {
 }
 
 export default function VoiceTaskCapture({ onItemsSaved }) {
+  const available = requireVpAiFunctions('voiceTaskExtractor');
   const [isRecording, setIsRecording] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [manualText, setManualText] = useState('');
@@ -248,6 +250,8 @@ export default function VoiceTaskCapture({ onItemsSaved }) {
     setManualText('');
     setSummary('');
   };
+
+  if (!available) return null;
 
   return (
     <div className="space-y-4">

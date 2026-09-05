@@ -18,8 +18,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import AIContentAssistant from '@/components/assistant/AIContentAssistant';
 import EnhancedTravelPlanner from '@/components/holiday/EnhancedTravelPlanner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function AITripPlanner({ open, onClose }) {
+  const available = requireVpAiFunctions('generatePersonalizedTripSuggestions', 'generateSmartPackingList');
   const [step, setStep] = useState(1); // 1: preferences, 2: destinations, 3: itinerary, 4: enhanced
   const [preferences, setPreferences] = useState({
     budget: '',
@@ -134,6 +136,8 @@ export default function AITripPlanner({ open, onClose }) {
       }
     });
   };
+
+  if (!available) return null;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>

@@ -7,8 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Loader2, Plus, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function ProactiveEventSuggestions({ onEventCreated }) {
+  const available = requireVpAiFunctions('aiProactiveEventSuggestions');
   const [suggestions, setSuggestions] = useState(null);
   const [loading, setLoading] = useState(false);
   const [selectedSuggestion, setSelectedSuggestion] = useState(null);
@@ -139,6 +141,8 @@ export default function ProactiveEventSuggestions({ onEventCreated }) {
       </Card>
     );
   }
+
+  if (!available) return null;
 
   return (
     <Card>

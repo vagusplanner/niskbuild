@@ -7,8 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Sparkles, TrendingDown, Lightbulb, Loader2, DollarSign } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function BudgetInsights({ holiday }) {
+  const available = requireVpAiFunctions('generateBudgetInsights');
   const [insights, setInsights] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -90,6 +92,8 @@ export default function BudgetInsights({ holiday }) {
 
   const totalSpent = currentExpenses.reduce((sum, e) => sum + e.amount, 0);
   const hasExpenses = currentExpenses.length > 0;
+
+  if (!available) return null;
 
   return (
     <Card className="p-4 bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-200">

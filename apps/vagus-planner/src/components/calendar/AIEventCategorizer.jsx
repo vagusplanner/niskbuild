@@ -5,8 +5,10 @@ import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
 import { Sparkles, Loader2, Tag, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function AIEventCategorizer({ event, onCategorize }) {
+  const available = requireVpAiFunctions('aiCategorizeEvent');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
 
@@ -40,6 +42,8 @@ export default function AIEventCategorizer({ event, onCategorize }) {
       setLoading(false);
     }
   };
+
+  if (!available) return null;
 
   return (
     <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-indigo-50">

@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import AIAssistantSchedulingPanel from './AIAssistantSchedulingPanel';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const iconMap = {
   BookOpen,
@@ -35,6 +36,7 @@ const iconMap = {
 };
 
 export default function ProactiveAICompanion() {
+  const available = requireVpAiFunctions('generateContextualAIAssistance');
   const [isVisible, setIsVisible] = useState(false);
   const [isDismissed, setIsDismissed] = useState(() => {
     // Check if user has dismissed for this session
@@ -94,6 +96,8 @@ export default function ProactiveAICompanion() {
   }
 
   const { feature_suggestions, contextual_guidance, encouragement, priority } = assistance.assistance;
+
+  if (!available) return null;
 
   return (
     <AnimatePresence>

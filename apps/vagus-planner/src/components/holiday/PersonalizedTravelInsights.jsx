@@ -11,8 +11,10 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function PersonalizedTravelInsights({ holiday }) {
+  const available = requireVpAiFunctions('generatePersonalizedTravel');
   const [themes, setThemes] = useState(null);
   const [packing, setPacking] = useState(null);
   const [experiences, setExperiences] = useState(null);
@@ -76,6 +78,8 @@ export default function PersonalizedTravelInsights({ holiday }) {
       </Card>
     );
   }
+
+  if (!available) return null;
 
   return (
     <Card className="p-4 bg-gradient-to-br from-teal-50 to-cyan-50 border-teal-200">

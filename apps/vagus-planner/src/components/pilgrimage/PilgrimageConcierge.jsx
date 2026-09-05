@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Send, MapPin, Sparkles, BookOpen, Navigation, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const QUICK_QUESTIONS = [
   { icon: '🍽️', text: 'Best nearby halal restaurant' },
@@ -18,6 +19,7 @@ const QUICK_QUESTIONS = [
 ];
 
 export default function PilgrimageConcierge({ currentLocation = 'Mecca', userInterests = [] }) {
+  const available = requireVpAiFunctions('assistBooking', 'generateLocalRecommendations', 'pilgrimageConcierge');
   const [messages, setMessages] = useState([
     {
       id: 'intro',
@@ -147,6 +149,8 @@ export default function PilgrimageConcierge({ currentLocation = 'Mecca', userInt
       setLoading(false);
     }
   };
+
+  if (!available) return null;
 
   return (
     <div className="h-full flex flex-col bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl overflow-hidden">

@@ -20,6 +20,7 @@ import {
   ResponsiveContainer, ReferenceLine, Cell
 } from 'recharts';
 import { format, subDays, parseISO } from 'date-fns';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 // ── Weight Log Entry ──────────────────────────────────────────────────────────
 function WeightLogger({ goal, onLogged }) {
@@ -130,6 +131,7 @@ function AdherenceLogger({ goal, onLogged }) {
 
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 export default function FitnessProgressDashboard({ goal, onRefresh }) {
+  const macrosAiAvailable = requireVpAiFunctions('adjustMacrosForFitnessGoal');
   const [macroLoading, setMacroLoading] = useState(false);
   const [macroResult, setMacroResult] = useState(null);
   const [showAdherenceLogger, setShowAdherenceLogger] = useState(false);
@@ -248,19 +250,22 @@ export default function FitnessProgressDashboard({ goal, onRefresh }) {
       </div>
 
       {/* AI Macro refresh */}
+      {(macrosAiAvailable || hasMacros) && (
       <div className="bg-gradient-to-r from-[#1B2A4A] to-[#0D4F6C] rounded-2xl p-4 space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
             <p className="text-sm font-bold text-white flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-[#E8B84B]" /> AI Macro Recommendations
+              <Sparkles className="w-4 h-4 text-[#E8B84B]" /> Macro Recommendations
             </p>
             <p className="text-[11px] text-white/50 mt-0.5">Adjusted for your actual workout activity this week</p>
           </div>
-          <Button onClick={handleRefreshMacros} disabled={macroLoading} size="sm"
-            className="bg-[#E8B84B] hover:bg-amber-500 text-slate-900 font-bold gap-1.5 h-9">
-            {macroLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-            {macroLoading ? 'Analysing…' : 'Refresh Macros'}
-          </Button>
+          {macrosAiAvailable && (
+            <Button onClick={handleRefreshMacros} disabled={macroLoading} size="sm"
+              className="bg-[#E8B84B] hover:bg-amber-500 text-slate-900 font-bold gap-1.5 h-9">
+              {macroLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+              {macroLoading ? 'Analysing…' : 'Refresh Macros'}
+            </Button>
+          )}
         </div>
 
         {hasMacros && (
@@ -309,6 +314,7 @@ export default function FitnessProgressDashboard({ goal, onRefresh }) {
           </AnimatePresence>
         )}
       </div>
+      )}
 
       {/* Weight chart */}
       {weightChartData.length >= 2 && (

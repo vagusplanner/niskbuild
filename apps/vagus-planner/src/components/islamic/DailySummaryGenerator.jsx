@@ -7,11 +7,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2, BookMarked, Heart, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const RITUALS = ['Tawaf', 'Sai', 'Arafat', 'Muzdalifah', 'Mina', 'Jamarat'];
 const EMOTIONS = ['inspired', 'grateful', 'peaceful', 'challenged', 'overwhelmed', 'connected'];
 
 export default function DailySummaryGenerator() {
+  const available = requireVpAiFunctions('generatePilgrimageDailySummary');
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     rituals_completed: [],
@@ -46,6 +48,8 @@ export default function DailySummaryGenerator() {
         : [...prev.rituals_completed, ritual]
     }));
   };
+
+  if (!available) return null;
 
   return (
     <div className="space-y-4">

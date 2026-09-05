@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { HADITH_DB } from './QURAN_DATA';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 // Pick a deterministic hadith based on the day of year
 function getDailyHadith() {
@@ -15,6 +16,7 @@ function getDailyHadith() {
 }
 
 export default function DailyInspiration({ compact = false }) {
+  const available = requireVpAiFunctions('generateDailyQuranVerse');
   const [mode, setMode] = useState('hadith'); // 'hadith' | 'verse'
   const [verse, setVerse] = useState(null);
   const [loadingVerse, setLoadingVerse] = useState(false);
@@ -89,6 +91,8 @@ export default function DailyInspiration({ compact = false }) {
       </Card>
     );
   }
+
+  if (!available) return null;
 
   return (
     <Card className="bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 border-emerald-200 shadow-md overflow-hidden relative">

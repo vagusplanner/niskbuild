@@ -7,8 +7,10 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function ConversationSummarizer({ conversationId, groupChatId }) {
+  const available = requireVpAiFunctions('summarizeConversation');
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
@@ -131,6 +133,8 @@ export default function ConversationSummarizer({ conversationId, groupChatId }) 
       </>
     </AnimatePresence>
   ) : null;
+
+  if (!available) return null;
 
   return (
     <>

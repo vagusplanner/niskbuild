@@ -11,8 +11,10 @@ import CreatePollModal from './CreatePollModal';
 import AttachEventModal from './AttachEventModal';
 import ScheduleCallModal from './ScheduleCallModal';
 import { cn } from '@/lib/utils';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function MessageInput({ onSendMessage, disabled, conversationId, groupChatId, replyTo, onCancelReply, chat, currentUser, onTyping }) {
+  const aiDraftAvailable = requireVpAiFunctions('draftMessageResponse');
   const [messageText, setMessageText] = useState('');
   const [attachments, setAttachments] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -175,12 +177,14 @@ export default function MessageInput({ onSendMessage, disabled, conversationId, 
             exit={{ opacity: 0, height: 0 }}
             className="flex items-center gap-2 flex-wrap pb-1"
           >
-            <button
-              onClick={() => { generateDrafts(); setShowExtras(false); }}
-              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-400 hover:bg-purple-100 transition-colors"
-            >
-              <Sparkles className="w-3.5 h-3.5" /> AI Draft
-            </button>
+            {aiDraftAvailable && (
+              <button
+                onClick={() => { generateDrafts(); setShowExtras(false); }}
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-400 hover:bg-purple-100 transition-colors"
+              >
+                <Sparkles className="w-3.5 h-3.5" /> AI Draft
+              </button>
+            )}
             <button
               onClick={() => { setShowPollModal(true); setShowExtras(false); }}
               className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-violet-50 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-400 hover:bg-violet-100 transition-colors"
@@ -224,7 +228,7 @@ export default function MessageInput({ onSendMessage, disabled, conversationId, 
 
       {/* AI Drafts panel */}
       <AnimatePresence>
-        {aiDrafts && (
+        {aiDraftAvailable && aiDrafts && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}

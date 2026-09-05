@@ -15,6 +15,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const ACTIVITY_ICONS = {
   morning: '🌅', afternoon: '☀️', evening: '🌆', night: '🌙',
@@ -219,6 +220,7 @@ function GmailBookingsPanel({ data, loading, onScan, onSaveToCalendar }) {
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function SmartTripPlanner() {
+  const available = requireVpAiFunctions('scanTravelEmails', 'smartTripPlanner');
   const [form, setForm] = useState({
     destination: '', origin: 'London, UK', start_date: '', end_date: '',
     trip_type: 'leisure', num_travelers: '1', halal_mode: false
@@ -329,6 +331,8 @@ export default function SmartTripPlanner() {
     ...(form.halal_mode ? [{ id: 'halal', label: 'Halal & Mosques', icon: Moon }] : []),
     { id: 'gmail', label: 'Gmail Bookings', icon: Mail },
   ];
+
+  if (!available) return null;
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-[#E8B84B]/30 shadow-lg overflow-hidden">

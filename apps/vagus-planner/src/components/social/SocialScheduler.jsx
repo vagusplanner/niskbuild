@@ -12,8 +12,10 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function SocialScheduler() {
+  const available = requireVpAiFunctions('analyzeSocialAvailability', 'generateConversationStarters', 'processSocialCommand');
   const [command, setCommand] = useState('');
   const [processing, setProcessing] = useState(false);
   const [proposal, setProposal] = useState(null);
@@ -106,6 +108,8 @@ export default function SocialScheduler() {
     const end = new Date(2000, 0, 1, h, m + duration);
     return `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`;
   };
+
+  if (!available) return null;
 
   return (
     <div className="space-y-6">

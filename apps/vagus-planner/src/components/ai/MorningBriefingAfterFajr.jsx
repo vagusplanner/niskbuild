@@ -7,8 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Sun, Calendar, CheckSquare, Moon, Book, Zap, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function MorningBriefingAfterFajr() {
+  const available = requireVpAiFunctions('generateMorningBriefing');
   const [show, setShow] = useState(false);
   const [briefing, setBriefing] = useState(null);
 
@@ -23,6 +25,8 @@ export default function MorningBriefingAfterFajr() {
   });
 
   useEffect(() => {
+    if (!available) return;
+
     const checkAndShowBriefing = async () => {
       const now = new Date();
       const hour = now.getHours();
@@ -51,7 +55,7 @@ export default function MorningBriefingAfterFajr() {
     if (user) {
       checkAndShowBriefing();
     }
-  }, [user]);
+  }, [user, available]);
 
   const dismiss = () => setShow(false);
 
@@ -198,6 +202,8 @@ export default function MorningBriefingAfterFajr() {
       )}
     </AnimatePresence>
   );
+
+  if (!available) return null;
 
   if (!(show && briefing) || typeof document === 'undefined') {
     return null;

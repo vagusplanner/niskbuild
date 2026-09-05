@@ -15,8 +15,10 @@ import { Badge } from '@/components/ui/badge';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function AIFinanceAdvisor() {
+  const available = requireVpAiFunctions('aiContentGenerator');
   const [analyzing, setAnalyzing] = useState(false);
   const [insights, setInsights] = useState(null);
 
@@ -149,6 +151,8 @@ Format as JSON with structure: {health_score, tips: [{title, message, priority}]
       setAnalyzing(false);
     }
   };
+
+  if (!available) return null;
 
   return (
     <div className="space-y-4">

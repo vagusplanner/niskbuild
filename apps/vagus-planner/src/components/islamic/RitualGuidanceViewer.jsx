@@ -9,6 +9,7 @@ import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import DuaAudioPlayer from './DuaAudioPlayer';
 import RitualVisualAid from './RitualVisualAid';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const RITUALS = [
   { value: 'tawaf', label: 'Tawaf (Circumambulation)' },
@@ -20,6 +21,7 @@ const RITUALS = [
 ];
 
 export default function RitualGuidanceViewer() {
+  const available = requireVpAiFunctions('getHajjRitualGuidance');
   const [selectedRitual, setSelectedRitual] = useState('tawaf');
   const [guidance, setGuidance] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -41,6 +43,8 @@ export default function RitualGuidanceViewer() {
       setLoading(false);
     }
   };
+
+  if (!available) return null;
 
   return (
     <div className="space-y-4">

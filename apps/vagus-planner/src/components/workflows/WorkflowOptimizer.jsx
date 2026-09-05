@@ -7,8 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function WorkflowOptimizer({ workflow, onApplyOptimizations }) {
+  const available = requireVpAiFunctions('optimizeWorkflowSequence');
   const [optimizations, setOptimizations] = React.useState(null);
 
   const optimizeMutation = useMutation({
@@ -26,6 +28,8 @@ export default function WorkflowOptimizer({ workflow, onApplyOptimizations }) {
       toast.error('Failed to optimize workflow');
     }
   });
+
+  if (!available) return null;
 
   return (
     <Card className="border-purple-200">

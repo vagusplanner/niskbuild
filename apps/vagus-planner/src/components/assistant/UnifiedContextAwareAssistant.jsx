@@ -9,6 +9,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { FloatingButton, useFloatingManager } from '@/components/ui/floating-manager';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const PAGE_CONTEXTS = {
   '/Schedule': {
@@ -47,6 +48,7 @@ const PAGE_CONTEXTS = {
 };
 
 export default function UnifiedContextAwareAssistant() {
+  const available = requireVpAiFunctions('voiceCommandProcessor');
   const location = useLocation();
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
@@ -202,6 +204,8 @@ export default function UnifiedContextAwareAssistant() {
   };
 
   const ContextIcon = currentContext.icon;
+
+  if (!available) return null;
 
   return (
     <>

@@ -5,8 +5,10 @@ import { Sparkles, Loader2, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function AIStepGenerator({ stepType, workflowContext, triggerType, onApply }) {
+  const available = requireVpAiFunctions('generateWorkflowStepConfig');
   const [generatedConfig, setGeneratedConfig] = useState(null);
   const [copied, setCopied] = useState(false);
 
@@ -31,6 +33,8 @@ export default function AIStepGenerator({ stepType, workflowContext, triggerType
     setTimeout(() => setCopied(false), 2000);
     toast.success('Copied to clipboard');
   };
+
+  if (!available) return null;
 
   return (
     <div className="space-y-3">

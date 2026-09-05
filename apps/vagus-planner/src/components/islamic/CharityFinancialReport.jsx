@@ -9,8 +9,10 @@ import { motion } from 'framer-motion';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Sparkles, Loader2, FileText, Download, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function CharityFinancialReport() {
+  const available = requireVpAiFunctions('generateCharityReport');
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
@@ -123,6 +125,8 @@ export default function CharityFinancialReport() {
     name: key.replace(/_/g, ' ').charAt(0).toUpperCase() + key.slice(1),
     ...value
   }));
+
+  if (!available) return null;
 
   return (
     <Card>

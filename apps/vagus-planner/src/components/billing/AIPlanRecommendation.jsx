@@ -7,8 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Sparkles, TrendingUp, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function AIPlanRecommendation({ currentPlan, usageData, onUpgrade }) {
+  const available = requireVpAiFunctions('recommendUpgradePlan');
   const [recommendation, setRecommendation] = useState(null);
 
   const analyzeMutation = useMutation({
@@ -50,6 +52,8 @@ export default function AIPlanRecommendation({ currentPlan, usageData, onUpgrade
   if (currentPlan === 'enterprise') {
     return null; // No recommendations for enterprise users
   }
+
+  if (!available) return null;
 
   return (
     <Card className="border-2 border-teal-200 bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-950 dark:to-cyan-950">

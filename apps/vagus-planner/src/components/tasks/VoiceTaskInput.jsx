@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const PRIORITY_STYLES = {
   urgent: 'bg-red-100 text-red-700 border-red-200',
@@ -89,6 +90,7 @@ function useVoiceRecorder({ onTranscript }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function VoiceTaskInput({ isOpen, onClose, onTasksCreated }) {
+  const available = requireVpAiFunctions('voiceTaskExtractor');
   const [extractedItems, setExtractedItems] = useState([]);
   const [selected, setSelected] = useState(new Set());
   const [saving, setSaving] = useState(false);
@@ -167,6 +169,8 @@ export default function VoiceTaskInput({ isOpen, onClose, onTasksCreated }) {
   const isListening = recorder.state === 'listening';
   const isProcessing = recorder.state === 'processing';
   const isError = recorder.state === 'error';
+
+  if (!available) return null;
 
   return (
     <AnimatePresence>

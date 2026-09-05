@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const CATEGORIES = [
   { key: 'groceries',     label: 'Groceries',     emoji: '🛒', color: '#3ecfa0' },
@@ -132,6 +133,7 @@ function AddEntryModal({ month, user, familyGroupId, onClose, onSaved }) {
 }
 
 export default function FamilyBudgetPage() {
+  const analyzeAvailable = requireVpAiFunctions('analyzeFamilyBudget');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showAdd, setShowAdd] = useState(false);
   const [analysisData, setAnalysisData] = useState(null);
@@ -266,17 +268,19 @@ export default function FamilyBudgetPage() {
             className="flex-1 bg-teal-500 hover:bg-teal-600 text-white font-bold gap-2">
             <PlusCircle className="w-4 h-4" /> Add Expense / Limit
           </Button>
-          <Button onClick={handleAnalyze} disabled={analyzing || monthExpenses.length === 0}
-            variant="outline"
-            className="flex-1 border-purple-400/30 text-purple-400 hover:bg-purple-400/10 bg-transparent gap-2">
-            {analyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-            AI Analysis
-          </Button>
+          {analyzeAvailable && (
+            <Button onClick={handleAnalyze} disabled={analyzing || monthExpenses.length === 0}
+              variant="outline"
+              className="flex-1 border-purple-400/30 text-purple-400 hover:bg-purple-400/10 bg-transparent gap-2">
+              {analyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              AI Analysis
+            </Button>
+          )}
         </div>
 
         {/* AI Analysis results */}
         <AnimatePresence>
-          {analysisData && (
+          {analyzeAvailable && analysisData && (
             <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
               className="bg-purple-500/8 border border-purple-400/20 rounded-3xl p-5 space-y-4">
               <div className="flex items-center gap-2">

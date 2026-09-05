@@ -8,8 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { Sparkles, Loader2, TrendingUp, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function BulkReprioritizeButton({ taskIds, taskTitles }) {
+  const available = requireVpAiFunctions('reprioritizeTasks');
   const [isOpen, setIsOpen] = useState(false);
   const [context, setContext] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -39,6 +41,8 @@ export default function BulkReprioritizeButton({ taskIds, taskTitles }) {
       setIsProcessing(false);
     }
   };
+
+  if (!available) return null;
 
   return (
     <>

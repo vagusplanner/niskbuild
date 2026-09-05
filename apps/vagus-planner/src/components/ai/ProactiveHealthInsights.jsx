@@ -10,6 +10,7 @@ import {
   RefreshCw, Loader2, Apple, Dumbbell, Moon, Heart
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const ICON_MAP = {
   nutrition: Apple,
@@ -26,6 +27,7 @@ const PRIORITY_COLORS = {
 };
 
 export default function ProactiveHealthInsights() {
+  const available = requireVpAiFunctions('generateHealthRecommendations');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { data: recommendations, isLoading, refetch } = useQuery({
@@ -55,6 +57,8 @@ export default function ProactiveHealthInsights() {
       </Card>
     );
   }
+
+  if (!available) return null;
 
   return (
     <Card className="bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-950 dark:to-cyan-950 border-teal-200 dark:border-teal-800">

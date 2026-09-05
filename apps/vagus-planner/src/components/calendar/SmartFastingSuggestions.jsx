@@ -6,8 +6,10 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Sparkles, TrendingUp, Heart, Calendar, AlertCircle, Moon, ChevronDown, ChevronUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function SmartFastingSuggestions() {
+  const available = requireVpAiFunctions('suggestOptimalFastingDays');
   const [suggestions, setSuggestions] = useState(null);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -80,6 +82,8 @@ export default function SmartFastingSuggestions() {
       setLoading(false);
     }
   };
+
+  if (!available) return null;
 
   return (
     <Card className="border-purple-200 bg-gradient-to-br from-purple-50/50 to-pink-50/30">

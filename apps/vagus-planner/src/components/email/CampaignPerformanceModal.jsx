@@ -7,8 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Sparkles, Loader2, TrendingUp, Eye, MousePointer, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function CampaignPerformanceModal({ campaign, onClose }) {
+  const available = requireVpAiFunctions('analyzeCampaignPerformance');
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState(campaign.ai_insights || null);
 
@@ -30,6 +32,8 @@ export default function CampaignPerformanceModal({ campaign, onClose }) {
   };
 
   const metrics = campaign.performance_metrics || {};
+
+  if (!available) return null;
 
   return (
     <Dialog open={true} onOpenChange={onClose}>

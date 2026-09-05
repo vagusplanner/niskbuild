@@ -7,6 +7,7 @@ import { Sparkles, Loader2, MessageCircle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import HajjFeedbackButton from './HajjFeedbackButton';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const QUICK_QUESTIONS = [
   "What should I do if I miss Arafat?",
@@ -20,6 +21,7 @@ const QUICK_QUESTIONS = [
 ];
 
 export default function HajjAIGuide() {
+  const available = requireVpAiFunctions('hajjUmrahAIAssistant');
   const [question, setQuestion] = useState('');
   const [loading, setLoading] = useState(false);
   const [conversation, setConversation] = useState([]);
@@ -53,6 +55,8 @@ export default function HajjAIGuide() {
       setLoading(false);
     }
   };
+
+  if (!available) return null;
 
   return (
     <div className="space-y-4">

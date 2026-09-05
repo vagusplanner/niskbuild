@@ -5,8 +5,10 @@ import { Button } from '@/components/ui/button';
 import { BookOpen, RefreshCw, Lightbulb, MessageCircle, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function PersonalizedReflectionCard() {
+  const available = requireVpAiFunctions('generatePersonalizedIslamicContent');
   const [reflection, setReflection] = useState(null);
   const [loading, setLoading] = useState(false);
   const [expandedQuestion, setExpandedQuestion] = useState(false);
@@ -67,6 +69,8 @@ export default function PersonalizedReflectionCard() {
       </Card>
     );
   }
+
+  if (!available) return null;
 
   return (
     <motion.div

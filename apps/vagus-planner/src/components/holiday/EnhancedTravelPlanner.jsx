@@ -11,8 +11,10 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function EnhancedTravelPlanner({ destination, budget, duration, startDate, onComplete }) {
+  const available = requireVpAiFunctions('enhancedTravelAI');
   const [activeTab, setActiveTab] = useState('activities');
   const [activities, setActivities] = useState(null);
   const [accommodations, setAccommodations] = useState(null);
@@ -107,6 +109,8 @@ export default function EnhancedTravelPlanner({ destination, budget, duration, s
         : [...prev, activity]
     );
   };
+
+  if (!available) return null;
 
   return (
     <div className="space-y-4">

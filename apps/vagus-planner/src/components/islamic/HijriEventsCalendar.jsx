@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const MONTH_NAMES = [
   'Muharram','Safar',"Rabi' al-Awwal","Rabi' al-Thani",
@@ -191,6 +192,7 @@ function EventCard({ event, onAttachGoal, imported }) {
 }
 
 export default function HijriEventsCalendar() {
+  const available = requireVpAiFunctions('generateHijriEvents');
   const queryClient = useQueryClient();
   const [localGoals, setLocalGoals] = useState(() => {
     try { return JSON.parse(localStorage.getItem('hijri_goals') || '{}'); } catch { return {}; }
@@ -272,6 +274,8 @@ export default function HijriEventsCalendar() {
 
   const hasGoal = (key) => !!(localGoals[key]?.goal || localGoals[key]?.sadaqah);
   const goalsCount = Object.keys(localGoals).filter(k => localGoals[k]?.goal || localGoals[k]?.sadaqah).length;
+
+  if (!available) return null;
 
   return (
     <div className="rounded-2xl border border-amber-200 dark:border-amber-800/40 bg-white dark:bg-slate-900 overflow-hidden">

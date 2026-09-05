@@ -17,8 +17,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import HealthGoalManager from './HealthGoalManager';
 import WellnessCalendarIntegration from './WellnessCalendarIntegration';
 import { useAIScheduling } from '@/components/assistant/AISchedulingBridge';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function AIHealthCoach() {
+  const available = requireVpAiFunctions('aiHealthCoach');
   const [analyzing, setAnalyzing] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -108,6 +110,8 @@ export default function AIHealthCoach() {
       </Card>
     );
   }
+
+  if (!available) return null;
 
   return (
     <div className="space-y-6">

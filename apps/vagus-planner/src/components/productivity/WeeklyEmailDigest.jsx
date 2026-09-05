@@ -4,8 +4,10 @@ import { base44 } from '@/api/base44Client';
 import { Mail, CheckCircle, Loader2, Bell, BellOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function WeeklyEmailDigest() {
+  const available = requireVpAiFunctions('generateWeeklyDigest');
   const [sending, setSending] = useState(false);
 
   const { data: settingsList = [], refetch } = useQuery({
@@ -44,6 +46,8 @@ export default function WeeklyEmailDigest() {
     }
     setSending(false);
   };
+
+  if (!available) return null;
 
   return (
     <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm">

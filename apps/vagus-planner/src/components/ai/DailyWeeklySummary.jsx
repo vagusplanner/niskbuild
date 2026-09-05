@@ -12,6 +12,7 @@ import {
   Loader2, RefreshCw, CheckCircle, AlertCircle, Info
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const SENTIMENT_CONFIG = {
   positive: { icon: CheckCircle, color: 'text-green-600' },
@@ -20,6 +21,7 @@ const SENTIMENT_CONFIG = {
 };
 
 export default function DailyWeeklySummary() {
+  const available = requireVpAiFunctions('generateHealthProductivitySummary');
   const [period, setPeriod] = useState('daily');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -50,6 +52,8 @@ export default function DailyWeeklySummary() {
       </Card>
     );
   }
+
+  if (!available) return null;
 
   return (
     <Card>

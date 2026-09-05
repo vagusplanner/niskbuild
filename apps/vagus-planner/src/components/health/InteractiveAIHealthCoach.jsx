@@ -15,8 +15,10 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function InteractiveAIHealthCoach({ chatOnly = false }) {
+  const available = requireVpAiFunctions('analyzeMoodSleepForWellness', 'generatePersonalizedMealPlan', 'generatePersonalizedRecipes', 'generatePersonalizedWorkoutPlan', 'generateProgressReport', 'suggestPlanAdjustments');
   const [activeTab, setActiveTab] = useState('chat');
   const [chatInput, setChatInput] = useState('');
   const [conversation, setConversation] = useState([
@@ -205,6 +207,8 @@ Provide a helpful, supportive, and actionable response. Be conversational and em
       </Card>
     );
   }
+
+  if (!available) return null;
 
   return (
     <Card className="h-[700px] flex flex-col">

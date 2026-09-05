@@ -8,8 +8,10 @@ import { base44 } from '@/api/base44Client';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function AISupportChat({ isOpen, onClose }) {
+  const available = requireVpAiFunctions('supportChatbot');
   const [message, setMessage] = useState('');
   const [conversation, setConversation] = useState([]);
   const messagesEndRef = useRef(null);
@@ -80,6 +82,8 @@ export default function AISupportChat({ isOpen, onClose }) {
     setConversation([{ role: 'user', content: question }]);
     chatMutation.mutate(question);
   };
+
+  if (!available) return null;
 
   return (
     <AnimatePresence>

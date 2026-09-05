@@ -7,6 +7,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const BOOKING_ICONS = {
   flight: '✈️', hotel: '🏨', car: '🚗', train: '🚆',
@@ -57,6 +58,7 @@ function BookingItem({ booking, onSave, saved }) {
 }
 
 export default function GmailBookingScanner({ holiday }) {
+  const available = requireVpAiFunctions('scanTravelEmails');
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState(null);
   const [saved, setSaved] = useState({});
@@ -102,6 +104,8 @@ export default function GmailBookingScanner({ holiday }) {
   };
 
   const bookings = data?.bookings || data?.events || [];
+
+  if (!available) return null;
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-xl border border-blue-200/50 dark:border-blue-900/40 overflow-hidden">

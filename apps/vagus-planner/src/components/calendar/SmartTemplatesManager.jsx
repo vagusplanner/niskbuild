@@ -7,6 +7,7 @@ import { Zap, Calendar, Users, Moon, Coffee, Book, Phone, Plus } from 'lucide-re
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const DEFAULT_TEMPLATES = [
   {
@@ -91,16 +92,20 @@ const DEFAULT_TEMPLATES = [
 ];
 
 export default function SmartTemplatesManager({ onTemplateApplied }) {
+  const prayerAwareAvailable = requireVpAiFunctions('suggestPrayerAwareTime');
   const [creating, setCreating] = useState(null);
   const queryClient = useQueryClient();
 
   const createFromTemplate = async (template) => {
     setCreating(template.label);
     try {
-      // Get prayer-aware time suggestion
-      const { data: suggestion } = await base44.functions.invoke('suggestPrayerAwareTime', {
-        event_data: template.data
-      });
+      let suggestion = {};
+      if (prayerAwareAvailable) {
+        const { data } = await base44.functions.invoke('suggestPrayerAwareTime', {
+          event_data: template.data
+        });
+        suggestion = data || {};
+      }
 
       const eventData = {
         ...template.data,

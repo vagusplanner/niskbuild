@@ -23,8 +23,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function SmartMeetingScheduler({ onClose }) {
+  const available = requireVpAiFunctions('detectMeetingConflicts');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [participants, setParticipants] = useState([]);
@@ -114,6 +116,8 @@ export default function SmartMeetingScheduler({ onClose }) {
     setSelectedSlot(slot);
     checkConflictsMutation.mutate(slot);
   };
+
+  if (!available) return null;
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto p-6">

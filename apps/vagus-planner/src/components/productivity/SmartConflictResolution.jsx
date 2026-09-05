@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/button';
 import { AlertCircle, Zap, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function SmartConflictResolution() {
+  const available = requireVpAiFunctions('smartConflictResolution');
   const [resolving, setResolving] = useState(false);
   const [proposals, setProposals] = useState([]);
 
@@ -83,6 +85,8 @@ export default function SmartConflictResolution() {
       toast.error('Failed to update meeting');
     }
   };
+
+  if (!available) return null;
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>

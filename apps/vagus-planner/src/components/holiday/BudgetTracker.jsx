@@ -16,6 +16,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const CATEGORY_ICONS = {
   flights: Plane,
@@ -38,6 +39,7 @@ const CATEGORY_COLORS = {
 };
 
 export default function BudgetTracker({ holiday }) {
+  const aiCategorizeAvailable = requireVpAiFunctions('categorizeExpense');
   const [showForm, setShowForm] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [formData, setFormData] = useState({
@@ -295,21 +297,23 @@ export default function BudgetTracker({ holiday }) {
             <div className="space-y-1">
               <div className="flex items-center justify-between">
                 <Label className="text-xs">Description</Label>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={autoCategorizeExpense}
-                  disabled={categorizingExpense || !formData.title}
-                  className="h-6 text-xs"
-                >
-                  {categorizingExpense ? (
-                    <Loader2 className="w-3 h-3 animate-spin mr-1" />
-                  ) : (
-                    <Sparkles className="w-3 h-3 mr-1" />
-                  )}
-                  AI Categorize
-                </Button>
+                {aiCategorizeAvailable && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={autoCategorizeExpense}
+                    disabled={categorizingExpense || !formData.title}
+                    className="h-6 text-xs"
+                  >
+                    {categorizingExpense ? (
+                      <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                    ) : (
+                      <Sparkles className="w-3 h-3 mr-1" />
+                    )}
+                    AI Categorize
+                  </Button>
+                )}
               </div>
               <Input
                 value={formData.title}

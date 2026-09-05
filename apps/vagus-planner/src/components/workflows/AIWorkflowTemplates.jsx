@@ -7,8 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function AIWorkflowTemplates({ onSelectTemplate }) {
+  const available = requireVpAiFunctions('suggestWorkflowTemplates');
   const [templates, setTemplates] = useState([]);
 
   const generateMutation = useMutation({
@@ -21,6 +23,8 @@ export default function AIWorkflowTemplates({ onSelectTemplate }) {
       toast.error('Failed to generate templates');
     }
   });
+
+  if (!available) return null;
 
   return (
     <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50">

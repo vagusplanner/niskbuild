@@ -18,6 +18,7 @@ import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 // ── Prayer reminder options ───────────────────────────────────────────────────
 const PRAYER_REMINDER_OPTIONS = [
@@ -122,6 +123,7 @@ function EventCard({ event, onRemove, onToggle, selected }) {
 
 // ── Main Page ────────────────────────────────────────────────────────────────
 export default function ItineraryAssistant() {
+  const available = requireVpAiFunctions('getTravelItinerary', 'parseTravelMessage');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -315,6 +317,8 @@ export default function ItineraryAssistant() {
   };
 
   const reset = () => { setText(''); setEvents([]); setSelected(new Set()); setPhase('input'); setTranscript(''); };
+
+  if (!available) return null;
 
   return (
     <div className="min-h-screen pb-24">

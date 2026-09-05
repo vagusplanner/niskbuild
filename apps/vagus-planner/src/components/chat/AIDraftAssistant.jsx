@@ -5,8 +5,10 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function AIDraftAssistant({ conversationId, groupChatId, onSelectDraft }) {
+  const available = requireVpAiFunctions('draftMessageResponse');
   const [drafts, setDrafts] = useState(null);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -36,6 +38,8 @@ export default function AIDraftAssistant({ conversationId, groupChatId, onSelect
     setExpanded(false);
     toast.success('Draft inserted');
   };
+
+  if (!available) return null;
 
   return (
     <div className="border-t border-slate-200 bg-gradient-to-r from-purple-50 to-indigo-50">

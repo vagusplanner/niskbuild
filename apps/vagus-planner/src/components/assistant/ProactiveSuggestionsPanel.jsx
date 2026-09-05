@@ -11,8 +11,10 @@ import {
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function ProactiveSuggestionsPanel() {
+  const available = requireVpAiFunctions('generateProactiveSuggestions');
   const [expanded, setExpanded] = useState(true);
 
   const { data, isLoading, refetch, isFetching } = useQuery({
@@ -67,6 +69,8 @@ export default function ProactiveSuggestionsPanel() {
       </Card>
     );
   }
+
+  if (!available) return null;
 
   return (
     <Card className="bg-gradient-to-br from-teal-50 via-white to-cyan-50">

@@ -22,6 +22,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const ALERT_ICONS = {
   flight: Plane,
@@ -41,6 +42,7 @@ const PRIORITY_COLORS = {
 };
 
 export default function ProactiveTravelAlertsPanel() {
+  const available = requireVpAiFunctions('proactiveTravelAssistant');
   const [expandedTrip, setExpandedTrip] = useState(null);
   const queryClient = useQueryClient();
 
@@ -94,6 +96,8 @@ export default function ProactiveTravelAlertsPanel() {
       </Card>
     );
   }
+
+  if (!available) return null;
 
   return (
     <div className="space-y-4">

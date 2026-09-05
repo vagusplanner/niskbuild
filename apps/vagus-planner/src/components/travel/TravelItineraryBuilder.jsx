@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const PRAYER_EMOJIS = { Fajr: '🌅', Sunrise: '🌄', Dhuhr: '☀️', Asr: '🌤️', Maghrib: '🌇', Isha: '🌙' };
 
@@ -98,6 +99,7 @@ function ActivityCard({ a }) {
 }
 
 export default function TravelItineraryBuilder() {
+  const available = requireVpAiFunctions('getTravelItinerary');
   const [selectedContextId, setSelectedContextId] = useState(null);
   const [itinerary, setItinerary] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -137,6 +139,8 @@ export default function TravelItineraryBuilder() {
     { id: 'activities', label: 'Activities',       icon: Star },
     { id: 'mosques',    label: 'Mosques',          icon: Compass },
   ];
+
+  if (!available) return null;
 
   return (
     <div className="bg-white/[0.03] border border-white/10 rounded-3xl overflow-hidden">

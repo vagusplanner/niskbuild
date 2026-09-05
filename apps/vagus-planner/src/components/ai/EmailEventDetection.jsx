@@ -5,8 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Mail, Plus, Check } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function EmailEventDetection() {
+  const available = requireVpAiFunctions('emailToEventDetection');
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [addedIds, setAddedIds] = useState(new Set());
@@ -47,6 +49,8 @@ export default function EmailEventDetection() {
 
   if (loading) return <div className="p-4 text-slate-500">Scanning emails...</div>;
   if (events.length === 0) return null;
+
+  if (!available) return null;
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>

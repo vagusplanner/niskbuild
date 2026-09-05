@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const CURRENCY = localStorage.getItem('vagus_currency') || 'USD';
 
@@ -129,6 +130,7 @@ function ManualSnapshotForm({ onSave, onClose }) {
 }
 
 export default function AutoZakatTracker() {
+  const available = requireVpAiFunctions('autoZakatAnalysis');
   const [showForm, setShowForm] = useState(false);
   const [suggestions, setSuggestions] = useState(null);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
@@ -189,6 +191,8 @@ export default function AutoZakatTracker() {
       toast.success('Zakat marked as paid! May Allah accept it. 🤲');
     }
   });
+
+  if (!available) return null;
 
   return (
     <div className="rounded-2xl border border-amber-200 dark:border-amber-800/40 bg-white dark:bg-slate-900 overflow-hidden">

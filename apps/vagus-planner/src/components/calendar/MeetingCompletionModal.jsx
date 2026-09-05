@@ -12,6 +12,7 @@ import { Sparkles, Loader2, CheckCircle2, Clock, User, ArrowRight, Mic, Upload, 
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const useIsMobile = () => {
   const [isMobile, setIsMobile] = React.useState(() => window.innerWidth < 768);
@@ -25,6 +26,7 @@ const useIsMobile = () => {
 
 export default function MeetingCompletionModal({ meeting, isOpen, onClose, onComplete }) {
   const isMobile = useIsMobile();
+  const audioTranscribeAvailable = requireVpAiFunctions('transcribeAndSummarizeMeeting');
   const [outcomeNotes, setOutcomeNotes] = useState('');
   const [generating, setGenerating] = useState(false);
   const [summary, setSummary] = useState(null);
@@ -166,15 +168,17 @@ export default function MeetingCompletionModal({ meeting, isOpen, onClose, onCom
               className="space-y-4 py-4"
             >
               <Tabs value={inputMethod} onValueChange={setInputMethod} className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className={audioTranscribeAvailable ? 'grid w-full grid-cols-2' : 'grid w-full grid-cols-1'}>
                   <TabsTrigger value="manual" className="gap-2">
                     <Sparkles className="w-4 h-4" />
                     Manual Notes
                   </TabsTrigger>
-                  <TabsTrigger value="audio" className="gap-2">
-                    <Mic className="w-4 h-4" />
-                    Audio Transcription
-                  </TabsTrigger>
+                  {audioTranscribeAvailable && (
+                    <TabsTrigger value="audio" className="gap-2">
+                      <Mic className="w-4 h-4" />
+                      Audio Transcription
+                    </TabsTrigger>
+                  )}
                 </TabsList>
 
                 <TabsContent value="manual" className="space-y-4 mt-4">
@@ -196,6 +200,7 @@ export default function MeetingCompletionModal({ meeting, isOpen, onClose, onCom
                   </div>
                 </TabsContent>
 
+                {audioTranscribeAvailable && (
                 <TabsContent value="audio" className="space-y-4 mt-4">
                   <div>
                     <Label className="text-base font-semibold mb-2 block">
@@ -252,6 +257,7 @@ export default function MeetingCompletionModal({ meeting, isOpen, onClose, onCom
                     )}
                   </div>
                 </TabsContent>
+                )}
               </Tabs>
 
               <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">

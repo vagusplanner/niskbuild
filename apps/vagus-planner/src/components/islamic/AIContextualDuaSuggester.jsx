@@ -8,8 +8,10 @@ import { Sparkles, Heart, Clock, MapPin, Loader2, Volume2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function AIContextualDuaSuggester() {
+  const available = requireVpAiFunctions('generatePersonalizedIslamicContent');
   const [loading, setLoading] = useState(false);
   const [suggestedDuas, setSuggestedDuas] = useState([]);
   const [guidance, setGuidance] = useState('');
@@ -88,6 +90,8 @@ export default function AIContextualDuaSuggester() {
       return {};
     }
   };
+
+  if (!available) return null;
 
   return (
     <div className="space-y-6">

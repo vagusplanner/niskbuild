@@ -7,8 +7,10 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function WorkflowAISuggestions({ triggerType, existingSteps, onApplySuggestion }) {
+  const available = requireVpAiFunctions('suggestWorkflowSteps');
   const [desiredOutcome, setDesiredOutcome] = useState('');
   const [suggestions, setSuggestions] = useState(null);
 
@@ -33,6 +35,8 @@ export default function WorkflowAISuggestions({ triggerType, existingSteps, onAp
       on_failure: null
     });
   };
+
+  if (!available) return null;
 
   return (
     <Card className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">

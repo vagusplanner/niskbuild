@@ -4,8 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { BookOpen, Loader } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function MeetingPrep({ eventTitle, eventDescription, attendees, onClose }) {
+  const available = requireVpAiFunctions('smartMeetingPrep');
   const [prep, setPrep] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -27,6 +29,8 @@ export default function MeetingPrep({ eventTitle, eventDescription, attendees, o
 
     generatePrep();
   }, [eventTitle, eventDescription, attendees]);
+
+  if (!available) return null;
 
   return (
     <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>

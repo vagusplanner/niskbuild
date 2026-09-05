@@ -6,6 +6,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { redirectToVpLogin, redirectToVpSignup } from './static-bundle'
 import { mapSupabaseUserToVpUser } from './vp-auth-user'
+import { isUnavailableAiFunction } from './vp-registered-functions'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -1347,6 +1348,9 @@ export const base44 = {
   
   functions: {
     invoke: async (name, payload) => {
+      if (isUnavailableAiFunction(name)) {
+        throw new Error('VP_AI_UNAVAILABLE: This AI feature is not available yet.')
+      }
       console.log(`📡 Invoke function: ${name}`, payload)
       try {
         const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')

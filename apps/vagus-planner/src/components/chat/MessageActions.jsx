@@ -19,8 +19,10 @@ import {
   MessageSquare, Copy 
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function MessageActions({ message, chatId }) {
+  const createTaskAvailable = requireVpAiFunctions('createTaskFromMessage');
   const [showTaskDialog, setShowTaskDialog] = useState(false);
   const [showSlackDialog, setShowSlackDialog] = useState(false);
   const [taskDueDate, setTaskDueDate] = useState('');
@@ -87,10 +89,12 @@ export default function MessageActions({ message, chatId }) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setShowTaskDialog(true)}>
-            <CheckSquare className="w-4 h-4 mr-2" />
-            Create Task
-          </DropdownMenuItem>
+          {createTaskAvailable && (
+            <DropdownMenuItem onClick={() => setShowTaskDialog(true)}>
+              <CheckSquare className="w-4 h-4 mr-2" />
+              Create Task
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onClick={() => setShowSlackDialog(true)}>
             <Send className="w-4 h-4 mr-2" />
             Send to Slack
@@ -103,34 +107,36 @@ export default function MessageActions({ message, chatId }) {
       </DropdownMenu>
 
       {/* Create Task Dialog */}
-      <Dialog open={showTaskDialog} onOpenChange={setShowTaskDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create Task from Message</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="p-3 bg-slate-50 rounded-lg">
-              <p className="text-sm text-slate-600">{message.message}</p>
+      {createTaskAvailable && (
+        <Dialog open={showTaskDialog} onOpenChange={setShowTaskDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create Task from Message</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="p-3 bg-slate-50 rounded-lg">
+                <p className="text-sm text-slate-600">{message.message}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Due Date (Optional)</label>
+                <Input
+                  type="date"
+                  value={taskDueDate}
+                  onChange={(e) => setTaskDueDate(e.target.value)}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setShowTaskDialog(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleCreateTask} disabled={creating}>
+                  {creating ? 'Creating...' : 'Create Task'}
+                </Button>
+              </div>
             </div>
-            <div>
-              <label className="text-sm font-medium mb-2 block">Due Date (Optional)</label>
-              <Input
-                type="date"
-                value={taskDueDate}
-                onChange={(e) => setTaskDueDate(e.target.value)}
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowTaskDialog(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleCreateTask} disabled={creating}>
-                {creating ? 'Creating...' : 'Create Task'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Send to Slack Dialog */}
       <Dialog open={showSlackDialog} onOpenChange={setShowSlackDialog}>

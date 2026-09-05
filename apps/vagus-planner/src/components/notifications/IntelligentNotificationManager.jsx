@@ -30,6 +30,7 @@ import {
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const NOTIFICATION_TYPES = [
   { value: 'event_reminder', label: 'Event Reminders', icon: Calendar, color: 'text-blue-500' },
@@ -51,6 +52,7 @@ const PRIORITY_CONFIG = {
 };
 
 export default function IntelligentNotificationManager() {
+  const aiNotificationsAvailable = requireVpAiFunctions('generateAINotifications');
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('inbox');
 
@@ -152,17 +154,19 @@ export default function IntelligentNotificationManager() {
             AI-powered contextual reminders tailored to your schedule
           </p>
         </div>
-        <Button
-          onClick={async () => {
-            const response = await base44.functions.invoke('generateAINotifications', {});
-            toast.success('AI notifications generated!');
-            queryClient.invalidateQueries(['smartNotifications']);
-          }}
-          className="gap-2"
-        >
-          <Brain className="w-4 h-4" />
-          Generate AI Suggestions
-        </Button>
+        {aiNotificationsAvailable && (
+          <Button
+            onClick={async () => {
+              const response = await base44.functions.invoke('generateAINotifications', {});
+              toast.success('AI notifications generated!');
+              queryClient.invalidateQueries(['smartNotifications']);
+            }}
+            className="gap-2"
+          >
+            <Brain className="w-4 h-4" />
+            Generate AI Suggestions
+          </Button>
+        )}
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>

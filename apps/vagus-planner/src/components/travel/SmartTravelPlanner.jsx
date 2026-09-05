@@ -14,8 +14,10 @@ import {
 } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function SmartTravelPlanner({ isOpen, onClose, selectedDate }) {
+  const available = requireVpAiFunctions('adjustPrayerTimesForTravel', 'generatePackingList', 'scanTravelBookings', 'suggestTravelDestinations');
   const [tripData, setTripData] = useState({
     destination: '',
     start_date: selectedDate || new Date().toISOString().split('T')[0],
@@ -146,6 +148,8 @@ export default function SmartTravelPlanner({ isOpen, onClose, selectedDate }) {
   };
 
   if (!isOpen) return null;
+
+  if (!available) return null;
 
   return (
     <AnimatePresence>

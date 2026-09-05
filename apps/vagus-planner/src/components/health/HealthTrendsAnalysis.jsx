@@ -8,8 +8,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { TrendingUp, Download, Loader2, Calendar, BarChart3 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function HealthTrendsAnalysis() {
+  const available = requireVpAiFunctions('analyzeHealthTrends', 'generateHealthReport');
   const [period, setPeriod] = useState('weekly');
   const [showReport, setShowReport] = useState(false);
   const [report, setReport] = useState(null);
@@ -34,6 +36,8 @@ export default function HealthTrendsAnalysis() {
   });
 
   if (!trends) return null;
+
+  if (!available) return null;
 
   return (
     <div className="space-y-6">

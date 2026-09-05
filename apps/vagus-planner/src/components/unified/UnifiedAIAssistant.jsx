@@ -9,8 +9,10 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { FloatingButton } from '@/components/ui/floating-manager';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function UnifiedAIAssistant() {
+  const available = requireVpAiFunctions('voiceCommandProcessor');
   const location = useLocation();
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
@@ -68,6 +70,8 @@ export default function UnifiedAIAssistant() {
       setTranscript('');
     }
   };
+
+  if (!available) return null;
 
   return (
     <>

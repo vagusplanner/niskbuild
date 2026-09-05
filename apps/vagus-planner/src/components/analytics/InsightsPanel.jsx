@@ -7,8 +7,10 @@ import { motion } from 'framer-motion';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { TrendingUp, Clock, Target, AlertCircle } from 'lucide-react';
 import { format, subDays, startOfWeek, endOfWeek } from 'date-fns';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function InsightsPanel() {
+  const available = requireVpAiFunctions('analyzeWeeklyInsights');
   const { data: events = [] } = useQuery({
     queryKey: ['events'],
     queryFn: () => base44.entities.Event.list('-start_date')
@@ -76,6 +78,8 @@ export default function InsightsPanel() {
   }, [events]);
 
   const colors = ['#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6', '#8b5cf6', '#ec4899'];
+
+  if (!available) return null;
 
   return (
     <motion.div

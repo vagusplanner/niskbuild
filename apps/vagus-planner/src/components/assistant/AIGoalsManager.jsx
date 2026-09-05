@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Target, Plus, Sparkles, Trash2, Loader2, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 const GOAL_TYPES = [
   { value: 'sadaqah_recipients', label: '💚 Find Sadaqah Recipients', icon: '🤲' },
@@ -24,6 +25,7 @@ const GOAL_TYPES = [
 ];
 
 export default function AIGoalsManager({ isOpen, onClose }) {
+  const available = requireVpAiFunctions('analyzeUserPersonalization');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [newGoal, setNewGoal] = useState({
@@ -89,6 +91,8 @@ export default function AIGoalsManager({ isOpen, onClose }) {
     });
     setShowCreateForm(true);
   };
+
+  if (!available) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
