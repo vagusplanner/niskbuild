@@ -613,30 +613,14 @@ export default function CalendarPage() {
             </div>
           </SlidingPanel>
 
-          <AnimatePresence>
-            {showDiscussionsPanel && (
-              <>
-                {isMobile && (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[40]" onClick={() => setShowDiscussionsPanel(false)} />
-                )}
-                <motion.div
-                  initial={isMobile ? { x: '100%' } : false}
-                  animate={isMobile ? { x: 0 } : {}}
-                  exit={isMobile ? { x: '100%' } : {}}
-                  transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-                  className={cn(
-                    'bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 h-full overflow-hidden',
-                    isMobile ? 'fixed right-0 top-16 bottom-16 z-[41] shadow-2xl' : 'hidden lg:block lg:flex-none'
-                  )}
-                  style={{ width: isMobile ? '80vw' : (discussionsPanelPinned ? '320px' : '56px') }}
-                >
-                  <DiscussionsPanel isPinned={discussionsPanelPinned} onTogglePin={() => setDiscussionsPanelPinned(s => !s)}
-                    onEventClick={openEventDetails} onClose={() => setShowDiscussionsPanel(false)} />
-                </motion.div>
-              </>
-            )}
-          </AnimatePresence>
+          <SlidingPanel show={showDiscussionsPanel} onClose={() => setShowDiscussionsPanel(false)}>
+            <DiscussionsPanel
+              isPinned={discussionsPanelPinned}
+              onTogglePin={() => setDiscussionsPanelPinned(s => !s)}
+              onEventClick={openEventDetails}
+              onClose={() => setShowDiscussionsPanel(false)}
+            />
+          </SlidingPanel>
         </div>
 
         {/* ── Modals ── */}

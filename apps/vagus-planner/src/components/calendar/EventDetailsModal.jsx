@@ -195,17 +195,17 @@ export default function EventDetailsModal({ event, isOpen, onClose, onEdit, onDe
           {/* Content */}
           <div className="overflow-y-auto flex-1 p-4 sm:p-6">
             <Tabs defaultValue="details" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="details" className="text-xs sm:text-sm gap-1">
-                  <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <TabsList className="flex w-full h-auto min-h-9 gap-1 p-1">
+                <TabsTrigger value="details" className="flex-1 text-xs sm:text-sm">
+                  <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                   <span>Details</span>
                 </TabsTrigger>
-                <TabsTrigger value="tasks" className="text-xs sm:text-sm gap-1">
-                  <CheckSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <TabsTrigger value="tasks" className="flex-1 text-xs sm:text-sm">
+                  <CheckSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                   <span>Tasks</span>
                 </TabsTrigger>
-                <TabsTrigger value="chat" className="text-xs sm:text-sm gap-1">
-                  <MessageCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <TabsTrigger value="chat" className="flex-1 text-xs sm:text-sm">
+                  <MessageCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                   <span>Chat</span>
                 </TabsTrigger>
               </TabsList>

@@ -2,16 +2,10 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { 
-  Paperclip, Upload, FileText, Image as ImageIcon, 
+  Paperclip, FileText, Image as ImageIcon, 
   File, X, Loader2, ExternalLink 
 } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 export default function FileAttachment({ chatId, eventId, onFileShared }) {
   const [uploading, setUploading] = useState(false);
@@ -48,6 +42,7 @@ export default function FileAttachment({ chatId, eventId, onFileShared }) {
     }
   };
 
+  // Direct file picker — avoids DropdownMenu z-50 opening under EventForm (z-110).
   return (
     <>
       <input
@@ -57,29 +52,21 @@ export default function FileAttachment({ chatId, eventId, onFileShared }) {
         onChange={handleFileSelect}
         disabled={uploading}
       />
-      
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9"
-            disabled={uploading}
-          >
-            {uploading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <Paperclip className="w-5 h-5" />
-            )}
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-            <Upload className="w-4 h-4 mr-2" />
-            Upload file
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="h-9 w-9 relative z-10"
+        disabled={uploading}
+        title="Attach a file"
+        onClick={() => fileInputRef.current?.click()}
+      >
+        {uploading ? (
+          <Loader2 className="w-5 h-5 animate-spin" />
+        ) : (
+          <Paperclip className="w-5 h-5" />
+        )}
+      </Button>
     </>
   );
 }

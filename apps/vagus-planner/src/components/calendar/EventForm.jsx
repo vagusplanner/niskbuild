@@ -1016,14 +1016,14 @@ Return the most appropriate reminder time in minutes and a brief reason.`,
                   </motion.p>
                 )}
                 </div>
-                </div>
 
-                {/* File Manager for existing events */}
-            {event && (
-              <div className="px-6 pb-6">
-                <EventFileManager eventId={event.id} />
+                {/* File Manager for existing events — inside scroll area so it stays clickable */}
+                {event && (
+                  <div className="pt-2">
+                    <EventFileManager eventId={event.id} />
+                  </div>
+                )}
               </div>
-            )}
 
             <div className="p-6 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex gap-3">
               <Button
@@ -1060,15 +1060,13 @@ Return the most appropriate reminder time in minutes and a brief reason.`,
           </motion.div>
           </div>
 
-          {/* Collaboration Panel */}
-          <AnimatePresence>
-            {showCollabPanel && event && (
-              <EventCollaborationPanel
-                eventId={event.id}
-                onClose={() => setShowCollabPanel(false)}
-              />
-            )}
-          </AnimatePresence>
+          {/* Collaboration Panel — portals itself above EventForm */}
+          {showCollabPanel && event && (
+            <EventCollaborationPanel
+              eventId={event.id}
+              onClose={() => setShowCollabPanel(false)}
+            />
+          )}
         </>
       )}
     </AnimatePresence>
