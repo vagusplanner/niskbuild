@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getShiftStudentForRequest } from '@/lib/shift-ai/student-auth';
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ deckId: string }> }
 ) {
   const auth = await getShiftStudentForRequest(request);

@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createMentorInviteToken } from '@/lib/shift-ai/settings';
 import { getShiftStudentForRequest } from '@/lib/shift-ai/student-auth';
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   const auth = await getShiftStudentForRequest(request);
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
