@@ -72,6 +72,7 @@ const ENTITY_TABLES = {
   EventLock: 'vp_event_locks',
   SyncState: 'vp_sync_states',
   TaskShare: 'vp_task_shares',
+  Reminder: 'vp_reminders',
 }
 
 function tableFrom(tableName) {
@@ -88,7 +89,7 @@ const COLUMN_ALIASES = {
 
 const ENTITY_COLUMN_ALIASES = {
   Event: { start_date: 'event_date', created_by: '__skip__' },
-  Task: { description: 'notes' },
+  Task: { description: 'description' },
   Holiday: { start_date: 'holiday_date', title: 'name', created_by: '__skip__' },
   Expense: { created_by: '__skip__' },
   PrayerLog: { date: 'prayed_at' },
@@ -104,7 +105,9 @@ const NOTIFICATION_PREFERENCE_METADATA_KEYS = new Set([
   'upgrade_confirmations',
 ])
 
-const TASK_PRIORITY_MAP = { low: 1, medium: 2, high: 3, urgent: 3 }
+/** Production vp_tasks.priority is text ("low"|"medium"|"high"|"urgent"). */
+const TASK_PRIORITY_LABELS = new Set(['low', 'medium', 'high', 'urgent'])
+const TASK_PRIORITY_FROM_NUMBER = { 0: 'low', 1: 'low', 2: 'medium', 3: 'high' }
 const TASK_STATUS_MAP = {
   todo: 'pending',
   pending: 'pending',
@@ -112,19 +115,34 @@ const TASK_STATUS_MAP = {
   completed: 'completed',
   done: 'completed',
   cancelled: 'cancelled',
+  not_started: 'pending',
 }
 
 function mapTaskPriority(value) {
-  if (typeof value === 'number' && !Number.isNaN(value)) {
-    return Math.min(3, Math.max(0, value))
+  if (typeof value === 'string') {
+    const lower = value.toLowerCase().trim()
+    if (TASK_PRIORITY_LABELS.has(lower)) return lower
+    // Legacy numeric strings
+    const asNum = Number(lower)
+    if (!Number.isNaN(asNum) && TASK_PRIORITY_FROM_NUMBER[asNum] != null) {
+      return TASK_PRIORITY_FROM_NUMBER[asNum]
+    }
+    return 'medium'
   }
-  if (typeof value === 'string') return TASK_PRIORITY_MAP[value.toLowerCase()] ?? 2
-  return 2
+  if (typeof value === 'number' && !Number.isNaN(value)) {
+    return TASK_PRIORITY_FROM_NUMBER[Math.min(3, Math.max(0, value))] ?? 'medium'
+  }
+  return 'medium'
 }
 
 function mapTaskStatus(value) {
   if (typeof value === 'string') return TASK_STATUS_MAP[value.toLowerCase()] ?? 'pending'
   return 'pending'
+}
+
+function asJsonArray(value) {
+  if (Array.isArray(value)) return value
+  return null
 }
 
 async function getCurrentUserId() {
@@ -152,18 +170,68 @@ function mapPayloadToRow(entityName, payload, userId) {
     if (userId) row.user_id = userId
     if (p.title != null && String(p.title).trim()) row.title = String(p.title).trim()
     else if (userId) row.title = 'Untitled'
-    const notes = p.notes ?? p.description
-    if (notes != null && String(notes).trim()) row.notes = String(notes).trim()
+    // Production has `description` (not legacy `notes`-only). Persist both when present.
+    if (p.description != null) {
+      const desc = String(p.description).trim()
+      if (desc) row.description = desc
+    }
+    if (p.notes != null) {
+      const notes = String(p.notes).trim()
+      if (notes) row.notes = notes
+    }
     if (p.due_date != null && p.due_date !== '') {
       const due = new Date(p.due_date)
       if (!Number.isNaN(due.getTime())) row.due_date = due.toISOString()
     }
+    if (p.due_time != null && String(p.due_time).trim()) {
+      row.due_time = String(p.due_time).trim()
+    }
     if (p.priority != null) row.priority = mapTaskPriority(p.priority)
     if (p.status != null) row.status = mapTaskStatus(p.status)
     else if (userId && row.title) row.status = 'pending'
+    if (p.category != null && String(p.category).trim()) {
+      row.category = String(p.category).trim().toLowerCase()
+    }
+    if (p.estimated_minutes != null && p.estimated_minutes !== '') {
+      const mins = Number(p.estimated_minutes)
+      if (Number.isFinite(mins) && mins > 0) row.estimated_minutes = Math.round(mins)
+    }
+    // NOT NULL jsonb columns: always set defaults on create so multi-row
+    // bulkCreate inserts don't send null for omitted keys (PostgREST coalesces
+    // batch keys and skips DB defaults).
+    const subtasks = asJsonArray(p.subtasks)
+    if (subtasks) row.subtasks = subtasks
+    else if (userId) row.subtasks = []
+    const tags = asJsonArray(p.tags)
+    if (tags) row.tags = tags
+    else if (userId) row.tags = []
+    const dependencies = asJsonArray(p.dependencies)
+    if (dependencies) row.dependencies = dependencies
+    else if (userId) row.dependencies = []
     if (p.event_id != null && p.event_id !== '') row.event_id = p.event_id
     if (p.assigned_to != null) row.assigned_to = p.assigned_to
     if (p.assigned_by != null) row.assigned_by = p.assigned_by
+    return row
+  }
+
+  if (entityName === 'Reminder') {
+    const row = {}
+    if (userId) row.user_id = userId
+    if (p.title != null && String(p.title).trim()) row.title = String(p.title).trim()
+    else if (userId) row.title = 'Reminder'
+    const body = p.body ?? p.description
+    if (body != null && String(body).trim()) row.body = String(body).trim()
+    else if (userId) row.body = row.title
+    const reminderType = p.reminder_type ?? p.reminderType ?? 'event'
+    const allowed = new Set(['general', 'prayer', 'task_due', 'event', 'journal'])
+    row.reminder_type = allowed.has(String(reminderType)) ? String(reminderType) : 'event'
+    const scheduled = p.scheduled_at ?? p.scheduledAt
+    if (scheduled != null && scheduled !== '') {
+      const d = new Date(scheduled)
+      if (!Number.isNaN(d.getTime())) row.scheduled_at = d.toISOString()
+    }
+    if (p.channel != null) row.channel = p.channel
+    if (p.metadata != null && typeof p.metadata === 'object') row.metadata = p.metadata
     return row
   }
 
@@ -510,16 +578,28 @@ function mapRowFromDb(entityName, row) {
   }
 
   if (entityName === 'Task') {
-    const priorityLabels = { 0: 'low', 1: 'low', 2: 'medium', 3: 'high' }
     return {
       ...row,
-      description: row.notes ?? row.description,
+      description: row.description ?? row.notes ?? '',
+      notes: row.notes ?? '',
+      category: row.category ?? 'personal',
+      estimated_minutes: row.estimated_minutes ?? null,
+      due_time: row.due_time ?? '',
+      subtasks: Array.isArray(row.subtasks) ? row.subtasks : [],
+      tags: Array.isArray(row.tags) ? row.tags : [],
+      dependencies: Array.isArray(row.dependencies) ? row.dependencies : [],
       event_id: row.event_id ?? null,
       status: row.status === 'pending' ? 'todo' : row.status,
-      priority:
-        typeof row.priority === 'number'
-          ? (priorityLabels[row.priority] ?? 'medium')
-          : row.priority,
+      priority: mapTaskPriority(row.priority),
+    }
+  }
+
+  if (entityName === 'Reminder') {
+    return {
+      ...row,
+      description: row.body ?? row.description,
+      scheduledAt: row.scheduled_at,
+      reminderType: row.reminder_type,
     }
   }
 
@@ -844,6 +924,7 @@ function createStubEntityApi() {
     list: async () => [],
     get: async () => null,
     create: async () => null,
+    bulkCreate: async () => [],
     update: async () => null,
     delete: async () => null,
     filter: async () => [],
@@ -1162,6 +1243,19 @@ export const base44 = {
             .select()
           if (error) throw error
           return mapRowFromDb(entityName, data[0])
+        },
+        bulkCreate: async (payloads) => {
+          if (!Array.isArray(payloads) || payloads.length === 0) return []
+          const userId = await getCurrentUserId()
+          const rows = payloads.map((payload) => {
+            if (entityName === 'UserSettings') {
+              return mapUserSettingsPayloadToRow(payload, null, userId)
+            }
+            return mapPayloadToRow(entityName, payload, userId)
+          })
+          const { data, error } = await tableFrom(tableName).insert(rows).select()
+          if (error) throw error
+          return (data ?? []).map((row) => mapRowFromDb(entityName, row))
         },
         update: async (id, payload) => {
           let row

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Loader2, GitBranch, ArrowRight, AlertTriangle, CheckCircle2, Zap, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,15 +11,9 @@ import { toast } from 'sonner';
 export default function AITaskDependencyAnalyzer({ taskId, onApplyDependencies }) {
   const [analysis, setAnalysis] = useState(null);
 
-  const { data: allTasks } = useQuery({
-    queryKey: ['tasks'],
-    queryFn: () => base44.entities.Task.list()
-  });
-
   const analyzeMutation = useMutation({
     mutationFn: () => base44.functions.invoke('analyzeTaskDependencies', {
       task_id: taskId,
-      all_tasks: allTasks
     }),
     onSuccess: (response) => {
       setAnalysis(response.data.analysis);
@@ -54,13 +48,13 @@ export default function AITaskDependencyAnalyzer({ taskId, onApplyDependencies }
         {!analysis ? (
           <Button
             onClick={() => analyzeMutation.mutate()}
-            disabled={analyzeMutation.isPending}
+            disabled={analyzeMutation.isPending || !taskId}
             className="w-full bg-gradient-to-r from-indigo-500 to-purple-600"
           >
             {analyzeMutation.isPending ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Analyzing {allTasks?.length || 0} tasks...
+                Analyzing tasks...
               </>
             ) : (
               <>

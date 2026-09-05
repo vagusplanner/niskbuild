@@ -41,6 +41,11 @@ import {
   suggestTaskPriority,
   translateContent,
 } from './handlers/task-and-content-ai';
+import {
+  analyzeTaskDependencies,
+  generateSmartReminders,
+  generateTasksFromGoal,
+} from './handlers/goal-reminders-deps-ai';
 import { onNewUserWelcome, trackAnalytics } from './handlers/stubs';
 
 export const VP_FUNCTION_REGISTRY = new Map<string, VpFunctionHandler>([
@@ -78,6 +83,9 @@ export const VP_FUNCTION_REGISTRY = new Map<string, VpFunctionHandler>([
   ['translateContent', translateContent],
   ['analyzeChatForActions', analyzeChatForActions],
   ['generateRecurringTaskDescription', generateRecurringTaskDescription],
+  ['generateTasksFromGoal', generateTasksFromGoal],
+  ['generateSmartReminders', generateSmartReminders],
+  ['analyzeTaskDependencies', analyzeTaskDependencies],
 ]);
 
 export function getVpFunctionHandler(name: string): VpFunctionHandler | undefined {

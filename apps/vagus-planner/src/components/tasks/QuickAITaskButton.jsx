@@ -18,6 +18,7 @@ export default function QuickAITaskButton({ className }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       setIsOpen(false);
+      toast.success('Tasks created');
     },
     onError: () => toast.error('Failed to create tasks')
   });

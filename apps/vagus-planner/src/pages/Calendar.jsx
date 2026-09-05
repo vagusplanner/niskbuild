@@ -58,6 +58,7 @@ import UnifiedCalendarView from '@/components/calendar/UnifiedCalendarView';
 import { usePublicHolidays } from '@/components/calendar/PublicHolidaysOverlay';
 import TaskTimelineCalendar from '@/components/tasks/TaskTimelineCalendar';
 import AISchedulePlanner from '@/components/calendar/AISchedulePlanner';
+import { toast } from 'sonner';
 
 export default function CalendarPage() {
   const { t } = useTranslation();
@@ -748,9 +749,40 @@ export default function CalendarPage() {
           onDelete={handleDeleteEvent} />
         <SmartReminderBuilder event={selectedEventForReminders} isOpen={showSmartReminders}
           onClose={() => { setShowSmartReminders(false); setSelectedEventForReminders(null); }}
-          onSave={(reminders) => {
-            if (selectedEventForReminders)
-              updateEventMutation.mutate({ id: selectedEventForReminders.id, data: { reminders: reminders.map(r => ({ minutes_before: r.time_before_minutes, type: 'notification' })) } });
+          onSave={async (reminders) => {
+            const event = selectedEventForReminders;
+            if (!event?.start_date && !event?.event_date) {
+              toast.error('Event has no start time for reminders');
+              return;
+            }
+            const start = new Date(event.start_date || event.event_date);
+            if (Number.isNaN(start.getTime())) {
+              toast.error('Event has invalid start time');
+              return;
+            }
+            try {
+              const rows = reminders.map((r) => {
+                const minutes = Number(r.time_before_minutes) || 60;
+                return {
+                  title: r.title || `Reminder: ${event.title}`,
+                  body: r.description || r.title || `Reminder for ${event.title}`,
+                  reminder_type: 'event',
+                  scheduled_at: new Date(start.getTime() - minutes * 60_000).toISOString(),
+                  metadata: {
+                    event_id: event.id,
+                    event_title: event.title,
+                    smart_type: r.type || 'general',
+                    time_before_minutes: minutes,
+                  },
+                };
+              });
+              await base44.entities.Reminder.bulkCreate(rows);
+              queryClient.invalidateQueries({ queryKey: ['reminders'] });
+              toast.success(`Saved ${rows.length} reminder${rows.length === 1 ? '' : 's'}`);
+            } catch (err) {
+              console.error('Failed to save smart reminders', err);
+              toast.error('Failed to save reminders');
+            }
           }} />
         {showAIMeetingAssistant && selectedMeeting && (
           <AIMeetingAssistant meeting={selectedMeeting} onClose={() => { setShowAIMeetingAssistant(false); setSelectedMeeting(null); }} />

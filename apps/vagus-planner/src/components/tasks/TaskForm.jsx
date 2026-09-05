@@ -22,6 +22,8 @@ import AIPrioritySuggester from './AIPrioritySuggester';
 import PrayerAwareTaskScheduler from './PrayerAwareTaskScheduler';
 import { cn } from '@/lib/utils';
 import { MOBILE_OVERLAY_Z } from '@/lib/mobile-layout';
+import { base44 } from '@/api/base44Client';
+import { toast } from 'sonner';
 
 function openNativeDateOrTimePicker(event) {
   const input = event.currentTarget;
@@ -46,6 +48,7 @@ export default function TaskForm({ isOpen, onClose, onSubmit, task = null, showA
     estimated_minutes: '',
     tags: [],
     subtasks: [],
+    dependencies: [],
     notes: '',
     is_recurring: false,
     recurrence_type: null,
@@ -72,6 +75,7 @@ export default function TaskForm({ isOpen, onClose, onSubmit, task = null, showA
         estimated_minutes: task.estimated_minutes || '',
         tags: task.tags || [],
         subtasks: task.subtasks || [],
+        dependencies: task.dependencies || [],
         notes: task.notes || '',
         is_recurring: task.is_recurring || false,
         recurrence_type: task.recurrence_type || null,
@@ -418,18 +422,30 @@ export default function TaskForm({ isOpen, onClose, onSubmit, task = null, showA
               {task?.id && (
                 <AITaskDependencyAnalyzer
                   taskId={task.id}
-                  onApplyDependencies={(analysis) => {
+                  onApplyDependencies={async (analysis) => {
                     const deps = analysis.dependencies?.find(d => d.task_id === task.id);
-                    if (deps?.blocked_by) {
-                      const newDeps = deps.blocked_by.map(dep => ({
-                        task_id: dep.task_id,
-                        task_title: dep.task_title,
-                        type: 'required_by'
-                      }));
-                      setFormData(prev => ({
-                        ...prev,
-                        dependencies: [...(prev.dependencies || []), ...newDeps]
-                      }));
+                    if (!deps?.blocked_by?.length) {
+                      toast.info('No dependencies to apply for this task');
+                      return;
+                    }
+                    const incoming = deps.blocked_by.map(dep => ({
+                      task_id: dep.task_id,
+                      task_title: dep.task_title,
+                      type: 'required_by'
+                    }));
+                    const existing = formData.dependencies || task.dependencies || [];
+                    const seen = new Set(existing.map(d => d.task_id));
+                    const merged = [
+                      ...existing,
+                      ...incoming.filter(d => d.task_id && !seen.has(d.task_id))
+                    ];
+                    setFormData(prev => ({ ...prev, dependencies: merged }));
+                    try {
+                      await base44.entities.Task.update(task.id, { dependencies: merged });
+                      toast.success('Dependencies saved');
+                    } catch (err) {
+                      console.error('Failed to persist dependencies', err);
+                      toast.error('Failed to save dependencies');
                     }
                   }}
                 />
