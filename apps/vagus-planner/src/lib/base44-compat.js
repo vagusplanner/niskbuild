@@ -423,6 +423,7 @@ function mapPayloadToRow(entityName, payload, userId) {
 
     // Build prayed_at from date + optional time, or explicit prayed_at / performed_at.
     // Prefer a real clock time over placeholders like "--:--"
+    const dayRaw = p.date ?? null
     const candidateTimes = [p.performed_at, p.prayer_time, p.due_time]
     let timeRaw = null
     for (const candidate of candidateTimes) {

@@ -79,6 +79,8 @@ export default function PrayerTracker({ settings: propSettings, compact = false 
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prayer-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['prayerLogs'] });
+      queryClient.invalidateQueries({ queryKey: ['sunnah-logs'] });
       toast.success('Prayer logged! 🤲');
       setSelectedPrayer(null);
       resetForm();

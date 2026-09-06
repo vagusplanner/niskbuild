@@ -41,23 +41,36 @@ export default function AIPrayerCoach({ defaultTab = 'coach' }) {
   const [chatHistory, setChatHistory] = useState([]);
   const [asking, setAsking] = useState(false);
 
-  const { data: prayerLogs = [] } = useQuery({
-    queryKey: ['prayerLogsForCoach'],
+  const { data: prayerLogs = [], isLoading: logsLoading, isFetching } = useQuery({
+    queryKey: ['prayerLogs', 'coach'],
     queryFn: async () => {
       try {
-        const logs = await base44.entities.PrayerLog.list('-date', 120);
-        return logs || [];
+        const logs = await base44.entities.PrayerLog.list('-prayed_at', 120);
+        if (Array.isArray(logs) && logs.length) return logs;
       } catch {
-        const logs = await base44.entities.PrayerLog.filter({}).catch(() => []);
-        return logs || [];
+        /* fall through */
+      }
+      try {
+        return (await base44.entities.PrayerLog.list('-created_date', 120)) || [];
+      } catch {
+        return (await base44.entities.PrayerLog.filter({}).catch(() => [])) || [];
       }
     },
+    staleTime: 15_000,
   });
 
   const recentLogs = useMemo(() => {
     const cutoff = format(subDays(new Date(), 30), 'yyyy-MM-dd');
-    return (prayerLogs || []).filter((log) => (log.date || '') >= cutoff);
+    return (prayerLogs || []).filter((log) => {
+      const raw = log.date || log.prayed_at || log.created_date || log.created_at || '';
+      if (!raw) return true; // keep undated logs rather than hiding them
+      const day = String(raw).slice(0, 10);
+      return day >= cutoff;
+    });
   }, [prayerLogs]);
+
+  const hasLogs = recentLogs.length > 0 || prayerLogs.length > 0;
+  const logsForAnalysis = recentLogs.length > 0 ? recentLogs : prayerLogs;
 
   const summary = useMemo(() => {
     const byPrayer = {
@@ -74,7 +87,7 @@ export default function AIPrayerCoach({ defaultTab = 'coach' }) {
     let congregation = 0;
     let onTime = 0;
 
-    for (const log of recentLogs) {
+    for (const log of logsForAnalysis) {
       const status = String(log.status || '').toLowerCase();
       const name = log.prayer_name || log.prayer;
       // Day-row style logs (fajr_status …)
@@ -119,15 +132,15 @@ export default function AIPrayerCoach({ defaultTab = 'coach' }) {
     }
 
     return {
-      total_logged: recentLogs.length,
+      total_logged: logsForAnalysis.length,
       performed,
       missed,
       qada,
       congregation,
       on_time: onTime,
       by_prayer: byPrayer,
-      sample: recentLogs.slice(0, 20).map((p) => ({
-        date: p.date,
+      sample: logsForAnalysis.slice(0, 20).map((p) => ({
+        date: p.date || p.prayed_at,
         prayer: p.prayer_name || p.prayer,
         status: p.status || p.fajr_status,
         fajr: p.fajr_status,
@@ -137,11 +150,11 @@ export default function AIPrayerCoach({ defaultTab = 'coach' }) {
         isha: p.isha_status,
       })),
     };
-  }, [recentLogs]);
+  }, [logsForAnalysis]);
 
   const generateReport = async () => {
-    if (recentLogs.length === 0) {
-      toast.error('Start logging prayers to get AI insights');
+    if (!hasLogs) {
+      toast.error('Log at least one prayer first (Islam → Prayer → Log), then analyze.');
       return;
     }
     setLoading(true);
@@ -257,11 +270,12 @@ Warm, supportive, educational tone. Not a fatwa substitute — note mainstream s
   const analyzeButton = (
     <Button
       onClick={generateReport}
-      disabled={loading || recentLogs.length === 0}
-      className="bg-indigo-600 hover:bg-indigo-700"
+      disabled={loading || logsLoading || isFetching}
+      className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60"
+      title={!hasLogs ? 'Log a prayer first, then tap Analyze' : undefined}
     >
-      {loading ? (
-        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Analyzing...</>
+      {loading || logsLoading ? (
+        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {logsLoading ? 'Loading logs…' : 'Analyzing...'}</>
       ) : (
         <><Sparkles className="w-4 h-4 mr-2" /> {report ? 'Refresh Analysis' : 'Analyze My Prayers'}</>
       )}
@@ -285,10 +299,11 @@ Warm, supportive, educational tone. Not a fatwa substitute — note mainstream s
         </div>
       </CardHeader>
       <CardContent>
-        {recentLogs.length === 0 ? (
-          <div className="text-center py-8">
+        {!hasLogs ? (
+          <div className="text-center py-8 space-y-2">
             <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-3" />
             <p className="text-slate-500">Start logging your prayers to get AI insights!</p>
+            <p className="text-xs text-slate-400">Go to Islam → Prayer → Log, then return here and tap Analyze.</p>
           </div>
         ) : (
           <Tabs value={tab} onValueChange={setTab} className="w-full">

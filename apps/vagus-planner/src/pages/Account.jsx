@@ -4,7 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import ExternalCalendarManager from '@/components/integrations/ExternalCalendarManager';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Settings, CreditCard, Trash2, ArrowLeft, Bell, Calendar, Brain, Heart, Moon, Sparkles, Shield } from 'lucide-react';
+import { User, Settings, CreditCard, Trash2, ArrowLeft, Bell, Calendar, Brain, Heart, Moon, Sparkles, Shield, Target, Zap } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,10 +12,14 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useNavigate } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 import PullToRefresh from '@/components/mobile/PullToRefresh';
 
 import AccountSettings from '@/components/profile/AccountSettings';
 import ProfilePictureUploader from '@/components/profile/ProfilePictureUploader';
+import AIGoalAssistant from '@/components/profile/AIGoalAssistant';
+import GoalsStrip from '@/components/goals/GoalsStrip';
 import EnhancedSubscriptionCard from '@/components/billing/EnhancedSubscriptionCard';
 import BillingHistory from '@/components/billing/BillingHistory';
 import UsageTracker from '@/components/billing/UsageTracker';
@@ -58,8 +62,10 @@ function SettingsSectionLoader() {
 
 export default function Account() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showAIAssistant, setShowAIAssistant] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: user } = useQuery({
@@ -239,6 +245,7 @@ export default function Account() {
 
   const SECTIONS = [
     { id: 'profile', icon: User, label: 'Profile', sub: 'Your account info', gradient: 'from-[#1D6FB8] to-[#29ABE2]', glow: 'shadow-blue-400/30' },
+    { id: 'goals', icon: Target, label: 'Goals & AI Planner', sub: 'Open AI Goal Planner', gradient: 'from-cyan-500 to-blue-600', glow: 'shadow-cyan-400/30' },
     { id: 'settings', icon: Settings, label: 'Settings', sub: 'Notifications, security & preferences', gradient: 'from-[#2D4A65] to-[#4A6E8A]', glow: 'shadow-slate-400/30' },
     { id: 'privacy', icon: Shield, label: 'Privacy & Consent', sub: 'GDPR consents & export', gradient: 'from-teal-600 to-cyan-700', glow: 'shadow-teal-400/30' },
     { id: 'billing', icon: CreditCard, label: 'Billing', sub: 'Subscription & invoices', gradient: 'from-[#4A55A2] to-[#1D6FB8]', glow: 'shadow-indigo-400/30' },
@@ -295,6 +302,38 @@ export default function Account() {
               <div className="space-y-4">
                 <ProfilePictureUploader user={user} />
                 <AccountSettings user={user} onUpdate={(data) => updateProfileMutation.mutate(data)} isSaving={updateProfileMutation.isPending} />
+              </div>
+            )}
+
+            {activeSection === 'goals' && (
+              <div className="space-y-4">
+                <Card className="border-cyan-200 bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-950/20 dark:to-blue-950/20">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Zap className="w-4 h-4 text-cyan-600" /> AI Goal Planner
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-sm text-slate-600 dark:text-slate-300">
+                      Generate plans, run SMART analysis, and Apply → Tasks from the consolidated goal assistant.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        onClick={() => setShowAIAssistant(true)}
+                        className="bg-cyan-600 hover:bg-cyan-700"
+                      >
+                        <Zap className="w-4 h-4 mr-2" /> Open AI Goal Planner
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => navigate(createPageUrl('Goals') + '?tab=planner')}
+                      >
+                        <Target className="w-4 h-4 mr-2" /> Open on Goals page
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+                <GoalsStrip limit={5} linkTo="Goals" />
               </div>
             )}
 
@@ -471,6 +510,10 @@ export default function Account() {
       </div>
     </div>
     <AccountDeletionDialog isOpen={showDeleteDialog} onClose={() => setShowDeleteDialog(false)} userEmail={user?.email} />
+    <AIGoalAssistant
+      isOpen={showAIAssistant}
+      onClose={() => setShowAIAssistant(false)}
+    />
     </PullToRefresh>
   );
 }

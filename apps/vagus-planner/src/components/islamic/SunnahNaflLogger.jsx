@@ -62,6 +62,7 @@ export default function SunnahNaflLogger() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sunnah-logs', today] });
       queryClient.invalidateQueries({ queryKey: ['prayer-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['prayerLogs'] });
       toast.success('Prayer logged! 🤲');
       setShowDialog(false);
       setSelectedPrayer('');
