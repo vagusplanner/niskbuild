@@ -15,6 +15,11 @@ const QUICK_PICKS = [1, 36, 67, 112, 113, 114];
  * Tajweed voice practice for any of the 114 surahs.
  * Loads real Arabic from Al-Quran Cloud; practice one ayah at a time (full-surah mic for Baqarah etc. is impractical).
  */
+function getSpeechRecognitionCtor() {
+  if (typeof window === 'undefined') return null;
+  return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+}
+
 export default function QuranVoiceCheck() {
   const queryClient = useQueryClient();
   const [surahNumber, setSurahNumber] = useState(1);
@@ -25,11 +30,19 @@ export default function QuranVoiceCheck() {
   const [transcript, setTranscript] = useState('');
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState(null);
+  const [speechSupported, setSpeechSupported] = useState(null); // null until mount
   const recognitionRef = useRef(null);
   const audioRef = useRef(null);
 
   const meta = useMemo(() => SURAHS.find((s) => s.number === surahNumber), [surahNumber]);
   const currentAyah = surahData?.ayahs?.find((a) => a.numberInSurah === ayahNumber) || surahData?.ayahs?.[0];
+
+  useEffect(() => {
+    // Genuine Web Speech API gap (not a false-negative): Chrome/Edge desktop OK;
+    // Firefox has no SpeechRecognition; Safari/iOS often missing or unreliable
+    // (iOS Chrome uses WebKit, so same limitation).
+    setSpeechSupported(Boolean(getSpeechRecognitionCtor()));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -55,8 +68,11 @@ export default function QuranVoiceCheck() {
   }, [surahNumber]);
 
   const toggleRecording = () => {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { toast.error('Voice recognition not supported in your browser.'); return; }
+    const SR = getSpeechRecognitionCtor();
+    if (!SR) {
+      toast.error('Voice practice works best in Chrome or Edge on desktop. Type your recitation below instead.');
+      return;
+    }
 
     if (recording) {
       recognitionRef.current?.stop();
@@ -88,11 +104,21 @@ export default function QuranVoiceCheck() {
         return;
       }
       setRecording(false);
+      if (e.error === 'not-allowed') {
+        toast.error('Microphone permission denied. Allow mic access, or type your recitation below.');
+      } else if (e.error !== 'aborted' && e.error !== 'no-speech') {
+        toast.error('Voice recognition failed. Try Chrome or Edge, or type your recitation below.');
+      }
     };
-    r.start();
-    recognitionRef.current = r;
-    setRecording(true);
-    toast.success('Reciting in Arabic — tap stop when done');
+    try {
+      r.start();
+      recognitionRef.current = r;
+      setRecording(true);
+      toast.success('Reciting in Arabic — tap stop when done');
+    } catch {
+      setRecording(false);
+      toast.error('Could not start voice recognition. Type your recitation below instead.');
+    }
   };
 
   const checkTajweed = async () => {
@@ -181,6 +207,17 @@ Evaluate:
         All 114 surahs are available. Practice one ayah at a time (browser speech recognition works best on short passages).
       </p>
 
+      {speechSupported === false && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/50 dark:bg-amber-950/30 p-3 space-y-1">
+          <p className="text-sm font-bold text-amber-900 dark:text-amber-200">Voice practice unavailable in this browser</p>
+          <p className="text-xs text-amber-800/90 dark:text-amber-300/80 leading-relaxed">
+            The Web Speech API is not available here. Voice works best in <strong>Chrome or Edge on desktop</strong>.
+            Safari, Firefox, and most iOS browsers (including Chrome on iPhone) often lack support.
+            You can still practice by typing your recitation below.
+          </p>
+        </div>
+      )}
+
       <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
         {QUICK_PICKS.map((n) => {
           const s = SURAHS.find((x) => x.number === n);
@@ -262,21 +299,39 @@ Evaluate:
         )}
       </div>
 
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={toggleRecording}
-          className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all shadow-md ${recording ? 'bg-red-500 animate-pulse' : 'bg-emerald-500 hover:bg-emerald-600'}`}
-        >
-          {recording ? <MicOff className="w-6 h-6 text-white" /> : <Mic className="w-6 h-6 text-white" />}
-        </button>
-        <div className="flex-1">
-          <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{recording ? 'Reciting — tap to stop' : 'Tap mic to begin reciting'}</p>
-          {transcript && <p className="text-xs text-slate-400 mt-0.5 italic line-clamp-2">{transcript}</p>}
+      {speechSupported !== false && (
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={toggleRecording}
+            className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all shadow-md ${recording ? 'bg-red-500 animate-pulse' : 'bg-emerald-500 hover:bg-emerald-600'}`}
+          >
+            {recording ? <MicOff className="w-6 h-6 text-white" /> : <Mic className="w-6 h-6 text-white" />}
+          </button>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{recording ? 'Reciting — tap to stop' : 'Tap mic to begin reciting'}</p>
+            {transcript && <p className="text-xs text-slate-400 mt-0.5 italic line-clamp-2">{transcript}</p>}
+          </div>
         </div>
+      )}
+
+      <div>
+        <label className="text-[10px] font-bold text-slate-500 uppercase">
+          {speechSupported === false ? 'Type your recitation' : 'Or type / edit transcript'}
+        </label>
+        <textarea
+          value={transcript}
+          onChange={(e) => { setTranscript(e.target.value); setResult(null); }}
+          rows={3}
+          dir="auto"
+          placeholder={speechSupported === false
+            ? 'Type the ayah in Arabic or phonetically in English…'
+            : 'Optional: edit what the mic heard, or type instead…'}
+          className="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+        />
       </div>
 
-      {transcript && !recording && (
+      {transcript.trim() && !recording && (
         <Button onClick={checkTajweed} disabled={checking} className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold hover:opacity-90">
           {checking ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Checking Tajweed...</> : 'Check My Recitation with AI'}
         </Button>

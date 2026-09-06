@@ -118,17 +118,17 @@ function SectionTile({ section, onClick }) {
   const Icon = section.icon;
   const inner = (
     <>
-      <span className="absolute -top-2 -right-2 text-5xl font-black text-white/10 select-none leading-none" aria-hidden>{section.arabic}</span>
-      <div className="relative z-10 flex flex-col gap-2.5">
-        <div className="p-2.5 bg-white/20 backdrop-blur-sm rounded-xl w-fit">
-          <Icon className="w-5 h-5 text-white" />
+      <span className="absolute -top-2 -right-2 text-4xl sm:text-5xl font-black text-white/10 select-none leading-none" aria-hidden>{section.arabic}</span>
+      <div className="relative z-10 flex flex-col gap-1.5 sm:gap-2.5">
+        <div className="p-2 bg-white/20 backdrop-blur-sm rounded-xl w-fit">
+          <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
         </div>
-        <div>
+        <div className="pr-4">
           <p className="text-sm font-bold text-white leading-tight">{section.label}</p>
-          <p className="text-xs text-white/70 mt-0.5">{section.desc}</p>
+          <p className="text-[11px] sm:text-xs text-white/70 mt-0.5 line-clamp-2 leading-snug">{section.desc}</p>
         </div>
       </div>
-      <ChevronRight className="absolute bottom-3 right-3 w-4 h-4 text-white/50" />
+      <ChevronRight className="absolute bottom-2.5 right-2.5 w-3.5 h-3.5 text-white/50" />
     </>
   );
 
@@ -136,7 +136,7 @@ function SectionTile({ section, onClick }) {
     return (
       <Link to={createPageUrl(section.isLink)} className="block h-full w-full min-w-0">
         <motion.div whileHover={{ y: -3, scale: 1.02 }} whileTap={{ scale: 0.98 }}
-          className={`group relative overflow-hidden rounded-2xl p-4 text-left cursor-pointer bg-gradient-to-br ${section.gradient} shadow-lg hover:shadow-xl transition-all w-full min-h-[92px] h-full`}>
+          className={`group relative overflow-hidden rounded-2xl p-3 sm:p-4 text-left cursor-pointer bg-gradient-to-br ${section.gradient} shadow-lg hover:shadow-xl transition-all w-full min-h-[84px] h-full`}>
           {inner}
         </motion.div>
       </Link>
@@ -145,7 +145,7 @@ function SectionTile({ section, onClick }) {
 
   return (
     <motion.button whileHover={{ y: -3, scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={onClick}
-      className={`group relative overflow-hidden rounded-2xl p-4 text-left cursor-pointer bg-gradient-to-br ${section.gradient} shadow-lg hover:shadow-xl transition-all w-full min-h-[92px] h-full min-w-0`}>
+      className={`group relative overflow-hidden rounded-2xl p-3 sm:p-4 text-left cursor-pointer bg-gradient-to-br ${section.gradient} shadow-lg hover:shadow-xl transition-all w-full min-h-[84px] h-full min-w-0`}>
       {inner}
     </motion.button>
   );
@@ -618,7 +618,9 @@ function Islam() {
                         {group.label}
                         <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded-full font-semibold">{visibleSections.length}</span>
                       </p>
-                      <div className="grid gap-2.5 sm:gap-3 grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(10.5rem,1fr))]">
+                      {/* Fixed column counts: always ≥2 on phones (375–414px).
+                          Avoid auto-fit 1fr which stretches 1–2 tiles into huge cards on wide rows. */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
                         {visibleSections.map(s => (
                           <SectionTile key={s.id} section={s} onClick={() => setActiveSection(s.id)} />
                         ))}
