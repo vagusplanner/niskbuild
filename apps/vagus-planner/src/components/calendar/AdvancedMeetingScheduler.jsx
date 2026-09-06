@@ -30,20 +30,29 @@ export default function AdvancedMeetingScheduler({ isOpen, onClose, onSelectTime
 
   const scheduleMutation = useMutation({
     mutationFn: async () => {
-      const { data } = await base44.functions.invoke('advancedMeetingScheduler', {
+      const result = await base44.functions.invoke('advancedMeetingScheduler', {
         constraints,
         attendeeEmails: attendees,
         duration
       });
-      return data;
+      // invoke returns { data: {...} } from the API
+      const payload = result?.data ?? result;
+      if (!payload || (payload.ok === false)) {
+        throw new Error(payload?.error || 'Scheduler returned no data');
+      }
+      return payload;
     },
     onSuccess: (data) => {
-      setSuggestions(data.suggestions || []);
-      setInsights(data.team_insights);
-      toast.success(`Found ${data.suggestions?.length || 0} optimal time slots!`);
+      const slots = Array.isArray(data?.suggestions) ? data.suggestions : [];
+      setSuggestions(slots);
+      setInsights(data?.team_insights ?? null);
+      toast.success(`Found ${slots.length} optimal time slots!`);
     },
     onError: (error) => {
-      toast.error('Failed to find meeting times');
+      const msg = error instanceof Error ? error.message : String(error);
+      toast.error(msg && msg !== 'Failed to find meeting times'
+        ? `Failed to find meeting times: ${msg}`
+        : 'Failed to find meeting times');
       console.error('Scheduler error:', error);
     }
   });
@@ -56,9 +65,15 @@ export default function AdvancedMeetingScheduler({ isOpen, onClose, onSelectTime
   };
 
   const handleSelectSuggestion = (suggestion) => {
+    const start = suggestion.start_time ?? suggestion.start;
+    const end = suggestion.end_time ?? suggestion.end;
+    if (!start) {
+      toast.error('That suggestion has no start time');
+      return;
+    }
     onSelectTime?.({
-      start_date: suggestion.start_time,
-      end_date: suggestion.end_time
+      start_date: start,
+      end_date: end || start
     });
     onClose();
   };
@@ -196,11 +211,19 @@ export default function AdvancedMeetingScheduler({ isOpen, onClose, onSelectTime
                         <div className="flex items-center gap-2 mb-2">
                           <Calendar className="w-4 h-4 text-teal-600" />
                           <span className="font-medium">
-                            {format(new Date(suggestion.start_time), 'EEE, MMM d, yyyy')}
+                            {suggestion.start_time
+                              ? format(new Date(suggestion.start_time), 'EEE, MMM d, yyyy')
+                              : 'Suggested slot'}
                           </span>
                           <Clock className="w-4 h-4 text-slate-400 ml-2" />
                           <span className="text-sm text-slate-600 dark:text-slate-400">
-                            {format(new Date(suggestion.start_time), 'h:mm a')} - {format(new Date(suggestion.end_time), 'h:mm a')}
+                            {suggestion.start_time && !Number.isNaN(new Date(suggestion.start_time).getTime())
+                              ? `${format(new Date(suggestion.start_time), 'h:mm a')}${
+                                  suggestion.end_time && !Number.isNaN(new Date(suggestion.end_time).getTime())
+                                    ? ` - ${format(new Date(suggestion.end_time), 'h:mm a')}`
+                                    : ''
+                                }`
+                              : 'Time TBD'}
                           </span>
                         </div>
                         <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">

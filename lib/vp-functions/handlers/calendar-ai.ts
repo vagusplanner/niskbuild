@@ -336,7 +336,12 @@ export const advancedMeetingScheduler: VpFunctionHandler = async ({ user, payloa
   return {
     ok: true,
     data: {
-      suggestions: core.rawSuggestions ?? [],
+      // Prefer normalized slots (ISO start_time/end_time + score) for the UI.
+      suggestions: (core.normalized ?? []).map((slot) => ({
+        ...slot,
+        quality_score: typeof slot.score === 'number' ? slot.score : 7,
+        reasoning: slot.reasoning,
+      })),
       team_insights: core.teamInsights ?? null,
     },
   };

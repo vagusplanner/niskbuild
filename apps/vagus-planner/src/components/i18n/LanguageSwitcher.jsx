@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Globe, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { base44 } from '@/api/base44Client';
-import { NESTED_MENU_Z } from '@/lib/mobile-layout';
 
 const LANGUAGES = [
   { code: 'en', nativeName: 'English',  flag: '🇬🇧', rtl: false },
@@ -13,11 +12,51 @@ const LANGUAGES = [
   { code: 'ur', nativeName: 'اردو',     flag: '🇵🇰', rtl: true  },
 ];
 
+const MENU_WIDTH = 176; // w-44
+const MENU_Z = 9999;
+
 export default function LanguageSwitcher({ compact = false }) {
   const [open, setOpen] = useState(false);
-  const [anchor, setAnchor] = useState(null);
+  const [coords, setCoords] = useState(null);
+  const triggerRef = useRef(null);
+  const menuRef = useRef(null);
   const currentCode = localStorage.getItem('vagus_language') || 'en';
   const currentLang = LANGUAGES.find(l => l.code === currentCode) || LANGUAGES[0];
+
+  const placeMenu = () => {
+    const el = triggerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const pad = 8;
+    const estimatedHeight = 44 * LANGUAGES.length + 8;
+    const spaceBelow = window.innerHeight - rect.bottom - pad;
+    const openUp = spaceBelow < estimatedHeight && rect.top > spaceBelow;
+
+    let left = rect.left;
+    // Prefer aligning to trigger; clamp into viewport
+    if (left + MENU_WIDTH > window.innerWidth - pad) {
+      left = Math.max(pad, rect.right - MENU_WIDTH);
+    }
+    left = Math.max(pad, Math.min(left, window.innerWidth - MENU_WIDTH - pad));
+
+    const top = openUp
+      ? Math.max(pad, rect.top - estimatedHeight - 4)
+      : Math.min(rect.bottom + 4, window.innerHeight - estimatedHeight - pad);
+
+    setCoords({ top, left, openUp });
+  };
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    placeMenu();
+    const onReposition = () => placeMenu();
+    window.addEventListener('resize', onReposition);
+    window.addEventListener('scroll', onReposition, true);
+    return () => {
+      window.removeEventListener('resize', onReposition);
+      window.removeEventListener('scroll', onReposition, true);
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -54,34 +93,34 @@ export default function LanguageSwitcher({ compact = false }) {
     setTimeout(() => window.location.reload(), 800);
   };
 
-  const toggle = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    setAnchor({
-      top: rect.bottom + 4,
-      right: window.innerWidth - rect.right,
-    });
-    setOpen(p => !p);
-  };
-
-  const menu = open && anchor && typeof document !== 'undefined' && createPortal(
+  const menu = open && coords && typeof document !== 'undefined' && createPortal(
     <>
       <div
         className="fixed inset-0"
-        style={{ zIndex: NESTED_MENU_Z }}
+        style={{ zIndex: MENU_Z }}
         onClick={() => setOpen(false)}
+        aria-hidden
       />
       <div
-        className="fixed w-44 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl py-1 overflow-hidden"
+        ref={menuRef}
+        role="listbox"
+        aria-label="Language"
+        className="fixed rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl py-1"
         style={{
-          zIndex: NESTED_MENU_Z + 1,
-          top: anchor.top,
-          right: anchor.right,
+          zIndex: MENU_Z + 1,
+          top: coords.top,
+          left: coords.left,
+          width: MENU_WIDTH,
+          maxHeight: 'min(320px, calc(100vh - 16px))',
+          overflowY: 'auto',
         }}
       >
         {LANGUAGES.map((lang) => (
           <button
             key={lang.code}
             type="button"
+            role="option"
+            aria-selected={currentCode === lang.code}
             onClick={() => handleSelect(lang)}
             className={cn(
               'w-full flex items-center gap-2.5 px-3 py-2.5 text-sm transition-colors',
@@ -105,9 +144,12 @@ export default function LanguageSwitcher({ compact = false }) {
   return (
     <div className={cn('relative', compact && 'flex-shrink-0')}>
       <button
+        ref={triggerRef}
         type="button"
         title="Change language"
-        onClick={toggle}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        onClick={() => setOpen((p) => !p)}
         className="flex items-center gap-1 p-2 rounded-lg hover:bg-white/10 transition-colors text-white"
       >
         <Globe className="w-4 h-4" />

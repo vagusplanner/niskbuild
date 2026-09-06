@@ -26,7 +26,8 @@ import { format } from 'date-fns';
 import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 
 export default function SmartMeetingScheduler({ onClose }) {
-  const available = requireVpAiFunctions('detectMeetingConflicts');
+  // Gate on the function this UI actually calls (detectMeetingConflicts is unregistered).
+  const available = requireVpAiFunctions('findOptimalMeetingTimes');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [participants, setParticipants] = useState([]);
@@ -44,33 +45,41 @@ export default function SmartMeetingScheduler({ onClose }) {
 
   const findSlotsMutation = useMutation({
     mutationFn: async () => {
-      const { data } = await base44.functions.invoke('findOptimalMeetingTimes', {
+      const result = await base44.functions.invoke('findOptimalMeetingTimes', {
         participants,
         duration,
         dateRange: 7
       });
-      return data;
+      const payload = result?.data ?? result;
+      if (!payload) throw new Error('No meeting times returned');
+      return payload;
     },
     onSuccess: (data) => {
-      setOptimalSlots(data.optimal_slots || []);
+      setOptimalSlots(data.optimal_slots || data.suggestions || []);
       toast.success('Found optimal meeting times!');
     },
-    onError: () => {
-      toast.error('Failed to find meeting times');
+    onError: (error) => {
+      const msg = error instanceof Error ? error.message : String(error);
+      toast.error(msg ? `Failed to find meeting times: ${msg}` : 'Failed to find meeting times');
     }
   });
 
   const checkConflictsMutation = useMutation({
     mutationFn: async (timeSlot) => {
-      const { data } = await base44.functions.invoke('detectMeetingConflicts', {
-        proposedTime: timeSlot.start,
-        participants,
-        duration
-      });
-      return data;
+      // Optional — may be unregistered; fail soft
+      try {
+        const result = await base44.functions.invoke('detectMeetingConflicts', {
+          proposedTime: timeSlot.start,
+          participants,
+          duration
+        });
+        return result?.data ?? result;
+      } catch {
+        return { hasConflicts: false };
+      }
     },
     onSuccess: (data) => {
-      if (data.hasConflicts) {
+      if (data?.hasConflicts) {
         setConflictInfo(data);
         toast.warning('Conflicts detected! See alternatives.');
       } else {

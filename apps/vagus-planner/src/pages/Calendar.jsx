@@ -729,7 +729,10 @@ export default function CalendarPage() {
         )}
         <EventDetailsModal event={selectedEventForDetails} isOpen={showEventDetails}
           onClose={() => { setShowEventDetails(false); setSelectedEventForDetails(null); }}
-          onEdit={(e) => { setShowEventDetails(false); handleEditEvent(e); }}
+          onEdit={() => {
+            setShowEventDetails(false);
+            if (selectedEventForDetails) handleEditEvent(selectedEventForDetails);
+          }}
           onDelete={handleDeleteEvent} />
         <SmartReminderBuilder event={selectedEventForReminders} isOpen={showSmartReminders}
           onClose={() => { setShowSmartReminders(false); setSelectedEventForReminders(null); }}

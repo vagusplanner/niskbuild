@@ -320,7 +320,7 @@ export default function EventDetailsModal({ event, isOpen, onClose, onEdit, onDe
               <Button
                variant="outline"
                className="flex-col h-auto py-3"
-               onClick={onEdit}
+               onClick={() => onEdit?.(event)}
               >
                <Edit className="w-5 h-5 mb-1" />
                <span className="text-xs">Edit Event</span>

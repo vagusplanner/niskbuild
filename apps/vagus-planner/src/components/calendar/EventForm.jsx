@@ -145,16 +145,25 @@ export default function EventForm({ isOpen, onClose, onSave, event, selectedDate
 
   useEffect(() => {
     if (event) {
-      // Parse existing event data
-      const startDate = new Date(event.start_date);
-      const endDate = new Date(event.end_date);
-      
+      // Guard: Edit button used to pass a click event (not the calendar event) —
+      // Invalid Date then crashed format() and blanked the screen.
+      const startRaw = event.start_date ?? event.event_date ?? event.date;
+      const endRaw = event.end_date ?? event.start_date ?? event.event_date ?? event.date;
+      const startDate = startRaw ? new Date(startRaw) : new Date();
+      const endDate = endRaw ? new Date(endRaw) : startDate;
+      const startOk = !Number.isNaN(startDate.getTime());
+      const endOk = !Number.isNaN(endDate.getTime());
+      const safeStart = startOk ? startDate : new Date();
+      const safeEnd = endOk ? endDate : safeStart;
+
       setFormData({
         ...event,
-        date: format(startDate, 'yyyy-MM-dd'),
-        start_time: event.is_all_day ? '' : format(startDate, 'HH:mm'),
-        end_time: event.is_all_day ? '' : format(endDate, 'HH:mm'),
-        reminder_minutes: event.reminders?.[0]?.minutes_before || 30,
+        title: event.title ?? '',
+        description: event.description ?? '',
+        date: format(safeStart, 'yyyy-MM-dd'),
+        start_time: event.is_all_day ? '' : format(safeStart, 'HH:mm'),
+        end_time: event.is_all_day ? '' : format(safeEnd, 'HH:mm'),
+        reminder_minutes: event.reminders?.[0]?.minutes_before || event.reminder_minutes || 30,
         recurrence_interval: event.recurrence_interval || 1,
         recurrence_end_type: event.recurrence_end_type || 'never',
         recurrence_occurrences: event.recurrence_occurrences || 10,
