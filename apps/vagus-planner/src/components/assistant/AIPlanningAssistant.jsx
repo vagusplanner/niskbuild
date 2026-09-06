@@ -88,29 +88,30 @@ function GoalBreakdownMode({ goals, onTasksCreated }) {
     setBreakdown(null);
     setLoading(true);
     try {
-      const res = await base44.integrations.Core.InvokeLLM({
-        prompt: `Break down this goal into actionable tasks: "${goal.title}". Description: "${goal.description || ''}". Target date: "${goal.target_date || 'none'}". Create 5-8 concrete tasks with durations, due dates relative to today (${format(new Date(), 'yyyy-MM-dd')}), and priority levels.`,
-        response_json_schema: {
-          type: 'object',
-          properties: {
-            steps: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  title: { type: 'string' },
-                  description: { type: 'string' },
-                  due_days_from_now: { type: 'number' },
-                  estimated_minutes: { type: 'number' },
-                  priority: { type: 'string' }
-                }
-              }
-            },
-            strategy: { type: 'string' }
-          }
-        }
+      const { data } = await base44.functions.invoke('generateTasksFromGoal', {
+        goal: goal.title,
+        context: [
+          goal.description || '',
+          goal.target_date ? `Target date: ${goal.target_date}` : '',
+          goal.category ? `Category: ${goal.category}` : '',
+        ].filter(Boolean).join('\n'),
       });
-      setBreakdown(res);
+      if (!data?.success || !Array.isArray(data.tasks)) {
+        throw new Error(data?.error || 'No tasks returned from generateTasksFromGoal');
+      }
+      setBreakdown({
+        strategy: (data.tips || []).join(' · ') || 'Generated via generateTasksFromGoal',
+        steps: data.tasks.map((t) => ({
+          title: t.title,
+          description: t.description || '',
+          due_days_from_now: 3,
+          estimated_minutes: t.estimated_minutes || 30,
+          priority: t.priority || 'medium',
+          category: t.category,
+          notes: t.notes,
+          subtasks: t.subtasks,
+        })),
+      });
     } catch (_) { toast.error('Failed to generate breakdown'); }
     setLoading(false);
   };

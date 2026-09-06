@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Sparkles, Loader2, AlertCircle, TrendingUp, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { suggestTaskPriority } from '@/lib/suggest-task-priority';
 
 const priorityConfig = {
   low: { color: 'text-slate-600 bg-slate-100', icon: '○' },
@@ -28,7 +28,6 @@ export default function AIPrioritySuggester({
   const [suggestion, setSuggestion] = useState(null);
 
   useEffect(() => {
-    // Auto-analyze when task details change
     if (title && title.length > 3) {
       const timer = setTimeout(() => {
         handleAnalyze();
@@ -42,7 +41,7 @@ export default function AIPrioritySuggester({
 
     setIsAnalyzing(true);
     try {
-      const { data } = await base44.functions.invoke('suggestTaskPriority', {
+      const data = await suggestTaskPriority({
         title,
         description,
         due_date,
@@ -50,9 +49,9 @@ export default function AIPrioritySuggester({
         category
       });
 
-      if (data?.success) {
+      if (data.success) {
         setSuggestion(data);
-      } else if (data?.limit_exceeded) {
+      } else if (data.limit_exceeded) {
         toast.error(data.error);
       }
     } catch (error) {

@@ -245,15 +245,20 @@ export default function Goals() {
         )}
 
         {activeTab === 'ai' && (
-          <motion.div key="ai" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
-            <h3 className="font-bold text-lg mb-2 flex items-center gap-2">
-              <Zap className="w-5 h-5 text-[#4A55A2]" />
-              AI Goal Assistant
-            </h3>
-            <p className="text-slate-600 dark:text-slate-400 text-sm mb-4">Get personalized recommendations and track progress with AI insights</p>
-            <Button onClick={() => setShowAIAssistant(true)} className="bg-[#4A55A2] hover:bg-[#1D6FB8]">
-              <Zap className="w-4 h-4 mr-2" /> Open AI Assistant
-            </Button>
+          <motion.div key="ai" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 space-y-4">
+            <div>
+              <h3 className="font-bold text-lg mb-2 flex items-center gap-2">
+                <Zap className="w-5 h-5 text-[#4A55A2]" />
+                AI Goal Assistant
+              </h3>
+              <p className="text-slate-600 dark:text-slate-400 text-sm mb-4">
+                Same planner as the Plan tab — generate plans, SMART analysis, and Apply → Tasks
+              </p>
+              <Button onClick={() => setShowAIAssistant(true)} className="bg-[#4A55A2] hover:bg-[#1D6FB8]">
+                <Zap className="w-4 h-4 mr-2" /> Open AI Goal Planner
+              </Button>
+            </div>
+            <AIGoalPlanner />
           </motion.div>
         )}
       </AnimatePresence>
@@ -274,7 +279,15 @@ export default function Goals() {
           updateMutation.mutate({ id: updated.id, data: updated })
         }}
       />
-      <AIGoalAssistant isOpen={showAIAssistant} onClose={() => setShowAIAssistant(false)} />
+      <AIGoalAssistant
+        isOpen={showAIAssistant}
+        onClose={() => setShowAIAssistant(false)}
+        goal={selectedGoal}
+        onUpdateGoal={(patch) => {
+          if (!selectedGoal?.id) return;
+          updateMutation.mutate({ id: selectedGoal.id, data: { ...selectedGoal, ...patch } });
+        }}
+      />
     </div>
     </PullToRefresh>
   );

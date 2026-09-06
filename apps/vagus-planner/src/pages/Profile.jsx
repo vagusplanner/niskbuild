@@ -26,7 +26,6 @@ import { toast } from "sonner";
 import AIGoalAssistant from '@/components/profile/AIGoalAssistant';
 import TaskCard from '@/components/tasks/TaskCard';
 import TaskForm from '@/components/tasks/TaskForm';
-import BulkReprioritizeButton from '@/components/tasks/BulkReprioritizeButton';
 import PageAssistant from '@/components/assistant/PageAssistant';
 import RelatedFeaturesPanel from '@/components/navigation/RelatedFeaturesPanel';
 import UnifiedGamificationTracker from '../components/gamification/UnifiedGamificationTracker';

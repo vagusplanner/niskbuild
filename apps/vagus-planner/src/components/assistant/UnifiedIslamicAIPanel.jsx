@@ -6,7 +6,6 @@ import { Sparkles, ChevronDown, Moon, Brain, BookOpen, Heart, Calculator } from 
 import AIHadithGenerator from '@/components/islamic/AIHadithGenerator';
 import AIContextualDuaSuggester from '@/components/islamic/AIContextualDuaSuggester';
 import AIPrayerCoach from '@/components/islamic/AIPrayerCoach';
-import PrayerAIInsights from '@/components/islamic/PrayerAIInsights';
 import PersonalizedIslamicAI from '@/components/islamic/PersonalizedIslamicAI';
 import AIZakatRecommendations from '@/components/islamic/AIZakatRecommendations';
 import AISadaqahTracker from '@/components/islamic/AISadaqahTracker';
@@ -83,7 +82,6 @@ export default function UnifiedIslamicAIPanel() {
 
               <TabsContent value="prayer" className="p-4 pt-0 space-y-4">
                 <AIPrayerCoach />
-                <PrayerAIInsights />
               </TabsContent>
 
               <TabsContent value="learning" className="p-4 pt-0 space-y-4">
