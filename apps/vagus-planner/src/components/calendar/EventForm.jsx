@@ -119,15 +119,22 @@ export default function EventForm({ isOpen, onClose, onSave, event, selectedDate
       );
       return { previous };
     },
-    onError: (_err, _vars, context) => {
+    onError: (err, _vars, context) => {
       queryClient.setQueryData(['events'], context?.previous);
-      toast.error('Failed to save event');
+      const detail = err?.message || err?.error_description || '';
+      console.error('Event save failed:', err);
+      toast.error(detail ? `Failed to save event: ${detail}` : 'Failed to save event');
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['events'] });
     },
     onSuccess: (saved) => {
-      onSave(saved);
+      // Parent must NOT re-create/re-update — same false-success / double-save bug as HolidayForm.
+      try {
+        onSave?.(saved);
+      } catch (e) {
+        console.warn('EventForm onSave side-effect failed', e);
+      }
     }
   });
 
@@ -1044,11 +1051,14 @@ Return the most appropriate reminder time in minutes and a brief reason.`,
                 Cancel
               </Button>
               <Button
+                type="button"
                 onClick={handleSubmit}
-                disabled={editLocked}
+                disabled={editLocked || saveEventMutation.isPending}
                 className="flex-1 h-11 bg-teal-600 hover:bg-teal-700 text-white"
               >
-                {event ? 'Update Event' : 'Create Event'}
+                {saveEventMutation.isPending
+                  ? (event ? 'Updating…' : 'Creating…')
+                  : (event ? 'Update Event' : 'Create Event')}
               </Button>
             </div>
 

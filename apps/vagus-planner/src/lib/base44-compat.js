@@ -510,15 +510,22 @@ function mapPayloadToRow(entityName, payload, userId) {
       storage_provider: p.storage_provider ?? 'supabase',
     }
     if (userId) row.user_id = userId
-    if (p.event_id != null || p.shared_in_event != null) {
-      row.event_id = p.event_id ?? p.shared_in_event
+    const eventId = p.event_id ?? p.shared_in_event
+    if (eventId != null && String(eventId).trim() !== '') {
+      row.event_id = String(eventId).trim()
     }
-    if (p.chat_id != null) row.chat_id = p.chat_id
+    if (p.chat_id != null && String(p.chat_id).trim() !== '') {
+      row.chat_id = String(p.chat_id).trim()
+    }
     if (p.file_type != null) row.file_type = p.file_type
-    if (p.file_size != null) row.file_size = p.file_size
-    if (p.storage_path != null) row.storage_path = p.storage_path
+    if (p.file_size != null) {
+      const n = Number(p.file_size)
+      if (Number.isFinite(n)) row.file_size = Math.round(n)
+    }
+    if (p.storage_path != null && String(p.storage_path).trim() !== '') {
+      row.storage_path = String(p.storage_path).trim()
+    }
     if (p.file_url != null) row.file_url = p.file_url
-    row.updated_at = new Date().toISOString()
     return row
   }
 
@@ -1457,6 +1464,12 @@ export const base44 = {
             }
           }
           if (error) throw error
+          // Empty representation = insert didn't stick (RLS/select) — never treat as success.
+          if (!data?.[0]) {
+            throw new Error(
+              `${entityName} create returned no row — save was not confirmed. Check permissions and try again.`
+            )
+          }
           return mapRowFromDb(entityName, data[0])
         },
         bulkCreate: async (payloads) => {
@@ -1515,6 +1528,11 @@ export const base44 = {
             ;({ data, error } = await tableFrom(tableName).update(fallback).eq('id', id).select())
           }
           if (error) throw error
+          if (!data?.[0]) {
+            throw new Error(
+              `${entityName} update returned no row — save was not confirmed. Check permissions and try again.`
+            )
+          }
           return mapRowFromDb(entityName, data[0])
         },
         delete: async (id) => {

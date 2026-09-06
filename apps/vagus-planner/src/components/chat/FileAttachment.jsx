@@ -7,6 +7,10 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+function isNonEmptyId(value) {
+  return value != null && String(value).trim() !== '';
+}
+
 export default function FileAttachment({ chatId, eventId, onFileShared }) {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = React.useRef(null);
@@ -15,25 +19,61 @@ export default function FileAttachment({ chatId, eventId, onFileShared }) {
     const file = event.target.files[0];
     if (!file) return;
 
+    // Event attachments must be linked to a real event id — never toast success for orphans.
+    if (!isNonEmptyId(eventId) && !isNonEmptyId(chatId)) {
+      toast.error('Save the event first, then attach a file');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     setUploading(true);
+    let uploadedPath = null;
     try {
       const uploaded = await base44.integrations.Core.UploadFile(file);
+      uploadedPath = uploaded?.storage_path || uploaded?.path || null;
+      if (!uploadedPath) {
+        throw new Error('Upload did not return a storage path');
+      }
+      if (!uploaded?.file_url) {
+        throw new Error('Upload did not return a file URL');
+      }
+
       const record = await base44.entities.SharedFile.create({
-        event_id: eventId || null,
-        chat_id: chatId || null,
-        shared_in_event: eventId || null,
+        event_id: isNonEmptyId(eventId) ? String(eventId).trim() : null,
+        chat_id: isNonEmptyId(chatId) ? String(chatId).trim() : null,
+        shared_in_event: isNonEmptyId(eventId) ? String(eventId).trim() : null,
         file_name: file.name,
         file_type: file.type,
         file_size: file.size,
-        storage_path: uploaded.storage_path || uploaded.path,
+        storage_path: uploadedPath,
         file_url: uploaded.file_url,
         storage_provider: 'supabase',
       });
+
+      // Success only after a real persisted row linked to this event/chat.
+      if (!record?.id) {
+        throw new Error('Attachment record was not saved');
+      }
+      if (isNonEmptyId(eventId)) {
+        const linked = record.event_id ?? record.shared_in_event;
+        if (String(linked || '') !== String(eventId).trim()) {
+          throw new Error('File uploaded but was not linked to this event');
+        }
+      }
+
       toast.success('File attached');
-      onFileShared && onFileShared(record);
+      onFileShared?.(record);
     } catch (error) {
-      console.error(error);
+      console.error('File attachment failed:', error);
       toast.error(error?.message || 'Failed to upload file');
+      // Best-effort cleanup of orphaned storage object if DB link failed.
+      if (uploadedPath) {
+        try {
+          await base44.storage.from('uploads').remove([uploadedPath]);
+        } catch (cleanupErr) {
+          console.warn('Could not clean up uploaded file after failed attach:', cleanupErr);
+        }
+      }
     } finally {
       setUploading(false);
       if (fileInputRef.current) {

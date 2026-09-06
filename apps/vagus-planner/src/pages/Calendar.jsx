@@ -330,14 +330,15 @@ export default function CalendarPage() {
   });
 
   // ── Handlers ───────────────────────────────────────────────────────────────
-  const handleSaveEvent = (eventData) => {
-    if (editingEvent) {
-      updateEventMutation.mutate({ id: editingEvent.id, data: eventData });
-    } else {
-      createEventMutation.mutate(eventData);
+  // EventForm owns create/update. This callback is side-effects only (close + refresh).
+  const handleSaveEvent = (saved) => {
+    queryClient.invalidateQueries({ queryKey: eventsQueryKey });
+    setShowEventForm(false);
+    setEditingEvent(null);
+    if (!editingEvent && saved) {
       base44.functions.invoke('trackAnalytics', {
         event_type: 'event_created', category: 'events',
-        metadata: { event_category: eventData.category }
+        metadata: { event_category: saved.category }
       }).catch(() => {});
     }
   };

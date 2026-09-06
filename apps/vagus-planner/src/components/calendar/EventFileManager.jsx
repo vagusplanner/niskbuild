@@ -9,11 +9,21 @@ import { FileText, Plus } from 'lucide-react';
 export default function EventFileManager({ eventId }) {
   const [showUpload, setShowUpload] = useState(false);
 
-  const { data: files = [], refetch } = useQuery({
+  const { data: files = [], refetch, isFetching } = useQuery({
     queryKey: ['event-files', eventId],
     queryFn: () => base44.entities.SharedFile.filter({ shared_in_event: eventId }),
     enabled: !!eventId
   });
+
+  if (!eventId) {
+    return (
+      <Card>
+        <CardContent className="py-6 text-center text-sm text-slate-500">
+          Save the event first to attach documents.
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -25,8 +35,8 @@ export default function EventFileManager({ eventId }) {
           </CardTitle>
           <FileAttachment 
             eventId={eventId} 
-            onFileShared={() => {
-              refetch();
+            onFileShared={async () => {
+              await refetch();
               setShowUpload(false);
             }}
           />
@@ -42,7 +52,9 @@ export default function EventFileManager({ eventId }) {
         ) : (
           <div className="text-center py-8">
             <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <p className="text-sm text-slate-600 mb-3">No documents attached</p>
+            <p className="text-sm text-slate-600 mb-3">
+              {isFetching ? 'Loading attachments…' : 'No documents attached'}
+            </p>
             <p className="text-xs text-slate-500">
               Click the paperclip icon to attach a file
             </p>
