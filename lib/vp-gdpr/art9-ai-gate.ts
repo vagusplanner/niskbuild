@@ -64,12 +64,19 @@ export async function verifyArt9AiAccess(
 
   try {
     const admin = createAdminClient();
-    const { data: settingsRows } = await admin
+    const { data: settingsRows, error: settingsError } = await admin
       .schema('firstparty')
       .from('vp_user_settings')
       .select('preferences')
       .eq('user_id', userId)
+      .order('updated_at', { ascending: false })
       .limit(1);
+
+    // Do not treat a failed read as "consent withdrawn" — that produced false
+    // blocks that disagreed with Privacy & Consent (which reads via the client).
+    if (settingsError) {
+      throw settingsError;
+    }
 
     const consents = parseVpGdprConsents(settingsRows?.[0]?.preferences);
 

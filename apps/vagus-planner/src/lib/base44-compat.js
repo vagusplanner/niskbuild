@@ -97,6 +97,50 @@ function tableFrom(tableName) {
   return supabase.schema(FIRSTPARTY_SCHEMA).from(tableName)
 }
 
+/**
+ * Personal entities that callers treat as "mine" (almost always via list()[0]).
+ * Platform-owner RLS can return every row on these tables; without an explicit
+ * user_id filter the UI can read/update another user's row (e.g. Art.9 consent
+ * appearing active in Privacy while the LLM gate reads the owner's empty row).
+ */
+const CURRENT_USER_SCOPED_ENTITIES = new Set([
+  'UserSettings',
+  'Task',
+  'Category',
+  'Event',
+  'Holiday',
+  'Reflection',
+  'Expense',
+  'Goal',
+  'LifeGoal',
+  'PrayerLog',
+  'Period',
+  'IslamicEvent',
+  'ConflictResolution',
+  'Habit',
+  'HabitCompletion',
+  'Meeting',
+  'Subscription',
+  'Invoice',
+  'Usage',
+  'NotificationPreference',
+  'Chat',
+  'Hadith',
+  'EventEdit',
+  'EventLock',
+  'SyncState',
+  'Reminder',
+])
+
+async function scopeQueryToCurrentUser(query, entityName, criteria = {}) {
+  if (!CURRENT_USER_SCOPED_ENTITIES.has(entityName)) return query
+  // Honor an explicit caller filter (admin/debug tools may pass user_id).
+  if (criteria?.user_id != null || criteria?.userId != null) return query
+  const userId = await getCurrentUserId()
+  if (!userId) return query
+  return query.eq('user_id', userId)
+}
+
 // Base44 field names → Supabase column names
 const COLUMN_ALIASES = {
   updated_date: 'updated_at',
@@ -1261,9 +1305,10 @@ function resolveEntityKey(name) {
   return null
 }
 
-function buildListQuery(tableName, entityName, args) {
+async function buildListQuery(tableName, entityName, args) {
   const { filters, sortField, limit } = resolveListArgs(args)
   let query = tableFrom(tableName).select('*')
+  query = await scopeQueryToCurrentUser(query, entityName, filters)
   query = applyFilters(query, filters, entityName)
   query = applySort(query, sortField, entityName)
   if (typeof limit === 'number') {
@@ -1587,6 +1632,7 @@ export const base44 = {
         },
         filter: async (criteria = {}, sortField, limit) => {
           let query = tableFrom(tableName).select('*')
+          query = await scopeQueryToCurrentUser(query, entityName, criteria)
           query = applyFilters(query, criteria, entityName)
           if (typeof sortField === 'string') {
             query = applySort(query, sortField, entityName)
@@ -1681,6 +1727,12 @@ export const base44 = {
               .eq('id', safeId)
               .single()
             if (readError) throw readError
+            const ownerId = await getCurrentUserId()
+            if (ownerId && existing?.user_id && existing.user_id !== ownerId) {
+              throw new Error(
+                'UserSettings update refused: row belongs to another user (platform-owner RLS must not rewrite other users consents/settings)'
+              )
+            }
             row = mapUserSettingsPayloadToRow(payload, existing, null)
           } else if (entityName === 'NotificationPreference') {
             const { data: existing, error: readError } = await tableFrom(tableName)
@@ -1690,6 +1742,21 @@ export const base44 = {
             if (readError) throw readError
             row = mapNotificationPreferencePayloadToRow(payload, existing, null)
           } else {
+            if (CURRENT_USER_SCOPED_ENTITIES.has(entityName)) {
+              const ownerId = await getCurrentUserId()
+              if (ownerId) {
+                const { data: existing, error: readError } = await tableFrom(tableName)
+                  .select('user_id')
+                  .eq('id', safeId)
+                  .maybeSingle()
+                if (readError) throw readError
+                if (existing?.user_id && existing.user_id !== ownerId) {
+                  throw new Error(
+                    `${entityName} update refused: row belongs to another user`
+                  )
+                }
+              }
+            }
             row = mapPayloadToRow(entityName, payload, null)
           }
           let { data, error } = await tableFrom(tableName)

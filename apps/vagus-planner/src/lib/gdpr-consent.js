@@ -27,15 +27,33 @@ export function localConsentKey(email) {
 }
 
 export function parseConsentsFromSettings(settingsRecord) {
-  const prefs = settingsRecord?.preferences;
-  const raw =
-    prefs && typeof prefs === 'object' && !Array.isArray(prefs)
-      ? prefs[VP_CONSENT_PREFS_KEY]
+  if (!settingsRecord || typeof settingsRecord !== 'object') {
+    return { ...DEFAULT_CONSENTS };
+  }
+  const prefs =
+    settingsRecord.preferences &&
+    typeof settingsRecord.preferences === 'object' &&
+    !Array.isArray(settingsRecord.preferences)
+      ? settingsRecord.preferences
       : null;
-  if (!raw || typeof raw !== 'object') return { ...DEFAULT_CONSENTS };
+  // Prefer preferences.gdpr_consents (DB shape). Fall back to top-level
+  // gdpr_consents — mapUserSettingsFromRow spreads prefs onto the entity.
+  const raw =
+    (prefs && typeof prefs[VP_CONSENT_PREFS_KEY] === 'object'
+      ? prefs[VP_CONSENT_PREFS_KEY]
+      : null) ||
+    (typeof settingsRecord[VP_CONSENT_PREFS_KEY] === 'object'
+      ? settingsRecord[VP_CONSENT_PREFS_KEY]
+      : null);
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { ...DEFAULT_CONSENTS };
+  }
   return {
     ...DEFAULT_CONSENTS,
     ...raw,
+    // Normalize Art.9 flags to strict booleans so UI/server agree.
+    art9_religious_accepted: raw.art9_religious_accepted === true,
+    art9_health_accepted: raw.art9_health_accepted === true,
     version: typeof raw.version === 'number' ? raw.version : VP_CONSENT_VERSION,
   };
 }
@@ -59,8 +77,22 @@ export function canSendArt9ToAi(consents, category) {
  * Persist consents to UserSettings + localStorage mirror for fast Layout gating.
  */
 export async function saveGdprConsents(partial, { email } = {}) {
-  const list = await base44.entities.UserSettings.list();
-  const existing = list?.[0] ?? null;
+  // list()/filter are scoped to the signed-in user (critical for platform owners
+  // whose RLS can otherwise surface every vp_user_settings row).
+  let existing = null;
+  try {
+    const me = await base44.auth.me();
+    if (me?.id) {
+      const scoped = await base44.entities.UserSettings.filter({ user_id: me.id });
+      existing = scoped?.[0] ?? null;
+    }
+  } catch {
+    // fall through
+  }
+  if (!existing) {
+    const list = await base44.entities.UserSettings.list();
+    existing = list?.[0] ?? null;
+  }
   const current = parseConsentsFromSettings(existing);
   const next = {
     ...current,
