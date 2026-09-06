@@ -1,5 +1,9 @@
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44, getVpApiFetchHeaders } from '@/api/base44Client';
+
+const NAV_ISLAMIC_MODE_KEY = 'vp_nav_islamic_mode';
+const NAV_ISLAMIC_PAID_KEY = 'vp_nav_islamic_paid';
 
 function readLocalEditionPreference() {
   try {
@@ -10,6 +14,22 @@ function readLocalEditionPreference() {
     // ignore
   }
   return null;
+}
+
+function readStickyFlag(key) {
+  try {
+    return sessionStorage.getItem(key) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writeStickyFlag(key, value) {
+  try {
+    sessionStorage.setItem(key, value ? '1' : '0');
+  } catch {
+    // ignore
+  }
 }
 
 function resolveEditionPreference(userSettings) {
@@ -45,6 +65,9 @@ async function fetchIslamicAccess() {
  * (GET /api/vagus-planner/islamic-access). localStorage / edition preference
  * never unlocks Islamic Edition features by themselves — they only choose UI
  * mode for users who already have paid access.
+ *
+ * Nav uses sticky session flags so Layout remounts on route change don't briefly
+ * hide the Islam item while islamic-access / settings re-subscribe.
  */
 export function useIslamicEdition() {
   const settingsQuery = useQuery({
@@ -68,28 +91,43 @@ export function useIslamicEdition() {
     retry: 1,
   });
 
-  const isLoading = settingsQuery.isLoading || accessQuery.isLoading;
+  // Only "loading" when we have nothing cached yet — background refetch must not hide nav.
+  const isLoading =
+    (settingsQuery.isPending && settingsQuery.data === undefined) ||
+    (accessQuery.isPending && accessQuery.data === undefined);
+
   const userSettings = settingsQuery.data?.[0] ?? null;
   const hasPaidIslamicAccess =
     accessQuery.data?.hasPaidIslamicAccess === true ||
     accessQuery.data?.platformOwnerBypass === true;
 
   const editionPreference = resolveEditionPreference(userSettings);
-  // Preference only applies when entitled — otherwise force standard for UI.
   const edition = hasPaidIslamicAccess ? editionPreference : 'standard';
-  /** User has Islamic Edition entitlement (paid plan or platform-owner bypass). */
   const isIslamicEdition = hasPaidIslamicAccess;
-  /** Active Islamic UI mode — entitlement AND user chose Islamic edition in settings. */
   const islamicMode = hasPaidIslamicAccess && edition === 'islamic';
+
+  useEffect(() => {
+    if (isLoading) return;
+    writeStickyFlag(NAV_ISLAMIC_PAID_KEY, hasPaidIslamicAccess);
+    writeStickyFlag(NAV_ISLAMIC_MODE_KEY, islamicMode);
+  }, [isLoading, hasPaidIslamicAccess, islamicMode]);
+
+  const stickyPaid = readStickyFlag(NAV_ISLAMIC_PAID_KEY);
+  const stickyMode = readStickyFlag(NAV_ISLAMIC_MODE_KEY);
+  // While entitlement re-fetches on Layout remount, keep last-known nav visibility.
+  const islamicModeForNav = isLoading ? stickyPaid && stickyMode : islamicMode;
+  const islamicEditionLoading = isLoading && !(stickyPaid && stickyMode);
 
   return {
     isIslamicEdition,
     hasPaidIslamicAccess,
     edition,
     editionPreference,
-    isLoading,
+    isLoading: islamicEditionLoading,
     userSettings,
     islamicMode,
+    /** Prefer this for sidebar / mobile tab visibility (anti-flicker). */
+    islamicModeForNav,
     subscriptionPlan: accessQuery.data?.plan ?? null,
     subscriptionStatus: accessQuery.data?.status ?? null,
     accessSource: accessQuery.data?.source ?? null,

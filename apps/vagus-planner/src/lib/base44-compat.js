@@ -370,7 +370,39 @@ function mapPayloadToRow(entityName, payload, userId) {
       content: p.content ?? p.description ?? p.title ?? '',
     }
     if (userId) row.user_id = userId
-    if (p.date != null) row.date = p.date
+    // Prefer date-only → timestamptz midnight; accept full ISO too.
+    const rawDate = p.date ?? p.entry_date
+    if (rawDate != null && String(rawDate).trim() !== '') {
+      const s = String(rawDate).trim()
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+        row.date = `${s}T12:00:00.000Z`
+      } else {
+        const d = new Date(s)
+        if (!Number.isNaN(d.getTime())) row.date = d.toISOString()
+      }
+    }
+    // Schema is content+date only — pack UI fields into a JSON envelope in content.
+    const meta = {}
+    for (const key of [
+      'title',
+      'mood',
+      'mood_rating',
+      'tags',
+      'category',
+      'gratitude_items',
+      'wins',
+      'challenges',
+      'lessons_learned',
+      'tomorrow_focus',
+      'is_private',
+      'word_count',
+    ]) {
+      if (p[key] != null) meta[key] = p[key]
+    }
+    if (Object.keys(meta).length > 0) {
+      const body = typeof row.content === 'string' ? row.content : ''
+      row.content = JSON.stringify({ __vp_journal: 1, meta, body })
+    }
     return row
   }
 
@@ -679,7 +711,10 @@ function mapUserSettingsPayloadToRow(payload, existingRow, userId) {
   }
 
   if ('edition' in p) {
+    // Prefer real column when present; always mirror into preferences for legacy schemas.
     row.edition = p.edition
+    prefs.edition = p.edition
+    prefs.islamic_mode = p.edition === 'islamic'
     delete p.edition
   }
   if ('timezone' in p) {
@@ -705,11 +740,49 @@ function mapUserSettingsFromRow(row) {
   return {
     ...row,
     ...prefs,
+    // Column wins when present; preferences used as fallback for older rows.
+    edition: row.edition ?? prefs.edition ?? null,
     notifications_enabled: row.push_notifications_enabled !== false,
     email_notifications: row.email_notifications_enabled !== false,
     notify_prayer: row.prayer_reminders_enabled !== false,
     notify_events: row.event_reminders_enabled !== false,
     notify_tasks: row.task_due_reminders_enabled !== false,
+  }
+}
+
+function toDateOnlyString(value) {
+  if (value == null || value === '') return null
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value.trim())) {
+    return value.trim()
+  }
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toISOString().slice(0, 10)
+}
+
+function mapReflectionFromRow(row) {
+  if (!row) return row
+  let body = row.content ?? ''
+  let meta = {}
+  if (typeof body === 'string' && body.trim().startsWith('{')) {
+    try {
+      const parsed = JSON.parse(body)
+      if (parsed && parsed.__vp_journal === 1) {
+        meta = parsed.meta && typeof parsed.meta === 'object' ? parsed.meta : {}
+        body = typeof parsed.body === 'string' ? parsed.body : ''
+      }
+    } catch {
+      // plain text content
+    }
+  }
+  const date = toDateOnlyString(row.date ?? row.created_at)
+  return {
+    ...row,
+    ...meta,
+    content: body,
+    date,
+    title: meta.title ?? row.title ?? '',
+    mood: meta.mood ?? row.mood ?? '',
   }
 }
 
@@ -728,6 +801,10 @@ function mapRowFromDb(entityName, row) {
       start_date: start,
       end_date: row.end_date ?? start,
     }
+  }
+
+  if (entityName === 'Reflection') {
+    return mapReflectionFromRow(row)
   }
 
   if (entityName === 'Task') {

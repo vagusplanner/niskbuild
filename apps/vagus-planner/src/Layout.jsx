@@ -290,6 +290,7 @@ export default function Layout({ children, currentPageName }) {
     isIslamicEdition = false,
     isLoading: islamicEditionLoading = false,
     islamicMode = false,
+    islamicModeForNav = false,
     userSettings = null,
   } = useIslamicEdition();
 
@@ -307,8 +308,8 @@ export default function Layout({ children, currentPageName }) {
   usePrayerTimeNotifications({ settings: userSettings ?? settings[0] ?? null, islamicMode });
 
   // Build mobile tabs dynamically — always 5 slots, Islam replaces Travel ONLY when confirmed Islamic Edition
-  // During loading, show Travel to avoid flicker
-  const showIslamTab = !islamicEditionLoading && islamicMode;
+  // Use islamicModeForNav so Layout remounts on Calendar/etc don't briefly hide Islam.
+  const showIslamTab = !islamicEditionLoading && islamicModeForNav;
   // Mobile: 5 main tabs only (no nested menus)
   const MOBILE_TAB_ITEMS = [
     { name: t('nav.home'),     icon: Home,          page: 'Dashboard' },
@@ -552,7 +553,7 @@ export default function Layout({ children, currentPageName }) {
             <span className="text-sm font-medium flex-1" style={{color:'#D4E0EC'}}>Search everything…</span>
             <span className="text-[10px] font-mono" style={{color:'rgba(232,184,75,0.6)'}}>⌘K</span>
           </button>
-          {!islamicEditionLoading && islamicMode && (
+          {!islamicEditionLoading && islamicModeForNav && (
             <button
               onClick={() => setShowHalalFinder(true)}
               className="w-full text-left px-3 py-2.5 rounded-lg transition-all group flex items-center gap-2"
@@ -571,7 +572,7 @@ export default function Layout({ children, currentPageName }) {
             
             if (!item.page) return null;
             if (item.adminOnly && role !== 'admin') return null;
-            if (item.islamicOnly && (islamicEditionLoading || !islamicMode)) return null;
+            if (item.islamicOnly && (islamicEditionLoading || !islamicModeForNav)) return null;
             
             return (
               <Link
@@ -638,7 +639,7 @@ export default function Layout({ children, currentPageName }) {
             >
               <Search className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </button>
-            {!islamicEditionLoading && islamicMode && (
+            {!islamicEditionLoading && islamicModeForNav && (
               <button
                 onClick={() => setShowHalalFinder(true)}
                 className="p-1.5 sm:p-2 rounded-lg hover:bg-white/10 transition-colors no-select min-w-[40px] min-h-[40px] flex items-center justify-center"
@@ -689,7 +690,7 @@ export default function Layout({ children, currentPageName }) {
 
                 if (!item.page) return null;
                 if (item.adminOnly && role !== 'admin') return null;
-                if (item.islamicOnly && (islamicEditionLoading || !islamicMode)) return null;
+                if (item.islamicOnly && (islamicEditionLoading || !islamicModeForNav)) return null;
 
                 return (
                   <Link

@@ -15,13 +15,32 @@ const MOOD_EMOJI = {
   sad: '😢', frustrated: '😤', reflective: '🤔', motivated: '💪', tired: '😴'
 };
 
+function toDateKey(value) {
+  if (value == null || value === '') return null;
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value.trim())) {
+    return value.trim();
+  }
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString().slice(0, 10);
+}
+
+function formatEntryDate(value) {
+  const key = toDateKey(value);
+  if (!key) return '';
+  try {
+    return format(new Date(`${key}T12:00:00`), 'EEE, MMM d');
+  } catch {
+    return key;
+  }
+}
+
 function JournalStreak({ entries }) {
-  const today = new Date().toISOString().split('T')[0];
   let streak = 0;
   const d = new Date();
-  while (true) {
+  while (streak < 3650) {
     const ds = d.toISOString().split('T')[0];
-    if (!entries.some(e => e.date === ds)) break;
+    if (!entries.some(e => toDateKey(e.date) === ds)) break;
     streak++;
     d.setDate(d.getDate() - 1);
   }
@@ -44,7 +63,7 @@ export default function JournalWellnessPanel() {
   });
 
   const today = new Date().toISOString().split('T')[0];
-  const todayEntry = entries.find(e => e.date === today);
+  const todayEntry = entries.find(e => toDateKey(e.date) === today);
   const recent = entries.slice(0, 4);
 
   const onSaved = () => {
@@ -102,14 +121,14 @@ export default function JournalWellnessPanel() {
         </div>
       ) : (
         <div className="space-y-2">
-          {recent.filter(e => e.date !== today).slice(0, 3).map(e => (
+          {recent.filter(e => toDateKey(e.date) !== today).slice(0, 3).map(e => (
             <motion.div key={e.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
               <Link to={createPageUrl('Journal')}>
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-white border border-slate-100 hover:border-slate-200 hover:shadow-sm transition-all">
                   <span className="text-lg flex-shrink-0">{MOOD_EMOJI[e.mood] || '📓'}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-slate-700 truncate">{e.title || e.category}</p>
-                    <p className="text-xs text-slate-400">{format(new Date(e.date + 'T12:00:00'), 'EEE, MMM d')}</p>
+                    <p className="text-xs text-slate-400">{formatEntryDate(e.date)}</p>
                   </div>
                   {e.mood_rating && (
                     <span className="text-xs font-bold text-slate-300">{e.mood_rating}/10</span>
