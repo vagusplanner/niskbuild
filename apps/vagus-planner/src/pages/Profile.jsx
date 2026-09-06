@@ -10,7 +10,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   User, CheckSquare, AlertCircle, Filter,
   Users, Calendar, Bell, ArrowLeft,
-  Activity, Settings, Heart, Brain, CreditCard, Trash2, Plus, ChevronRight, Smartphone
+  Activity, Settings, Heart, Brain, CreditCard, Trash2, Plus, ChevronRight, Smartphone,
+  Target, Zap
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -352,6 +353,7 @@ export default function ProfilePage() {
         {(() => {
           const SECTIONS = [
             { id: 'profile',     icon: User,        label: t('profile.title'),      sub: t('profile.editProfile'),         gradient: 'from-teal-500 to-emerald-600',   glow: 'shadow-teal-400/30' },
+            { id: 'goals',       icon: Target,      label: 'Goals & AI Planner',    sub: 'Open AI Goal Planner',           gradient: 'from-cyan-500 to-blue-600',     glow: 'shadow-cyan-400/30' },
             { id: 'settings',    icon: Settings,     label: t('settings.title'),     sub: t('settings.subtitle'),   gradient: 'from-slate-500 to-slate-700',    glow: 'shadow-slate-400/30' },
             { id: 'billing',     icon: CreditCard,   label: t('billing.title'),      sub: t('billing.currentPlan'),       gradient: 'from-violet-500 to-indigo-600',  glow: 'shadow-violet-400/30' },
             { id: 'preferences', icon: Heart,        label: t('profile.preferences'),  sub: t('settings.dietary'),        gradient: 'from-rose-500 to-pink-600',      glow: 'shadow-rose-400/30' },
@@ -374,6 +376,42 @@ export default function ProfilePage() {
                 </div>
 
                 {activeSection === 'profile' && <><AccountSettings user={user} onUpdate={(data) => updateProfileMutation.mutate(data)} isSaving={updateProfileMutation.isPending} /><UnifiedGamificationTracker compact /><GoalsStrip limit={3} linkTo="Wellness" /></>}
+
+                {activeSection === 'goals' && (
+                  <div className="space-y-4">
+                    <Card className="border-cyan-200 bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-950/20 dark:to-blue-950/20">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-base">
+                          <Zap className="w-4 h-4 text-cyan-600" /> AI Goal Planner
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <p className="text-sm text-slate-600 dark:text-slate-300">
+                          Generate plans, run SMART analysis, and Apply → Tasks from the consolidated goal assistant.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            onClick={() => {
+                              setSelectedGoal(null);
+                              setShowAIAssistant(true);
+                            }}
+                            className="bg-cyan-600 hover:bg-cyan-700"
+                          >
+                            <Zap className="w-4 h-4 mr-2" /> Open AI Goal Planner
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => navigate(createPageUrl('Goals') + '?tab=planner')}
+                          >
+                            <Target className="w-4 h-4 mr-2" /> Open on Goals page
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <SpiritualGoalsManager />
+                    <GoalsStrip limit={5} linkTo="Goals" />
+                  </div>
+                )}
 
                 {activeSection === 'settings' && (
                   <div className="space-y-4">
@@ -491,7 +529,13 @@ export default function ProfilePage() {
 
     <AccountDeletionDialog isOpen={showDeleteDialog} onClose={() => setShowDeleteDialog(false)} userEmail={user?.email} />
     <AIGoalAssistant isOpen={showAIAssistant} onClose={() => { setShowAIAssistant(false); setSelectedGoal(null); }}
-      goal={selectedGoal} />
+      goal={selectedGoal}
+      onUpdateGoal={(patch) => {
+        if (!selectedGoal?.id) return;
+        // Best-effort patch when opened from Profile without a goal list mutation
+        setSelectedGoal((g) => (g ? { ...g, ...patch } : g));
+      }}
+    />
     <TaskForm isOpen={showTaskForm} onClose={() => { setShowTaskForm(false); setEditingTask(null); }}
       onSubmit={handleTaskSubmit} task={editingTask} />
     </PullToRefresh>

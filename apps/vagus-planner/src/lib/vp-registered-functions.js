@@ -132,6 +132,7 @@ export const VP_UNAVAILABLE_AI_FUNCTIONS = new Set([
   'processSocialCommand',
   'processVoiceQuery',
   'recommendUpgradePlan',
+  'prayerCalendarSync',
   'reprioritizeTasks',
   'scanEmailForEvents',
   'scanGmailForEvents',

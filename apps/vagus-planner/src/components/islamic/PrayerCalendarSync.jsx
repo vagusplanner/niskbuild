@@ -97,15 +97,62 @@ export default function PrayerCalendarSync() {
     setLoading(true);
     setSyncResult(null);
     try {
-      const res = await base44.functions.invoke('prayerCalendarSync', {
-        latitude: location.lat,
-        longitude: location.lng,
-        days: 7,
-      });
-      setSyncResult(res.data);
-      toast.success(`✅ ${res.data.created} prayer events added to your calendar!`);
+      // Client-side sync (prayerCalendarSync VP function is not registered).
+      // Fetch 7 days from Aladhan and create Event rows locally.
+      const created = [];
+      const existing = await base44.entities.Event.list('-created_date', 200).catch(() => []);
+      const existingKeys = new Set(
+        (existing || []).map((e) => `${(e.title || '').toLowerCase()}|${String(e.start_date || e.event_date || '').slice(0, 10)}`)
+      );
+
+      for (let offset = 0; offset < 7; offset++) {
+        const day = new Date();
+        day.setDate(day.getDate() + offset);
+        const dd = day.getDate();
+        const mm = day.getMonth() + 1;
+        const yyyy = day.getFullYear();
+        const res = await fetch(
+          `https://api.aladhan.com/v1/timings/${Math.floor(day.getTime() / 1000)}?latitude=${location.lat}&longitude=${location.lng}&method=2`
+        );
+        const json = await res.json();
+        if (json.code !== 200) continue;
+        const timings = json.data.timings;
+        const dateStr = `${yyyy}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
+
+        for (const prayer of PRAYERS) {
+          const raw = timings[prayer];
+          if (!raw) continue;
+          const clean = String(raw).replace(/\s*\(.*?\)/, '').trim();
+          const title = `${prayer} Prayer`;
+          const key = `${title.toLowerCase()}|${dateStr}`;
+          if (existingKeys.has(key)) continue;
+          const start = new Date(`${dateStr}T${clean}:00`);
+          if (Number.isNaN(start.getTime())) continue;
+          await base44.entities.Event.create({
+            title,
+            description: `Prayer time (${prayer}) — auto-added from Prayer Auto-Scheduler`,
+            start_date: start.toISOString(),
+            location: location ? `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}` : undefined,
+          });
+          existingKeys.add(key);
+          created.push(title);
+        }
+      }
+
+      const result = { created: created.length, success: true };
+      setSyncResult(result);
+      toast.success(
+        created.length > 0
+          ? `✅ ${created.length} prayer events added to your calendar!`
+          : 'Already up to date — no new events needed.'
+      );
     } catch (e) {
-      toast.error('Sync failed: ' + e.message);
+      const message = e?.message || String(e);
+      if (/not implemented/i.test(message)) {
+        toast.error('Calendar prayer sync is coming soon');
+      } else {
+        toast.error('Sync failed: ' + message);
+      }
     }
     setLoading(false);
   };

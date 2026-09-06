@@ -67,7 +67,7 @@ export default function SunnahNaflLogger() {
       setSelectedPrayer('');
       setNotes('');
     },
-    onError: () => toast.error('Failed to log prayer'),
+    onError: (error) => toast.error(error?.message || 'Failed to log prayer'),
   });
 
   const handleLog = () => {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { useSearchParams } from 'react-router-dom';
 import LifeGoalCard from '@/components/lifegoals/LifeGoalCard';
 import LifeGoalForm from '@/components/lifegoals/LifeGoalForm';
 import LifeGoalDetails from '@/components/lifegoals/LifeGoalDetails';
@@ -18,16 +19,31 @@ import PullToRefresh from '@/components/mobile/PullToRefresh';
 
 export default function Goals() {
   const { t } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
   const [showForm, setShowForm] = useState(false);
   const [editingGoal, setEditingGoal] = useState(null);
   const [selectedGoal, setSelectedGoal] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [activeTab, setActiveTab] = useState('life');
+  const [activeTab, setActiveTab] = useState(
+    tabParam === 'planner' || tabParam === 'ai' ? 'planner' : tabParam === 'spiritual' ? 'spiritual' : 'life'
+  );
   const [showAIAssistant, setShowAIAssistant] = useState(false);
   
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (tabParam === 'planner' || tabParam === 'ai') setActiveTab('planner');
+    else if (tabParam === 'spiritual') setActiveTab('spiritual');
+    else if (tabParam === 'life') setActiveTab('life');
+  }, [tabParam]);
+
+  const switchTab = (id) => {
+    setActiveTab(id);
+    setSearchParams(id === 'life' ? {} : { tab: id });
+  };
 
   const { data: goals = [], isLoading } = useQuery({
     queryKey: ['lifeGoals'],
@@ -132,17 +148,16 @@ export default function Goals() {
       </motion.div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-slate-200 dark:border-slate-800">
+      <div className="flex gap-2 border-b border-slate-200 dark:border-slate-800 overflow-x-auto">
         {[
           { id: 'life', label: 'Life Goals', icon: Target, color: 'text-[#1D6FB8]' },
           { id: 'spiritual', label: 'Spiritual Goals', icon: Moon, color: 'text-[#E8B84B]' },
           { id: 'planner', label: 'AI Goal Planner', icon: Zap, color: 'text-[#29ABE2]' },
-          { id: 'ai', label: 'AI Assistant', icon: Zap, color: 'text-[#4A55A2]' }
         ].map(tab => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+            onClick={() => switchTab(tab.id)}
+            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
               activeTab === tab.id
                 ? 'border-[#1D6FB8] text-[#1D6FB8]'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
@@ -204,6 +219,9 @@ export default function Goals() {
               <Button onClick={() => { setEditingGoal(null); setShowForm(true); }} className="bg-[#1D6FB8] hover:bg-[#2980B9]">
                 <Plus className="w-4 h-4 mr-2" /> New Goal
               </Button>
+              <Button variant="outline" onClick={() => switchTab('planner')} className="border-[#29ABE2] text-[#1D6FB8]">
+                <Zap className="w-4 h-4 mr-2" /> AI Goal Planner
+              </Button>
             </div>
 
             {/* Goals Grid */}
@@ -232,33 +250,28 @@ export default function Goals() {
           </motion.div>
         )}
 
-        {activeTab === 'planner' && (
-          <motion.div key="planner" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-            <AIGoalPlanner />
-          </motion.div>
-        )}
-
         {activeTab === 'spiritual' && (
           <motion.div key="spiritual" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
             <SpiritualGoalsManager />
           </motion.div>
         )}
 
-        {activeTab === 'ai' && (
-          <motion.div key="ai" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 space-y-4">
-            <div>
-              <h3 className="font-bold text-lg mb-2 flex items-center gap-2">
-                <Zap className="w-5 h-5 text-[#4A55A2]" />
-                AI Goal Assistant
-              </h3>
-              <p className="text-slate-600 dark:text-slate-400 text-sm mb-4">
-                Same planner as the Plan tab — generate plans, SMART analysis, and Apply → Tasks
-              </p>
-              <Button onClick={() => setShowAIAssistant(true)} className="bg-[#4A55A2] hover:bg-[#1D6FB8]">
-                <Zap className="w-4 h-4 mr-2" /> Open AI Goal Planner
+        {activeTab === 'planner' && (
+          <motion.div key="planner" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6">
+              <AIGoalPlanner />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSelectedGoal(null);
+                  setShowAIAssistant(true);
+                }}
+              >
+                <Zap className="w-4 h-4 mr-2" /> Open Planner as Modal
               </Button>
             </div>
-            <AIGoalPlanner />
           </motion.div>
         )}
       </AnimatePresence>

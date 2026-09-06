@@ -406,6 +406,58 @@ function mapPayloadToRow(entityName, payload, userId) {
     return row
   }
 
+  if (entityName === 'PrayerLog') {
+    // Production firstparty.vp_prayer_logs columns:
+    //   id, user_id, prayer_name, prayed_at, status, created_at
+    // UI historically sent date/prayer_type/location/notes/etc. — strip unknowns.
+    const row = {}
+    if (userId) row.user_id = userId
+    const name = p.prayer_name ?? p.prayer ?? p.name
+    if (name != null && String(name).trim()) {
+      row.prayer_name = String(name).trim()
+    }
+
+    if (p.status != null && String(p.status).trim()) {
+      row.status = String(p.status).trim()
+    }
+
+    // Build prayed_at from date + optional time, or explicit prayed_at / performed_at.
+    // Prefer a real clock time over placeholders like "--:--"
+    const candidateTimes = [p.performed_at, p.prayer_time, p.due_time]
+    let timeRaw = null
+    for (const candidate of candidateTimes) {
+      if (typeof candidate === 'string' && /^\d{1,2}:\d{2}/.test(candidate.trim())) {
+        timeRaw = candidate.trim()
+        break
+      }
+    }
+    let prayedAt = null
+    if (p.prayed_at != null && String(p.prayed_at).trim() !== '') {
+      const s = String(p.prayed_at).trim()
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+        const hhmm = timeRaw
+          ? String(timeRaw).replace(/\s*\(.*?\)/, '').trim().slice(0, 5)
+          : '12:00'
+        prayedAt = new Date(`${s}T${hhmm}:00`)
+      } else {
+        prayedAt = new Date(s)
+      }
+    } else if (dayRaw != null && String(dayRaw).trim() !== '') {
+      const day = String(dayRaw).trim().split('T')[0]
+      if (/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+        const time = timeRaw
+          ? String(timeRaw).replace(/\s*\(.*?\)/, '').trim()
+          : '12:00'
+        const hhmm = /^\d{1,2}:\d{2}/.test(time) ? time.slice(0, 5) : '12:00'
+        prayedAt = new Date(`${day}T${hhmm}:00`)
+      }
+    }
+    if (prayedAt && !Number.isNaN(prayedAt.getTime())) {
+      row.prayed_at = prayedAt.toISOString()
+    }
+    return row
+  }
+
   if (entityName === 'Goal' || entityName === 'LifeGoal') {
     const statusMap = {
       not_started: 'active',

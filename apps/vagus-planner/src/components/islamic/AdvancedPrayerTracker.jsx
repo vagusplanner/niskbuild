@@ -66,7 +66,7 @@ export default function AdvancedPrayerTracker() {
     },
     onError: (error, variables, context) => {
       queryClient.setQueryData(['prayerLogs', selectedDate], context.previousLogs);
-      toast.error('Failed to log prayer');
+      toast.error(error?.message || 'Failed to log prayer');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prayerLogs'] });

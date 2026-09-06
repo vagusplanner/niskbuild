@@ -21,6 +21,8 @@ import PrayerCalendarSync from '@/components/islamic/PrayerCalendarSync';
 import AdhanPlayer from '@/components/islamic/AdhanPlayer';
 import PrayerAwareScheduler from '@/components/islamic/PrayerAwareScheduler';
 import SunnahNaflLogger from '@/components/islamic/SunnahNaflLogger';
+import PrayerTracker from '@/components/islamic/PrayerTracker';
+import AIPrayerCoach from '@/components/islamic/AIPrayerCoach';
 import QadaTracker from '@/components/islamic/QadaTracker';
 import HaydTracker from '@/components/islamic/HaydTracker';
 import SunnahHabitTracker from '@/components/islamic/SunnahHabitTracker';
@@ -155,17 +157,29 @@ function SectionTile({ section, onClick }) {
 
 /** Prayer — unified with internal tabs */
 function PrayerContent() {
+  const [searchParams] = useSearchParams();
+  const initialTab = (() => {
+    const t = searchParams.get('tab') || searchParams.get('action');
+    if (t === 'coach' || t === 'insights') return 'coach';
+    if (t === 'log' || t === 'tracker') return 'tracker';
+    if (t === 'times' || t === 'adhan') return 'times';
+    if (t === 'badges') return 'badges';
+    if (t === 'habits') return 'habits';
+    return 'times';
+  })();
+
   return (
     <div className="space-y-1">
       <p className="text-xs mb-3 font-medium" style={{color:'#2D4A65'}}>
-        All your prayer tools in one place: times & Adhan, tracking your 5 daily prayers, Sunnah/Nafl extras, missed prayers (Qada), streaks & gamified badges, and spiritual habits.
+        All your prayer tools in one place: times & Adhan, tracking your 5 daily prayers, Sunnah/Nafl extras, AI coaching, missed prayers (Qada), streaks & badges, and spiritual habits.
       </p>
-      <Tabs defaultValue="times">
-        <TabsList className="grid grid-cols-4 w-full h-auto mb-4">
-          <TabsTrigger value="times" className="text-[11px] py-2">🕌 Times & Adhan</TabsTrigger>
-          <TabsTrigger value="tracker" className="text-[11px] py-2">✅ Tracker</TabsTrigger>
-          <TabsTrigger value="badges" className="text-[11px] py-2">🏆 Streaks</TabsTrigger>
-          <TabsTrigger value="habits" className="text-[11px] py-2">🔥 Habits</TabsTrigger>
+      <Tabs defaultValue={initialTab}>
+        <TabsList className="grid grid-cols-5 w-full h-auto mb-4">
+          <TabsTrigger value="times" className="text-[10px] sm:text-[11px] py-2">🕌 Times</TabsTrigger>
+          <TabsTrigger value="tracker" className="text-[10px] sm:text-[11px] py-2">✅ Log</TabsTrigger>
+          <TabsTrigger value="coach" className="text-[10px] sm:text-[11px] py-2">🧠 Coach</TabsTrigger>
+          <TabsTrigger value="badges" className="text-[10px] sm:text-[11px] py-2">🏆 Streaks</TabsTrigger>
+          <TabsTrigger value="habits" className="text-[10px] sm:text-[11px] py-2">🔥 Habits</TabsTrigger>
         </TabsList>
         <TabsContent value="times" className="space-y-4">
           <p className="text-xs rounded-xl p-2.5 font-medium" style={{background:'rgba(29,111,184,0.08)', color:'#1B2A4A', border:'1px solid rgba(29,111,184,0.15)'}}>📍 Your daily prayer schedule with automatic Adhan sound alerts. Enable the bell icon to hear the call to prayer at each prayer time.</p>
@@ -175,14 +189,19 @@ function PrayerContent() {
           <PrayerAwareScheduler />
         </TabsContent>
         <TabsContent value="tracker" className="space-y-4">
-          <p className="text-xs rounded-xl p-2.5 font-medium" style={{background:'rgba(29,111,184,0.08)', color:'#1B2A4A', border:'1px solid rgba(29,111,184,0.15)'}}>📊 Log each prayer as you complete it. Track Sunnah and Nafl (optional) prayers, record missed prayers to make up (Qada), and track Hayd (menstrual) periods.</p>
+          <p className="text-xs rounded-xl p-2.5 font-medium" style={{background:'rgba(29,111,184,0.08)', color:'#1B2A4A', border:'1px solid rgba(29,111,184,0.15)'}}>📊 Log each of the 5 daily prayers, plus Sunnah/Nafl, Qada, and Hayd tracking.</p>
+          <PrayerTracker />
           <SunnahNaflLogger />
           <SunnahHabitTracker />
           <QadaTracker />
           <HaydTracker />
         </TabsContent>
+        <TabsContent value="coach" className="space-y-4">
+          <p className="text-xs rounded-xl p-2.5 font-medium" style={{background:'rgba(29,111,184,0.08)', color:'#1B2A4A', border:'1px solid rgba(29,111,184,0.15)'}}>🧠 AI Prayer Coach — coaching scores, narrative insights, and fiqh Q&amp;A from one place.</p>
+          <AIPrayerCoach />
+        </TabsContent>
         <TabsContent value="badges" className="space-y-4">
-          <p className="text-xs rounded-xl p-2.5 font-medium" style={{background:'rgba(29,111,184,0.08)', color:'#1B2A4A', border:'1px solid rgba(29,111,184,0.15)'}}>🎖️ Earn badges and achievements for prayer streaks — 7 days, 30 days, praying all 5 in one day, Fajr mastery and more. Gamified motivation to stay consistent.</p>
+          <p className="text-xs rounded-xl p-2.5 font-medium" style={{background:'rgba(29,111,184,0.08)', color:'#1B2A4A', border:'1px solid rgba(29,111,184,0.15)'}}>🎖️ Earn badges and achievements for prayer streaks — 7 days, 30 days, praying all 5 in one day, Fajr mastery and more.</p>
           <PrayerStreakBadges />
         </TabsContent>
         <TabsContent value="habits" className="space-y-4">
@@ -354,7 +373,7 @@ const SECTION_GROUPS = [
         icon: Sunrise,
         label: 'Prayer',
         arabic: 'الصلاة',
-        desc: 'Times · Adhan · Tracker · Badges · Habits',
+        desc: 'Times · Log · Coach · Badges · Habits',
         gradient: 'from-[#1D6FB8] to-[#29ABE2]',
         content: () => <PrayerContent />,
       },
