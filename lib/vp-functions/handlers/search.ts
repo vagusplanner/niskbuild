@@ -143,7 +143,7 @@ export const globalSearch: VpFunctionHandler = async ({ user, payload }) => {
         type: 'holiday',
         title: h.name,
         destination: h.notes || '',
-        date: h.holiday_date,
+        date: h.date ?? h.holiday_date,
         status: 'planned',
       };
     });

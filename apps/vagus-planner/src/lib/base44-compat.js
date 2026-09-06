@@ -91,7 +91,15 @@ const COLUMN_ALIASES = {
 const ENTITY_COLUMN_ALIASES = {
   Event: { start_date: 'event_date', created_by: '__skip__' },
   Task: { description: 'description' },
-  Holiday: { start_date: 'holiday_date', title: 'name', created_by: '__skip__' },
+  // Production vp_holidays uses `date` (not holiday_date). Repo migrations assumed holiday_date.
+  Holiday: {
+    start_date: 'date',
+    holiday_date: 'date',
+    title: 'name',
+    created_by: '__skip__',
+    notes: '__skip__',
+    recurring_yearly: '__skip__',
+  },
   Expense: { created_by: '__skip__' },
   PrayerLog: { date: 'prayed_at' },
   Goal: { due_date: 'target_date' },
@@ -247,8 +255,12 @@ function mapPayloadToRow(entityName, payload, userId) {
   }
 
   if (entityName === 'Holiday') {
-    // Base table: name, holiday_date, notes, recurring_yearly (+ optional trip columns from migration).
-    // Trip extras are also embedded in notes so saves work before/without new columns.
+    // Production firstparty.vp_holidays (confirmed via PostgREST):
+    //   id, user_id, name, date, created_at, status, destination, end_date,
+    //   budget, accommodation, flight_details
+    // NOT present: holiday_date, notes, recurring_yearly, updated_at, title, start_date
+    // (Repo migrations assumed holiday_date/notes — CREATE TABLE IF NOT EXISTS was a no-op
+    // against the older Base44-era stub that used `date` instead.)
     const destination = p.destination != null ? String(p.destination).trim() : ''
     const endRaw = p.end_date
     const end_date =
@@ -260,7 +272,7 @@ function mapPayloadToRow(entityName, payload, userId) {
         ? String(p.status).trim()
         : 'planned'
     const accommodation = p.accommodation != null ? String(p.accommodation) : ''
-    const flight_details = p.flight_details != null ? String(p.flight_details) : ''
+    let flight_details = p.flight_details != null ? String(p.flight_details) : ''
     let budget = null
     if (p.budget != null && p.budget !== '') {
       const n = Number(p.budget)
@@ -274,40 +286,27 @@ function mapPayloadToRow(entityName, payload, userId) {
         : p.description != null
           ? String(p.description)
           : ''
-
-    const tripMeta = {
-      destination: destination || undefined,
-      end_date: end_date || undefined,
-      status,
-      budget: budget ?? undefined,
-      accommodation: accommodation || undefined,
-      flight_details: flight_details || undefined,
+    // No `notes` column in production — fold free-text notes into flight_details.
+    if (userNotes.trim()) {
+      flight_details = flight_details
+        ? `${flight_details}\n\nNotes: ${userNotes.trim()}`
+        : userNotes.trim()
     }
-    const hasTripMeta = Object.values(tripMeta).some((v) => v !== undefined)
-    const notesPayload = hasTripMeta
-      ? JSON.stringify({ _vp_trip: tripMeta, text: userNotes })
-      : userNotes || null
 
     const row = { name: p.name ?? p.title ?? 'Holiday' }
     if (userId) row.user_id = userId
-    const start = p.holiday_date ?? p.start_date
+    const start = p.date ?? p.holiday_date ?? p.start_date
     if (start != null && String(start).trim() !== '') {
-      row.holiday_date = String(start).split('T')[0]
+      row.date = String(start).split('T')[0]
     } else if (userId) {
-      row.holiday_date = new Date().toISOString().split('T')[0]
+      row.date = new Date().toISOString().split('T')[0]
     }
-    // Prefer real columns when migration applied; PostgREST ignores unknown keys only if we don't send them.
-    // Send optional trip columns — if migration not applied, strip on error is handled by create retry below? 
-    // Keep notes packing as source of truth for extras; only send base + status (added in vp-missing-tables).
-    if (notesPayload != null) row.notes = notesPayload
-    if (p.recurring_yearly != null) row.recurring_yearly = p.recurring_yearly
     if (userId) row.status = status
     if (destination) row.destination = destination
     if (end_date) row.end_date = end_date
     if (budget != null) row.budget = budget
     if (accommodation) row.accommodation = accommodation
     if (flight_details) row.flight_details = flight_details
-    row.updated_at = new Date().toISOString()
     return row
   }
 
@@ -757,10 +756,12 @@ function mapRowFromDb(entityName, row) {
         /* plain notes */
       }
     }
-    const start = row.holiday_date ?? row.start_date
+    // Production column is `date`; legacy/repo migrations used holiday_date.
+    const start = row.date ?? row.holiday_date ?? row.start_date
     return {
       ...row,
       title: row.name ?? row.title,
+      holiday_date: start,
       start_date: start,
       end_date: end_date ?? start,
       destination,
@@ -1430,22 +1431,30 @@ export const base44 = {
           let { data, error } = await tableFrom(tableName)
             .insert(row)
             .select()
-          // Trip columns may be missing until vp-holidays-trip-fields-migration.sql is applied.
+          // Strip unknown/legacy columns (holiday_date/notes/updated_at) and retry with
+          // the production base shape: name + date (+ user_id).
           if (
             error &&
             entityName === 'Holiday' &&
-            /destination|end_date|budget|accommodation|flight_details|status|updated_at|schema cache|Could not find/i.test(
+            /holiday_date|notes|recurring_yearly|updated_at|destination|end_date|budget|accommodation|flight_details|status|schema cache|Could not find|does not exist/i.test(
               error.message || ''
             )
           ) {
             const fallback = {
               name: row.name,
-              holiday_date: row.holiday_date,
-              notes: row.notes,
-              recurring_yearly: row.recurring_yearly ?? true,
+              date: row.date ?? row.holiday_date,
             }
             if (row.user_id) fallback.user_id = row.user_id
+            if (row.status != null) fallback.status = row.status
+            if (row.destination) fallback.destination = row.destination
+            if (row.end_date) fallback.end_date = row.end_date
             ;({ data, error } = await tableFrom(tableName).insert(fallback).select())
+            // Last resort: absolute minimum columns that exist on the Base44-era stub.
+            if (error) {
+              const minimal = { name: row.name, date: row.date ?? row.holiday_date }
+              if (row.user_id) minimal.user_id = row.user_id
+              ;({ data, error } = await tableFrom(tableName).insert(minimal).select())
+            }
           }
           if (error) throw error
           return mapRowFromDb(entityName, data[0])
@@ -1489,15 +1498,20 @@ export const base44 = {
           if (
             error &&
             entityName === 'Holiday' &&
-            /destination|end_date|budget|accommodation|flight_details|status|updated_at|schema cache|Could not find/i.test(
+            /holiday_date|notes|recurring_yearly|updated_at|destination|end_date|budget|accommodation|flight_details|status|schema cache|Could not find|does not exist/i.test(
               error.message || ''
             )
           ) {
             const fallback = {}
             if (row.name != null) fallback.name = row.name
-            if (row.holiday_date != null) fallback.holiday_date = row.holiday_date
-            if (row.notes != null) fallback.notes = row.notes
-            if (row.recurring_yearly != null) fallback.recurring_yearly = row.recurring_yearly
+            const start = row.date ?? row.holiday_date
+            if (start != null) fallback.date = start
+            if (row.status != null) fallback.status = row.status
+            if (row.destination != null) fallback.destination = row.destination
+            if (row.end_date != null) fallback.end_date = row.end_date
+            if (row.budget != null) fallback.budget = row.budget
+            if (row.accommodation != null) fallback.accommodation = row.accommodation
+            if (row.flight_details != null) fallback.flight_details = row.flight_details
             ;({ data, error } = await tableFrom(tableName).update(fallback).eq('id', id).select())
           }
           if (error) throw error
