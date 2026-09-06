@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import {
   Calculator, Heart, BookOpen, RefreshCw, ChevronDown, ChevronUp,
   Gem, Coins, Building2, Sprout, ExternalLink, Scale, AlertTriangle, Plus, Loader2,
-  Calendar, ArrowLeft, ScrollText, Home, ShieldCheck,
+  Calendar, ArrowLeft, ScrollText, Home, ShieldCheck, CheckCircle2,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -122,23 +122,42 @@ function CalculateTab({ engine, defaultAdvancedOpen = false }) {
   const [advTab, setAdvTab] = useState('gold');
   const [goldGrams, setGoldGrams] = useState('');
   const [silverGrams, setSilverGrams] = useState('');
+  const [goldGramsConfirmed, setGoldGramsConfirmed] = useState(null);
+  const [silverGramsConfirmed, setSilverGramsConfirmed] = useState(null);
+  const [appliedFlash, setAppliedFlash] = useState(null); // 'gold_value' | 'silver_value' | 'business_assets'
   const [biz, setBiz] = useState({ inventory: '', receivables: '', cash: '', liabilities: '' });
   const [agri, setAgri] = useState({ value: '', irrigation: 'rain' });
 
+  const flashField = (key, message) => {
+    setAppliedFlash(key);
+    toast.success(message);
+    window.setTimeout(() => setAppliedFlash((cur) => (cur === key ? null : cur)), 2800);
+  };
+
   const applyMetalGrams = (metal) => {
     if (metal === 'gold') {
-      const val = (parseFloat(goldGrams) || 0) * goldPricePerGram;
+      const grams = parseFloat(goldGrams) || 0;
+      const val = grams * goldPricePerGram;
       if (val > 0) {
         updateAsset('gold_value', val.toFixed(2));
+        setGoldGramsConfirmed({ grams, value: val });
         setGoldGrams('');
-        toast.success(`Gold value set to ${fmt(val)}`);
+        flashField('gold_value', `Gold: ${grams}g → ${fmt(val)} applied`);
+        window.setTimeout(() => setGoldGramsConfirmed(null), 3500);
+      } else {
+        toast.error('Enter gold weight in grams first');
       }
     } else {
-      const val = (parseFloat(silverGrams) || 0) * silverPricePerGram;
+      const grams = parseFloat(silverGrams) || 0;
+      const val = grams * silverPricePerGram;
       if (val > 0) {
         updateAsset('silver_value', val.toFixed(2));
+        setSilverGramsConfirmed({ grams, value: val });
         setSilverGrams('');
-        toast.success(`Silver value set to ${fmt(val)}`);
+        flashField('silver_value', `Silver: ${grams}g → ${fmt(val)} applied`);
+        window.setTimeout(() => setSilverGramsConfirmed(null), 3500);
+      } else {
+        toast.error('Enter silver weight in grams first');
       }
     }
   };
@@ -196,7 +215,14 @@ function CalculateTab({ engine, defaultAdvancedOpen = false }) {
         </h3>
         {ASSET_FIELDS.map((f) => (
           <div key={f.key}>
-            <Label className="text-xs text-slate-600 dark:text-slate-300">{f.label}</Label>
+            <Label className="text-xs text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+              {f.label}
+              {appliedFlash === f.key && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Applied
+                </span>
+              )}
+            </Label>
             <p className="text-[10px] text-slate-400 mb-1">{f.hint}</p>
             <Input
               type="number"
@@ -205,7 +231,9 @@ function CalculateTab({ engine, defaultAdvancedOpen = false }) {
               value={assets[f.key] || ''}
               onChange={(e) => updateAsset(f.key, e.target.value)}
               placeholder="0.00"
-              className={f.deduct ? 'border-red-200 focus:ring-red-400' : ''}
+              className={`${f.deduct ? 'border-red-200 focus:ring-red-400' : ''} ${
+                appliedFlash === f.key ? 'border-emerald-400 ring-2 ring-emerald-200' : ''
+              }`}
             />
           </div>
         ))}
@@ -216,16 +244,32 @@ function CalculateTab({ engine, defaultAdvancedOpen = false }) {
             <div>
               <Label className="text-[10px]">Gold grams</Label>
               <div className="flex gap-1">
-                <Input type="number" value={goldGrams} onChange={(e) => setGoldGrams(e.target.value)} className="h-8 text-xs" />
-                <Button size="sm" className="h-8" onClick={() => applyMetalGrams('gold')} disabled={priceLoading}>✓</Button>
+                <Input type="number" value={goldGrams} onChange={(e) => { setGoldGrams(e.target.value); setGoldGramsConfirmed(null); }} className="h-8 text-xs" />
+                <Button size="sm" className={`h-8 min-w-[2rem] ${goldGramsConfirmed ? 'bg-emerald-600 hover:bg-emerald-700' : ''}`} onClick={() => applyMetalGrams('gold')} disabled={priceLoading} aria-label="Convert gold grams">
+                  {goldGramsConfirmed ? <CheckCircle2 className="w-4 h-4" /> : '✓'}
+                </Button>
               </div>
+              {goldGramsConfirmed && (
+                <p className="mt-1 text-[10px] font-semibold text-emerald-700 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" />
+                  {goldGramsConfirmed.grams}g → {fmt(goldGramsConfirmed.value)} set on Gold
+                </p>
+              )}
             </div>
             <div>
               <Label className="text-[10px]">Silver grams</Label>
               <div className="flex gap-1">
-                <Input type="number" value={silverGrams} onChange={(e) => setSilverGrams(e.target.value)} className="h-8 text-xs" />
-                <Button size="sm" className="h-8" onClick={() => applyMetalGrams('silver')} disabled={priceLoading}>✓</Button>
+                <Input type="number" value={silverGrams} onChange={(e) => { setSilverGrams(e.target.value); setSilverGramsConfirmed(null); }} className="h-8 text-xs" />
+                <Button size="sm" className={`h-8 min-w-[2rem] ${silverGramsConfirmed ? 'bg-emerald-600 hover:bg-emerald-700' : ''}`} onClick={() => applyMetalGrams('silver')} disabled={priceLoading} aria-label="Convert silver grams">
+                  {silverGramsConfirmed ? <CheckCircle2 className="w-4 h-4" /> : '✓'}
+                </Button>
               </div>
+              {silverGramsConfirmed && (
+                <p className="mt-1 text-[10px] font-semibold text-emerald-700 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" />
+                  {silverGramsConfirmed.grams}g → {fmt(silverGramsConfirmed.value)} set on Silver
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -269,10 +313,24 @@ function CalculateTab({ engine, defaultAdvancedOpen = false }) {
             ))}
           </div>
           {advTab === 'gold' && (
-            <AdvancedGold price={goldPricePerGram} currency={currency} onApplyValue={(v) => updateAsset('gold_value', String(v))} />
+            <AdvancedGold
+              price={goldPricePerGram}
+              currency={currency}
+              onApplyValue={(v) => {
+                updateAsset('gold_value', String(v));
+                flashField('gold_value', `Applied ${fmt(Number(v))} to Gold (market value)`);
+              }}
+            />
           )}
           {advTab === 'silver' && (
-            <AdvancedSilver price={silverPricePerGram} currency={currency} onApplyValue={(v) => updateAsset('silver_value', String(v))} />
+            <AdvancedSilver
+              price={silverPricePerGram}
+              currency={currency}
+              onApplyValue={(v) => {
+                updateAsset('silver_value', String(v));
+                flashField('silver_value', `Applied ${fmt(Number(v))} to Silver (market value)`);
+              }}
+            />
           )}
           {advTab === 'business' && (
             <AdvancedBusiness
@@ -281,7 +339,7 @@ function CalculateTab({ engine, defaultAdvancedOpen = false }) {
               currency={currency}
               onApply={(zakatable) => {
                 updateAsset('business_assets', String(zakatable.toFixed(2)));
-                toast.success('Business assets applied to main calculator');
+                flashField('business_assets', `Applied ${fmt(zakatable)} to Business / inventory`);
               }}
             />
           )}
@@ -296,40 +354,100 @@ function CalculateTab({ engine, defaultAdvancedOpen = false }) {
 
 function AdvancedGold({ price, currency, onApplyValue }) {
   const [grams, setGrams] = useState('');
+  const [appliedMsg, setAppliedMsg] = useState('');
   const r = calculateGoldWeightZakat(grams, price);
   return (
     <div className="space-y-2">
       <p className="text-xs text-slate-500">Nisab: {NISAB_GOLD_GRAMS}g · live gold price/g ({formatMoney(price, currency)})</p>
-      <Input type="number" value={grams} onChange={(e) => setGrams(e.target.value)} placeholder="Weight in grams" />
+      <Input type="number" value={grams} onChange={(e) => { setGrams(e.target.value); setAppliedMsg(''); }} placeholder="Weight in grams" />
       <p className="text-sm font-bold">Value {formatMoney(r.totalValue, currency)} · Zakat {formatMoney(r.zakatDue, currency)}</p>
-      <Button size="sm" onClick={() => onApplyValue(r.totalValue.toFixed(2))} disabled={!r.totalValue}>Apply value to main calc</Button>
+      <Button
+        size="sm"
+        onClick={() => {
+          onApplyValue(r.totalValue.toFixed(2));
+          setAppliedMsg(`Applied ${formatMoney(r.totalValue, currency)} to Gold (market value)`);
+        }}
+        disabled={!r.totalValue}
+        className={appliedMsg ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+      >
+        {appliedMsg ? (
+          <><CheckCircle2 className="w-4 h-4 mr-1" /> Applied</>
+        ) : (
+          'Apply value to main calc'
+        )}
+      </Button>
+      {appliedMsg && (
+        <p className="text-xs font-semibold text-emerald-700 flex items-center gap-1">
+          <CheckCircle2 className="w-3.5 h-3.5" /> {appliedMsg}
+        </p>
+      )}
     </div>
   );
 }
 
 function AdvancedSilver({ price, currency, onApplyValue }) {
   const [grams, setGrams] = useState('');
+  const [appliedMsg, setAppliedMsg] = useState('');
   const r = calculateSilverWeightZakat(grams, price);
   return (
     <div className="space-y-2">
       <p className="text-xs text-slate-500">Nisab: {NISAB_SILVER_GRAMS}g · live silver price/g ({formatMoney(price, currency)})</p>
-      <Input type="number" value={grams} onChange={(e) => setGrams(e.target.value)} placeholder="Weight in grams" />
+      <Input type="number" value={grams} onChange={(e) => { setGrams(e.target.value); setAppliedMsg(''); }} placeholder="Weight in grams" />
       <p className="text-sm font-bold">Value {formatMoney(r.totalValue, currency)} · Zakat {formatMoney(r.zakatDue, currency)}</p>
-      <Button size="sm" onClick={() => onApplyValue(r.totalValue.toFixed(2))} disabled={!r.totalValue}>Apply value to main calc</Button>
+      <Button
+        size="sm"
+        onClick={() => {
+          onApplyValue(r.totalValue.toFixed(2));
+          setAppliedMsg(`Applied ${formatMoney(r.totalValue, currency)} to Silver (market value)`);
+        }}
+        disabled={!r.totalValue}
+        className={appliedMsg ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+      >
+        {appliedMsg ? (
+          <><CheckCircle2 className="w-4 h-4 mr-1" /> Applied</>
+        ) : (
+          'Apply value to main calc'
+        )}
+      </Button>
+      {appliedMsg && (
+        <p className="text-xs font-semibold text-emerald-700 flex items-center gap-1">
+          <CheckCircle2 className="w-3.5 h-3.5" /> {appliedMsg}
+        </p>
+      )}
     </div>
   );
 }
 
 function AdvancedBusiness({ biz, setBiz, currency, onApply }) {
+  const [appliedMsg, setAppliedMsg] = useState('');
   const r = calculateBusinessZakat(biz);
   return (
     <div className="space-y-2">
       <p className="text-xs text-slate-500">Inventory + receivables + cash − liabilities · 2.5%</p>
       {['inventory', 'receivables', 'cash', 'liabilities'].map((k) => (
-        <Input key={k} type="number" placeholder={k} value={biz[k]} onChange={(e) => setBiz({ ...biz, [k]: e.target.value })} />
+        <Input key={k} type="number" placeholder={k} value={biz[k]} onChange={(e) => { setBiz({ ...biz, [k]: e.target.value }); setAppliedMsg(''); }} />
       ))}
       <p className="text-sm font-bold">Zakatable {formatMoney(r.zakatable, currency)} · Zakat {formatMoney(r.zakatDue, currency)}</p>
-      <Button size="sm" onClick={() => onApply(r.zakatable)} disabled={!r.zakatable}>Apply to business assets</Button>
+      <Button
+        size="sm"
+        onClick={() => {
+          onApply(r.zakatable);
+          setAppliedMsg(`Applied ${formatMoney(r.zakatable, currency)} to Business / inventory`);
+        }}
+        disabled={!r.zakatable}
+        className={appliedMsg ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+      >
+        {appliedMsg ? (
+          <><CheckCircle2 className="w-4 h-4 mr-1" /> Applied</>
+        ) : (
+          'Apply to business assets'
+        )}
+      </Button>
+      {appliedMsg && (
+        <p className="text-xs font-semibold text-emerald-700 flex items-center gap-1">
+          <CheckCircle2 className="w-3.5 h-3.5" /> {appliedMsg}
+        </p>
+      )}
     </div>
   );
 }

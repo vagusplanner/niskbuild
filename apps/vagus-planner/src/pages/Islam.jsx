@@ -8,11 +8,10 @@ import {
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import PullToRefresh from '@/components/mobile/PullToRefresh';
 import { cn } from '@/lib/utils';
 import { shouldShowIslamSection } from '@/lib/nav-v1-scope';
 
@@ -137,7 +136,7 @@ function SectionTile({ section, onClick }) {
     return (
       <Link to={createPageUrl(section.isLink)}>
         <motion.div whileHover={{ y: -3, scale: 1.02 }} whileTap={{ scale: 0.98 }}
-          className={`group relative overflow-hidden rounded-2xl p-4 text-left cursor-pointer bg-gradient-to-br ${section.gradient} shadow-lg hover:shadow-xl transition-all w-full min-h-[100px]`}>
+          className={`group relative overflow-hidden rounded-2xl p-4 text-left cursor-pointer bg-gradient-to-br ${section.gradient} shadow-lg hover:shadow-xl transition-all w-full min-h-[92px] h-full`}>
           {inner}
         </motion.div>
       </Link>
@@ -146,7 +145,7 @@ function SectionTile({ section, onClick }) {
 
   return (
     <motion.button whileHover={{ y: -3, scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={onClick}
-      className={`group relative overflow-hidden rounded-2xl p-4 text-left cursor-pointer bg-gradient-to-br ${section.gradient} shadow-lg hover:shadow-xl transition-all w-full min-h-[100px]`}>
+      className={`group relative overflow-hidden rounded-2xl p-4 text-left cursor-pointer bg-gradient-to-br ${section.gradient} shadow-lg hover:shadow-xl transition-all w-full min-h-[92px] h-full`}>
       {inner}
     </motion.button>
   );
@@ -538,7 +537,6 @@ const SECTION_GROUPS = [
 const ALL_SECTIONS = SECTION_GROUPS.flatMap(g => g.sections);
 
 function Islam() {
-  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const sectionParam = searchParams.get('section');
   const [activeSection, setActiveSection] = useState(sectionParam || null);
@@ -549,15 +547,12 @@ function Islam() {
 
   const section = ALL_SECTIONS.find(s => s.id === activeSection);
 
-  const handleRefresh = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['prayerLogs'] });
-    await queryClient.invalidateQueries({ queryKey: ['verses'] });
-  };
-
+  // Layout already provides scroll + PullToRefresh + bottom-nav padding.
+  // Do NOT nest another min-h-screen / PullToRefresh here — that forced a
+  // full extra viewport of empty space under the section tiles.
   return (
-    <PullToRefresh onRefresh={handleRefresh}>
-      <div className="min-h-screen pb-safe">
-        <div className="max-w-2xl lg:max-w-5xl mx-auto px-3 sm:px-5 py-4 lg:py-8 space-y-6">
+      <div className="w-full max-w-2xl lg:max-w-5xl mx-auto">
+        <div className="space-y-5 sm:space-y-6">
           <AnimatePresence mode="wait">
             {activeSection && section ? (
               /* ── Section detail view ── */
@@ -584,7 +579,7 @@ function Islam() {
               /* ── Overview ── */
               <motion.div key="overview"
                 initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 24 }}
-                className="space-y-6">
+                className="space-y-5 sm:space-y-6">
 
                 {/* Header banner */}
                 <div className="relative overflow-hidden rounded-2xl p-5 shadow-lg" style={{background:'linear-gradient(135deg, #0D1A2A 0%, #1B2A4A 25%, #0D4F6C 60%, #1D6FB8 100%)', border:'1px solid rgba(41,171,226,0.3)'}}>
@@ -612,18 +607,18 @@ function Islam() {
                 <GoalsStrip filterCategory="spiritual" linkTo="Wellness" filterLabel="Spiritual Goals" />
                 <DailyVerse />
 
-                {/* Section groups */}
-                <div className="space-y-6">
+                {/* Section groups — denser grid so last rows don’t leave a sparse empty band */}
+                <div className="space-y-5">
                   {SECTION_GROUPS.map(group => {
                     const visibleSections = group.sections.filter(shouldShowIslamSection);
                     if (!visibleSections.length) return null;
                     return (
                     <div key={group.id}>
-                      <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                      <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2.5 flex items-center gap-2">
                         {group.label}
                         <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded-full font-semibold">{visibleSections.length}</span>
                       </p>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3">
                         {visibleSections.map(s => (
                           <SectionTile key={s.id} section={s} onClick={() => setActiveSection(s.id)} />
                         ))}
@@ -638,7 +633,6 @@ function Islam() {
           </AnimatePresence>
         </div>
       </div>
-    </PullToRefresh>
   );
 }
 
