@@ -7,6 +7,7 @@ import { createClient } from '@supabase/supabase-js'
 import { redirectToVpLogin, redirectToVpSignup } from './static-bundle'
 import { mapSupabaseUserToVpUser } from './vp-auth-user'
 import { isUnavailableAiFunction } from './vp-registered-functions'
+import { buildWhatsAppConnectURL } from './whatsapp'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -1390,6 +1391,36 @@ export const base44 = {
       if (error) throw error
       return data
     }
+  },
+
+  // =============================================
+  // Agents (Base44 SDK parity — WhatsApp + stubs)
+  // =============================================
+
+  agents: {
+    /**
+     * Sync (Base44 contract). Builds a wa.me deep link to the configured bot.
+     * Base44 hosted `${server}/api/apps/{id}/agents/{name}/whatsapp?token=…`;
+     * we don't have that bridge, so we deep-link WhatsApp with a connect message.
+     */
+    getWhatsAppConnectURL: (agentName) => {
+      return buildWhatsAppConnectURL(agentName)
+    },
+    getTelegramConnectURL: (agentName) => {
+      throw new Error(
+        `Telegram connect is not configured for agent "${agentName || 'unknown'}"`
+      )
+    },
+    createConversation: async () => {
+      throw new Error('VP_AI_UNAVAILABLE: In-app agents are not available yet.')
+    },
+    getConversation: async () => undefined,
+    getConversations: async () => [],
+    listConversations: async () => [],
+    addMessage: async () => {
+      throw new Error('VP_AI_UNAVAILABLE: In-app agents are not available yet.')
+    },
+    subscribeToConversation: () => () => {},
   },
 
   // =============================================

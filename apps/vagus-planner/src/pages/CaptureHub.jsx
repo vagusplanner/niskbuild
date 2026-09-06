@@ -17,6 +17,7 @@ import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
+import { formatWhatsAppBotDisplay } from '@/lib/whatsapp';
 
 const ALL_TABS = [
   {
@@ -236,7 +237,7 @@ function TravelTab() {
 // ── WhatsApp tab ──────────────────────────────────────────────────────────────
 function WhatsAppTab() {
   const [copied, setCopied] = useState(false);
-  const botNumber = '+447700900000';
+  const botNumber = formatWhatsAppBotDisplay();
 
   const copy = () => {
     navigator.clipboard.writeText(botNumber);
