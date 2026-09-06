@@ -134,7 +134,7 @@ function SectionTile({ section, onClick }) {
 
   if (section.isLink) {
     return (
-      <Link to={createPageUrl(section.isLink)}>
+      <Link to={createPageUrl(section.isLink)} className="block h-full w-full min-w-0">
         <motion.div whileHover={{ y: -3, scale: 1.02 }} whileTap={{ scale: 0.98 }}
           className={`group relative overflow-hidden rounded-2xl p-4 text-left cursor-pointer bg-gradient-to-br ${section.gradient} shadow-lg hover:shadow-xl transition-all w-full min-h-[92px] h-full`}>
           {inner}
@@ -145,7 +145,7 @@ function SectionTile({ section, onClick }) {
 
   return (
     <motion.button whileHover={{ y: -3, scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={onClick}
-      className={`group relative overflow-hidden rounded-2xl p-4 text-left cursor-pointer bg-gradient-to-br ${section.gradient} shadow-lg hover:shadow-xl transition-all w-full min-h-[92px] h-full`}>
+      className={`group relative overflow-hidden rounded-2xl p-4 text-left cursor-pointer bg-gradient-to-br ${section.gradient} shadow-lg hover:shadow-xl transition-all w-full min-h-[92px] h-full min-w-0`}>
       {inner}
     </motion.button>
   );
@@ -551,7 +551,7 @@ function Islam() {
   // Do NOT nest another min-h-screen / PullToRefresh here — that forced a
   // full extra viewport of empty space under the section tiles.
   return (
-      <div className="w-full max-w-2xl lg:max-w-5xl mx-auto">
+      <div className="w-full max-w-6xl mx-auto">
         <div className="space-y-5 sm:space-y-6">
           <AnimatePresence mode="wait">
             {activeSection && section ? (
@@ -607,7 +607,7 @@ function Islam() {
                 <GoalsStrip filterCategory="spiritual" linkTo="Wellness" filterLabel="Spiritual Goals" />
                 <DailyVerse />
 
-                {/* Section groups — denser grid so last rows don’t leave a sparse empty band */}
+                {/* Section groups — auto-fit grid fills row width, then wraps */}
                 <div className="space-y-5">
                   {SECTION_GROUPS.map(group => {
                     const visibleSections = group.sections.filter(shouldShowIslamSection);
@@ -618,7 +618,7 @@ function Islam() {
                         {group.label}
                         <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded-full font-semibold">{visibleSections.length}</span>
                       </p>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3">
+                      <div className="grid gap-2.5 sm:gap-3 grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(10.5rem,1fr))]">
                         {visibleSections.map(s => (
                           <SectionTile key={s.id} section={s} onClick={() => setActiveSection(s.id)} />
                         ))}
