@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { captureApiException } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
+import { runWithProductGating } from '@/lib/platform-owner-bypass';
 import {
   vpApiCorsPreflightResponse,
   vpApiJson,
@@ -33,11 +34,15 @@ export async function POST(request: NextRequest) {
         ? (body.payload as Record<string, unknown>)
         : {};
 
-    const result = await dispatchVpFunction(functionName, {
-      request,
-      user: guard.user!,
-      payload,
-    });
+    // ALS.run scope so platform-owner unlimited bypass survives nested awaits
+    // in gateFeature → requireFeatureUsage (findOptimalMeetingTimes, etc.).
+    const result = await runWithProductGating(guard.user!.id, () =>
+      dispatchVpFunction(functionName, {
+        request,
+        user: guard.user!,
+        payload,
+      })
+    );
 
     if (result === null) {
       return vpApiJson(

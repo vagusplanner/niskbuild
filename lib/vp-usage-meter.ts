@@ -4,7 +4,10 @@ import {
   isUnlimitedFeature,
   periodStartForFeature,
 } from '@/lib/vp-feature-limits';
-import { isProductGatingBypassActive, PLATFORM_OWNER_VP_PLAN } from '@/lib/platform-owner-bypass';
+import {
+  PLATFORM_OWNER_VP_PLAN,
+  resolveProductGatingBypass,
+} from '@/lib/platform-owner-bypass';
 import { resolveEffectivePlan } from '@/lib/vp-plan-access';
 
 export type UsageSnapshot = {
@@ -55,7 +58,7 @@ export async function getUsageSnapshot(
   admin: AdminClient,
   opts: { userId: string; plan: string; feature: string }
 ): Promise<UsageSnapshot> {
-  if (isProductGatingBypassActive()) {
+  if (await resolveProductGatingBypass(opts.userId)) {
     return unlimitedUsageSnapshot(opts.feature);
   }
 
@@ -92,7 +95,7 @@ export async function consumeUsage(
     feature: string;
   }
 ): Promise<ConsumeUsageResult> {
-  if (isProductGatingBypassActive()) {
+  if (await resolveProductGatingBypass(opts.userId)) {
     return unlimitedUsageSnapshot(opts.feature);
   }
 
@@ -219,7 +222,9 @@ export async function requireFeatureUsage(
   admin: AdminClient,
   opts: { userId: string; email?: string | null; feature: string }
 ): Promise<FeatureGateOk | FeatureGateDenied> {
-  if (isProductGatingBypassActive()) {
+  // Always re-resolve by userId when ALS is unset/lost — VP functions use Bearer
+  // auth and findOptimalMeetingTimes / other handlers must still get unlimited access.
+  if (await resolveProductGatingBypass(opts.userId)) {
     return {
       ok: true,
       plan: PLATFORM_OWNER_VP_PLAN,
