@@ -8,7 +8,7 @@ import {
 } from '@/lib/credits';
 import { getMembership } from '@/lib/organization-team';
 import { isAgencyStudioOrAbove } from '@/lib/tier-access-server';
-import { isProductGatingBypassActive } from '@/lib/platform-owner-bypass';
+import { resolveProductGatingBypass } from '@/lib/platform-owner-bypass';
 
 export type CreditChargeContext = {
   /** Profile that loses/gains credits */
@@ -98,7 +98,11 @@ export async function resolveCreditChargeContext(params: {
 
   // Product: when Agency+ lapses, non-owners are read-only on org projects;
   // the billing owner may still generate (debited from their own pool).
-  if (!teamsEligible && !isOwner && !isProductGatingBypassActive()) {
+  if (
+    !teamsEligible &&
+    !isOwner &&
+    !(await resolveProductGatingBypass(params.actingUserId))
+  ) {
     return {
       ok: false,
       error: ORG_TEAMS_LAPSED_MEMBER,

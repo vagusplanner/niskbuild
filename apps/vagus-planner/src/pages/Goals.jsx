@@ -3,12 +3,13 @@ import { useTranslation } from 'react-i18next';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Search, Filter, TrendingUp, Target, CheckCircle2, Moon, Heart, Zap } from 'lucide-react';
+import { Plus, Search, Filter, TrendingUp, Target, CheckCircle2, Moon, Heart, Zap, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 import LifeGoalCard from '@/components/lifegoals/LifeGoalCard';
 import LifeGoalForm from '@/components/lifegoals/LifeGoalForm';
 import LifeGoalDetails from '@/components/lifegoals/LifeGoalDetails';
@@ -132,6 +133,13 @@ export default function Goals() {
   return (
     <PullToRefresh onRefresh={handleRefresh}>
     <div className="max-w-7xl mx-auto space-y-6">
+      <Link
+        to={createPageUrl('Dashboard')}
+        className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-[#1D6FB8] dark:text-slate-400 dark:hover:text-[#29ABE2] transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" /> {t('common.back', { defaultValue: 'Back' })}
+      </Link>
+
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="relative overflow-hidden rounded-2xl p-5 shadow-lg" style={{background:'linear-gradient(135deg, #1B2A4A 0%, #0D4F6C 55%, #1D6FB8 100%)', border:'1px solid rgba(41,171,226,0.3)'}}>
         <div className="absolute top-0 left-0 right-0 h-0.5" style={{background:'linear-gradient(90deg, #E8B84B, #29ABE2, #1D6FB8)'}} />

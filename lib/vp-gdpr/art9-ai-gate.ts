@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { createAdminClient } from '@/lib/supabase/admin';
-import { resolvePaidIslamicAccess } from '@/lib/vp-islamic-access';
+import { resolvePaidIslamicAccessForUser } from '@/lib/vp-islamic-access';
 import { loadUserPlanContext } from '@/lib/vp-usage-meter';
 import {
   canSendArt9CategoryToAi,
@@ -94,7 +94,12 @@ export async function verifyArt9AiAccess(
 
     if (categories.includes('religious')) {
       const { subscriptions, profile } = await loadUserPlanContext(admin, userId);
-      const islamic = resolvePaidIslamicAccess({ subscriptions, profile });
+      // Re-resolve owner bypass by userId — ALS from guardApiRequest can be lost
+      // across the awaits above (same class of bug as findOptimalMeetingTimes).
+      const islamic = await resolvePaidIslamicAccessForUser(userId, {
+        subscriptions,
+        profile,
+      });
       if (!islamic.hasPaidIslamicAccess) {
         return {
           ok: false,

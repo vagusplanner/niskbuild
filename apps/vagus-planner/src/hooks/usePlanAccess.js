@@ -33,8 +33,9 @@ export function usePlanAccess() {
     isLoading: query.isLoading,
     error: query.error,
     plan: data?.plan ?? 'free',
-    isPaid: data?.isPaid === true,
-    hasPaidIslamicAccess: data?.hasPaidIslamicAccess === true,
+    isPaid: data?.isPaid === true || data?.platformOwnerBypass === true,
+    hasPaidIslamicAccess:
+      data?.hasPaidIslamicAccess === true || data?.platformOwnerBypass === true,
     platformOwnerBypass: data?.platformOwnerBypass === true,
     usage,
     aiCalendarSummary: usage.ai_calendar_summary ?? null,

@@ -13,6 +13,7 @@ import {
 import {
   isProductGatingBypassActive,
   PLATFORM_OWNER_VP_PLAN_INFO,
+  resolveProductGatingBypass,
 } from '@/lib/platform-owner-bypass';
 
 export type PlanAccessInput = IslamicAccessInput;
@@ -26,6 +27,10 @@ export type EffectivePlanResult = {
   isPaid: boolean;
 };
 
+/**
+ * Sync plan resolution — trusts ALS only.
+ * Prefer {@link resolveEffectivePlanForUser} on async request paths.
+ */
 export function resolveEffectivePlan(input: PlanAccessInput): EffectivePlanResult {
   if (isProductGatingBypassActive()) {
     return PLATFORM_OWNER_VP_PLAN_INFO;
@@ -70,4 +75,18 @@ export function resolveEffectivePlan(input: PlanAccessInput): EffectivePlanResul
     hasPaidIslamicAccess: islamic.hasPaidIslamicAccess,
     isPaid: false,
   };
+}
+
+/**
+ * Same as {@link resolveEffectivePlan}, but re-resolves platform-owner bypass
+ * by userId when ALS is missing/lost.
+ */
+export async function resolveEffectivePlanForUser(
+  userId: string | undefined,
+  input: PlanAccessInput
+): Promise<EffectivePlanResult> {
+  if (await resolveProductGatingBypass(userId)) {
+    return PLATFORM_OWNER_VP_PLAN_INFO;
+  }
+  return resolveEffectivePlan(input);
 }

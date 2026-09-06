@@ -8,7 +8,7 @@ import {
   PLATFORM_OWNER_VP_PLAN,
   resolveProductGatingBypass,
 } from '@/lib/platform-owner-bypass';
-import { resolveEffectivePlan } from '@/lib/vp-plan-access';
+import { resolveEffectivePlanForUser } from '@/lib/vp-plan-access';
 
 export type UsageSnapshot = {
   feature: string;
@@ -233,7 +233,11 @@ export async function requireFeatureUsage(
   }
 
   const { subscriptions, profile } = await loadUserPlanContext(admin, opts.userId);
-  const planInfo = resolveEffectivePlan({ subscriptions, profile });
+  // Re-check owner bypass by userId (ALS may be gone after earlier awaits).
+  const planInfo = await resolveEffectivePlanForUser(opts.userId, {
+    subscriptions,
+    profile,
+  });
   const email =
     (typeof opts.email === 'string' && opts.email) ||
     (typeof profile?.email === 'string' ? profile.email : '') ||

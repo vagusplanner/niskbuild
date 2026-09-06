@@ -6,6 +6,7 @@
 import {
   isProductGatingBypassActive,
   PLATFORM_OWNER_ISLAMIC_ACCESS,
+  resolveProductGatingBypass,
 } from '@/lib/platform-owner-bypass';
 
 export const PAID_ISLAMIC_PLANS = [
@@ -62,6 +63,9 @@ export type IslamicAccessResult = {
  * Resolve whether the user has a paid Islamic Edition entitlement.
  * Prefers vp_subscriptions; falls back to profiles.subscription_tier for Stripe
  * checkouts that update the NiskBuild profile instead of vp_subscriptions.
+ *
+ * Sync helper — trusts ALS only. Prefer {@link resolvePaidIslamicAccessForUser}
+ * on async request paths (ALS can drop across awaits in Next.js).
  */
 export function resolvePaidIslamicAccess(input: IslamicAccessInput): IslamicAccessResult {
   if (isProductGatingBypassActive()) {
@@ -103,4 +107,18 @@ export function resolvePaidIslamicAccess(input: IslamicAccessInput): IslamicAcce
     status: null,
     source: null,
   };
+}
+
+/**
+ * Same as {@link resolvePaidIslamicAccess}, but re-resolves platform-owner bypass
+ * by userId when ALS is missing/lost (same pattern as requireFeatureUsage).
+ */
+export async function resolvePaidIslamicAccessForUser(
+  userId: string | undefined,
+  input: IslamicAccessInput
+): Promise<IslamicAccessResult> {
+  if (await resolveProductGatingBypass(userId)) {
+    return PLATFORM_OWNER_ISLAMIC_ACCESS;
+  }
+  return resolvePaidIslamicAccess(input);
 }

@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { captureApiException } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { resolveEffectivePlan } from '@/lib/vp-plan-access';
+import { resolveEffectivePlanForUser } from '@/lib/vp-plan-access';
 import { loadUserPlanContext } from '@/lib/vp-usage-meter';
 import { isPlatformOwner } from '@/lib/platform-owner-auth';
 import {
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     const admin = createAdminClient();
     const userId = guard.user!.id;
     const { subscriptions, profile } = await loadUserPlanContext(admin, userId);
-    const planInfo = resolveEffectivePlan({ subscriptions, profile });
+    const planInfo = await resolveEffectivePlanForUser(userId, { subscriptions, profile });
     const platformOwnerBypass = await isPlatformOwner(guard.user!.id);
 
     return vpApiJson(request, {
