@@ -1,6 +1,9 @@
 /**
  * Al-Quran Cloud API helpers (same source as DailyVerse).
  * Free, no auth. Returns real Uthmani Arabic + English translation.
+ *
+ * Audio: islamic.network CDN — bitrate availability differs by reciter.
+ * Always use the bitrate listed on each RECITERS entry (128 is NOT universal).
  */
 
 const BASE = 'https://api.alquran.cloud/v1';
@@ -12,16 +15,54 @@ const TRANSLATIONS = [
   { id: 'en.yusufali', label: 'Yusuf Ali' },
 ];
 
+/**
+ * Reciters verified against cdn.islamic.network (ayah 1 HEAD).
+ * bitrate must match what the CDN actually hosts for that folder.
+ */
 const RECITERS = [
-  { id: 'ar.alafasy', label: 'Mishary Alafasy' },
-  { id: 'ar.abdurrahmaansudais', label: 'Abdurrahman As-Sudais' },
-  { id: 'ar.abdullahbasfar', label: 'Abdullah Basfar' },
-  { id: 'ar.minshawi', label: 'Mohamed Al-Minshawi' },
+  { id: 'ar.alafasy', label: 'Mishary Alafasy', bitrate: 128 },
+  { id: 'ar.minshawi', label: 'Mohamed Al-Minshawi', bitrate: 128 },
+  { id: 'ar.husary', label: 'Mahmoud Al-Husary', bitrate: 128 },
+  { id: 'ar.shaatree', label: 'Abu Bakr Ash-Shaatree', bitrate: 128 },
+  { id: 'ar.mahermuaiqly', label: 'Maher Al-Muaiqly', bitrate: 128 },
+  { id: 'ar.hudhaify', label: 'Ali Al-Hudhaify', bitrate: 128 },
+  // These two are 403 at 128kbps on the CDN — use 192 (also available at 64)
+  { id: 'ar.abdurrahmaansudais', label: 'Abdurrahman As-Sudais', bitrate: 192 },
+  { id: 'ar.abdullahbasfar', label: 'Abdullah Basfar', bitrate: 192 },
 ];
 
-/** CDN audio by absolute ayah number (1–6236). */
+function getReciter(reciterId) {
+  return RECITERS.find((r) => r.id === reciterId) || RECITERS[0];
+}
+
+/** CDN audio by absolute ayah number (1–6236), using the reciter's valid bitrate. */
 function getAyahAudioUrl(reciterId, globalAyahNumber) {
-  return `https://cdn.islamic.network/quran/audio/128/${reciterId}/${globalAyahNumber}.mp3`;
+  const reciter = getReciter(reciterId);
+  const bitrate = reciter.bitrate || 128;
+  return `https://cdn.islamic.network/quran/audio/${bitrate}/${reciter.id}/${globalAyahNumber}.mp3`;
+}
+
+/**
+ * Probe whether a URL responds (for fallback if CDN changes).
+ * Tries primary bitrate, then common alternates.
+ */
+async function resolveAyahAudioUrl(reciterId, globalAyahNumber) {
+  const primary = getAyahAudioUrl(reciterId, globalAyahNumber);
+  const candidates = [primary];
+  const reciter = getReciter(reciterId);
+  for (const br of [128, 192, 64]) {
+    if (br === reciter.bitrate) continue;
+    candidates.push(`https://cdn.islamic.network/quran/audio/${br}/${reciter.id}/${globalAyahNumber}.mp3`);
+  }
+  for (const url of candidates) {
+    try {
+      const res = await fetch(url, { method: 'HEAD', mode: 'cors' });
+      if (res.ok) return url;
+    } catch {
+      // try next
+    }
+  }
+  return primary; // last resort — let <audio> surface the error
 }
 
 /**
@@ -63,4 +104,11 @@ async function fetchSurah(surahNumber, translationId = 'en.asad') {
   };
 }
 
-export { TRANSLATIONS, RECITERS, getAyahAudioUrl, fetchSurah };
+export {
+  TRANSLATIONS,
+  RECITERS,
+  getReciter,
+  getAyahAudioUrl,
+  resolveAyahAudioUrl,
+  fetchSurah,
+};

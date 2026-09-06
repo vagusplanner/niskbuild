@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, ChevronDown } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, ChevronDown, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RECITERS, getAyahAudioUrl } from '@/lib/quran-api';
+import { toast } from 'sonner';
+import { RECITERS, getAyahAudioUrl, resolveAyahAudioUrl, getReciter } from '@/lib/quran-api';
 
 /**
- * Audio player for the current ayah. Uses absolute ayah numbers on islamic.network CDN.
- * Parent owns surah/ayah selection; pass globalAyah (1–6236) from AlQuran Cloud.
+ * Audio player for the current ayah.
+ * Uses per-reciter bitrate on islamic.network (128kbps is not available for every reciter).
  */
 export default function QuranAudioPlayer({
   surah = 1,
@@ -14,7 +15,10 @@ export default function QuranAudioPlayer({
   globalAyah = 1,
   onAyahChange,
 }) {
-  const [reciter, setReciter] = useState(() => localStorage.getItem('quran_reciter') || 'ar.alafasy');
+  const [reciter, setReciter] = useState(() => {
+    const saved = localStorage.getItem('quran_reciter');
+    return RECITERS.some((r) => r.id === saved) ? saved : 'ar.alafasy';
+  });
   const [currentAyah, setCurrentAyah] = useState(ayah);
   const [currentGlobal, setCurrentGlobal] = useState(globalAyah);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -22,7 +26,9 @@ export default function QuranAudioPlayer({
   const [showReciter, setShowReciter] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [loadingSrc, setLoadingSrc] = useState(false);
   const audioRef = useRef(null);
+  const playIntentRef = useRef(false);
 
   useEffect(() => {
     setCurrentAyah(ayah);
@@ -30,18 +36,50 @@ export default function QuranAudioPlayer({
   }, [ayah, surah, globalAyah]);
 
   useEffect(() => {
-    if (!audioRef.current || !currentGlobal) return;
-    audioRef.current.src = getAyahAudioUrl(reciter, currentGlobal);
-    if (isPlaying) audioRef.current.play().catch(() => {});
+    let cancelled = false;
+    const load = async () => {
+      if (!audioRef.current || !currentGlobal) return;
+      setLoadingSrc(true);
+      const url = await resolveAyahAudioUrl(reciter, currentGlobal);
+      if (cancelled || !audioRef.current) return;
+      audioRef.current.src = url;
+      audioRef.current.load();
+      setProgress(0);
+      setDuration(0);
+      setLoadingSrc(false);
+      if (playIntentRef.current || isPlaying) {
+        try {
+          await audioRef.current.play();
+          setIsPlaying(true);
+        } catch {
+          setIsPlaying(false);
+        }
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- isPlaying gated via playIntentRef
   }, [surah, currentGlobal, reciter]);
 
-  const togglePlay = () => {
+  const togglePlay = async () => {
     if (!audioRef.current) return;
     if (isPlaying) {
       audioRef.current.pause();
+      playIntentRef.current = false;
       setIsPlaying(false);
-    } else {
-      audioRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+      return;
+    }
+    playIntentRef.current = true;
+    try {
+      if (!audioRef.current.src) {
+        audioRef.current.src = getAyahAudioUrl(reciter, currentGlobal);
+      }
+      await audioRef.current.play();
+      setIsPlaying(true);
+    } catch {
+      toast.error('Could not play this recitation. Try another reciter.');
+      setIsPlaying(false);
+      playIntentRef.current = false;
     }
   };
 
@@ -50,10 +88,17 @@ export default function QuranAudioPlayer({
       const next = currentAyah + 1;
       setCurrentAyah(next);
       onAyahChange?.(next);
-      setTimeout(() => audioRef.current?.play().catch(() => {}), 200);
+      playIntentRef.current = true;
     } else {
       setIsPlaying(false);
+      playIntentRef.current = false;
     }
+  };
+
+  const handleError = () => {
+    toast.error(`Audio unavailable for ${getReciter(reciter).label} at this source. Try another reciter.`);
+    setIsPlaying(false);
+    playIntentRef.current = false;
   };
 
   const handleTimeUpdate = () => {
@@ -75,10 +120,8 @@ export default function QuranAudioPlayer({
     setReciter(id);
     localStorage.setItem('quran_reciter', id);
     setShowReciter(false);
-    if (audioRef.current && currentGlobal) {
-      audioRef.current.src = getAyahAudioUrl(id, currentGlobal);
-      if (isPlaying) audioRef.current.play().catch(() => {});
-    }
+    // Keep playing if user was listening
+    if (isPlaying) playIntentRef.current = true;
   };
 
   const prev = () => {
@@ -104,7 +147,7 @@ export default function QuranAudioPlayer({
     return `${m}:${String(sec).padStart(2, '0')}`;
   };
 
-  const reciterLabel = RECITERS.find(r => r.id === reciter)?.label || 'Select Reciter';
+  const reciterLabel = getReciter(reciter).label;
 
   return (
     <div className="rounded-2xl bg-gradient-to-br from-emerald-900 to-teal-900 text-white p-4 shadow-lg">
@@ -112,26 +155,30 @@ export default function QuranAudioPlayer({
         ref={audioRef}
         onEnded={handleEnded}
         onTimeUpdate={handleTimeUpdate}
+        onError={handleError}
+        onLoadedMetadata={handleTimeUpdate}
         muted={muted}
+        preload="metadata"
       />
 
       <div className="relative mb-3">
         <button
           type="button"
-          onClick={() => setShowReciter(s => !s)}
+          onClick={() => setShowReciter((s) => !s)}
           className="flex items-center gap-2 text-xs text-emerald-300 hover:text-white transition-colors"
         >
           <Volume2 className="w-3 h-3" />
           {reciterLabel}
+          {loadingSrc && <Loader2 className="w-3 h-3 animate-spin" />}
           <ChevronDown className={`w-3 h-3 transition-transform ${showReciter ? 'rotate-180' : ''}`} />
         </button>
         <AnimatePresence>
           {showReciter && (
             <motion.div
               initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-              className="absolute top-full mt-1 left-0 z-20 bg-slate-800 rounded-xl shadow-xl border border-slate-700 py-1 min-w-[180px]"
+              className="absolute top-full mt-1 left-0 z-20 bg-slate-800 rounded-xl shadow-xl border border-slate-700 py-1 min-w-[200px] max-h-56 overflow-y-auto"
             >
-              {RECITERS.map(r => (
+              {RECITERS.map((r) => (
                 <button
                   key={r.id}
                   type="button"
@@ -139,6 +186,7 @@ export default function QuranAudioPlayer({
                   className={`w-full text-left px-4 py-2 text-xs transition-colors ${reciter === r.id ? 'text-emerald-400 font-bold' : 'text-white/80 hover:bg-slate-700'}`}
                 >
                   {r.label}
+                  <span className="text-white/40 ml-1">({r.bitrate}k)</span>
                 </button>
               ))}
             </motion.div>
@@ -183,7 +231,7 @@ export default function QuranAudioPlayer({
         <button type="button" onClick={next} disabled={currentAyah >= totalAyahs} className="p-2 rounded-full hover:bg-white/10 disabled:opacity-30 transition-all">
           <SkipForward className="w-4 h-4" />
         </button>
-        <button type="button" onClick={() => setMuted(m => !m)} className="p-2 rounded-full hover:bg-white/10 transition-all">
+        <button type="button" onClick={() => setMuted((m) => !m)} className="p-2 rounded-full hover:bg-white/10 transition-all">
           {muted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4" />}
         </button>
       </div>

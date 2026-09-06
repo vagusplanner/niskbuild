@@ -39,8 +39,18 @@ assert(hub.includes('AITafsirPanel'), 'Read Explain uses AITafsirPanel');
 assert(api.includes('api.alquran.cloud'), 'quran-api uses Al-Quran Cloud');
 assert(api.includes('quran-uthmani'), 'Fetches Uthmani Arabic edition');
 assert(audio.includes('globalAyah') || audio.includes('getAyahAudioUrl'), 'Audio uses absolute ayah CDN URLs');
+assert(api.includes('bitrate'), 'Reciters declare CDN bitrate (128 is not universal)');
+assert(api.includes('ar.abdurrahmaansudais') && api.includes('192'), 'Sudais uses working 192kbps path');
 assert(islamic.includes("section=quran") || islamic.includes("createPageUrl('Islam')"), 'Islamic redirects to Islam hub');
 assert(islamic.includes('replace: true'), 'Islamic redirect is replace');
+
+const voice = read('apps/vagus-planner/src/components/islamic/unique/QuranVoiceCheck.jsx');
+const offline = read('apps/vagus-planner/src/components/offline/OfflineQuranViewer.jsx');
+assert(voice.includes('SURAHS') && voice.includes('fetchSurah'), 'Practice loads all surahs via API');
+assert(!voice.includes('PRACTICE_SURAHS'), 'Old hardcoded 5-surah practice list removed');
+assert(offline.includes('SURAHS') && offline.includes('fetchSurah'), 'Offline uses all 114 surahs + real API');
+assert(!offline.includes('POPULAR_SURAHS'), 'Old 8-surah offline stub list removed');
+assert(!offline.includes('InvokeLLM'), 'Offline no longer uses LLM-generated stub verses');
 
 // Live API check — Surah 112:1 must NOT be Bismillah-only (Al-Ikhlas starts with Qul huwa)
 const BISMILLAH = 'بِسْمِ';

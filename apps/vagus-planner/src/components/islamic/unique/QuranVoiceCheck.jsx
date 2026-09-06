@@ -1,28 +1,58 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, MicOff, BookOpen, CheckCircle2, AlertCircle, Star, Loader2, Volume2 } from 'lucide-react';
+import { Mic, MicOff, BookOpen, Loader2, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { SURAHS } from '@/components/quran/QURAN_DATA';
+import { fetchSurah, getAyahAudioUrl } from '@/lib/quran-api';
 
-const PRACTICE_SURAHS = [
-  { id: 1,   name: 'Al-Fatiha',     ayahs: 7,  text: 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ', transliteration: 'Bismillahi r-rahmani r-rahim' },
-  { id: 112, name: 'Al-Ikhlas',     ayahs: 4,  text: 'قُلْ هُوَ اللَّهُ أَحَدٌ', transliteration: "Qul huwa Allahu ahad" },
-  { id: 113, name: 'Al-Falaq',      ayahs: 5,  text: 'قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ', transliteration: "Qul a'udhu bi rabbi l-falaq" },
-  { id: 114, name: 'An-Nas',        ayahs: 6,  text: 'قُلْ أَعُوذُ بِرَبِّ النَّاسِ', transliteration: "Qul a'udhu bi rabbi n-nas" },
-  { id: 2,   name: 'Al-Baqarah 1-5', ayahs: 5, text: 'الم ذَٰلِكَ الْكِتَابُ لَا رَيْبَ', transliteration: 'Alif lam mim. Thalika l-kitabu la rayba' },
-];
+const QUICK_PICKS = [1, 36, 67, 112, 113, 114];
 
+/**
+ * Tajweed voice practice for any of the 114 surahs.
+ * Loads real Arabic from Al-Quran Cloud; practice one ayah at a time (full-surah mic for Baqarah etc. is impractical).
+ */
 export default function QuranVoiceCheck() {
   const queryClient = useQueryClient();
-  const [selected, setSelected] = useState(PRACTICE_SURAHS[0]);
+  const [surahNumber, setSurahNumber] = useState(1);
+  const [ayahNumber, setAyahNumber] = useState(1);
+  const [surahData, setSurahData] = useState(null);
+  const [loadingSurah, setLoadingSurah] = useState(false);
   const [recording, setRecording] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState(null);
   const recognitionRef = useRef(null);
   const audioRef = useRef(null);
+
+  const meta = useMemo(() => SURAHS.find((s) => s.number === surahNumber), [surahNumber]);
+  const currentAyah = surahData?.ayahs?.find((a) => a.numberInSurah === ayahNumber) || surahData?.ayahs?.[0];
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoadingSurah(true);
+      setResult(null);
+      setTranscript('');
+      try {
+        const data = await fetchSurah(surahNumber, 'en.asad');
+        if (cancelled) return;
+        setSurahData(data);
+        setAyahNumber(1);
+      } catch {
+        if (!cancelled) {
+          toast.error('Could not load surah text');
+          setSurahData(null);
+        }
+      } finally {
+        if (!cancelled) setLoadingSurah(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [surahNumber]);
 
   const toggleRecording = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -37,22 +67,21 @@ export default function QuranVoiceCheck() {
     setTranscript('');
     setResult(null);
     const r = new SR();
-    r.lang = 'ar-SA'; // Arabic
+    r.lang = 'ar-SA';
     r.continuous = true;
     r.interimResults = true;
     r.onresult = (e) => {
-      const t = Array.from(e.results).map(r => r[0].transcript).join(' ');
+      const t = Array.from(e.results).map((x) => x[0].transcript).join(' ');
       setTranscript(t);
     };
     r.onend = () => { setRecording(false); };
     r.onerror = (e) => {
-      // Fallback to English if Arabic not available
       if (e.error === 'language-not-supported') {
         const r2 = new SR();
         r2.lang = 'en-US';
         r2.continuous = true;
         r2.interimResults = true;
-        r2.onresult = (e2) => { setTranscript(Array.from(e2.results).map(r=>r[0].transcript).join(' ')); };
+        r2.onresult = (e2) => { setTranscript(Array.from(e2.results).map((x) => x[0].transcript).join(' ')); };
         r2.onend = () => setRecording(false);
         r2.start();
         recognitionRef.current = r2;
@@ -63,15 +92,31 @@ export default function QuranVoiceCheck() {
     r.start();
     recognitionRef.current = r;
     setRecording(true);
-    toast.success('🎙️ Reciting in Arabic — tap stop when done');
+    toast.success('Reciting in Arabic — tap stop when done');
   };
 
   const checkTajweed = async () => {
     if (!transcript.trim()) return toast.error('Please recite first');
+    if (!currentAyah) return toast.error('Verse not loaded');
     setChecking(true);
     try {
       const res = await base44.integrations.Core.InvokeLLM({
-        prompt: `You are an expert Quran teacher checking a student's recitation of Surah ${selected.name}.\n\nExpected text: "${selected.text}"\nExpected transliteration: "${selected.transliteration}"\n\nStudent's transcribed recitation: "${transcript}"\n\nNote: The speech recognition may have transcribed Arabic sounds phonetically in English or partially in Arabic. Assess the recitation as best as possible.\n\nEvaluate:\n1. Accuracy (0-100 score)\n2. Specific Tajweed rules they should focus on\n3. Pronunciation mistakes detected\n4. Words/phrases to re-practice\n5. An encouraging message\n6. Suggested next steps`,
+        prompt: `You are an expert Quran teacher checking a student's recitation of Surah ${surahData.englishName} ayah ${currentAyah.numberInSurah}.
+
+Expected Arabic: "${currentAyah.arabic}"
+Expected meaning (English): "${currentAyah.translation}"
+
+Student's transcribed recitation: "${transcript}"
+
+Note: Speech recognition may have transcribed Arabic sounds phonetically in English or partially in Arabic. Assess as best as possible.
+
+Evaluate:
+1. Accuracy (0-100 score)
+2. Specific Tajweed rules they should focus on
+3. Pronunciation mistakes detected
+4. Words/phrases to re-practice
+5. An encouraging message
+6. Suggested next steps`,
         response_json_schema: {
           type: 'object',
           properties: {
@@ -87,36 +132,43 @@ export default function QuranVoiceCheck() {
       });
       setResult(res);
 
-      // Save progress to QuranMemorization (visible under Progress → Memorisation)
       await base44.entities.QuranMemorization.create({
-        surah_number: selected.id,
-        surah_name: selected.name,
-        ayah_from: 1,
-        ayah_to: selected.ayahs,
-        from_verse: 1,
-        to_verse: selected.ayahs,
+        surah_number: surahNumber,
+        surah_name: surahData.englishName || meta?.name,
+        ayah_from: currentAyah.numberInSurah,
+        ayah_to: currentAyah.numberInSurah,
+        from_verse: currentAyah.numberInSurah,
+        to_verse: currentAyah.numberInSurah,
         status: res.accuracy_score >= 80 ? 'memorized' : 'memorizing',
         accuracy_score: res.accuracy_score,
-        notes: `Voice check score: ${res.accuracy_score}/100`,
+        notes: `Voice check score: ${res.accuracy_score}/100 (ayah ${currentAyah.numberInSurah})`,
         last_reviewed: new Date().toISOString().split('T')[0],
       }).catch(() => {});
 
       queryClient.invalidateQueries({ queryKey: ['quran-memorizations'] });
       queryClient.invalidateQueries({ queryKey: ['quranMemorization'] });
-
-    } catch (_) { toast.error('AI check failed. Please try again.'); }
+    } catch (_) {
+      toast.error('AI check failed. Please try again.');
+    }
     setChecking(false);
   };
 
   const playAudio = () => {
-    const url = `https://cdn.islamic.network/quran/audio/128/ar.alafasy/${selected.id}.mp3`;
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = url; audioRef.current.play(); }
-    else { const a = new Audio(url); a.play(); audioRef.current = a; }
-    toast.success('▶️ Playing recitation by Mishary Alafasy');
+    if (!currentAyah?.globalNumber) return toast.error('Verse audio not ready');
+    const url = getAyahAudioUrl('ar.alafasy', currentAyah.globalNumber);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = url;
+      audioRef.current.play().catch(() => toast.error('Could not play audio'));
+    } else {
+      const a = new Audio(url);
+      a.play().catch(() => toast.error('Could not play audio'));
+      audioRef.current = a;
+    }
+    toast.success('Playing Mishary Alafasy');
   };
 
-  const scoreColor = (s) => s >= 80 ? 'text-emerald-600' : s >= 60 ? 'text-amber-600' : 'text-red-600';
-  const scoreBg = (s) => s >= 80 ? 'from-emerald-400 to-teal-500' : s >= 60 ? 'from-amber-400 to-orange-500' : 'from-red-400 to-rose-500';
+  const scoreBg = (s) => (s >= 80 ? 'from-emerald-400 to-teal-500' : s >= 60 ? 'from-amber-400 to-orange-500' : 'from-red-400 to-rose-500');
 
   return (
     <div className="space-y-4">
@@ -125,50 +177,111 @@ export default function QuranVoiceCheck() {
         <h3 className="font-black text-slate-800 dark:text-slate-100">Quran Voice Check — Tajweed AI</h3>
       </div>
 
-      {/* Surah selector */}
+      <p className="text-xs text-slate-500 dark:text-slate-400 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 p-2.5">
+        All 114 surahs are available. Practice one ayah at a time (browser speech recognition works best on short passages).
+      </p>
+
       <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
-        {PRACTICE_SURAHS.map(s => (
-          <button key={s.id} onClick={() => { setSelected(s); setResult(null); setTranscript(''); }}
-            className={`flex-shrink-0 px-3 py-2 rounded-xl text-xs font-bold transition-all border ${
-              selected.id === s.id ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-emerald-400'
-            }`}>
-            {s.name}
-          </button>
-        ))}
+        {QUICK_PICKS.map((n) => {
+          const s = SURAHS.find((x) => x.number === n);
+          return (
+            <button
+              key={n}
+              type="button"
+              onClick={() => setSurahNumber(n)}
+              className={`flex-shrink-0 px-3 py-2 rounded-xl text-xs font-bold transition-all border ${
+                surahNumber === n ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-emerald-400'
+              }`}
+            >
+              {s?.name || n}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Arabic text display */}
-      <div className="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/20 border border-emerald-200 dark:border-emerald-800/40 rounded-2xl p-5 text-center">
-        <p className="text-2xl font-bold text-emerald-900 dark:text-emerald-100 leading-relaxed mb-2" dir="rtl" style={{ fontFamily: 'Amiri, serif' }}>
-          {selected.text}
-        </p>
-        <p className="text-xs text-emerald-700/70 dark:text-emerald-400/70 italic">{selected.transliteration}</p>
-        <button onClick={playAudio}
-          className="mt-3 flex items-center gap-1.5 mx-auto px-3 py-1.5 bg-emerald-100 dark:bg-emerald-900/40 rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 transition-all">
-          <Volume2 className="w-3.5 h-3.5" /> Listen First
-        </button>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div>
+          <label className="text-[10px] font-bold text-slate-500 uppercase">Surah (1–114)</label>
+          <Select value={String(surahNumber)} onValueChange={(v) => setSurahNumber(Number(v))}>
+            <SelectTrigger className="h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="max-h-72">
+              {SURAHS.map((s) => (
+                <SelectItem key={s.number} value={String(s.number)}>
+                  {s.number}. {s.name} ({s.verses})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <label className="text-[10px] font-bold text-slate-500 uppercase">Ayah to practice</label>
+          <Select
+            value={String(ayahNumber)}
+            onValueChange={(v) => { setAyahNumber(Number(v)); setResult(null); setTranscript(''); }}
+            disabled={!surahData}
+          >
+            <SelectTrigger className="h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="max-h-72">
+              {(surahData?.ayahs || []).map((a) => (
+                <SelectItem key={a.numberInSurah} value={String(a.numberInSurah)}>
+                  Ayah {a.numberInSurah}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      {/* Record */}
+      <div className="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/20 border border-emerald-200 dark:border-emerald-800/40 rounded-2xl p-5 text-center min-h-[120px]">
+        {loadingSurah && (
+          <div className="flex items-center justify-center gap-2 text-slate-500 py-6">
+            <Loader2 className="w-5 h-5 animate-spin" /> Loading ayah…
+          </div>
+        )}
+        {!loadingSurah && currentAyah && (
+          <>
+            <p className="text-[10px] font-bold text-emerald-700 mb-2">
+              {surahData.englishName} · {surahNumber}:{currentAyah.numberInSurah}
+            </p>
+            <p className="text-2xl font-bold text-emerald-900 dark:text-emerald-100 leading-relaxed mb-2" dir="rtl" lang="ar" style={{ fontFamily: 'Amiri, serif' }}>
+              {currentAyah.arabic}
+            </p>
+            <p className="text-xs text-emerald-700/80 dark:text-emerald-400/70">{currentAyah.translation}</p>
+            <button
+              type="button"
+              onClick={playAudio}
+              className="mt-3 flex items-center gap-1.5 mx-auto px-3 py-1.5 bg-emerald-100 dark:bg-emerald-900/40 rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 transition-all"
+            >
+              <Volume2 className="w-3.5 h-3.5" /> Listen First
+            </button>
+          </>
+        )}
+      </div>
+
       <div className="flex items-center gap-3">
-        <button onClick={toggleRecording}
-          className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all shadow-md ${recording ? 'bg-red-500 animate-pulse' : 'bg-emerald-500 hover:bg-emerald-600'}`}>
+        <button
+          type="button"
+          onClick={toggleRecording}
+          className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all shadow-md ${recording ? 'bg-red-500 animate-pulse' : 'bg-emerald-500 hover:bg-emerald-600'}`}
+        >
           {recording ? <MicOff className="w-6 h-6 text-white" /> : <Mic className="w-6 h-6 text-white" />}
         </button>
         <div className="flex-1">
-          <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{recording ? '🔴 Reciting — tap to stop' : 'Tap mic to begin reciting'}</p>
+          <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{recording ? 'Reciting — tap to stop' : 'Tap mic to begin reciting'}</p>
           {transcript && <p className="text-xs text-slate-400 mt-0.5 italic line-clamp-2">{transcript}</p>}
         </div>
       </div>
 
       {transcript && !recording && (
-        <Button onClick={checkTajweed} disabled={checking}
-          className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold hover:opacity-90">
-          {checking ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Checking Tajweed...</> : '🔍 Check My Recitation with AI'}
+        <Button onClick={checkTajweed} disabled={checking} className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold hover:opacity-90">
+          {checking ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Checking Tajweed...</> : 'Check My Recitation with AI'}
         </Button>
       )}
 
-      {/* Result */}
       <AnimatePresence>
         {result && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
@@ -184,14 +297,14 @@ export default function QuranVoiceCheck() {
 
             {result.tajweed_rules?.length > 0 && (
               <div className="p-3.5 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200/60 dark:border-blue-800/40">
-                <p className="text-[10px] font-black text-blue-700 dark:text-blue-400 uppercase mb-2">📚 Tajweed Rules to Practice</p>
+                <p className="text-[10px] font-black text-blue-700 dark:text-blue-400 uppercase mb-2">Tajweed Rules to Practice</p>
                 {result.tajweed_rules.map((r, i) => <p key={i} className="text-xs text-slate-600 dark:text-slate-400 py-0.5">• {r}</p>)}
               </div>
             )}
 
             {result.mistakes?.length > 0 && (
               <div className="p-3.5 bg-red-50 dark:bg-red-900/15 rounded-xl border border-red-200/60 dark:border-red-800/30">
-                <p className="text-[10px] font-black text-red-700 dark:text-red-400 uppercase mb-2">⚠️ Areas to Improve</p>
+                <p className="text-[10px] font-black text-red-700 dark:text-red-400 uppercase mb-2">Areas to Improve</p>
                 {result.mistakes.map((m, i) => <p key={i} className="text-xs text-slate-600 dark:text-slate-400 py-0.5">• {m}</p>)}
               </div>
             )}
