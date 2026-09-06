@@ -271,13 +271,20 @@ function DuaContent() {
 
 /** Zakat hub — Calculate / Give / Plan (canonical engine) */
 function ZakatContent() {
+  const initialTab = (() => {
+    try {
+      return new URLSearchParams(window.location.search).get('tab') || 'calculate';
+    } catch {
+      return 'calculate';
+    }
+  })();
   return (
     <div className="space-y-1">
       <p className="text-xs mb-3 font-medium" style={{ color: '#2D4A65' }}>
         One Zakat engine for the whole app: live gold/silver nisab (85g / 595g), 2.5% wealth rate,
-        giving tracker, Stripe checkout, family jar, and Islamic planning tools.
+        giving tracker, and Islamic planning tools.
       </p>
-      <ZakatHub />
+      <ZakatHub showHubBack={false} defaultTab={initialTab} />
     </div>
   );
 }
