@@ -2,7 +2,7 @@
  * Canonical Islam Zakat hub — Calculate / Give / Plan.
  * All wealth math goes through lib/zakat-engine (85g/595g live nisab, 2.5%).
  */
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, startOfYear, addMonths } from 'date-fns';
@@ -29,6 +29,8 @@ import {
   calculateBusinessZakat,
   calculateAgricultureZakat,
   formatMoney,
+  pricesAreValid,
+  num,
 } from '@/lib/zakat-engine';
 import GivingPlan from '@/components/zakat/GivingPlan';
 import IslamicFinancialPlanner from '@/components/islamic/IslamicFinancialPlanner';
@@ -96,10 +98,18 @@ function PriceDisclosure({ engine }) {
   const {
     goldPricePerGram, silverPricePerGram, priceLoading, priceSource, priceAsOf, fmt, currency,
   } = engine;
+  const ok = pricesAreValid(goldPricePerGram, silverPricePerGram);
   if (priceLoading) {
     return (
       <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/80 dark:bg-amber-950/20 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
         Loading live metal prices…
+      </div>
+    );
+  }
+  if (!ok) {
+    return (
+      <div className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+        Metal prices unavailable — tap Prices to retry. Grams conversion stays disabled until prices load.
       </div>
     );
   }
@@ -125,41 +135,117 @@ function CalculateTab({ engine, defaultAdvancedOpen = false }) {
   const [goldGramsConfirmed, setGoldGramsConfirmed] = useState(null);
   const [silverGramsConfirmed, setSilverGramsConfirmed] = useState(null);
   const [appliedFlash, setAppliedFlash] = useState(null); // 'gold_value' | 'silver_value' | 'business_assets'
+  const [applyDelta, setApplyDelta] = useState(null); // { field, before, after, value }
   const [biz, setBiz] = useState({ inventory: '', receivables: '', cash: '', liabilities: '' });
   const [agri, setAgri] = useState({ value: '', irrigation: 'rain' });
+  const goldFieldRef = useRef(null);
+  const silverFieldRef = useRef(null);
+  const businessFieldRef = useRef(null);
 
-  const flashField = (key, message) => {
+  const pricesOk = pricesAreValid(goldPricePerGram, silverPricePerGram);
+
+  const goldPreview = useMemo(() => {
+    const g = num(goldGrams);
+    if (!g || !pricesOk) return null;
+    return { grams: g, value: g * goldPricePerGram };
+  }, [goldGrams, goldPricePerGram, pricesOk]);
+
+  const silverPreview = useMemo(() => {
+    const g = num(silverGrams);
+    if (!g || !pricesOk) return null;
+    return { grams: g, value: g * silverPricePerGram };
+  }, [silverGrams, silverPricePerGram, pricesOk]);
+
+  const flashField = (key, message, delta) => {
     setAppliedFlash(key);
+    setApplyDelta(delta || null);
     toast.success(message);
-    window.setTimeout(() => setAppliedFlash((cur) => (cur === key ? null : cur)), 2800);
+    window.setTimeout(() => {
+      setAppliedFlash((cur) => (cur === key ? null : cur));
+      setApplyDelta((cur) => (cur?.field === key ? null : cur));
+    }, 5000);
+    const refMap = { gold_value: goldFieldRef, silver_value: silverFieldRef, business_assets: businessFieldRef };
+    refMap[key]?.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
   };
 
   const applyMetalGrams = (metal) => {
-    if (metal === 'gold') {
-      const grams = parseFloat(goldGrams) || 0;
-      const val = grams * goldPricePerGram;
-      if (val > 0) {
-        updateAsset('gold_value', val.toFixed(2));
-        setGoldGramsConfirmed({ grams, value: val });
-        setGoldGrams('');
-        flashField('gold_value', `Gold: ${grams}g → ${fmt(val)} applied`);
-        window.setTimeout(() => setGoldGramsConfirmed(null), 3500);
-      } else {
-        toast.error('Enter gold weight in grams first');
-      }
-    } else {
-      const grams = parseFloat(silverGrams) || 0;
-      const val = grams * silverPricePerGram;
-      if (val > 0) {
-        updateAsset('silver_value', val.toFixed(2));
-        setSilverGramsConfirmed({ grams, value: val });
-        setSilverGrams('');
-        flashField('silver_value', `Silver: ${grams}g → ${fmt(val)} applied`);
-        window.setTimeout(() => setSilverGramsConfirmed(null), 3500);
-      } else {
-        toast.error('Enter silver weight in grams first');
-      }
+    if (!pricesOk) {
+      toast.error('Metal prices not ready — tap Prices to refresh');
+      return;
     }
+    if (metal === 'gold') {
+      const grams = num(goldGrams);
+      if (grams <= 0) {
+        toast.error('Enter gold weight in grams first');
+        return;
+      }
+      const val = grams * goldPricePerGram;
+      const before = result.zakatableWealth;
+      const wealthAfter = Math.max(0, (result.totalAssets - num(assets.gold_value) + val) - num(assets.liabilities));
+      updateAsset('gold_value', val.toFixed(2));
+      setGoldGramsConfirmed({ grams, value: val, rate: goldPricePerGram });
+      flashField(
+        'gold_value',
+        `Gold (market value) set to ${fmt(val)} = ${grams}g × ${fmt(goldPricePerGram)}/g · Wealth ${fmt(before)} → ${fmt(wealthAfter)}`,
+        {
+          field: 'gold_value',
+          linked: 'Gold (market value)',
+          grams,
+          value: val,
+          rate: goldPricePerGram,
+          wealthBefore: before,
+          wealthAfter,
+        },
+      );
+      window.setTimeout(() => setGoldGramsConfirmed(null), 6000);
+    } else {
+      const grams = num(silverGrams);
+      if (grams <= 0) {
+        toast.error('Enter silver weight in grams first');
+        return;
+      }
+      const val = grams * silverPricePerGram;
+      const before = result.zakatableWealth;
+      const wealthAfter = Math.max(0, (result.totalAssets - num(assets.silver_value) + val) - num(assets.liabilities));
+      updateAsset('silver_value', val.toFixed(2));
+      setSilverGramsConfirmed({ grams, value: val, rate: silverPricePerGram });
+      flashField(
+        'silver_value',
+        `Silver (market value) set to ${fmt(val)} = ${grams}g × ${fmt(silverPricePerGram)}/g · Wealth ${fmt(before)} → ${fmt(wealthAfter)}`,
+        {
+          field: 'silver_value',
+          linked: 'Silver (market value)',
+          grams,
+          value: val,
+          rate: silverPricePerGram,
+          wealthBefore: before,
+          wealthAfter,
+        },
+      );
+      window.setTimeout(() => setSilverGramsConfirmed(null), 6000);
+    }
+  };
+
+  const applyAdvancedToMain = (fieldKey, valueNumber, label) => {
+    if (!Number.isFinite(valueNumber) || valueNumber <= 0) {
+      toast.error('Nothing to apply — enter a valid amount first');
+      return;
+    }
+    const before = result.zakatableWealth;
+    const prevField = num(assets[fieldKey]);
+    const wealthAfter = Math.max(0, (result.totalAssets - prevField + valueNumber) - num(assets.liabilities));
+    updateAsset(fieldKey, valueNumber.toFixed(2));
+    flashField(
+      fieldKey,
+      `Set “${label}” to ${fmt(valueNumber)} — Wealth ${fmt(before)} → ${fmt(wealthAfter)}`,
+      {
+        field: fieldKey,
+        linked: label,
+        value: valueNumber,
+        wealthBefore: before,
+        wealthAfter,
+      },
+    );
   };
 
   return (
@@ -214,12 +300,20 @@ function CalculateTab({ engine, defaultAdvancedOpen = false }) {
           <Calculator className="w-4 h-4 text-amber-600" /> Your assets
         </h3>
         {ASSET_FIELDS.map((f) => (
-          <div key={f.key}>
+          <div
+            key={f.key}
+            ref={
+              f.key === 'gold_value' ? goldFieldRef
+                : f.key === 'silver_value' ? silverFieldRef
+                  : f.key === 'business_assets' ? businessFieldRef
+                    : undefined
+            }
+          >
             <Label className="text-xs text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
               {f.label}
               {appliedFlash === f.key && (
                 <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Applied
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Updated
                 </span>
               )}
             </Label>
@@ -238,36 +332,71 @@ function CalculateTab({ engine, defaultAdvancedOpen = false }) {
           </div>
         ))}
 
+        {applyDelta && (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 p-3 text-xs text-emerald-900 dark:text-emerald-100 space-y-1">
+            <p className="font-bold flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Applied to main Calculate → {applyDelta.linked}
+            </p>
+            {applyDelta.grams != null && (
+              <p>
+                Math: {applyDelta.grams}g × {fmt(applyDelta.rate)}/g = <strong>{fmt(applyDelta.value)}</strong>
+              </p>
+            )}
+            {applyDelta.grams == null && applyDelta.value != null && (
+              <p>Field value set to <strong>{fmt(applyDelta.value)}</strong></p>
+            )}
+            <p>
+              Zakatable wealth: {fmt(applyDelta.wealthBefore)} → <strong>{fmt(applyDelta.wealthAfter)}</strong>
+              {' '}(+{fmt(Math.max(0, applyDelta.wealthAfter - applyDelta.wealthBefore))})
+            </p>
+          </div>
+        )}
+
         <div className="rounded-xl border border-amber-100 dark:border-amber-900/40 bg-amber-50/50 dark:bg-amber-950/20 p-3 space-y-2">
           <p className="text-xs font-bold text-amber-800 dark:text-amber-200">Grams → market value</p>
+          <p className="text-[10px] text-amber-800/80 dark:text-amber-200/70">
+            Converts weight using the live price above, then <strong>sets</strong> the Gold/Silver market-value fields (replaces any previous amount in that field).
+            {!pricesOk && !priceLoading && ' Prices unavailable — tap Refresh Prices.'}
+          </p>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label className="text-[10px]">Gold grams</Label>
               <div className="flex gap-1">
-                <Input type="number" value={goldGrams} onChange={(e) => { setGoldGrams(e.target.value); setGoldGramsConfirmed(null); }} className="h-8 text-xs" />
-                <Button size="sm" className={`h-8 min-w-[2rem] ${goldGramsConfirmed ? 'bg-emerald-600 hover:bg-emerald-700' : ''}`} onClick={() => applyMetalGrams('gold')} disabled={priceLoading} aria-label="Convert gold grams">
+                <Input type="number" min="0" step="0.01" value={goldGrams} onChange={(e) => { setGoldGrams(e.target.value); setGoldGramsConfirmed(null); }} className="h-8 text-xs" placeholder="e.g. 100" />
+                <Button size="sm" className={`h-8 min-w-[2rem] ${goldGramsConfirmed ? 'bg-emerald-600 hover:bg-emerald-700' : ''}`} onClick={() => applyMetalGrams('gold')} disabled={priceLoading || !pricesOk} aria-label="Convert gold grams into Gold market value">
                   {goldGramsConfirmed ? <CheckCircle2 className="w-4 h-4" /> : '✓'}
                 </Button>
               </div>
+              {goldPreview && (
+                <p className="mt-1 text-[10px] text-amber-900/80 dark:text-amber-200/80">
+                  Preview: {goldPreview.grams}g × {fmt(goldPricePerGram)}/g = <strong>{fmt(goldPreview.value)}</strong>
+                </p>
+              )}
               {goldGramsConfirmed && (
                 <p className="mt-1 text-[10px] font-semibold text-emerald-700 flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3" />
-                  {goldGramsConfirmed.grams}g → {fmt(goldGramsConfirmed.value)} set on Gold
+                  Set Gold field to {fmt(goldGramsConfirmed.value)}
                 </p>
               )}
             </div>
             <div>
               <Label className="text-[10px]">Silver grams</Label>
               <div className="flex gap-1">
-                <Input type="number" value={silverGrams} onChange={(e) => { setSilverGrams(e.target.value); setSilverGramsConfirmed(null); }} className="h-8 text-xs" />
-                <Button size="sm" className={`h-8 min-w-[2rem] ${silverGramsConfirmed ? 'bg-emerald-600 hover:bg-emerald-700' : ''}`} onClick={() => applyMetalGrams('silver')} disabled={priceLoading} aria-label="Convert silver grams">
+                <Input type="number" min="0" step="0.01" value={silverGrams} onChange={(e) => { setSilverGrams(e.target.value); setSilverGramsConfirmed(null); }} className="h-8 text-xs" placeholder="e.g. 500" />
+                <Button size="sm" className={`h-8 min-w-[2rem] ${silverGramsConfirmed ? 'bg-emerald-600 hover:bg-emerald-700' : ''}`} onClick={() => applyMetalGrams('silver')} disabled={priceLoading || !pricesOk} aria-label="Convert silver grams into Silver market value">
                   {silverGramsConfirmed ? <CheckCircle2 className="w-4 h-4" /> : '✓'}
                 </Button>
               </div>
+              {silverPreview && (
+                <p className="mt-1 text-[10px] text-amber-900/80 dark:text-amber-200/80">
+                  Preview: {silverPreview.grams}g × {fmt(silverPricePerGram)}/g = <strong>{fmt(silverPreview.value)}</strong>
+                </p>
+              )}
               {silverGramsConfirmed && (
                 <p className="mt-1 text-[10px] font-semibold text-emerald-700 flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3" />
-                  {silverGramsConfirmed.grams}g → {fmt(silverGramsConfirmed.value)} set on Silver
+                  Set Silver field to {fmt(silverGramsConfirmed.value)}
                 </p>
               )}
             </div>
@@ -316,20 +445,16 @@ function CalculateTab({ engine, defaultAdvancedOpen = false }) {
             <AdvancedGold
               price={goldPricePerGram}
               currency={currency}
-              onApplyValue={(v) => {
-                updateAsset('gold_value', String(v));
-                flashField('gold_value', `Applied ${fmt(Number(v))} to Gold (market value)`);
-              }}
+              pricesOk={pricesOk}
+              onApplyValue={(v) => applyAdvancedToMain('gold_value', Number(v), 'Gold (market value)')}
             />
           )}
           {advTab === 'silver' && (
             <AdvancedSilver
               price={silverPricePerGram}
               currency={currency}
-              onApplyValue={(v) => {
-                updateAsset('silver_value', String(v));
-                flashField('silver_value', `Applied ${fmt(Number(v))} to Silver (market value)`);
-              }}
+              pricesOk={pricesOk}
+              onApplyValue={(v) => applyAdvancedToMain('silver_value', Number(v), 'Silver (market value)')}
             />
           )}
           {advTab === 'business' && (
@@ -337,10 +462,7 @@ function CalculateTab({ engine, defaultAdvancedOpen = false }) {
               biz={biz}
               setBiz={setBiz}
               currency={currency}
-              onApply={(zakatable) => {
-                updateAsset('business_assets', String(zakatable.toFixed(2)));
-                flashField('business_assets', `Applied ${fmt(zakatable)} to Business / inventory`);
-              }}
+              onApply={(zakatable) => applyAdvancedToMain('business_assets', zakatable, 'Business / inventory')}
             />
           )}
           {advTab === 'agriculture' && (
@@ -352,26 +474,34 @@ function CalculateTab({ engine, defaultAdvancedOpen = false }) {
   );
 }
 
-function AdvancedGold({ price, currency, onApplyValue }) {
+function AdvancedGold({ price, currency, onApplyValue, pricesOk }) {
   const [grams, setGrams] = useState('');
   const [appliedMsg, setAppliedMsg] = useState('');
   const r = calculateGoldWeightZakat(grams, price);
+  const canApply = pricesOk && r.totalValue > 0;
   return (
     <div className="space-y-2">
-      <p className="text-xs text-slate-500">Nisab: {NISAB_GOLD_GRAMS}g · live gold price/g ({formatMoney(price, currency)})</p>
-      <Input type="number" value={grams} onChange={(e) => { setGrams(e.target.value); setAppliedMsg(''); }} placeholder="Weight in grams" />
-      <p className="text-sm font-bold">Value {formatMoney(r.totalValue, currency)} · Zakat {formatMoney(r.zakatDue, currency)}</p>
+      <p className="text-xs text-slate-500">
+        Nisab: {NISAB_GOLD_GRAMS}g · price/g {formatMoney(price || 0, currency)}
+        {!pricesOk && ' (prices unavailable)'}
+      </p>
+      <Input type="number" min="0" step="0.01" value={grams} onChange={(e) => { setGrams(e.target.value); setAppliedMsg(''); }} placeholder="Weight in grams" />
+      <p className="text-sm font-bold">
+        {num(grams) || 0}g × {formatMoney(price || 0, currency)}/g = {formatMoney(r.totalValue, currency)}
+        {r.meetsNisab ? ` · Zakat on this metal alone ${formatMoney(r.zakatDue, currency)}` : ' · below gold nisab for metal-only zakat'}
+      </p>
+      <p className="text-[10px] text-slate-500">Apply writes this total into the main “Gold (market value)” field and recalculates Wealth / Zakat due above.</p>
       <Button
         size="sm"
         onClick={() => {
           onApplyValue(r.totalValue.toFixed(2));
-          setAppliedMsg(`Applied ${formatMoney(r.totalValue, currency)} to Gold (market value)`);
+          setAppliedMsg(`Wrote ${formatMoney(r.totalValue, currency)} into Gold (market value)`);
         }}
-        disabled={!r.totalValue}
+        disabled={!canApply}
         className={appliedMsg ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
       >
         {appliedMsg ? (
-          <><CheckCircle2 className="w-4 h-4 mr-1" /> Applied</>
+          <><CheckCircle2 className="w-4 h-4 mr-1" /> Applied to main Gold field</>
         ) : (
           'Apply value to main calc'
         )}
@@ -385,26 +515,34 @@ function AdvancedGold({ price, currency, onApplyValue }) {
   );
 }
 
-function AdvancedSilver({ price, currency, onApplyValue }) {
+function AdvancedSilver({ price, currency, onApplyValue, pricesOk }) {
   const [grams, setGrams] = useState('');
   const [appliedMsg, setAppliedMsg] = useState('');
   const r = calculateSilverWeightZakat(grams, price);
+  const canApply = pricesOk && r.totalValue > 0;
   return (
     <div className="space-y-2">
-      <p className="text-xs text-slate-500">Nisab: {NISAB_SILVER_GRAMS}g · live silver price/g ({formatMoney(price, currency)})</p>
-      <Input type="number" value={grams} onChange={(e) => { setGrams(e.target.value); setAppliedMsg(''); }} placeholder="Weight in grams" />
-      <p className="text-sm font-bold">Value {formatMoney(r.totalValue, currency)} · Zakat {formatMoney(r.zakatDue, currency)}</p>
+      <p className="text-xs text-slate-500">
+        Nisab: {NISAB_SILVER_GRAMS}g · price/g {formatMoney(price || 0, currency)}
+        {!pricesOk && ' (prices unavailable)'}
+      </p>
+      <Input type="number" min="0" step="0.01" value={grams} onChange={(e) => { setGrams(e.target.value); setAppliedMsg(''); }} placeholder="Weight in grams" />
+      <p className="text-sm font-bold">
+        {num(grams) || 0}g × {formatMoney(price || 0, currency)}/g = {formatMoney(r.totalValue, currency)}
+        {r.meetsNisab ? ` · Zakat on this metal alone ${formatMoney(r.zakatDue, currency)}` : ' · below silver nisab for metal-only zakat'}
+      </p>
+      <p className="text-[10px] text-slate-500">Apply writes this total into the main “Silver (market value)” field and recalculates Wealth / Zakat due above.</p>
       <Button
         size="sm"
         onClick={() => {
           onApplyValue(r.totalValue.toFixed(2));
-          setAppliedMsg(`Applied ${formatMoney(r.totalValue, currency)} to Silver (market value)`);
+          setAppliedMsg(`Wrote ${formatMoney(r.totalValue, currency)} into Silver (market value)`);
         }}
-        disabled={!r.totalValue}
+        disabled={!canApply}
         className={appliedMsg ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
       >
         {appliedMsg ? (
-          <><CheckCircle2 className="w-4 h-4 mr-1" /> Applied</>
+          <><CheckCircle2 className="w-4 h-4 mr-1" /> Applied to main Silver field</>
         ) : (
           'Apply value to main calc'
         )}

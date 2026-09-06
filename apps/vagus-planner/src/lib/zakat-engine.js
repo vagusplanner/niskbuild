@@ -81,12 +81,18 @@ export function saveStoredAssets(assets) {
 
 /**
  * Convert troy-oz USD prices into per-gram prices in the target currency.
+ * Returns null if inputs are not usable (caller should fall back).
  */
 export function troyOzUsdToPerGram(currency, goldPerTroyOzUsd, silverPerTroyOzUsd) {
   const rate = USD_RATES[currency] || 1;
+  const goldOz = Number(goldPerTroyOzUsd);
+  const silverOz = Number(silverPerTroyOzUsd);
+  if (!Number.isFinite(goldOz) || goldOz <= 0 || !Number.isFinite(silverOz) || silverOz <= 0) {
+    return null;
+  }
   return {
-    goldPricePerGram: parseFloat(((goldPerTroyOzUsd / TROY_OUNCE_GRAMS) * rate).toFixed(4)),
-    silverPricePerGram: parseFloat(((silverPerTroyOzUsd / TROY_OUNCE_GRAMS) * rate).toFixed(4)),
+    goldPricePerGram: parseFloat(((goldOz / TROY_OUNCE_GRAMS) * rate).toFixed(4)),
+    silverPricePerGram: parseFloat(((silverOz / TROY_OUNCE_GRAMS) * rate).toFixed(4)),
   };
 }
 
@@ -97,6 +103,18 @@ export function fallbackPricesForCurrency(currency) {
     silverPricePerGram: parseFloat((FALLBACK_PRICES_USD_PER_GRAM.silver * rate).toFixed(4)),
     source: 'fallback',
   };
+}
+
+/**
+ * True when both per-gram prices are finite and positive.
+ */
+export function pricesAreValid(goldPricePerGram, silverPricePerGram) {
+  return (
+    Number.isFinite(goldPricePerGram) &&
+    goldPricePerGram > 0 &&
+    Number.isFinite(silverPricePerGram) &&
+    silverPricePerGram > 0
+  );
 }
 
 /**
@@ -213,9 +231,13 @@ export async function fetchLiveMetalPrices(invokeLLM, currency = 'GBP') {
     });
     const converted = troyOzUsdToPerGram(
       currency,
-      result.gold_per_troy_oz_usd,
-      result.silver_per_troy_oz_usd,
+      result?.gold_per_troy_oz_usd,
+      result?.silver_per_troy_oz_usd,
     );
+    // LLM can "succeed" with null/0/missing numbers → NaN previously broke gram conversion.
+    if (!converted || !pricesAreValid(converted.goldPricePerGram, converted.silverPricePerGram)) {
+      return fallbackPricesForCurrency(currency);
+    }
     return {
       ...converted,
       source: result.source || 'live',

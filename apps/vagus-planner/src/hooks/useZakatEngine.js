@@ -7,6 +7,7 @@ import {
   loadStoredAssets,
   saveStoredAssets,
   DEFAULT_ZAKAT_ASSETS,
+  fallbackPricesForCurrency,
 } from '@/lib/zakat-engine';
 
 /**
@@ -47,10 +48,21 @@ export function useZakatEngine(initialCurrency = 'GBP') {
   const refreshPrices = useCallback(async () => {
     setPriceLoading(true);
     const result = await fetchLiveMetalPrices(base44.integrations.Core.InvokeLLM, currency);
-    setGoldPricePerGram(result.goldPricePerGram);
-    setSilverPricePerGram(result.silverPricePerGram);
-    setPriceSource(result.source || 'fallback');
-    setPriceAsOf(result.asOf || null);
+    const gold = Number(result.goldPricePerGram);
+    const silver = Number(result.silverPricePerGram);
+    // Never persist NaN/0 into UI state — gram conversion would silently fail.
+    if (Number.isFinite(gold) && gold > 0 && Number.isFinite(silver) && silver > 0) {
+      setGoldPricePerGram(gold);
+      setSilverPricePerGram(silver);
+      setPriceSource(result.source || 'fallback');
+      setPriceAsOf(result.asOf || null);
+    } else {
+      const fb = fallbackPricesForCurrency(currency);
+      setGoldPricePerGram(fb.goldPricePerGram);
+      setSilverPricePerGram(fb.silverPricePerGram);
+      setPriceSource('fallback');
+      setPriceAsOf(null);
+    }
     setPriceLoading(false);
     return result;
   }, [currency]);
