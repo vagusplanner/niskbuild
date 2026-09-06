@@ -34,6 +34,22 @@ export async function getVpApiFetchHeaders() {
 
 const FIRSTPARTY_SCHEMA = 'firstparty'
 
+/** True for a real id we can send to PostgREST UUID columns / .eq('id', …). */
+function isUsableId(value) {
+  if (value == null) return false
+  const s = String(value).trim()
+  // postgrest-js stringifies bare `undefined`/`null` into the filter URL as those words
+  if (!s || s === 'undefined' || s === 'null') return false
+  return true
+}
+
+function requireUsableId(entityName, id, action) {
+  if (isUsableId(id)) return String(id).trim()
+  throw new Error(
+    `${entityName} ${action} requires a valid id (got ${id === undefined ? 'undefined' : JSON.stringify(id)})`
+  )
+}
+
 // Entity mapping: Base44 entity names → Supabase table names (firstparty schema)
 const ENTITY_TABLES = {
   Task: 'vp_tasks',
@@ -217,9 +233,9 @@ function mapPayloadToRow(entityName, payload, userId) {
     const dependencies = asJsonArray(p.dependencies)
     if (dependencies) row.dependencies = dependencies
     else if (userId) row.dependencies = []
-    if (p.event_id != null && p.event_id !== '') row.event_id = p.event_id
-    if (p.assigned_to != null) row.assigned_to = p.assigned_to
-    if (p.assigned_by != null) row.assigned_by = p.assigned_by
+    if (isUsableId(p.event_id)) row.event_id = String(p.event_id).trim()
+    if (isUsableId(p.assigned_to)) row.assigned_to = String(p.assigned_to).trim()
+    if (isUsableId(p.assigned_by)) row.assigned_by = String(p.assigned_by).trim()
     return row
   }
 
@@ -469,7 +485,7 @@ function mapPayloadToRow(entityName, payload, userId) {
   if (entityName === 'EventEdit') {
     const row = {}
     if (userId) row.user_id = userId
-    if (p.event_id != null) row.event_id = p.event_id
+    if (isUsableId(p.event_id)) row.event_id = String(p.event_id).trim()
     row.kind = p.kind === 'history' ? 'history' : 'presence'
     if (p.editor_email != null) row.editor_email = p.editor_email
     if (p.editor_name != null) row.editor_name = p.editor_name
@@ -494,7 +510,8 @@ function mapPayloadToRow(entityName, payload, userId) {
     const content = p.content ?? p.message ?? ''
     const row = {
       entity_type: entityType,
-      entity_id: entityId != null ? String(entityId) : '',
+      // Never String(undefined) → "undefined" into a uuid column
+      entity_id: isUsableId(entityId) ? String(entityId).trim() : null,
       content,
       author_email: p.author_email ?? p.user_email ?? null,
       author_name: p.author_name ?? p.user_name ?? null,
@@ -511,10 +528,10 @@ function mapPayloadToRow(entityName, payload, userId) {
     }
     if (userId) row.user_id = userId
     const eventId = p.event_id ?? p.shared_in_event
-    if (eventId != null && String(eventId).trim() !== '') {
+    if (isUsableId(eventId)) {
       row.event_id = String(eventId).trim()
     }
-    if (p.chat_id != null && String(p.chat_id).trim() !== '') {
+    if (isUsableId(p.chat_id)) {
       row.chat_id = String(p.chat_id).trim()
     }
     if (p.file_type != null) row.file_type = p.file_type
@@ -532,7 +549,7 @@ function mapPayloadToRow(entityName, payload, userId) {
   if (entityName === 'EventLock') {
     const row = {}
     if (userId) row.user_id = userId
-    if (p.event_id != null) row.event_id = p.event_id
+    if (isUsableId(p.event_id)) row.event_id = String(p.event_id).trim()
     if (p.locked_by != null) row.locked_by = p.locked_by
     row.last_active = p.last_active ?? new Date().toISOString()
     row.updated_at = new Date().toISOString()
@@ -559,7 +576,7 @@ function mapPayloadToRow(entityName, payload, userId) {
       status: p.status ?? 'pending',
     }
     if (userId) row.user_id = userId
-    if (p.task_id != null) row.task_id = p.task_id
+    if (isUsableId(p.task_id)) row.task_id = String(p.task_id).trim()
     if (p.shared_by != null || p.shared_by_email != null) {
       row.shared_by_email = p.shared_by_email ?? p.shared_by
     }
@@ -576,7 +593,7 @@ function mapPayloadToRow(entityName, payload, userId) {
       calendar_type: p.calendar_type === 'group' ? 'group' : 'personal',
     }
     if (userId) row.user_id = userId
-    if (p.group_calendar_id != null) row.group_calendar_id = p.group_calendar_id
+    if (isUsableId(p.group_calendar_id)) row.group_calendar_id = String(p.group_calendar_id).trim()
     row.updated_at = new Date().toISOString()
     return row
   }
@@ -594,7 +611,7 @@ function mapPayloadToRow(entityName, payload, userId) {
     if (userId) row.user_id = userId
     if (p.icon != null) row.icon = p.icon
     if (p.entity_type != null) row.entity_type = p.entity_type
-    if (p.entity_id != null) row.entity_id = String(p.entity_id)
+    if (isUsableId(p.entity_id)) row.entity_id = String(p.entity_id).trim()
     if (p.scheduled_for != null) row.scheduled_for = p.scheduled_for
     if (p.metadata != null) row.metadata = p.metadata
     else if (p.action_url != null) row.metadata = { action_url: p.action_url }
@@ -993,12 +1010,19 @@ function mapTaskStatusFilterValue(value) {
 function applyFilters(query, criteria, entityName) {
   let next = query
   for (const [key, value] of Object.entries(criteria ?? {})) {
+    // Skip missing ids — .eq(col, undefined) becomes col=eq.undefined (invalid uuid).
+    if (value === undefined || value === null) continue
+    if (typeof value === 'string' && (value.trim() === '' || value.trim() === 'undefined' || value.trim() === 'null')) {
+      continue
+    }
     if (entityName === 'EventComment' && key === 'event_id') {
-      next = next.eq('entity_type', 'event').eq('entity_id', String(value))
+      if (!isUsableId(value)) continue
+      next = next.eq('entity_type', 'event').eq('entity_id', String(value).trim())
       continue
     }
     if (entityName === 'Comment' && key === 'context_id') {
-      next = next.eq('entity_id', String(value))
+      if (!isUsableId(value)) continue
+      next = next.eq('entity_id', String(value).trim())
       continue
     }
     if (entityName === 'Comment' && key === 'context_type') {
@@ -1006,7 +1030,8 @@ function applyFilters(query, criteria, entityName) {
       continue
     }
     if (entityName === 'SharedFile' && key === 'shared_in_event') {
-      next = next.eq('event_id', value)
+      if (!isUsableId(value)) continue
+      next = next.eq('event_id', String(value).trim())
       continue
     }
     if (entityName === 'TaskShare' && (key === 'shared_with' || key === 'shared_by')) {
@@ -1413,9 +1438,10 @@ export const base44 = {
           return (data ?? []).map((row) => mapRowFromDb(entityName, row))
         },
         get: async (id) => {
+          const safeId = requireUsableId(entityName, id, 'get')
           const { data, error } = await tableFrom(tableName)
             .select('*')
-            .eq('id', id)
+            .eq('id', safeId)
             .single()
           if (error) throw error
           return mapRowFromDb(entityName, data)
@@ -1486,18 +1512,19 @@ export const base44 = {
           return (data ?? []).map((row) => mapRowFromDb(entityName, row))
         },
         update: async (id, payload) => {
+          const safeId = requireUsableId(entityName, id, 'update')
           let row
           if (entityName === 'UserSettings') {
             const { data: existing, error: readError } = await tableFrom(tableName)
               .select('*')
-              .eq('id', id)
+              .eq('id', safeId)
               .single()
             if (readError) throw readError
             row = mapUserSettingsPayloadToRow(payload, existing, null)
           } else if (entityName === 'NotificationPreference') {
             const { data: existing, error: readError } = await tableFrom(tableName)
               .select('*')
-              .eq('id', id)
+              .eq('id', safeId)
               .single()
             if (readError) throw readError
             row = mapNotificationPreferencePayloadToRow(payload, existing, null)
@@ -1506,7 +1533,7 @@ export const base44 = {
           }
           let { data, error } = await tableFrom(tableName)
             .update(row)
-            .eq('id', id)
+            .eq('id', safeId)
             .select()
           if (
             error &&
@@ -1525,7 +1552,7 @@ export const base44 = {
             if (row.budget != null) fallback.budget = row.budget
             if (row.accommodation != null) fallback.accommodation = row.accommodation
             if (row.flight_details != null) fallback.flight_details = row.flight_details
-            ;({ data, error } = await tableFrom(tableName).update(fallback).eq('id', id).select())
+            ;({ data, error } = await tableFrom(tableName).update(fallback).eq('id', safeId).select())
           }
           if (error) throw error
           if (!data?.[0]) {
@@ -1536,7 +1563,8 @@ export const base44 = {
           return mapRowFromDb(entityName, data[0])
         },
         delete: async (id) => {
-          const { error } = await tableFrom(tableName).delete().eq('id', id)
+          const safeId = requireUsableId(entityName, id, 'delete')
+          const { error } = await tableFrom(tableName).delete().eq('id', safeId)
           if (error) throw error
           return { success: true }
         },

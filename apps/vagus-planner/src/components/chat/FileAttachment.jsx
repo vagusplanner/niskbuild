@@ -8,7 +8,9 @@ import {
 import { toast } from 'sonner';
 
 function isNonEmptyId(value) {
-  return value != null && String(value).trim() !== '';
+  if (value == null) return false;
+  const s = String(value).trim();
+  return s !== '' && s !== 'undefined' && s !== 'null';
 }
 
 export default function FileAttachment({ chatId, eventId, onFileShared }) {

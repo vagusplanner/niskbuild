@@ -49,6 +49,10 @@ export default function EventForm({ isOpen, onClose, onSave, event, selectedDate
   const [showAutoReschedule, setShowAutoReschedule] = useState(false);
   const [detectedConflicts, setDetectedConflicts] = useState([]);
 
+  // Prefill objects (e.g. AI time-slot pick) are truthy but have no id — those must CREATE, not UPDATE.
+  // Updating with event.id === undefined produces PostgREST id=eq.undefined → uuid parse error.
+  const isEditing = Boolean(event?.id);
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -88,11 +92,13 @@ export default function EventForm({ isOpen, onClose, onSave, event, selectedDate
 
   const saveEventMutation = useMutation({
     mutationFn: async (eventData) => {
-      if (event) {
-        const saved = await base44.entities.Event.update(event.id, eventData)
+      // Never send form-only / client ids into create/update payloads.
+      const { id: _dropId, ...persistable } = eventData ?? {}
+      if (isEditing) {
+        const saved = await base44.entities.Event.update(event.id, persistable)
         const fields = ['title', 'description', 'location']
         const historyWrites = fields
-          .filter((field) => String(event[field] ?? '') !== String(eventData[field] ?? ''))
+          .filter((field) => String(event[field] ?? '') !== String(persistable[field] ?? ''))
           .map((field) =>
             base44.entities.EventEdit.create({
               event_id: event.id,
@@ -101,19 +107,19 @@ export default function EventForm({ isOpen, onClose, onSave, event, selectedDate
               editor_email: user?.email,
               editor_name: user?.full_name || user?.email,
               previous_value: event[field] ?? '',
-              new_value: eventData[field] ?? '',
+              new_value: persistable[field] ?? '',
             })
           )
         await Promise.allSettled(historyWrites)
         return saved
       }
-      return base44.entities.Event.create(eventData)
+      return base44.entities.Event.create(persistable)
     },
     onMutate: async (eventData) => {
       await queryClient.cancelQueries({ queryKey: ['events'] });
       const previous = queryClient.getQueryData(['events']);
       queryClient.setQueryData(['events'], (old = []) =>
-        event
+        isEditing
           ? old.map(e => e.id === event.id ? { ...e, ...eventData } : e)
           : [{ ...eventData, id: `temp-${Date.now()}` }, ...old]
       );
@@ -254,7 +260,7 @@ export default function EventForm({ isOpen, onClose, onSave, event, selectedDate
     delete eventData.reminder_minutes;
     
     // Check for conflicts before saving
-    if (!event && allEvents) {
+    if (!isEditing && allEvents) {
       const conflicts = checkForConflicts();
       if (conflicts.length > 0) {
         setDetectedConflicts(conflicts);
@@ -586,10 +592,10 @@ Return the most appropriate reminder time in minutes and a brief reason.`,
             <div className="md:hidden mx-auto mt-3 mb-0 h-1.5 w-12 rounded-full bg-slate-200 dark:bg-slate-700 flex-shrink-0" />
             <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900">
               <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100">
-                {event ? 'Edit Event' : 'New Event'}
+                {isEditing ? 'Edit Event' : 'New Event'}
               </h2>
               <div className="flex items-center gap-2">
-                {event && (
+                {isEditing && (
                   <Button
                     type="button"
                     variant="outline"
@@ -612,13 +618,13 @@ Return the most appropriate reminder time in minutes and a brief reason.`,
 
             <div className="flex-1 overflow-auto p-6 space-y-5 bg-white dark:bg-slate-900">
               {/* Real-time editing indicator */}
-              {event && (
+              {isEditing && (
                 <RealTimeEventEditor eventId={event.id} onLockChange={setEditLocked}>
                   <div />
                 </RealTimeEventEditor>
               )}
               {/* Import from Email/Invite */}
-              {!event && (
+              {!isEditing && (
                 <div className="space-y-3">
                   {!showInviteParser ? (
                     <div className="grid grid-cols-2 gap-2">
@@ -651,7 +657,7 @@ Return the most appropriate reminder time in minutes and a brief reason.`,
                         Analyzing...
                       </span>
                     )}
-                    {!event && formData.title && (
+                    {!isEditing && formData.title && (
                       <Button
                         type="button"
                         size="sm"
@@ -675,7 +681,7 @@ Return the most appropriate reminder time in minutes and a brief reason.`,
                     )}
                   </div>
                 </div>
-                {event ? (
+                {isEditing ? (
                   <CollaborativeInput
                     eventId={event.id}
                     field="title"
@@ -703,7 +709,7 @@ Return the most appropriate reminder time in minutes and a brief reason.`,
 
               {/* Auto-fill from similar events */}
               <AnimatePresence>
-                {autoFillSuggestions && !event && (
+                {autoFillSuggestions && !isEditing && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -760,7 +766,7 @@ Return the most appropriate reminder time in minutes and a brief reason.`,
               </AnimatePresence>
 
               {/* AI Suggestions */}
-              {suggestions && !event && (
+              {suggestions && !isEditing && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -918,7 +924,7 @@ Return the most appropriate reminder time in minutes and a brief reason.`,
                   <FileText className="w-4 h-4 text-slate-400" />
                   Description
                 </Label>
-                {event ? (
+                {isEditing ? (
                   <CollaborativeInput
                     as="textarea"
                     eventId={event.id}
@@ -991,7 +997,7 @@ Return the most appropriate reminder time in minutes and a brief reason.`,
                     <Bell className="w-4 h-4 text-slate-400" />
                     Reminder
                   </Label>
-                  {smartReminder && !event && (
+                  {smartReminder && !isEditing && (
                     <Button
                       type="button"
                       size="sm"
@@ -1021,7 +1027,7 @@ Return the most appropriate reminder time in minutes and a brief reason.`,
                     { value: '2880', label: '2 days before' },
                   ]}
                 />
-                {smartReminder && !event && (
+                {smartReminder && !isEditing && (
                   <motion.p
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -1034,7 +1040,7 @@ Return the most appropriate reminder time in minutes and a brief reason.`,
                 </div>
 
                 {/* File Manager for existing events — inside scroll area so it stays clickable */}
-                {event && (
+                {isEditing && (
                   <div className="pt-2">
                     <EventFileManager eventId={event.id} />
                   </div>
@@ -1057,8 +1063,8 @@ Return the most appropriate reminder time in minutes and a brief reason.`,
                 className="flex-1 h-11 bg-teal-600 hover:bg-teal-700 text-white"
               >
                 {saveEventMutation.isPending
-                  ? (event ? 'Updating…' : 'Creating…')
-                  : (event ? 'Update Event' : 'Create Event')}
+                  ? (isEditing ? 'Updating…' : 'Creating…')
+                  : (isEditing ? 'Update Event' : 'Create Event')}
               </Button>
             </div>
 
@@ -1080,7 +1086,7 @@ Return the most appropriate reminder time in minutes and a brief reason.`,
           </div>
 
           {/* Collaboration Panel — portals itself above EventForm */}
-          {showCollabPanel && event && (
+          {showCollabPanel && isEditing && (
             <EventCollaborationPanel
               eventId={event.id}
               onClose={() => setShowCollabPanel(false)}
