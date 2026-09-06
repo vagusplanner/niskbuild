@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,12 +10,22 @@ import { BookOpen, Sparkles, Loader2, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
-export default function AITafsirPanel() {
-  const [surahNumber, setSurahNumber] = useState('');
-  const [verseNumber, setVerseNumber] = useState('');
+/** Personalized AI tafsir. Pass initialSurah/initialVerse to bind to the current reader ayah. */
+export default function AITafsirPanel({ initialSurah, initialVerse, compact = false }) {
+  const [surahNumber, setSurahNumber] = useState(
+    initialSurah != null ? String(initialSurah) : ''
+  );
+  const [verseNumber, setVerseNumber] = useState(
+    initialVerse != null ? String(initialVerse) : ''
+  );
   const [customQuery, setCustomQuery] = useState('');
   const [tafsir, setTafsir] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (initialSurah != null) setSurahNumber(String(initialSurah));
+    if (initialVerse != null) setVerseNumber(String(initialVerse));
+  }, [initialSurah, initialVerse]);
 
   const { data: settings = [] } = useQuery({
     queryKey: ['userSettings'],
@@ -114,13 +124,19 @@ Make it deeply personal, scholarly, and actionable. Connect it to their life con
 
   return (
     <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-blue-900">
+      <CardHeader className={compact ? 'pb-2' : undefined}>
+        <CardTitle className="flex items-center gap-2 text-blue-900 text-base">
           <BookOpen className="w-5 h-5" />
-          AI-Powered Personalized Tafsir
+          AI Tafsir
+          {initialSurah != null && initialVerse != null && (
+            <span className="text-sm font-normal text-blue-700">
+              · {initialSurah}:{initialVerse}
+            </span>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {!compact && (
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label>Surah Number</Label>
@@ -144,6 +160,7 @@ Make it deeply personal, scholarly, and actionable. Connect it to their life con
             />
           </div>
         </div>
+        )}
 
         <div>
           <Label>Specific Question (Optional)</Label>

@@ -1,22 +1,22 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { RECITERS, getAyahAudioUrl } from '@/lib/quran-api';
 
-const RECITERS = [
-  { id: 'ar.alafasy', label: 'Mishary Alafasy' },
-  { id: 'ar.abdurrahmaansudais', label: 'Abdurrahman As-Sudais' },
-  { id: 'ar.abdullahbasfar', label: 'Abdullah Basfar' },
-  { id: 'ar.minshawi', label: 'Mohamed Al-Minshawi' },
-];
-
-// Uses the Al-Quran Cloud API (free, no key needed)
-function getAudioUrl(reciterId, surah, ayah) {
-  return `https://cdn.islamic.network/quran/audio/128/${reciterId}/${surah}${String(ayah).padStart(3, '0')}.mp3`;
-}
-
-export default function QuranAudioPlayer({ surah = 1, ayah = 1, totalAyahs = 7, onAyahChange }) {
+/**
+ * Audio player for the current ayah. Uses absolute ayah numbers on islamic.network CDN.
+ * Parent owns surah/ayah selection; pass globalAyah (1–6236) from AlQuran Cloud.
+ */
+export default function QuranAudioPlayer({
+  surah = 1,
+  ayah = 1,
+  totalAyahs = 7,
+  globalAyah = 1,
+  onAyahChange,
+}) {
   const [reciter, setReciter] = useState(() => localStorage.getItem('quran_reciter') || 'ar.alafasy');
   const [currentAyah, setCurrentAyah] = useState(ayah);
+  const [currentGlobal, setCurrentGlobal] = useState(globalAyah);
   const [isPlaying, setIsPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
   const [showReciter, setShowReciter] = useState(false);
@@ -26,14 +26,14 @@ export default function QuranAudioPlayer({ surah = 1, ayah = 1, totalAyahs = 7, 
 
   useEffect(() => {
     setCurrentAyah(ayah);
-  }, [ayah, surah]);
+    setCurrentGlobal(globalAyah);
+  }, [ayah, surah, globalAyah]);
 
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.src = getAudioUrl(reciter, surah, currentAyah);
-      if (isPlaying) audioRef.current.play().catch(() => {});
-    }
-  }, [surah, currentAyah, reciter]);
+    if (!audioRef.current || !currentGlobal) return;
+    audioRef.current.src = getAyahAudioUrl(reciter, currentGlobal);
+    if (isPlaying) audioRef.current.play().catch(() => {});
+  }, [surah, currentGlobal, reciter]);
 
   const togglePlay = () => {
     if (!audioRef.current) return;
@@ -50,7 +50,6 @@ export default function QuranAudioPlayer({ surah = 1, ayah = 1, totalAyahs = 7, 
       const next = currentAyah + 1;
       setCurrentAyah(next);
       onAyahChange?.(next);
-      // auto-play next
       setTimeout(() => audioRef.current?.play().catch(() => {}), 200);
     } else {
       setIsPlaying(false);
@@ -76,8 +75,8 @@ export default function QuranAudioPlayer({ surah = 1, ayah = 1, totalAyahs = 7, 
     setReciter(id);
     localStorage.setItem('quran_reciter', id);
     setShowReciter(false);
-    if (audioRef.current) {
-      audioRef.current.src = getAudioUrl(id, surah, currentAyah);
+    if (audioRef.current && currentGlobal) {
+      audioRef.current.src = getAyahAudioUrl(id, currentGlobal);
       if (isPlaying) audioRef.current.play().catch(() => {});
     }
   };
@@ -116,9 +115,9 @@ export default function QuranAudioPlayer({ surah = 1, ayah = 1, totalAyahs = 7, 
         muted={muted}
       />
 
-      {/* Reciter selector */}
       <div className="relative mb-3">
         <button
+          type="button"
           onClick={() => setShowReciter(s => !s)}
           className="flex items-center gap-2 text-xs text-emerald-300 hover:text-white transition-colors"
         >
@@ -135,6 +134,7 @@ export default function QuranAudioPlayer({ surah = 1, ayah = 1, totalAyahs = 7, 
               {RECITERS.map(r => (
                 <button
                   key={r.id}
+                  type="button"
                   onClick={() => changeReciter(r.id)}
                   className={`w-full text-left px-4 py-2 text-xs transition-colors ${reciter === r.id ? 'text-emerald-400 font-bold' : 'text-white/80 hover:bg-slate-700'}`}
                 >
@@ -146,15 +146,18 @@ export default function QuranAudioPlayer({ surah = 1, ayah = 1, totalAyahs = 7, 
         </AnimatePresence>
       </div>
 
-      {/* Ayah info */}
       <div className="text-center mb-3">
         <p className="text-xs text-emerald-300">Surah {surah} · Ayah {currentAyah} of {totalAyahs}</p>
       </div>
 
-      {/* Progress bar */}
       <div
         className="h-1.5 bg-white/20 rounded-full cursor-pointer mb-3 relative"
         onClick={seek}
+        role="slider"
+        aria-valuenow={progress}
+        aria-valuemin={0}
+        aria-valuemax={duration || 0}
+        tabIndex={0}
       >
         <div
           className="h-full bg-emerald-400 rounded-full transition-all"
@@ -166,21 +169,21 @@ export default function QuranAudioPlayer({ surah = 1, ayah = 1, totalAyahs = 7, 
         <span>{fmt(duration)}</span>
       </div>
 
-      {/* Controls */}
       <div className="flex items-center justify-center gap-4">
-        <button onClick={prev} disabled={currentAyah <= 1} className="p-2 rounded-full hover:bg-white/10 disabled:opacity-30 transition-all">
+        <button type="button" onClick={prev} disabled={currentAyah <= 1} className="p-2 rounded-full hover:bg-white/10 disabled:opacity-30 transition-all">
           <SkipBack className="w-4 h-4" />
         </button>
         <button
+          type="button"
           onClick={togglePlay}
           className="w-12 h-12 rounded-full bg-emerald-500 hover:bg-emerald-400 flex items-center justify-center shadow-lg transition-all active:scale-95"
         >
           {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
         </button>
-        <button onClick={next} disabled={currentAyah >= totalAyahs} className="p-2 rounded-full hover:bg-white/10 disabled:opacity-30 transition-all">
+        <button type="button" onClick={next} disabled={currentAyah >= totalAyahs} className="p-2 rounded-full hover:bg-white/10 disabled:opacity-30 transition-all">
           <SkipForward className="w-4 h-4" />
         </button>
-        <button onClick={() => setMuted(m => !m)} className="p-2 rounded-full hover:bg-white/10 transition-all">
+        <button type="button" onClick={() => setMuted(m => !m)} className="p-2 rounded-full hover:bg-white/10 transition-all">
           {muted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4" />}
         </button>
       </div>

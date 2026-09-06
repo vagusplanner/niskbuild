@@ -28,11 +28,7 @@ import SunnahHabitTracker from '@/components/islamic/SunnahHabitTracker';
 import PrayerStreakBadges from '@/components/islamic/unique/PrayerStreakBadges';
 import SpiritualHabitTracker from '@/components/islamic/SpiritualHabitTracker';
 
-import QuranReadingTracker from '@/components/quran/QuranReadingTracker';
-import ComprehensiveQuranReader from '@/components/islamic/ComprehensiveQuranReader';
-import QuranAudioPlayer from '@/components/islamic/QuranAudioPlayer';
-import AITafsirPanel from '@/components/islamic/AITafsirPanel';
-import QuranVoiceCheck from '@/components/islamic/unique/QuranVoiceCheck';
+import QuranHub from '@/components/quran/QuranHub';
 
 import DuaLibrary from '@/components/islamic/DuaLibrary';
 import AISmartDuaGenerator from '@/components/islamic/AISmartDuaGenerator';
@@ -199,35 +195,16 @@ function PrayerContent() {
   );
 }
 
-/** Quran — unified reader + audio + voice check */
+/** Quran — Read / Practice / Progress (canonical hub) */
 function QuranContent() {
-  return (
-    <div className="space-y-1">
-      <p className="text-xs mb-3 font-medium" style={{color:'#2D4A65'}}>
-        Everything Quran in one place: read the text with translation, listen to recitation audio, check your Tajweed (pronunciation) with AI, and track your reading progress & memorisation goals.
-      </p>
-      <Tabs defaultValue="read">
-        <TabsList className="grid grid-cols-3 w-full h-auto mb-4">
-          <TabsTrigger value="read" className="text-[11px] py-2">📖 Read</TabsTrigger>
-          <TabsTrigger value="listen" className="text-[11px] py-2">🎧 Listen</TabsTrigger>
-          <TabsTrigger value="tajweed" className="text-[11px] py-2">🎙️ Tajweed</TabsTrigger>
-        </TabsList>
-        <TabsContent value="read" className="space-y-4">
-          <p className="text-xs rounded-xl p-2.5 font-medium" style={{background:'rgba(29,111,184,0.08)', color:'#1B2A4A', border:'1px solid rgba(29,111,184,0.15)'}}>📖 Read the full Quran with Arabic text, English translation, and AI-powered Tafsir (explanation). Tap any verse for detailed commentary.</p>
-          <ComprehensiveQuranReader />
-          <AITafsirPanel />
-        </TabsContent>
-        <TabsContent value="listen" className="space-y-4">
-          <p className="text-xs rounded-xl p-2.5 font-medium" style={{background:'rgba(29,111,184,0.08)', color:'#1B2A4A', border:'1px solid rgba(29,111,184,0.15)'}}>🎧 Listen to professional Quran recitation. Choose your Surah and follow along. Great for learning pronunciation and memorisation by listening.</p>
-          <QuranAudioPlayer surah={1} ayah={1} totalAyahs={7} />
-        </TabsContent>
-        <TabsContent value="tajweed" className="space-y-4">
-          <p className="text-xs rounded-xl p-2.5 font-medium" style={{background:'rgba(29,111,184,0.08)', color:'#1B2A4A', border:'1px solid rgba(29,111,184,0.15)'}}>🎙️ Recite a Surah into your microphone and get an AI Tajweed accuracy score (0–100) with specific feedback on which rules to improve. Different from just listening — this checks YOUR recitation.</p>
-          <QuranVoiceCheck />
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
+  const initialTab = (() => {
+    try {
+      return new URLSearchParams(window.location.search).get('tab') || 'read';
+    } catch {
+      return 'read';
+    }
+  })();
+  return <QuranHub initialTab={initialTab} />;
 }
 
 /** Dua, Dhikr & Hadith — all in one */
@@ -393,7 +370,7 @@ const SECTION_GROUPS = [
         icon: BookOpen,
         label: 'Quran',
         arabic: 'القرآن',
-        desc: 'Read · Listen · Tajweed Check · Progress',
+        desc: 'Read · Practice · Progress',
         gradient: 'from-[#0D4F6C] to-[#1D6FB8]',
         content: () => <QuranContent />,
       },

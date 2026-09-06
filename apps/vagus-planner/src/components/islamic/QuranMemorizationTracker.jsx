@@ -93,7 +93,7 @@ export default function QuranMemorizationTracker({ compact = false }) {
   const addMemorization = useMutation({
     mutationFn: (data) => base44.entities.QuranMemorization.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries(['quran-memorizations']);
+      queryClient.invalidateQueries({ queryKey: ['quran-memorizations'] });
       setShowAddForm(false);
       setFormData({ surah_number: '', from_verse: '', to_verse: '', notes: '' });
       toast.success('Added to memorization list');
@@ -103,7 +103,7 @@ export default function QuranMemorizationTracker({ compact = false }) {
   const updateMemorization = useMutation({
     mutationFn: ({ id, data }) => base44.entities.QuranMemorization.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries(['quran-memorizations']);
+      queryClient.invalidateQueries({ queryKey: ['quran-memorizations'] });
       toast.success('Updated successfully');
     }
   });
@@ -111,7 +111,7 @@ export default function QuranMemorizationTracker({ compact = false }) {
   const deleteMemorization = useMutation({
     mutationFn: (id) => base44.entities.QuranMemorization.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries(['quran-memorizations']);
+      queryClient.invalidateQueries({ queryKey: ['quran-memorizations'] });
       toast.success('Removed from list');
     }
   });
@@ -140,7 +140,7 @@ export default function QuranMemorizationTracker({ compact = false }) {
   const updateGoal = useMutation({
     mutationFn: ({ id, data }) => base44.entities.MemorizationGoal.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries(['memorization-goals']);
+      queryClient.invalidateQueries({ queryKey: ['memorization-goals'] });
     }
   });
 

@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
+import { useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, MicOff, BookOpen, CheckCircle2, AlertCircle, Star, Loader2, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,7 @@ const PRACTICE_SURAHS = [
 ];
 
 export default function QuranVoiceCheck() {
+  const queryClient = useQueryClient();
   const [selected, setSelected] = useState(PRACTICE_SURAHS[0]);
   const [recording, setRecording] = useState(false);
   const [transcript, setTranscript] = useState('');
@@ -85,17 +87,22 @@ export default function QuranVoiceCheck() {
       });
       setResult(res);
 
-      // Save progress to QuranMemorization entity
+      // Save progress to QuranMemorization (visible under Progress → Memorisation)
       await base44.entities.QuranMemorization.create({
         surah_number: selected.id,
         surah_name: selected.name,
         ayah_from: 1,
         ayah_to: selected.ayahs,
-        status: res.accuracy_score >= 80 ? 'memorized' : 'in_progress',
+        from_verse: 1,
+        to_verse: selected.ayahs,
+        status: res.accuracy_score >= 80 ? 'memorized' : 'memorizing',
         accuracy_score: res.accuracy_score,
         notes: `Voice check score: ${res.accuracy_score}/100`,
         last_reviewed: new Date().toISOString().split('T')[0],
       }).catch(() => {});
+
+      queryClient.invalidateQueries({ queryKey: ['quran-memorizations'] });
+      queryClient.invalidateQueries({ queryKey: ['quranMemorization'] });
 
     } catch (_) { toast.error('AI check failed. Please try again.'); }
     setChecking(false);
