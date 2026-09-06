@@ -4,13 +4,12 @@
  */
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Brain, Globe, Clock, Zap, BarChart2, Timer, ArrowLeft } from 'lucide-react';
+import { Brain, Globe, Zap, BarChart2, Timer, ArrowLeft } from 'lucide-react';
 import PomodoroTimer from './PomodoroTimer';
 import TimezoneScheduler from './TimezoneScheduler';
 import WeeklyEmailDigest from './WeeklyEmailDigest';
 import ZapierWebhookPanel from '@/components/integrations/ZapierWebhookPanel';
 import NotionImport from '@/components/integrations/NotionImport';
-import TwoFactorAuth from '@/components/settings/TwoFactorAuth';
 
 const TOOLS = [
   { id: 'pomodoro',  icon: Timer,    label: 'Pomodoro',       sub: 'Focus timer',           gradient: 'from-rose-500 to-orange-500',   Component: PomodoroTimer },
@@ -18,7 +17,6 @@ const TOOLS = [
   { id: 'digest',    icon: BarChart2,label: 'Weekly Digest',  sub: 'Email summary',         gradient: 'from-blue-500 to-cyan-500',     Component: WeeklyEmailDigest },
   { id: 'zapier',    icon: Zap,      label: 'Zapier',         sub: 'Webhook automation',    gradient: 'from-orange-500 to-amber-500',  Component: ZapierWebhookPanel },
   { id: 'import',    icon: Brain,    label: 'Import Data',    sub: 'Notion / CSV',          gradient: 'from-slate-600 to-slate-800',   Component: NotionImport },
-  { id: 'security',  icon: Clock,    label: 'Security',       sub: '2FA & account safety',  gradient: 'from-emerald-500 to-teal-600',  Component: TwoFactorAuth },
 ];
 
 export default function FocusMode() {

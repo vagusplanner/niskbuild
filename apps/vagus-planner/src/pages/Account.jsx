@@ -23,6 +23,7 @@ import EmailNotificationSettings from '@/components/billing/EmailNotificationSet
 import NotificationPreferences from '@/components/profile/NotificationPreferences';
 import NotificationPreferencesPanel from '@/components/notifications/NotificationPreferencesPanel';
 import JournalReminderSettings from '@/components/settings/JournalReminderSettings';
+import TwoFactorAuth from '@/components/settings/TwoFactorAuth';
 import PersonalPreferencesPanel from '@/components/profile/PersonalPreferencesPanel';
 import AccountDeletionDialog from '@/components/profile/AccountDeletionDialog';
 import ConsentPreferencesPanel from '@/components/legal/ConsentPreferencesPanel';
@@ -238,7 +239,7 @@ export default function Account() {
 
   const SECTIONS = [
     { id: 'profile', icon: User, label: 'Profile', sub: 'Your account info', gradient: 'from-[#1D6FB8] to-[#29ABE2]', glow: 'shadow-blue-400/30' },
-    { id: 'settings', icon: Settings, label: 'Settings', sub: 'Notifications & preferences', gradient: 'from-[#2D4A65] to-[#4A6E8A]', glow: 'shadow-slate-400/30' },
+    { id: 'settings', icon: Settings, label: 'Settings', sub: 'Notifications, security & preferences', gradient: 'from-[#2D4A65] to-[#4A6E8A]', glow: 'shadow-slate-400/30' },
     { id: 'privacy', icon: Shield, label: 'Privacy & Consent', sub: 'GDPR consents & export', gradient: 'from-teal-600 to-cyan-700', glow: 'shadow-teal-400/30' },
     { id: 'billing', icon: CreditCard, label: 'Billing', sub: 'Subscription & invoices', gradient: 'from-[#4A55A2] to-[#1D6FB8]', glow: 'shadow-indigo-400/30' },
     { id: 'preferences', icon: Heart, label: 'Preferences', sub: 'Dietary & theme', gradient: 'from-[#0D4F6C] to-[#2980B9]', glow: 'shadow-blue-400/30' },
@@ -397,6 +398,15 @@ export default function Account() {
                   </Card>
                   <NotificationPreferencesPanel settingsData={settingsData} />
                   <JournalReminderSettings settingsData={settingsData} />
+                  <div>
+                    <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-2 flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-emerald-600" /> Security
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+                      Account safety overview, two-factor guidance, and recovery references.
+                    </p>
+                    <TwoFactorAuth />
+                  </div>
                 </div>
               )
             )}
