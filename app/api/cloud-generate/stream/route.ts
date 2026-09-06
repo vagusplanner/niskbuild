@@ -14,7 +14,7 @@ import { streamBuildNarration } from '@/lib/generate-narration';
 import { derivePromptNarrationFallback } from '@/lib/narration-shared';
 import { HTML_CODE_SYSTEM_PROMPT } from '@/lib/html-code-system-prompt';
 import { logBuildPerformance } from '@/lib/build-performance-server';
-import { canUseOwnApiKeys } from '@/lib/tier-access-server';
+import { canUseOwnApiKeys, resolveProductGatingBypass } from '@/lib/tier-access-server';
 import { getStreamProviderOrder } from '@/lib/ai-providers';
 import { recordUsageEvent } from '@/lib/usage-events';
 import { recordPromptCategoryStat } from '@/lib/prompt-category-stats';
@@ -210,18 +210,19 @@ export async function POST(request: NextRequest) {
   const chargeContext: CreditChargeContext = chargeResolved.context;
 
   const profile = await getUserProfile(guard.user.id);
+  const ownerBypass = await resolveProductGatingBypass(guard.user.id);
   const tier = profile?.subscription_tier || 'free';
   const status = profile?.subscription_status || 'inactive';
 
   // Personal projects: gate on acting user. Org projects: payer checked on deduct
   // (members may be on Free while the org pool is Agency+).
-  if (!chargeContext.isOrgPool && !canSpendCloudCredits(tier, status)) {
-    return new Response(JSON.stringify({ error: outOfCreditsMessage(tier, status) }), {
+  if (!chargeContext.isOrgPool && !canSpendCloudCredits(tier, status, ownerBypass)) {
+    return new Response(JSON.stringify({ error: outOfCreditsMessage(tier, status, ownerBypass) }), {
       status: 403,
     });
   }
 
-  const byocAllowed = canUseOwnApiKeys(tier);
+  const byocAllowed = canUseOwnApiKeys(tier, ownerBypass);
   const useOwnKeys = byocAllowed && !!profile?.use_own_api_keys;
   const hasUserKeys = !!(profile?.openai_api_key || profile?.anthropic_api_key);
   const skipCredits = useOwnKeys && hasUserKeys;
@@ -299,7 +300,7 @@ export async function POST(request: NextRequest) {
           send({ kind: 'status', text: 'Generating your app — preview updates as code streams…' });
 
           // Streaming-first for ALL tiers (Agency+ included) — Groq before Anthropic.
-          const providerOrder = getStreamProviderOrder(tier);
+          const providerOrder = getStreamProviderOrder(tier, ownerBypass);
           let finalCode = '';
           let lastError = '';
           let streamedCode = false;

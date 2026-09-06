@@ -5,9 +5,8 @@ import { guardApiRequest } from '@/lib/api-auth';
 import { compileBlueprint } from '@/lib/blueprint-compiler';
 import { generateBlueprint } from '@/lib/blueprint-generator';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
-import { getProjectLimit, isPaidAndActive } from '@/lib/tier-access-server';
+import { getProjectLimit, isPaidAndActive, resolveProductGatingBypass } from '@/lib/tier-access-server';
 import { getCloudCreditsForTier } from '@/lib/tier-config';
-import { isProductGatingBypassActive } from '@/lib/platform-owner-bypass';
 import { generateArchitecturePlan } from '@/lib/plan-mode';
 import { ensureCloudCreditsInitialized } from '@/lib/credits';
 
@@ -53,9 +52,10 @@ async function handlePlanMode(body: Record<string, unknown>) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const ownerBypass = await resolveProductGatingBypass(user.id);
   const tier = profile?.subscription_tier ?? 'free';
   const status = profile?.subscription_status ?? 'inactive';
-  if (!isPaidAndActive(tier, status)) {
+  if (!isPaidAndActive(tier, status, ownerBypass)) {
     return NextResponse.json(
       { error: 'Active paid subscription required for plan mode' },
       { status: 403 }
@@ -130,10 +130,10 @@ async function handleBootGuard() {
     return NextResponse.json({ error: 'Unauthorized', canBoot: false }, { status: 401 });
   }
 
+  const ownerBypass = await resolveProductGatingBypass(user.id);
   const tier = profile?.subscription_tier ?? 'free';
   const status = profile?.subscription_status ?? 'inactive';
-  const platformOwnerBypass = isProductGatingBypassActive();
-  const paidActive = isPaidAndActive(tier, status);
+  const paidActive = isPaidAndActive(tier, status, ownerBypass);
 
   await ensureCloudCreditsInitialized(user.id);
 
@@ -156,15 +156,15 @@ async function handleBootGuard() {
   }
 
   const projectCount = count ?? 0;
-  const limit = getProjectLimit(tier);
+  const limit = getProjectLimit(tier, ownerBypass);
   const atCap = projectCount >= limit;
 
-  const isSandbox = tier === 'free' && !platformOwnerBypass;
+  const isSandbox = tier === 'free' && !ownerBypass;
 
   return NextResponse.json({
     canBoot: !atCap && (isSandbox || paidActive),
     paidActive,
-    platformOwnerBypass,
+    platformOwnerBypass: ownerBypass,
     isSandbox,
     atCap,
     projectCount,

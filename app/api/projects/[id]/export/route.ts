@@ -4,7 +4,7 @@ import { guardApiRequest } from '@/lib/api-auth';
 import { createProjectExportJob } from '@/lib/project-export/jobs';
 import { startProjectExportJob } from '@/lib/project-export/run-export';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
-import { canExportMobileProject } from '@/lib/tier-access-server';
+import { canExportMobileProject, resolveProductGatingBypass } from '@/lib/tier-access-server';
 import { recordUsageEvent } from '@/lib/usage-events';
 import { clientIpFromHeaders } from '@/lib/coarse-town';
 import type { ComponentBlueprint } from '@/lib/blueprint-schema';
@@ -24,10 +24,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
     }
 
+    const ownerBypass = await resolveProductGatingBypass(user.id);
     const tier = profile?.subscription_tier ?? 'free';
     const subscriptionStatus = profile?.subscription_status ?? 'inactive';
 
-    if (!canExportMobileProject(tier, subscriptionStatus)) {
+    if (!canExportMobileProject(tier, subscriptionStatus, ownerBypass)) {
       return NextResponse.json(
         {
           error: 'Mobile export is a Pro feature. Upgrade to Pro Worker to export to the App Store.',

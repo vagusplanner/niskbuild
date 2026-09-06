@@ -12,7 +12,7 @@ export async function getAuthenticatedProfile() {
     return { supabase, user: null, profile: null };
   }
 
-  await initProductGatingContext();
+  await initProductGatingContext(user.id);
 
   const { data: profile } = await supabase
     .from('profiles')

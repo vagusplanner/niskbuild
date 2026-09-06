@@ -1,7 +1,7 @@
 import 'server-only';
 import { randomBytes } from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { isPaidAndActive } from '@/lib/tier-config';
+import { isPaidAndActive, resolveProductGatingBypass } from '@/lib/tier-access-server';
 
 export function generatePreviewToken(): string {
   return randomBytes(16).toString('base64url');
@@ -74,7 +74,8 @@ export async function reactivatePreviewsIfPaidAndActive(
   tier: string | null | undefined,
   status: string | null | undefined
 ): Promise<number> {
-  if (!isPaidAndActive(tier, status)) return 0;
+  const bypass = await resolveProductGatingBypass(userId);
+  if (!isPaidAndActive(tier, status, bypass)) return 0;
   return reactivatePreviewsForUser(userId);
 }
 

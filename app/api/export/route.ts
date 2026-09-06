@@ -5,7 +5,7 @@ import { guardApiRequest } from '@/lib/api-auth';
 import { createNiskBuildConfig } from '@/lib/niskbuild-config';
 import { applyExportWatermark } from '@/lib/export-policy';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
-import { canExportCleanZip } from '@/lib/tier-access-server';
+import { canExportCleanZip, resolveProductGatingBypass } from '@/lib/tier-access-server';
 import { cleanGeneratedCode } from '@/lib/cleanGeneratedCode';
 import {
   buildRobotsTxt,
@@ -24,9 +24,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Sign in required to export' }, { status: 401 });
     }
 
+    const ownerBypass = await resolveProductGatingBypass(user.id);
     const tier = profile?.subscription_tier ?? 'free';
     const status = profile?.subscription_status ?? 'inactive';
-    const cleanExport = canExportCleanZip(tier, status);
+    const cleanExport = canExportCleanZip(tier, status, ownerBypass);
 
     const { code, prompt, projectName, promptHistory, files, activeFile, seo } = await request.json();
 

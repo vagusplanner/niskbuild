@@ -2,7 +2,7 @@ import { createHash } from 'crypto';
 import 'server-only';
 
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getSessionLimit, SESSION_LIMITS } from '@/lib/tier-access-server';
+import { getSessionLimit, SESSION_LIMITS, resolveProductGatingBypass } from '@/lib/tier-access-server';
 
 export { SESSION_LIMITS };
 
@@ -55,7 +55,8 @@ export async function getUserSessionLimit(userId: string): Promise<number> {
     .eq('id', userId)
     .maybeSingle();
 
-  return getSessionLimit(profile?.subscription_tier);
+  const bypass = await resolveProductGatingBypass(userId);
+  return getSessionLimit(profile?.subscription_tier, bypass);
 }
 
 async function countActiveSessions(userId: string): Promise<number> {

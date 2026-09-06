@@ -3,7 +3,10 @@ import 'server-only';
 import { randomBytes } from 'crypto';
 import { promises as dns } from 'dns';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { canUseCustomDomains } from '@/lib/tier-config';
+import {
+  canUseCustomDomains,
+  resolveProductGatingBypass,
+} from '@/lib/tier-access-server';
 import {
   attachDomainToVercelProject,
   getVercelDomainConfig,
@@ -205,7 +208,8 @@ export async function claimCustomDomain(params: {
   status: string | null | undefined;
   hostnameInput: string;
 }): Promise<{ domain: CustomDomainRow; instructions: ReturnType<typeof dnsInstructions> }> {
-  if (!canUseCustomDomains(params.tier, params.status)) {
+  const bypass = await resolveProductGatingBypass(params.ownerId);
+  if (!canUseCustomDomains(params.tier, params.status, bypass)) {
     throw new Error('Custom domains require an active White-Label, Team Enterprise, or Sovereign plan.');
   }
 
@@ -320,7 +324,8 @@ export async function verifyCustomDomainDns(params: {
   message: string;
   instructions: ReturnType<typeof dnsInstructions>;
 }> {
-  if (!canUseCustomDomains(params.tier, params.status)) {
+  const bypass = await resolveProductGatingBypass(params.ownerId);
+  if (!canUseCustomDomains(params.tier, params.status, bypass)) {
     throw new Error('Custom domains require an active White-Label, Team Enterprise, or Sovereign plan.');
   }
 

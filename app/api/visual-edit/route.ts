@@ -5,7 +5,7 @@ import { generateCode } from '@/lib/ai-providers';
 import { logVisualEdit } from '@/lib/log-visual-edit';
 import { buildVisualEditPrompt } from '@/lib/visual-editor-prompt';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { canUseOwnApiKeys, isPaidAndActive } from '@/lib/tier-access-server';
+import { canUseOwnApiKeys, isPaidAndActive, resolveProductGatingBypass } from '@/lib/tier-access-server';
 import type { StyleChanges } from '@/lib/visual-editor-types';
 import { VISUAL_EDIT_CREDIT_COST } from '@/lib/visual-editor-types';
 import {
@@ -58,11 +58,12 @@ export async function POST(request: NextRequest) {
     const chargeContext = chargeResolved.context;
 
     const profile = await getUserProfile(userId);
+    const ownerBypass = await resolveProductGatingBypass(userId);
     const tier = profile?.subscription_tier || 'free';
     const status = profile?.subscription_status || 'inactive';
 
     // Org pool: members may be Free; eligibility is the billing owner's paid plan (checked on deduct).
-    if (!chargeContext.isOrgPool && !isPaidAndActive(tier, status)) {
+    if (!chargeContext.isOrgPool && !isPaidAndActive(tier, status, ownerBypass)) {
       return NextResponse.json(
         {
           error: 'Visual edits that persist to code require an active Pro plan or higher.',
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const byocAllowed = canUseOwnApiKeys(tier);
+    const byocAllowed = canUseOwnApiKeys(tier, ownerBypass);
     const useOwnKeys = byocAllowed && !!profile?.use_own_api_keys;
     const hasUserKeys = !!(profile?.openai_api_key || profile?.anthropic_api_key);
     const skipCredits = useOwnKeys && hasUserKeys;
@@ -106,11 +107,16 @@ export async function POST(request: NextRequest) {
       isMobile,
     });
 
-    const result = await generateCode(prompt, tier, {
-      useOwnKeys,
-      openaiKey: byocAllowed ? profile?.openai_api_key : null,
-      anthropicKey: byocAllowed ? profile?.anthropic_api_key : null,
-    });
+    const result = await generateCode(
+      prompt,
+      tier,
+      {
+        useOwnKeys,
+        openaiKey: byocAllowed ? profile?.openai_api_key : null,
+        anthropicKey: byocAllowed ? profile?.anthropic_api_key : null,
+      },
+      ownerBypass
+    );
 
     if (!result.success || !result.code) {
       return NextResponse.json(

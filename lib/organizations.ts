@@ -1,7 +1,11 @@
 import 'server-only';
 
 import { createAdminClient } from '@/lib/supabase/admin';
-import { isPaidAndActive, TEAM_SEATS_BY_TIER } from '@/lib/tier-config';
+import { TEAM_SEATS_BY_TIER } from '@/lib/tier-config';
+import {
+  isPaidAndActive,
+  resolveProductGatingBypass,
+} from '@/lib/tier-access-server';
 import { tierAtLeast, tierIndex, type TierSlug } from '@/lib/tier-rank';
 
 export type OrgMemberRole = 'owner' | 'admin' | 'member';
@@ -69,10 +73,12 @@ export function getOrgSeatLimitForOwnerTier(tier: string | null | undefined): nu
 
 function higherTier(
   a: { tier: string; status: string },
-  b: { tier: string; status: string }
+  b: { tier: string; status: string },
+  aBypass?: boolean,
+  bBypass?: boolean
 ): { tier: string; status: string; winner: 'a' | 'b' } {
-  const aActive = isPaidAndActive(a.tier, a.status);
-  const bActive = isPaidAndActive(b.tier, b.status);
+  const aActive = isPaidAndActive(a.tier, a.status, aBypass);
+  const bActive = isPaidAndActive(b.tier, b.status, bBypass);
   if (aActive && !bActive) return { ...a, winner: 'a' };
   if (bActive && !aActive) return { ...b, winner: 'b' };
   if (tierIndex(b.tier) > tierIndex(a.tier)) return { ...b, winner: 'b' };
@@ -181,7 +187,11 @@ export async function resolveEffectiveTier(params: {
     status: (ownerProfile?.subscription_status as string) || 'inactive',
   };
 
-  const picked = higherTier(personal, orgTiers);
+  const [personalBypass, orgBypass] = await Promise.all([
+    resolveProductGatingBypass(params.userId),
+    resolveProductGatingBypass(org.billing_owner_id as string),
+  ]);
+  const picked = higherTier(personal, orgTiers, personalBypass, orgBypass);
   return {
     tier: picked.tier,
     status: picked.status,

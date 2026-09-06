@@ -5,7 +5,7 @@ import { guardApiRequest } from '@/lib/api-auth';
 import { logPwaExport } from '@/lib/log-pwa-export';
 import { buildPwaZip, slugifyFilename, type PwaProjectInput } from '@/lib/pwa-generator';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
-import { canExportPwa } from '@/lib/tier-access-server';
+import { canExportPwa, resolveProductGatingBypass } from '@/lib/tier-access-server';
 import type { ComponentBlueprint } from '@/lib/blueprint-schema';
 
 type InlineExportBody = {
@@ -77,10 +77,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
     }
 
+    const ownerBypass = await resolveProductGatingBypass(user.id);
     const tier = profile?.subscription_tier ?? 'free';
     const status = profile?.subscription_status ?? 'inactive';
 
-    if (!canExportPwa(tier, status)) {
+    if (!canExportPwa(tier, status, ownerBypass)) {
       return NextResponse.json(
         {
           error: 'PWA export requires an active Basic plan or above.',

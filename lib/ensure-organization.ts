@@ -1,7 +1,11 @@
 import 'server-only';
 
 import { createAdminClient } from '@/lib/supabase/admin';
-import { canUseWhiteLabelBranding, isAgencyStudioOrAbove } from '@/lib/tier-config';
+import {
+  canUseWhiteLabelBranding,
+  isAgencyStudioOrAbove,
+  resolveProductGatingBypass,
+} from '@/lib/tier-access-server';
 
 /**
  * Ensure the user has a solo org as billing owner (Agency+ / White-Label+).
@@ -30,7 +34,8 @@ export async function ensureSoloOrganizationForUser(params: {
     email = email ?? (profile?.email as string) ?? null;
   }
 
-  if (!isAgencyStudioOrAbove(tier, status)) {
+  const bypass = await resolveProductGatingBypass(params.userId);
+  if (!isAgencyStudioOrAbove(tier, status, bypass)) {
     return null;
   }
 
@@ -55,7 +60,7 @@ export async function ensureSoloOrganizationForUser(params: {
     name: orgName,
     billing_owner_id: params.userId,
   };
-  if (canUseWhiteLabelBranding(tier, status)) {
+  if (canUseWhiteLabelBranding(tier, status, bypass)) {
     insertRow.hide_niskbuild_attribution = true;
   }
 

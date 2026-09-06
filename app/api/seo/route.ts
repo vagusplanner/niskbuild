@@ -4,7 +4,7 @@ import { getAuthenticatedProfile } from '@/lib/server-profile';
 import { computeSeoScore } from '@/lib/seo-score';
 import { buildSchemaJson } from '@/lib/seo-schema';
 import { DEFAULT_SEO_SETTINGS, type ProjectSeoSettings } from '@/lib/seo-types';
-import { canSaveSeoSettings } from '@/lib/tier-access-server';
+import { canSaveSeoSettings, resolveProductGatingBypass } from '@/lib/tier-access-server';
 
 function rowToSettings(row: Record<string, unknown> | null): ProjectSeoSettings {
   if (!row) return { ...DEFAULT_SEO_SETTINGS };
@@ -101,10 +101,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const ownerBypass = await resolveProductGatingBypass(user.id);
   const tier = profile?.subscription_tier ?? 'free';
   const status = profile?.subscription_status ?? 'inactive';
 
-  if (!canSaveSeoSettings(tier, status)) {
+  if (!canSaveSeoSettings(tier, status, ownerBypass)) {
     return NextResponse.json(
       { error: 'Saving SEO settings requires an active Pro plan or above.', upgrade: true },
       { status: 403 }

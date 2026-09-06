@@ -6,7 +6,11 @@ import { sendEmail } from '@/lib/send-email';
 import { appUrl } from '@/lib/email/app-url';
 import { EMAIL_TEMPLATE } from '@/lib/email/constants';
 import { teamInviteHtml } from '@/lib/email/templates';
-import { tierDisplayName, isAgencyStudioOrAbove } from '@/lib/tier-config';
+import { tierDisplayName } from '@/lib/tier-config';
+import {
+  isAgencyStudioOrAbove,
+  resolveProductGatingBypass,
+} from '@/lib/tier-access-server';
 import {
   getOrgSeatLimitForOwnerTier,
   listOrganizationsForUser,
@@ -177,9 +181,11 @@ export async function getTeamDashboard(userId: string): Promise<{
       .select('subscription_tier, subscription_status')
       .eq('id', org.billing_owner_id)
       .maybeSingle();
+    const bypass = await resolveProductGatingBypass(org.billing_owner_id);
     const teamsEligible = isAgencyStudioOrAbove(
       ownerProfile?.subscription_tier,
-      ownerProfile?.subscription_status
+      ownerProfile?.subscription_status,
+      bypass
     );
 
     const { data: members, error: memErr } = await admin
@@ -261,10 +267,12 @@ export async function createOrganizationInvite(params: {
       .select('subscription_tier, subscription_status')
       .eq('id', orgRow.billing_owner_id)
       .maybeSingle();
+    const bypass = await resolveProductGatingBypass(orgRow.billing_owner_id);
     if (
       !isAgencyStudioOrAbove(
         ownerProfile?.subscription_tier,
-        ownerProfile?.subscription_status
+        ownerProfile?.subscription_status,
+        bypass
       )
     ) {
       throw new Error(
@@ -733,10 +741,12 @@ export async function acceptOrganizationInvite(params: {
       .select('subscription_tier, subscription_status')
       .eq('id', orgForAccept.billing_owner_id)
       .maybeSingle();
+    const bypass = await resolveProductGatingBypass(orgForAccept.billing_owner_id);
     if (
       !isAgencyStudioOrAbove(
         ownerProfile?.subscription_tier,
-        ownerProfile?.subscription_status
+        ownerProfile?.subscription_status,
+        bypass
       )
     ) {
       throw new Error(
@@ -805,15 +815,17 @@ export async function assertCanWriteOrg(userId: string, orgId: string): Promise<
     .eq('id', org.billing_owner_id)
     .maybeSingle();
 
+  const ownerBypass = await resolveProductGatingBypass(org.billing_owner_id as string);
   const eligible = isAgencyStudioOrAbove(
     ownerProfile?.subscription_tier,
-    ownerProfile?.subscription_status
+    ownerProfile?.subscription_status,
+    ownerBypass
   );
   if (eligible) return;
 
   const isOwner =
     m.role === 'owner' || org.billing_owner_id === userId;
-  if (!isOwner) {
+  if (!isOwner && !(await resolveProductGatingBypass(userId))) {
     throw new Error(
       'This team’s plan no longer includes multi-seat access. You can still view team projects, but generation is paused. Ask the organization owner to restore an Agency Studio (or higher) plan.'
     );

@@ -11,6 +11,7 @@ import {
   fetchUserSubscriptionTier,
   isImportedStorageListing,
 } from '@/lib/marketplace-service';
+import { resolveProductGatingBypass } from '@/lib/tier-access-server';
 
 export async function POST(request: NextRequest) {
   const guard = await guardApiRequest(request);
@@ -40,13 +41,14 @@ export async function POST(request: NextRequest) {
     }
 
     if (item.price > 0) {
+      const ownerBypass = await resolveProductGatingBypass(userId);
       const [tier, purchasedListingIds, legacyIds] = await Promise.all([
         fetchUserSubscriptionTier(supabase, userId),
         fetchUserPurchasedListingIds(supabase, userId),
         fetchUserLegacyPurchasedIds(supabase, userId),
       ]);
 
-      if (!isListingOwned(item, tier, purchasedListingIds, legacyIds)) {
+      if (!isListingOwned(item, tier, purchasedListingIds, legacyIds, ownerBypass)) {
         return NextResponse.json(
           { error: 'Paid listings require checkout', requiresPurchase: true },
           { status: 402 }

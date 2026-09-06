@@ -9,10 +9,13 @@ export type AccountGateProfile = {
 };
 
 /** Matches middleware: paid subscribers skip phone verify; free users need phone_verified. */
-export function hasFullNavAccess(profile: AccountGateProfile): boolean {
+export function hasFullNavAccess(
+  profile: AccountGateProfile,
+  bypass?: boolean
+): boolean {
   const tier = profile.subscription_tier ?? 'free';
   const status = profile.subscription_status ?? 'inactive';
-  if (isPaidAndActive(tier, status)) return true;
+  if (bypass === true || isPaidAndActive(tier, status)) return true;
   return profile.phone_verified === true;
 }
 
@@ -38,7 +41,10 @@ export const VERIFY_FIRST_OVERFLOW_NAV: NavItem[] = OVERFLOW_NAV.filter((item) =
   VERIFY_FIRST_HREFS.has(item.href)
 );
 
-export function overflowNavForAccount(profile: AccountGateProfile): NavItem[] {
-  if (hasFullNavAccess(profile)) return OVERFLOW_NAV;
+export function overflowNavForAccount(
+  profile: AccountGateProfile,
+  bypass?: boolean
+): NavItem[] {
+  if (hasFullNavAccess(profile, bypass)) return OVERFLOW_NAV;
   return VERIFY_FIRST_OVERFLOW_NAV;
 }

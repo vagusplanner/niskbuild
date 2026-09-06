@@ -5,7 +5,7 @@ import { guardApiRequest } from '@/lib/api-auth';
 import { createClient } from '@/lib/supabase/server';
 import { getReloadPack, PACK_ID_TO_BOOST } from '@/lib/reload-packs';
 import { getReloadPriceId, getReloadPriceIdByPackId } from '@/lib/stripe-price-ids';
-import { isPaidAndActive } from '@/lib/tier-access-server';
+import { isPaidAndActive, resolveProductGatingBypass } from '@/lib/tier-access-server';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -33,13 +33,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
     }
 
+    const ownerBypass = await resolveProductGatingBypass(user.id);
     const { data: profile } = await supabase
       .from('profiles')
       .select('subscription_tier, subscription_status')
       .eq('id', user.id)
       .single();
 
-    if (!isPaidAndActive(profile?.subscription_tier, profile?.subscription_status)) {
+    if (!isPaidAndActive(profile?.subscription_tier, profile?.subscription_status, ownerBypass)) {
       return NextResponse.json(
         { error: 'Active paid subscription required to purchase reload packs' },
         { status: 403 }

@@ -1,7 +1,10 @@
 import 'server-only';
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { canUseWhiteLabelBranding } from '@/lib/tier-config';
+import {
+  canUseWhiteLabelBranding,
+  resolveProductGatingBypass,
+} from '@/lib/tier-access-server';
 import { isBasePlatform, normalizeHost } from '@/lib/tenant-routing';
 import type { TenantBrand } from '@/lib/tenant-brand-types';
 
@@ -86,7 +89,8 @@ export async function resolveTenantBrand(
 
   const ownerTier = (owner?.subscription_tier as string) || 'free';
   const ownerStatus = (owner?.subscription_status as string) || 'inactive';
-  const wl = canUseWhiteLabelBranding(ownerTier, ownerStatus);
+  const bypass = await resolveProductGatingBypass(org.billing_owner_id as string);
+  const wl = canUseWhiteLabelBranding(ownerTier, ownerStatus, bypass);
 
   // Option B + defense: only WL+ can hide; column must also be true
   const hideAttribution = wl && !!org.hide_niskbuild_attribution;

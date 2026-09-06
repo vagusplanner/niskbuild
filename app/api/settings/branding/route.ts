@@ -3,7 +3,7 @@ import { guardApiRequest } from '@/lib/api-auth';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { captureApiException } from '@/lib/api-error';
-import { canUseWhiteLabelBranding } from '@/lib/tier-access-server';
+import { canUseWhiteLabelBranding, resolveProductGatingBypass } from '@/lib/tier-access-server';
 import {
   ensureSoloOrganizationForUser,
   getPrimaryOrgIdForBillingOwner,
@@ -29,9 +29,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
     }
 
+    const ownerBypass = await resolveProductGatingBypass(user.id);
     const tier = profile?.subscription_tier;
     const status = profile?.subscription_status;
-    const allowed = canUseWhiteLabelBranding(tier, status);
+    const allowed = canUseWhiteLabelBranding(tier, status, ownerBypass);
 
     await ensureSoloOrganizationForUser({
       userId: user.id,
@@ -93,9 +94,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
     }
 
+    const ownerBypass = await resolveProductGatingBypass(user.id);
     const tier = profile?.subscription_tier;
     const status = profile?.subscription_status;
-    if (!canUseWhiteLabelBranding(tier, status)) {
+    if (!canUseWhiteLabelBranding(tier, status, ownerBypass)) {
       return NextResponse.json(
         {
           error:

@@ -4,7 +4,7 @@ import { guardApiRequest } from '@/lib/api-auth';
 import { GROQ_CODE_MODEL, getGroqClient } from '@/lib/groq-client';
 import { computeSeoScore } from '@/lib/seo-score';
 import type { SeoAiSuggestion } from '@/lib/seo-types';
-import { canGenerateSeoAi } from '@/lib/tier-access-server';
+import { canGenerateSeoAi, resolveProductGatingBypass } from '@/lib/tier-access-server';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 async function getProfile(userId: string) {
@@ -25,7 +25,8 @@ export async function POST(request: NextRequest) {
 
   try {
     const profile = await getProfile(userId);
-    if (!canGenerateSeoAi(profile?.subscription_tier, profile?.subscription_status)) {
+    const ownerBypass = await resolveProductGatingBypass(userId);
+    if (!canGenerateSeoAi(profile?.subscription_tier, profile?.subscription_status, ownerBypass)) {
       return NextResponse.json(
         { error: 'AI SEO generation requires an active Pro plan or above.', upgrade: true },
         { status: 403 }

@@ -12,6 +12,7 @@ import {
   isImportedStorageListing,
 } from '@/lib/marketplace-service';
 import { listingIncludedInTier } from '@/lib/marketplace-types';
+import { resolveProductGatingBypass } from '@/lib/tier-access-server';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -56,9 +57,10 @@ export async function POST(request: NextRequest) {
       fetchUserPurchasedListingIds(supabase, user.id),
       fetchUserLegacyPurchasedIds(supabase, user.id),
     ]);
+    const ownerBypass = await resolveProductGatingBypass(user.id);
 
     if (
-      isListingOwned(template, tier, purchasedListingIds, legacyIds) ||
+      isListingOwned(template, tier, purchasedListingIds, legacyIds, ownerBypass) ||
       listingIncludedInTier(template, tier, legacyIds)
     ) {
       return NextResponse.json({ alreadyOwned: true });

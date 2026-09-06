@@ -9,6 +9,7 @@ import {
   canUseOwnApiKeys,
   canUseWhiteLabelBranding,
   isAgencyStudioOrAbove,
+  resolveProductGatingBypass,
 } from '@/lib/tier-access-server';
 import {
   deactivatePreviewsByEmail,
@@ -125,9 +126,11 @@ async function handleSubscriptionActivated(
     profile?.subscription_status
   );
 
+  const ownerBypass = await resolveProductGatingBypass(uid);
+
   // Phase 0: Agency+ (incl. White-Label+) get a solo org if missing
   if (
-    isAgencyStudioOrAbove(profile?.subscription_tier, profile?.subscription_status)
+    isAgencyStudioOrAbove(profile?.subscription_tier, profile?.subscription_status, ownerBypass)
   ) {
     const ensured = await ensureSoloOrganizationForUser({
       userId: uid,
@@ -145,7 +148,8 @@ async function handleSubscriptionActivated(
       ensured &&
       canUseWhiteLabelBranding(
         profile?.subscription_tier,
-        profile?.subscription_status
+        profile?.subscription_status,
+        ownerBypass
       )
     ) {
       await supabase
@@ -217,9 +221,22 @@ async function processStripeEvent(
       const subscriptionId =
         typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
 
+      let profileUserId = typeof userId === 'string' ? userId : null;
+      if (!profileUserId && customerEmail) {
+        const { data: existing } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('email', customerEmail)
+          .maybeSingle();
+        profileUserId = existing?.id ?? null;
+      }
+      const ownerBypass = profileUserId
+        ? await resolveProductGatingBypass(profileUserId)
+        : false;
+
       const updates = {
         ...profileUpdatesForNewSubscription(tier, customerId, subscriptionId ?? null),
-        ...(!canUseOwnApiKeys(tier) ? { use_own_api_keys: false } : {}),
+        ...(!canUseOwnApiKeys(tier, ownerBypass) ? { use_own_api_keys: false } : {}),
       };
 
       if (userId) {
@@ -285,6 +302,15 @@ async function processStripeEvent(
 
     const customer = await stripe.customers.retrieve(customerId);
     if (!customer.deleted && customer.email) {
+      const { data: syncProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', customer.email)
+        .maybeSingle();
+      const ownerBypass = syncProfile?.id
+        ? await resolveProductGatingBypass(syncProfile.id)
+        : false;
+
       if (status === 'active') {
         await requireProfileUpdate(
           supabase
@@ -293,20 +319,15 @@ async function processStripeEvent(
               ...profileUpdatesForSubscriptionSync(tier, customerId, subscription.id),
               cancel_at_period_end: subscription.cancel_at_period_end ?? false,
               subscription_ended_at: null,
-              ...(!canUseOwnApiKeys(tier) ? { use_own_api_keys: false } : {}),
+              ...(!canUseOwnApiKeys(tier, ownerBypass) ? { use_own_api_keys: false } : {}),
             })
             .eq('email', customer.email)
         );
         await handleSubscriptionActivated(supabase, customer.email);
 
         if (subscription.cancel_at_period_end) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('id')
-            .eq('email', customer.email)
-            .single();
-          if (profile?.id) {
-            void sendCancelWarningEmail(profile.id, customer.email);
+          if (syncProfile?.id) {
+            void sendCancelWarningEmail(syncProfile.id, customer.email);
           }
         }
         notifyOrgPlanSideEffects(customer.email);

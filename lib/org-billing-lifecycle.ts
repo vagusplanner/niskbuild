@@ -9,7 +9,11 @@ import {
   teamSeatOverageHtml,
 } from '@/lib/email/templates';
 import { getOrgSeatUsage } from '@/lib/organization-team';
-import { isAgencyStudioOrAbove, tierDisplayName } from '@/lib/tier-config';
+import { tierDisplayName } from '@/lib/tier-config';
+import {
+  isAgencyStudioOrAbove,
+  resolveProductGatingBypass,
+} from '@/lib/tier-access-server';
 
 /**
  * After a billing owner's Stripe tier/status changes: notify members if teams
@@ -33,7 +37,8 @@ export async function notifyOrgsAfterBillingOwnerPlanChange(params: {
 
   const tier = (ownerProfile?.subscription_tier as string) || 'free';
   const status = (ownerProfile?.subscription_status as string) || 'inactive';
-  const teamsEligible = isAgencyStudioOrAbove(tier, status);
+  const bypass = await resolveProductGatingBypass(params.ownerId);
+  const teamsEligible = isAgencyStudioOrAbove(tier, status, bypass);
   const ownerName =
     (ownerProfile?.full_name as string)?.trim() ||
     (ownerProfile?.email as string) ||

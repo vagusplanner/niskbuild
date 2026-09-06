@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createClient } from '@/lib/supabase/server';
-import { canUseOwnApiKeys } from '@/lib/tier-access-server';
+import { canUseOwnApiKeys, resolveProductGatingBypass } from '@/lib/tier-access-server';
 
 export async function GET(request: NextRequest) {
   const guard = await guardApiRequest(request);
@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
 
   const supabase = await createClient();
   const user = guard.user!;
+  const ownerBypass = await resolveProductGatingBypass(user.id);
 
   const { data: profile } = await supabase
     .from('profiles')
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
     .eq('id', user.id)
     .single();
 
-  const byocAllowed = canUseOwnApiKeys(profile?.subscription_tier);
+  const byocAllowed = canUseOwnApiKeys(profile?.subscription_tier, ownerBypass);
 
   return NextResponse.json({
     hasOpenAI: !!profile?.openai_api_key,
@@ -35,6 +36,7 @@ export async function POST(request: NextRequest) {
 
   const supabase = await createClient();
   const user = guard.user!;
+  const ownerBypass = await resolveProductGatingBypass(user.id);
 
   const { data: profile } = await supabase
     .from('profiles')
@@ -42,7 +44,7 @@ export async function POST(request: NextRequest) {
     .eq('id', user.id)
     .single();
 
-  if (!canUseOwnApiKeys(profile?.subscription_tier)) {
+  if (!canUseOwnApiKeys(profile?.subscription_tier, ownerBypass)) {
     return NextResponse.json(
       {
         error: 'Bring-your-own API keys require Pro Worker ($129/mo) or higher.',

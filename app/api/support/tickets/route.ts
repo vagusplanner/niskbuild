@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
-import { canUseSupportTickets } from '@/lib/tier-access-server';
+import { canUseSupportTickets, resolveProductGatingBypass } from '@/lib/tier-access-server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createSupportTicket, notifyAdminNewTicket } from '@/lib/support-tickets';
 
@@ -35,10 +35,11 @@ export async function POST(request: NextRequest) {
   const { user, profile } = await getAuthenticatedProfile();
   if (!user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const ownerBypass = await resolveProductGatingBypass(user.id);
   const tier = profile?.subscription_tier ?? 'free';
   const status = profile?.subscription_status ?? 'inactive';
 
-  if (!canUseSupportTickets(tier, status)) {
+  if (!canUseSupportTickets(tier, status, ownerBypass)) {
     return NextResponse.json(
       {
         error: 'Priority support tickets require an active Pro Worker plan or above. Use the contact form instead.',

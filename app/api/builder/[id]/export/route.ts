@@ -5,7 +5,7 @@ import { getBuilderExportConfig, isExportSupported } from '@/lib/builder-export/
 import { createExportJob } from '@/lib/builder-export/jobs';
 import { startBuilderExportJob } from '@/lib/builder-export/run-export';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
-import { canExportNative } from '@/lib/tier-access-server';
+import { canExportNative, resolveProductGatingBypass } from '@/lib/tier-access-server';
 
 export const maxDuration = 300;
 
@@ -32,10 +32,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
     }
 
+    const ownerBypass = await resolveProductGatingBypass(user.id);
     const tier = profile?.subscription_tier ?? 'free';
     const subscriptionStatus = profile?.subscription_status ?? 'inactive';
 
-    if (!canExportNative(tier, subscriptionStatus)) {
+    if (!canExportNative(tier, subscriptionStatus, ownerBypass)) {
       return NextResponse.json(
         {
           error: 'App Store export requires an active Agency plan or above.',

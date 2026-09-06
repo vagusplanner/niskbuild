@@ -12,7 +12,7 @@ import {
   type GameTemplateId,
 } from '@/lib/game-templates';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { canUseGameTemplates } from '@/lib/tier-access-server';
+import { canUseGameTemplates, resolveProductGatingBypass } from '@/lib/tier-access-server';
 
 const GAME_SYSTEM_PROMPT = `You are an expert Phaser.js game developer. Generate complete, working Phaser.js 3 game code based on the description.
 Always use Phaser.AUTO renderer, include preload/create/update scenes or a single scene class, and use arcade physics.
@@ -49,10 +49,11 @@ export async function POST(request: NextRequest) {
     const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : '';
 
     const profile = await getProfile(userId);
+    const ownerBypass = await resolveProductGatingBypass(userId);
     const tier = profile?.subscription_tier ?? 'free';
     const status = profile?.subscription_status ?? 'inactive';
 
-    if (!canUseGameTemplates(tier, status)) {
+    if (!canUseGameTemplates(tier, status, ownerBypass)) {
       return NextResponse.json(
         { error: 'Agency plan required for game generation.', upgrade: true },
         { status: 403 }

@@ -14,7 +14,7 @@ import { recordUsageEvent } from '@/lib/usage-events';
 import { recordPromptCategoryStat } from '@/lib/prompt-category-stats';
 import { touchLastBuildAt } from '@/lib/build-activity';
 import { clientIpFromHeaders } from '@/lib/coarse-town';
-import { canUseOwnApiKeys } from '@/lib/tier-access-server';
+import { canUseOwnApiKeys, resolveProductGatingBypass } from '@/lib/tier-access-server';
 
 async function getUserProfile(userId: string) {
   const supabase = createAdminClient();
@@ -53,17 +53,18 @@ export async function POST(request: NextRequest) {
     const chargeContext = chargeResolved.context;
 
     const profile = await getUserProfile(userId);
+    const ownerBypass = await resolveProductGatingBypass(userId);
     const tier = profile?.subscription_tier || 'free';
     const status = profile?.subscription_status || 'inactive';
 
-    if (!chargeContext.isOrgPool && !canSpendCloudCredits(tier, status)) {
+    if (!chargeContext.isOrgPool && !canSpendCloudCredits(tier, status, ownerBypass)) {
       return NextResponse.json(
-        { error: outOfCreditsMessage(tier, status) },
+        { error: outOfCreditsMessage(tier, status, ownerBypass) },
         { status: 403 }
       );
     }
 
-    const byocAllowed = canUseOwnApiKeys(tier);
+    const byocAllowed = canUseOwnApiKeys(tier, ownerBypass);
     const useOwnKeys = byocAllowed && !!profile?.use_own_api_keys;
     const hasUserKeys = !!(profile?.openai_api_key || profile?.anthropic_api_key);
     const skipCredits = useOwnKeys && hasUserKeys;
@@ -83,11 +84,16 @@ export async function POST(request: NextRequest) {
       didDeduct = true;
     }
 
-    const result = await generateCode(prompt, tier, {
-      useOwnKeys,
-      openaiKey: byocAllowed ? profile?.openai_api_key : null,
-      anthropicKey: byocAllowed ? profile?.anthropic_api_key : null,
-    });
+    const result = await generateCode(
+      prompt,
+      tier,
+      {
+        useOwnKeys,
+        openaiKey: byocAllowed ? profile?.openai_api_key : null,
+        anthropicKey: byocAllowed ? profile?.anthropic_api_key : null,
+      },
+      ownerBypass
+    );
 
     if (result.success) {
       await recordAnonymousTelemetry(

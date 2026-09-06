@@ -6,6 +6,7 @@ import {
   canUseLocalOllama,
   canUseSandboxLocalGenerate,
   LOCAL_OLLAMA_LOCKED_MESSAGE,
+  resolveProductGatingBypass,
 } from '@/lib/tier-access-server';
 import { recordUsageEvent } from '@/lib/usage-events';
 import { recordPromptCategoryStat } from '@/lib/prompt-category-stats';
@@ -20,6 +21,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const supabase = createAdminClient();
+    const ownerBypass = await resolveProductGatingBypass(guard.user!.id);
     const { data: profile } = await supabase
       .from('profiles')
       .select('subscription_tier')
@@ -27,7 +29,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     const tier = profile?.subscription_tier || 'free';
-    if (!canUseLocalOllama(tier) && !canUseSandboxLocalGenerate(tier)) {
+    if (!canUseLocalOllama(tier, ownerBypass) && !canUseSandboxLocalGenerate(tier, ownerBypass)) {
       return NextResponse.json({ error: LOCAL_OLLAMA_LOCKED_MESSAGE }, { status: 403 });
     }
 

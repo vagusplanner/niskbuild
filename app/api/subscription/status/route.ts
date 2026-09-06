@@ -4,9 +4,8 @@ import { guardApiRequest } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { hasFullNavAccess } from '@/lib/nav-access';
 import { getCloudCreditsForTier } from '@/lib/tier-config';
-import { isPaidAndActive } from '@/lib/tier-access-server';
+import { isPaidAndActive, resolveProductGatingBypass } from '@/lib/tier-access-server';
 import { ensureCloudCreditsInitialized } from '@/lib/credits';
-import { isPlatformOwner } from '@/lib/platform-owner-auth';
 
 export async function GET(request: NextRequest) {
   const guard = await guardApiRequest(request);
@@ -44,17 +43,22 @@ export async function GET(request: NextRequest) {
         );
       }
 
+      const platformOwnerBypass = await resolveProductGatingBypass(user.id);
       return NextResponse.json({
-        active: false,
-        paid: false,
+        active: platformOwnerBypass,
+        paid: platformOwnerBypass,
         tier: newProfile?.subscription_tier || 'free',
         status: newProfile?.subscription_status || 'inactive',
+        platformOwnerBypass,
         phoneVerified: newProfile?.phone_verified ?? false,
-        fullNavAccess: hasFullNavAccess({
-          subscription_tier: newProfile?.subscription_tier,
-          subscription_status: newProfile?.subscription_status,
-          phone_verified: newProfile?.phone_verified,
-        }),
+        fullNavAccess: hasFullNavAccess(
+          {
+            subscription_tier: newProfile?.subscription_tier,
+            subscription_status: newProfile?.subscription_status,
+            phone_verified: newProfile?.phone_verified,
+          },
+          platformOwnerBypass
+        ),
         credits: newProfile?.cloud_credits_remaining ?? getCloudCreditsForTier('free'),
         creditsAllowance: getCloudCreditsForTier('free'),
       });
@@ -62,8 +66,8 @@ export async function GET(request: NextRequest) {
 
     const tier = profile?.subscription_tier || 'free';
     const status = profile?.subscription_status || 'inactive';
-    const platformOwnerBypass = await isPlatformOwner(user.id);
-    const paidActive = isPaidAndActive(tier, status) || platformOwnerBypass;
+    const platformOwnerBypass = await resolveProductGatingBypass(user.id);
+    const paidActive = isPaidAndActive(tier, status, platformOwnerBypass);
 
     await ensureCloudCreditsInitialized(user.id);
 
@@ -86,11 +90,14 @@ export async function GET(request: NextRequest) {
       status,
       platformOwnerBypass,
       phoneVerified,
-      fullNavAccess: hasFullNavAccess({
-        subscription_tier: tier,
-        subscription_status: status,
-        phone_verified: phoneVerified,
-      }) || platformOwnerBypass,
+      fullNavAccess: hasFullNavAccess(
+        {
+          subscription_tier: tier,
+          subscription_status: status,
+          phone_verified: phoneVerified,
+        },
+        platformOwnerBypass
+      ),
       credits,
       creditsAllowance: getCloudCreditsForTier(tier),
       purchasedTemplates: Array.isArray(refreshed?.purchased_templates ?? profile?.purchased_templates)

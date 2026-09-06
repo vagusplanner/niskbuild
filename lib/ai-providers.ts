@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { canUseLocalOllama } from '@/lib/tier-config';
+import { canUseLocalOllama } from '@/lib/tier-access-server';
 import Anthropic from '@anthropic-ai/sdk';
 import { GROQ_CODE_MODEL, getGroqClient } from '@/lib/groq-client';
 import { HTML_CODE_SYSTEM_PROMPT } from '@/lib/html-code-system-prompt';
@@ -187,8 +187,8 @@ async function generateWithLocal(prompt: string): Promise<AIResponse> {
 }
 
 // Tier-based provider ordering (non-stream / batch generates)
-export function getProviderOrder(tier: string): AIProvider[] {
-  const local = canUseLocalOllama(tier) ? (['local'] as AIProvider[]) : [];
+export function getProviderOrder(tier: string, bypass?: boolean): AIProvider[] {
+  const local = canUseLocalOllama(tier, bypass) ? (['local'] as AIProvider[]) : [];
 
   switch (tier) {
     case 'agency':
@@ -209,8 +209,8 @@ export function getProviderOrder(tier: string): AIProvider[] {
  * Provider order for live SSE code generation — streaming-capable providers first
  * for ALL tiers (including Agency+). Non-streaming Anthropic remains a quality fallback.
  */
-export function getStreamProviderOrder(tier: string): AIProvider[] {
-  const local = canUseLocalOllama(tier) ? (['local'] as AIProvider[]) : [];
+export function getStreamProviderOrder(tier: string, bypass?: boolean): AIProvider[] {
+  const local = canUseLocalOllama(tier, bypass) ? (['local'] as AIProvider[]) : [];
 
   switch (tier) {
     case 'agency':
@@ -249,7 +249,8 @@ async function generateWithUserKeys(
 export async function generateCode(
   prompt: string,
   userTier: string = 'free',
-  userKeys?: UserKeyOptions
+  userKeys?: UserKeyOptions,
+  bypass?: boolean
 ): Promise<AIResponse> {
   const ownResult = await generateWithUserKeys(prompt, userKeys ?? {});
   if (ownResult) {
@@ -257,7 +258,7 @@ export async function generateCode(
     return ownResult;
   }
 
-  const providers = getProviderOrder(userTier);
+  const providers = getProviderOrder(userTier, bypass);
 
   for (const provider of providers) {
     console.log(`🔄 [${userTier} tier] Trying ${provider}...`);

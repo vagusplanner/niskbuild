@@ -3,7 +3,10 @@ import {
   listingIncludedInTier,
   type MarketplaceTemplate,
 } from '@/lib/marketplace-types';
-import { isProductGatingBypassActive } from '@/lib/platform-owner-bypass';
+import {
+  isProductGatingBypassActive,
+  resolveProductGatingBypass,
+} from '@/lib/platform-owner-bypass';
 
 export type MarketplaceListingRow = {
   id: string;
@@ -227,9 +230,10 @@ export function isListingOwned(
   listing: MarketplaceListingItem,
   tier: string,
   purchasedListingIds: string[],
-  legacyPurchasedIds: string[]
+  legacyPurchasedIds: string[],
+  bypass?: boolean
 ): boolean {
-  if (isProductGatingBypassActive()) return true;
+  if (bypass === true || isProductGatingBypassActive()) return true;
   if (listing.price === 0) return true;
   if (listingIncludedInTier(listing, tier, legacyPurchasedIds)) return true;
   if (purchasedListingIds.includes(listing.id)) return true;
@@ -494,10 +498,12 @@ export async function buildListingsResponse(
     ]);
   }
 
+  const ownerBypass = userId ? await resolveProductGatingBypass(userId) : false;
+
   const filtered = filterListings(catalog, opts);
   const templates = filtered.map((listing) => {
     const owned = userId
-      ? isListingOwned(listing, tier, purchasedListingIds, legacyPurchasedIds)
+      ? isListingOwned(listing, tier, purchasedListingIds, legacyPurchasedIds, ownerBypass)
       : listing.price === 0;
     return redactListingSecrets({ ...listing, owned }, owned);
   });
@@ -542,8 +548,9 @@ export async function buildListingDetailResponse(
   }
 
   const listing = listingRowToTemplate(row);
+  const ownerBypass = userId ? await resolveProductGatingBypass(userId) : false;
   const owned = userId
-    ? isListingOwned(listing, tier, purchasedListingIds, legacyPurchasedIds)
+    ? isListingOwned(listing, tier, purchasedListingIds, legacyPurchasedIds, ownerBypass)
     : listing.price === 0;
   return {
     listing: redactListingSecrets({ ...listing, owned }, owned),

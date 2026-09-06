@@ -5,7 +5,8 @@ import {
   getCloudCreditsForTier,
   isPaidAndActive,
   isSandboxTier,
-} from '@/lib/tier-config';
+  resolveProductGatingBypass,
+} from '@/lib/tier-access-server';
 
 type CreditProfile = {
   cloud_credits_remaining: number | null;
@@ -48,8 +49,9 @@ export async function ensureCloudCreditsInitialized(userId: string): Promise<voi
   if (allowance <= 0) return;
   if (!neverBuilt(profile)) return;
 
-  const paidActive = isPaidAndActive(tier, profile.subscription_status);
-  const sandbox = isSandboxTier(tier);
+  const bypass = await resolveProductGatingBypass(userId);
+  const paidActive = isPaidAndActive(tier, profile.subscription_status, bypass);
+  const sandbox = isSandboxTier(tier, bypass);
 
   if (!paidActive && !sandbox) return;
 
@@ -81,19 +83,21 @@ export async function loadCreditProfile(userId: string): Promise<CreditProfile |
 
 export function canSpendCloudCredits(
   tier: string | null | undefined,
-  status: string | null | undefined
+  status: string | null | undefined,
+  bypass?: boolean
 ): boolean {
-  return isPaidAndActive(tier, status) || isSandboxTier(tier);
+  return isPaidAndActive(tier, status, bypass) || isSandboxTier(tier, bypass);
 }
 
 export function outOfCreditsMessage(
   tier: string | null | undefined,
-  status: string | null | undefined
+  status: string | null | undefined,
+  bypass?: boolean
 ): string {
-  if (isSandboxTier(tier)) {
+  if (isSandboxTier(tier, bypass)) {
     return 'Your free trial builds are used up. Upgrade to Pro for monthly cloud credits.';
   }
-  if (!isPaidAndActive(tier, status)) {
+  if (!isPaidAndActive(tier, status, bypass)) {
     return 'Active paid subscription required for cloud generation. Choose a plan on Pricing.';
   }
   return 'Insufficient cloud credits. Upgrade or purchase a reload pack.';

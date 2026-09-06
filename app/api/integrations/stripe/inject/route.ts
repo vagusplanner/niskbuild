@@ -8,7 +8,7 @@ import { STRIPE_INJECT_CREDIT_COST } from '@/lib/integrations-config';
 import { logStripeIntegration } from '@/lib/log-stripe-integration';
 import { buildStripeInjectSystemPrompt } from '@/lib/stripe-inject-prompt';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { canUseStripeInject } from '@/lib/tier-access-server';
+import { canUseStripeInject, resolveProductGatingBypass } from '@/lib/tier-access-server';
 
 async function assertProjectOwner(userId: string, projectId: string) {
   const supabase = createAdminClient();
@@ -57,13 +57,14 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = createAdminClient();
+    const ownerBypass = await resolveProductGatingBypass(userId);
     const { data: profile } = await supabase
       .from('profiles')
       .select('subscription_tier, subscription_status')
       .eq('id', userId)
       .single();
 
-    if (!canUseStripeInject(profile?.subscription_tier, profile?.subscription_status)) {
+    if (!canUseStripeInject(profile?.subscription_tier, profile?.subscription_status, ownerBypass)) {
       return NextResponse.json(
         { error: 'Pro plan required for Stripe integration', upgrade: true },
         { status: 403 }

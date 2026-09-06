@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { guardApiRequest } from '@/lib/api-auth';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
 import { captureApiException } from '@/lib/api-error';
-import { canUseOrgSso } from '@/lib/tier-access-server';
+import { canUseOrgSso, resolveProductGatingBypass } from '@/lib/tier-access-server';
 import {
   assertOwnerCanConfigureSso,
   createSupabaseSsoProvider,
@@ -28,9 +28,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
     }
 
+    const ownerBypass = await resolveProductGatingBypass(user.id);
     const tier = profile?.subscription_tier;
     const status = profile?.subscription_status;
-    const allowed = canUseOrgSso(tier, status);
+    const allowed = canUseOrgSso(tier, status, ownerBypass);
 
     await ensureSoloOrganizationForUser({
       userId: user.id,

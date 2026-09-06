@@ -30,7 +30,10 @@ type GatingStore = { bypass: boolean };
 
 const gatingStore = new AsyncLocalStorage<GatingStore>();
 
-/** True when the current request/session is a registered platform owner (server-only). */
+/**
+ * Sync ALS peek — unreliable after awaits. Prefer {@link resolveProductGatingBypass}(userId)
+ * and pass the result into tier helpers as `bypass`.
+ */
 export function isProductGatingBypassActive(): boolean {
   return gatingStore.getStore()?.bypass === true;
 }

@@ -4,7 +4,7 @@ import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { buildNativeZip, slugifyFilename, type PwaProjectInput } from '@/lib/pwa-generator';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
-import { canExportNative } from '@/lib/tier-access-server';
+import { canExportNative, resolveProductGatingBypass } from '@/lib/tier-access-server';
 import type { ComponentBlueprint } from '@/lib/blueprint-schema';
 
 type InlineExportBody = {
@@ -74,10 +74,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
     }
 
+    const ownerBypass = await resolveProductGatingBypass(user.id);
     const tier = profile?.subscription_tier ?? 'free';
     const status = profile?.subscription_status ?? 'inactive';
 
-    if (!canExportNative(tier, status)) {
+    if (!canExportNative(tier, status, ownerBypass)) {
       return NextResponse.json(
         {
           error: 'Native export requires an active Agency plan or above.',

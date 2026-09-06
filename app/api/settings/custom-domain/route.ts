@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { guardApiRequest } from '@/lib/api-auth';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
-import { canUseCustomDomains } from '@/lib/tier-access-server';
+import { canUseCustomDomains, resolveProductGatingBypass } from '@/lib/tier-access-server';
 import {
   claimCustomDomain,
   customDomainPublicMeta,
@@ -22,9 +22,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
     }
 
+    const ownerBypass = await resolveProductGatingBypass(user.id);
     const tier = profile?.subscription_tier ?? null;
     const status = profile?.subscription_status ?? null;
-    const eligible = canUseCustomDomains(tier, status);
+    const eligible = canUseCustomDomains(tier, status, ownerBypass);
     const domains = eligible ? await listCustomDomainsForOwner(user.id) : [];
 
     return NextResponse.json({

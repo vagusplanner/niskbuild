@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { guardApiRequest } from '@/lib/api-auth';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
-import { getProjectLimit } from '@/lib/tier-access-server';
+import { getProjectLimit, resolveProductGatingBypass } from '@/lib/tier-access-server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { assertCanUseOrg, assertCanWriteOrg, userOrgIds } from '@/lib/organization-team';
 
@@ -101,6 +101,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const ownerBypass = await resolveProductGatingBypass(user.id);
+
   const body = await request.json();
   const { title, prompt, generated_code, project_context, files_json, org_id: orgIdRaw } = body;
   if (!title?.trim() || !generated_code) {
@@ -150,7 +152,7 @@ export async function POST(request: NextRequest) {
     }
 
     tier = (ownerProfile?.subscription_tier as string) || 'free';
-    limit = getProjectLimit(tier);
+    limit = getProjectLimit(tier, ownerBypass);
 
     const { count: orgCount, error: countError } = await admin
       .from('projects')
@@ -164,7 +166,7 @@ export async function POST(request: NextRequest) {
   } else {
     // Personal project: creator's own tier, only personal (org_id null) projects
     tier = profile?.subscription_tier ?? 'free';
-    limit = getProjectLimit(tier);
+    limit = getProjectLimit(tier, ownerBypass);
 
     const { count: personalCount, error: countError } = await admin
       .from('projects')

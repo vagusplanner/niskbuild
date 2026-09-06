@@ -13,7 +13,13 @@ import type {
 import { logGooglePlacesImport } from '@/lib/log-google-places-import';
 import { resolvePlacesPhotoUrls } from '@/lib/google-places-photos';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { canImportGooglePlaces, canUseCompetitorIntel, canUseSocialProofAggregator, isPaidAndActive } from '@/lib/tier-access-server';
+import {
+  canImportGooglePlaces,
+  canUseCompetitorIntel,
+  canUseSocialProofAggregator,
+  isPaidAndActive,
+  resolveProductGatingBypass,
+} from '@/lib/tier-access-server';
 
 function formatBusinessType(types?: string[]): string | undefined {
   if (!types?.length) return undefined;
@@ -48,10 +54,11 @@ export async function POST(request: NextRequest) {
     const socialProof = body.socialProof === true;
 
     const profile = await getProfile(userId);
+    const ownerBypass = await resolveProductGatingBypass(userId);
     const tier = profile?.subscription_tier ?? 'free';
     const status = profile?.subscription_status ?? 'inactive';
 
-    if (!canImportGooglePlaces(tier, status)) {
+    if (!canImportGooglePlaces(tier, status, ownerBypass)) {
       return NextResponse.json(
         { error: 'Google Places import requires an active Pro Worker plan or above.', upgrade: true },
         { status: 403 }
@@ -192,7 +199,7 @@ export async function POST(request: NextRequest) {
 
       let competitorIntel = null;
       if (competitors) {
-        if (!canUseCompetitorIntel(tier, status)) {
+        if (!canUseCompetitorIntel(tier, status, ownerBypass)) {
           return NextResponse.json(
             {
               error: 'Competitor comparison requires an active Agency Studio plan or above.',
@@ -219,7 +226,7 @@ export async function POST(request: NextRequest) {
 
       let socialProofIntel = null;
       if (socialProof) {
-        if (!canUseSocialProofAggregator(tier, status)) {
+        if (!canUseSocialProofAggregator(tier, status, ownerBypass)) {
           return NextResponse.json(
             {
               error: 'Social proof aggregator requires an active Agency Studio plan or above.',
@@ -237,7 +244,7 @@ export async function POST(request: NextRequest) {
       const sessionId =
         typeof body.sessionId === 'string' ? body.sessionId : userId;
 
-      if (isPaidAndActive(tier, status)) {
+      if (isPaidAndActive(tier, status, ownerBypass)) {
         await logGooglePlacesImport({
           userId,
           sessionId,

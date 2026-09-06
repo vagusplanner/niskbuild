@@ -5,7 +5,7 @@ import { guardApiRequest } from '@/lib/api-auth';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
 import { createClient } from '@/lib/supabase/server';
 import { getReloadPack } from '@/lib/reload-packs';
-import { isPaidAndActive } from '@/lib/tier-access-server';
+import { isPaidAndActive, resolveProductGatingBypass } from '@/lib/tier-access-server';
 import {
   getPriceId,
   getReloadPriceId,
@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
 
+    const ownerBypass = await resolveProductGatingBypass(userId);
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
     // ── Reload pack checkout (Step 6) ──────────────────────────────────────
@@ -111,7 +112,7 @@ export async function POST(request: NextRequest) {
         .eq('id', userId)
         .single();
 
-      if (!isPaidAndActive(subProfile?.subscription_tier, subProfile?.subscription_status)) {
+      if (!isPaidAndActive(subProfile?.subscription_tier, subProfile?.subscription_status, ownerBypass)) {
         return NextResponse.json(
           { error: 'Active paid subscription required to purchase reload packs' },
           { status: 403 }

@@ -6,7 +6,7 @@ import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { resolveBuilderApp } from '@/lib/builder-apps/handlers';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
-import { canExportNative } from '@/lib/tier-access-server';
+import { canExportNative, resolveProductGatingBypass } from '@/lib/tier-access-server';
 
 export const maxDuration = 300;
 
@@ -36,10 +36,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
     }
 
+    const ownerBypass = await resolveProductGatingBypass(user.id);
     const tier = profile?.subscription_tier ?? 'free';
     const status = profile?.subscription_status ?? 'inactive';
 
-    if (!canExportNative(tier, status)) {
+    if (!canExportNative(tier, status, ownerBypass)) {
       return NextResponse.json(
         {
           error: 'Xcode export requires an active Agency plan or above.',

@@ -136,7 +136,8 @@ export async function generateVpSourceEdit(
   userPrompt: string,
   userTier = 'free',
   userKeys?: UserKeyOptions,
-  systemPrompt = VP_REACT_SYSTEM_PROMPT
+  systemPrompt = VP_REACT_SYSTEM_PROMPT,
+  bypass?: boolean
 ): Promise<AIResponse> {
   const keys = userKeys ?? {};
 
@@ -145,7 +146,7 @@ export async function generateVpSourceEdit(
     if (own.success) return own;
   }
 
-  for (const provider of getProviderOrder(userTier)) {
+  for (const provider of getProviderOrder(userTier, bypass)) {
     const result = await runProvider(provider, systemPrompt, userPrompt, keys);
     if (result.success) return result;
   }

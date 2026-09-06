@@ -3,7 +3,7 @@ import { captureApiException } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { resolveBuilderApp } from '@/lib/builder-apps/handlers';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
-import { isPaidAndActive } from '@/lib/tier-access-server';
+import { isPaidAndActive, resolveProductGatingBypass } from '@/lib/tier-access-server';
 import { deployVagusPlanner } from '@/lib/vp-deploy';
 
 /**
@@ -36,10 +36,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
     }
 
+    const ownerBypass = await resolveProductGatingBypass(user.id);
     const tier = profile?.subscription_tier ?? 'free';
     const status = profile?.subscription_status ?? 'inactive';
 
-    if (!isPaidAndActive(tier, status)) {
+    if (!isPaidAndActive(tier, status, ownerBypass)) {
       return NextResponse.json(
         {
           error: 'Active paid subscription required to deploy live preview links',

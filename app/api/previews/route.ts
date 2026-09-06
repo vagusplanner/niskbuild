@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { isPaidAndActive } from '@/lib/tier-access-server';
+import { isPaidAndActive, resolveProductGatingBypass } from '@/lib/tier-access-server';
 import { getPreviewStatusForUser, upsertPreview } from '@/lib/preview-links';
 
 export async function GET(request: NextRequest) {
@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
   const guard = await guardApiRequest(request);
   if (!guard.ok) return guard.response;
 
+  const ownerBypass = await resolveProductGatingBypass(guard.user!.id);
   const supabase = createAdminClient();
   const { data: profile } = await supabase
     .from('profiles')
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
     .eq('id', guard.user!.id)
     .single();
 
-  if (!isPaidAndActive(profile?.subscription_tier, profile?.subscription_status)) {
+  if (!isPaidAndActive(profile?.subscription_tier, profile?.subscription_status, ownerBypass)) {
     return NextResponse.json(
       { error: 'Active paid subscription required for live preview links' },
       { status: 403 }

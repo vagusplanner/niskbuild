@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { createAdminClient } from '@/lib/supabase/admin';
-import { canUseOrgSso } from '@/lib/tier-config';
+import { canUseOrgSso, resolveProductGatingBypass } from '@/lib/tier-access-server';
 import { isPendingInvite } from '@/lib/organization-team';
 
 function authBaseUrl(): string {
@@ -338,7 +338,8 @@ export async function assertOwnerCanConfigureSso(params: {
   tier: string | null | undefined;
   status: string | null | undefined;
 }): Promise<void> {
-  if (!canUseOrgSso(params.tier, params.status)) {
+  const bypass = await resolveProductGatingBypass(params.userId);
+  if (!canUseOrgSso(params.tier, params.status, bypass)) {
     throw new Error(
       'SSO requires an active Team Enterprise or Sovereign plan on the organization billing owner.'
     );

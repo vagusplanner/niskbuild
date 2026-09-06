@@ -92,7 +92,8 @@ export async function resolveCreditChargeContext(params: {
 
   const tier = (ownerProfile?.subscription_tier as string) || 'free';
   const status = (ownerProfile?.subscription_status as string) || 'inactive';
-  const teamsEligible = isAgencyStudioOrAbove(tier, status);
+  const ownerBypass = await resolveProductGatingBypass(billingOwnerId);
+  const teamsEligible = isAgencyStudioOrAbove(tier, status, ownerBypass);
   const isOwner =
     membership.role === 'owner' || billingOwnerId === params.actingUserId;
 
@@ -172,8 +173,10 @@ export async function isOrgTeamsEligible(orgId: string): Promise<boolean> {
     .select('subscription_tier, subscription_status')
     .eq('id', org.billing_owner_id)
     .maybeSingle();
+  const bypass = await resolveProductGatingBypass(org.billing_owner_id as string);
   return isAgencyStudioOrAbove(
     profile?.subscription_tier,
-    profile?.subscription_status
+    profile?.subscription_status,
+    bypass
   );
 }

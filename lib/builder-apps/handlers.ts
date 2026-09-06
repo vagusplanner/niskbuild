@@ -7,7 +7,8 @@ import {
   canUseLocalOllama,
   isPaidAndActive,
   isSandboxTier,
-} from '@/lib/tier-config';
+  resolveProductGatingBypass,
+} from '@/lib/tier-access-server';
 import { generateVpSourceEdit } from '@/lib/vp-builder-ai';
 import { getBuilderApp } from '@/lib/builder-apps/registry';
 import type { BuilderAppDefinition } from '@/lib/builder-apps/types';
@@ -94,10 +95,11 @@ export async function applyBuilderAppEdit(params: {
   const profile = await getUserProfile(userId);
   const tier = profile?.subscription_tier || 'free';
   const status = profile?.subscription_status || 'inactive';
-  const sandbox = isSandboxTier(tier);
-  const localAllowed = sandbox || canUseLocalOllama(tier);
+  const bypass = await resolveProductGatingBypass(userId);
+  const sandbox = isSandboxTier(tier, bypass);
+  const localAllowed = sandbox || canUseLocalOllama(tier, bypass);
 
-  if (!useLocal && !isPaidAndActive(tier, status)) {
+  if (!useLocal && !isPaidAndActive(tier, status, bypass)) {
     return {
       error: 'Active paid subscription required for cloud AI edits',
       upgrade: true,
@@ -109,7 +111,7 @@ export async function applyBuilderAppEdit(params: {
     return { error: 'Local Ollama is not available on your plan', status: 403 as const };
   }
 
-  const byocAllowed = canUseOwnApiKeys(tier);
+  const byocAllowed = canUseOwnApiKeys(tier, bypass);
   const useOwnKeys = byocAllowed && !!profile?.use_own_api_keys;
   const hasUserKeys = !!(profile?.openai_api_key || profile?.anthropic_api_key);
   const skipCredits = useOwnKeys && hasUserKeys;
@@ -139,11 +141,17 @@ export async function applyBuilderAppEdit(params: {
   });
 
   const effectiveTier = useLocal ? 'sovereign' : tier;
-  const result = await generateVpSourceEdit(editPrompt, effectiveTier, {
-    useOwnKeys: useLocal ? false : useOwnKeys,
-    openaiKey: byocAllowed ? profile?.openai_api_key : null,
-    anthropicKey: byocAllowed ? profile?.anthropic_api_key : null,
-  }, app.systemPrompt);
+  const result = await generateVpSourceEdit(
+    editPrompt,
+    effectiveTier,
+    {
+      useOwnKeys: useLocal ? false : useOwnKeys,
+      openaiKey: byocAllowed ? profile?.openai_api_key : null,
+      anthropicKey: byocAllowed ? profile?.anthropic_api_key : null,
+    },
+    app.systemPrompt,
+    bypass
+  );
 
   if (!result.success || !result.code) {
     return { error: result.error || 'AI edit failed', status: 500 as const };
