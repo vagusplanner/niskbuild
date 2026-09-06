@@ -253,13 +253,9 @@ export default function Layout({ children, currentPageName }) {
 
   const { data: settingsData } = useQuery({
     queryKey: ['userSettings'],
-    queryFn: async () => {
-      try {
-        return await base44.entities.UserSettings.list();
-      } catch {
-        return [];
-      }
-    },
+    // Do not swallow errors as [] — that poisons shared cache used by useIslamicEdition.
+    queryFn: () => base44.entities.UserSettings.list(),
+    staleTime: 30000,
   });
   const settings = settingsData ?? [];
 
@@ -598,7 +594,7 @@ export default function Layout({ children, currentPageName }) {
         {/* Smart Sidebar Tools */}
         <div className="flex-1 overflow-y-auto hide-scrollbar">
           <SidebarTools
-            islamicMode={islamicMode}
+            islamicMode={islamicModeForNav}
             settings={settings[0] ?? userSettings}
             currentPageName={currentPageName}
             onOpenSearch={() => setShowGlobalSearch(true)}
@@ -709,7 +705,7 @@ export default function Layout({ children, currentPageName }) {
 
               {/* Smart Tools in mobile menu */}
               <SidebarTools
-                islamicMode={islamicMode}
+                islamicMode={islamicModeForNav}
                 settings={settings[0] ?? userSettings}
                 currentPageName={currentPageName}
                 onOpenSearch={() => { setShowGlobalSearch(true); setMobileMenuOpen(false); }}

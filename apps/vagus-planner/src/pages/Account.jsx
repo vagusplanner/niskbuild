@@ -76,14 +76,10 @@ export default function Account() {
   const { data: settingsData, isLoading: settingsLoading, refetch: refetchSettings } = useQuery({
     queryKey: ['userSettings'],
     queryFn: async () => {
-      try {
-        const list = await base44.entities.UserSettings.list();
-        return list ?? [];
-      } catch (error) {
-        console.error('Error fetching settings:', error);
-        return [];
-      }
+      const list = await base44.entities.UserSettings.list();
+      return list ?? [];
     },
+    staleTime: 30000,
   });
 
   const settingsRecord = settingsData && settingsData.length > 0 ? settingsData[0] : null;

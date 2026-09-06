@@ -66,20 +66,19 @@ async function fetchIslamicAccess() {
  * never unlocks Islamic Edition features by themselves — they only choose UI
  * mode for users who already have paid access.
  *
- * Nav uses sticky session flags so Layout remounts on route change don't briefly
- * hide the Islam item while islamic-access / settings re-subscribe.
+ * Nav uses sticky session flags so Layout remounts on route change don't hide
+ * the Islam item. Critical: do NOT treat an empty UserSettings list (failed
+ * fetch swallowed as [], or mid-invalidate cache) as "user chose Standard" —
+ * that was rewriting sticky flags to 0 on Calendar and making Islam stay gone
+ * until Account refetched real settings.
  */
 export function useIslamicEdition() {
   const settingsQuery = useQuery({
     queryKey: ['userSettings'],
     queryFn: async () => {
-      try {
-        const list = await base44.entities.UserSettings.list();
-        return list ?? [];
-      } catch (err) {
-        console.error('Error fetching user settings:', err);
-        return [];
-      }
+      // Re-throw so React Query keeps previous data instead of caching [].
+      const list = await base44.entities.UserSettings.list();
+      return list ?? [];
     },
     staleTime: 30000,
   });
@@ -91,12 +90,16 @@ export function useIslamicEdition() {
     retry: 1,
   });
 
+  const settingsList = settingsQuery.data;
+  const settingsTrustworthy = Array.isArray(settingsList) && settingsList.length > 0;
+  const accessTrustworthy = accessQuery.data !== undefined && !accessQuery.isPending;
+
   // Only "loading" when we have nothing cached yet — background refetch must not hide nav.
-  const isLoading =
+  const isInitialLoading =
     (settingsQuery.isPending && settingsQuery.data === undefined) ||
     (accessQuery.isPending && accessQuery.data === undefined);
 
-  const userSettings = settingsQuery.data?.[0] ?? null;
+  const userSettings = settingsList?.[0] ?? null;
   const hasPaidIslamicAccess =
     accessQuery.data?.hasPaidIslamicAccess === true ||
     accessQuery.data?.platformOwnerBypass === true;
@@ -107,16 +110,31 @@ export function useIslamicEdition() {
   const islamicMode = hasPaidIslamicAccess && edition === 'islamic';
 
   useEffect(() => {
-    if (isLoading) return;
+    // Never persist sticky from empty/failed settings — Calendar's shared
+    // ['userSettings'] observer used to overwrite the cache with [] and then
+    // this effect wrote islamicMode=false into sessionStorage permanently.
+    if (isInitialLoading || !accessTrustworthy || !settingsTrustworthy) return;
     writeStickyFlag(NAV_ISLAMIC_PAID_KEY, hasPaidIslamicAccess);
     writeStickyFlag(NAV_ISLAMIC_MODE_KEY, islamicMode);
-  }, [isLoading, hasPaidIslamicAccess, islamicMode]);
+  }, [
+    isInitialLoading,
+    accessTrustworthy,
+    settingsTrustworthy,
+    hasPaidIslamicAccess,
+    islamicMode,
+  ]);
 
   const stickyPaid = readStickyFlag(NAV_ISLAMIC_PAID_KEY);
   const stickyMode = readStickyFlag(NAV_ISLAMIC_MODE_KEY);
-  // While entitlement re-fetches on Layout remount, keep last-known nav visibility.
-  const islamicModeForNav = isLoading ? stickyPaid && stickyMode : islamicMode;
-  const islamicEditionLoading = isLoading && !(stickyPaid && stickyMode);
+  const useSticky =
+    isInitialLoading ||
+    settingsQuery.data === undefined ||
+    !settingsTrustworthy ||
+    accessQuery.data === undefined;
+
+  // While remounting / settings empty / access unknown, keep last-known nav visibility.
+  const islamicModeForNav = useSticky ? stickyPaid && stickyMode : islamicMode;
+  const islamicEditionLoading = useSticky && !(stickyPaid && stickyMode);
 
   return {
     isIslamicEdition,
@@ -126,7 +144,7 @@ export function useIslamicEdition() {
     isLoading: islamicEditionLoading,
     userSettings,
     islamicMode,
-    /** Prefer this for sidebar / mobile tab visibility (anti-flicker). */
+    /** Prefer this for sidebar / mobile tab / SidebarTools visibility (anti-flicker). */
     islamicModeForNav,
     subscriptionPlan: accessQuery.data?.plan ?? null,
     subscriptionStatus: accessQuery.data?.status ?? null,
