@@ -52,12 +52,13 @@ const SURAHS = [
 
 const STATUS_CONFIG = {
   memorizing: { label: 'Memorizing', color: 'bg-blue-100 text-blue-800', icon: Brain },
+  in_progress: { label: 'In progress', color: 'bg-blue-100 text-blue-800', icon: Brain },
   memorized: { label: 'Memorized', color: 'bg-green-100 text-green-800', icon: Check },
   reviewing: { label: 'Reviewing', color: 'bg-purple-100 text-purple-800', icon: RotateCcw },
   needs_review: { label: 'Needs Review', color: 'bg-orange-100 text-orange-800', icon: Calendar }
 };
 
-export default function QuranMemorizationTracker({ compact = false }) {
+export default function QuranMemorizationTracker({ compact = false, flat = false }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showGoalForm, setShowGoalForm] = useState(false);
   const [expandedSection, setExpandedSection] = useState(null);
@@ -235,7 +236,7 @@ export default function QuranMemorizationTracker({ compact = false }) {
   const stats = {
     total: memorizations.length,
     memorized: memorizations.filter(m => m.status === 'memorized').length,
-    memorizing: memorizations.filter(m => m.status === 'memorizing').length,
+    memorizing: memorizations.filter(m => m.status === 'memorizing' || m.status === 'reviewing' || m.status === 'needs_review' || m.status === 'in_progress').length,
     totalVerses: memorizations.reduce((sum, m) => sum + (m.total_verses || 0), 0),
     memorizedVerses: memorizations
       .filter(m => m.status === 'memorized')
@@ -286,106 +287,240 @@ export default function QuranMemorizationTracker({ compact = false }) {
 
   return (
     <div className="space-y-6">
-      {/* Gamification Stats */}
-      <Card className="bg-gradient-to-br from-yellow-50 to-amber-50 border-yellow-200">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <Trophy className="w-4 h-4 text-yellow-600" />
-                <span className="text-xs text-yellow-600">Reward Points</span>
-              </div>
-              <div className="text-2xl font-bold text-yellow-900">
-                {stats.memorizedVerses * 10}
-              </div>
-              <p className="text-xs text-yellow-600">earned from {stats.memorized} sections</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Statistics Overview */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">
+      {/* Stats — lighter when embedded in Progress */}
+      {!flat && (
+        <Card className="bg-gradient-to-br from-yellow-50 to-amber-50 border-yellow-200">
           <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <Brain className="w-4 h-4 text-blue-600" />
-              <span className="text-xs text-blue-600">Memorizing</span>
-            </div>
-            <div className="text-2xl font-bold text-blue-900">{stats.memorizing}</div>
-            <p className="text-xs text-blue-600">sections</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <Check className="w-4 h-4 text-green-600" />
-              <span className="text-xs text-green-600">Memorized</span>
-            </div>
-            <div className="text-2xl font-bold text-green-900">{stats.memorized}</div>
-            <p className="text-xs text-green-600">sections</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-purple-50 to-violet-50 border-purple-200">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <BookOpen className="w-4 h-4 text-purple-600" />
-              <span className="text-xs text-purple-600">Total Verses</span>
-            </div>
-            <div className="text-2xl font-bold text-purple-900">{stats.memorizedVerses}</div>
-            <p className="text-xs text-purple-600">memorized</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <Target className="w-4 h-4 text-amber-600" />
-              <span className="text-xs text-amber-600">Progress</span>
-            </div>
-            <div className="text-2xl font-bold text-amber-900">{Math.round(progressPercent)}%</div>
-            <p className="text-xs text-amber-600">of goal</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Active Goal */}
-      {activeGoal && (
-        <Card className="bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-200">
-          <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-indigo-900">
-                <Award className="w-5 h-5" />
-                {activeGoal.title}
-              </CardTitle>
-              <Badge className="bg-indigo-600 text-white">Active Goal</Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex justify-between text-sm text-indigo-700">
-                <span>Progress: {stats.memorizedVerses} / {activeGoal.total_target_verses || 0} verses</span>
-                <span className="font-semibold">{Math.round(progressPercent)}%</span>
-              </div>
-              <Progress value={progressPercent} className="h-3" />
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                <div className="text-center p-3 bg-white/60 rounded-lg">
-                  <div className="text-2xl font-bold text-indigo-900">{activeGoal.target_verses_per_day || 0}</div>
-                  <div className="text-xs text-indigo-600">verses/day target</div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Trophy className="w-4 h-4 text-yellow-600" />
+                  <span className="text-xs text-yellow-600">Reward Points</span>
                 </div>
-                <div className="text-center p-3 bg-white/60 rounded-lg">
-                  <div className="text-2xl font-bold text-indigo-900">{activeGoal.streak || 0}</div>
-                  <div className="text-xs text-indigo-600">day streak</div>
+                <div className="text-2xl font-bold text-yellow-900">
+                  {stats.memorizedVerses * 10}
                 </div>
+                <p className="text-xs text-yellow-600">earned from {stats.memorized} sections</p>
               </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Main Content Tabs */}
+      <div className={`grid gap-3 ${flat ? 'grid-cols-3' : 'grid-cols-2 md:grid-cols-4 gap-4'}`}>
+        <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Brain className="w-4 h-4 text-blue-600" />
+              <span className="text-xs text-blue-600">In progress</span>
+            </div>
+            <div className="text-2xl font-bold text-blue-900">{stats.memorizing}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Check className="w-4 h-4 text-green-600" />
+              <span className="text-xs text-green-600">Memorized</span>
+            </div>
+            <div className="text-2xl font-bold text-green-900">{stats.memorized}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-purple-50 to-violet-50 border-purple-200">
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <BookOpen className="w-4 h-4 text-purple-600" />
+              <span className="text-xs text-purple-600">Verses</span>
+            </div>
+            <div className="text-2xl font-bold text-purple-900">{stats.memorizedVerses}</div>
+          </CardContent>
+        </Card>
+
+        {!flat && (
+          <Card className="bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Target className="w-4 h-4 text-amber-600" />
+                <span className="text-xs text-amber-600">Progress</span>
+              </div>
+              <div className="text-2xl font-bold text-amber-900">{Math.round(progressPercent)}%</div>
+              <p className="text-xs text-amber-600">of goal</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Active Goal */}
+      {activeGoal && (
+        <Card className="bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-200">
+          <CardHeader className={flat ? 'pb-2 pt-4 px-4' : undefined}>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-indigo-900 text-base">
+                <Award className="w-5 h-5" />
+                {activeGoal.title}
+              </CardTitle>
+              <Badge className="bg-indigo-600 text-white">Active</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className={flat ? 'px-4 pb-4' : undefined}>
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm text-indigo-700">
+                <span>Progress: {stats.memorizedVerses} / {activeGoal.total_target_verses || 0} verses</span>
+                <span className="font-semibold">{Math.round(progressPercent)}%</span>
+              </div>
+              <Progress value={progressPercent} className="h-3" />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Flat scroll sections OR legacy tabs */}
+      {flat ? (
+        <div className="space-y-6">
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">In progress</h3>
+              <Button size="sm" onClick={() => setShowAddForm(!showAddForm)} className="bg-purple-600 hover:bg-purple-700 h-8 text-xs">
+                <Plus className="w-3.5 h-3.5 mr-1" />
+                Add
+              </Button>
+            </div>
+            <AnimatePresence>
+              {showAddForm && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+                  <Card className="border-purple-200">
+                    <CardContent className="p-4 space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Surah</Label>
+                          <Select value={formData.surah_number} onValueChange={(value) => setFormData({ ...formData, surah_number: value })}>
+                            <SelectTrigger><SelectValue placeholder="Select Surah" /></SelectTrigger>
+                            <SelectContent>
+                              {SURAHS.map(surah => (
+                                <SelectItem key={surah.number} value={surah.number.toString()}>{surah.number}. {surah.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label>Verses</Label>
+                          <div className="flex gap-2">
+                            <Input type="number" placeholder="From" value={formData.from_verse} onChange={(e) => setFormData({ ...formData, from_verse: e.target.value })} />
+                            <Input type="number" placeholder="To" value={formData.to_verse} onChange={(e) => setFormData({ ...formData, to_verse: e.target.value })} />
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <Label>Notes (optional)</Label>
+                        <Textarea placeholder="Tips or reminders..." value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button onClick={handleAddMemorization} className="flex-1">Add to List</Button>
+                        <Button variant="outline" onClick={() => setShowAddForm(false)}>Cancel</Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <div className="space-y-3">
+              {memorizations.filter(m => m.status === 'memorizing' || m.status === 'reviewing' || m.status === 'needs_review' || m.status === 'in_progress').length === 0 && (
+                <p className="text-sm text-slate-400 text-center py-4">Nothing in progress yet. Add a section or use Practice → Voice Check.</p>
+              )}
+              {memorizations
+                .filter(m => m.status === 'memorizing' || m.status === 'reviewing' || m.status === 'needs_review' || m.status === 'in_progress')
+                .map(mem => (
+                  <MemorizationCard
+                    key={mem.id}
+                    memorization={mem}
+                    onStatusChange={(m, status) => updateMemorization.mutate({ id: m.id, data: { status, ...(status === 'memorized' ? { memorized_date: format(new Date(), 'yyyy-MM-dd') } : {}) } })}
+                    onRatingChange={(m, rating) => updateMemorization.mutate({ id: m.id, data: { accuracy_rating: rating, review_count: (m.review_count || 0) + 1, last_reviewed: format(new Date(), 'yyyy-MM-dd') } })}
+                    onDelete={() => deleteMemorization.mutate(mem.id)}
+                    expanded={expandedSection === mem.id}
+                    onToggleExpand={() => setExpandedSection(expandedSection === mem.id ? null : mem.id)}
+                  />
+                ))}
+            </div>
+          </section>
+
+          <section className="space-y-3 border-t border-slate-200 dark:border-slate-700 pt-5">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">Memorized</h3>
+            <div className="space-y-3">
+              {memorizations.filter(m => m.status === 'memorized').length === 0 && (
+                <p className="text-sm text-slate-400 text-center py-3">No memorized sections yet.</p>
+              )}
+              {memorizations.filter(m => m.status === 'memorized').map(mem => (
+                <MemorizationCard
+                  key={mem.id}
+                  memorization={mem}
+                  onStatusChange={(m, status) => updateMemorization.mutate({ id: m.id, data: { status } })}
+                  onRatingChange={(m, rating) => updateMemorization.mutate({ id: m.id, data: { accuracy_rating: rating, review_count: (m.review_count || 0) + 1, last_reviewed: format(new Date(), 'yyyy-MM-dd') } })}
+                  onDelete={() => deleteMemorization.mutate(mem.id)}
+                  expanded={expandedSection === mem.id}
+                  onToggleExpand={() => setExpandedSection(expandedSection === mem.id ? null : mem.id)}
+                />
+              ))}
+            </div>
+          </section>
+
+          <section className="space-y-3 border-t border-slate-200 dark:border-slate-700 pt-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">Memorisation goals</h3>
+              <Button size="sm" variant="outline" onClick={() => setShowGoalForm(!showGoalForm)} className="h-8 text-xs">
+                <Plus className="w-3.5 h-3.5 mr-1" /> New goal
+              </Button>
+            </div>
+            <AnimatePresence>
+              {showGoalForm && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+                  <Card className="border-indigo-200">
+                    <CardContent className="p-4 space-y-4">
+                      <div>
+                        <Label>Goal Title</Label>
+                        <Input placeholder="e.g., Memorize Surah Al-Mulk" value={goalData.title} onChange={(e) => setGoalData({ ...goalData, title: e.target.value })} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Daily Target (verses)</Label>
+                          <Input type="number" value={goalData.target_verses_per_day} onChange={(e) => setGoalData({ ...goalData, target_verses_per_day: parseInt(e.target.value) })} />
+                        </div>
+                        <div>
+                          <Label>Weekly Target (verses)</Label>
+                          <Input type="number" value={goalData.target_verses_per_week} onChange={(e) => setGoalData({ ...goalData, target_verses_per_week: parseInt(e.target.value) })} />
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button onClick={() => addGoal.mutate({ ...goalData, start_date: format(new Date(), 'yyyy-MM-dd'), total_target_verses: goalData.target_verses_per_week * 4 })} className="flex-1">Create Goal</Button>
+                        <Button variant="outline" onClick={() => setShowGoalForm(false)}>Cancel</Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <div className="space-y-3">
+              {goals.length === 0 && <p className="text-sm text-slate-400 text-center py-3">No memorisation goals yet.</p>}
+              {goals.map(goal => (
+                <Card key={goal.id} className="border-indigo-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between mb-2">
+                      <h3 className="font-semibold">{goal.title}</h3>
+                      <Badge className={goal.status === 'active' ? 'bg-green-600' : 'bg-gray-600'}>{goal.status}</Badge>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-xs text-slate-600">
+                      <div>{goal.current_verses_memorized || 0} / {goal.total_target_verses} verses</div>
+                      <div>{goal.target_verses_per_day}/day</div>
+                      <div>{goal.streak || 0} day streak</div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </section>
+        </div>
+      ) : (
       <Tabs defaultValue="memorizing" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="memorizing">Memorizing</TabsTrigger>
@@ -640,13 +775,14 @@ export default function QuranMemorizationTracker({ compact = false }) {
           </div>
         </TabsContent>
       </Tabs>
+      )}
     </div>
   );
 }
 
 function MemorizationCard({ memorization, onStatusChange, onRatingChange, onDelete, expanded, onToggleExpand }) {
   const [showVerses, setShowVerses] = useState(false);
-  const statusConfig = STATUS_CONFIG[memorization.status];
+  const statusConfig = STATUS_CONFIG[memorization.status] || STATUS_CONFIG.memorizing;
   const StatusIcon = statusConfig.icon;
 
   return (

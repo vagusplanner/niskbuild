@@ -304,32 +304,51 @@ function PracticeTab() {
 }
 
 function ProgressTab() {
+  const [mode, setMode] = useState('reading'); // reading | memorize | offline
+
+  const MODES = [
+    { id: 'reading', label: 'Reading', hint: 'Log · streak · khatmah · goals' },
+    { id: 'memorize', label: 'Memorize', hint: 'Hifz list · Voice Check scores' },
+    { id: 'offline', label: 'Offline', hint: 'Download surahs for offline' },
+  ];
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       <p className="text-xs rounded-xl p-2.5 font-medium" style={{ background: 'rgba(29,111,184,0.08)', color: '#1B2A4A', border: '1px solid rgba(29,111,184,0.15)' }}>
-        Log reading, track khatmah and streaks, set goals, and manage memorisation — including scores saved from Voice Check.
+        One place for progress: track reading, manage memorisation, or download for offline — pick a mode below.
       </p>
 
-      <section className="space-y-3">
-        <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-          <BookOpen className="w-4 h-4 text-emerald-600" />
-          Reading · Khatmah · Goals
-        </h3>
-        <QuranReadingTracker />
-      </section>
+      {/* Single mode switch — not nested tabs inside each tool */}
+      <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'rgba(212,224,236,0.35)', border: '1px solid rgba(74,110,138,0.25)' }}>
+        {MODES.map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            onClick={() => setMode(m.id)}
+            className={`flex-1 rounded-lg px-2 py-2.5 text-center transition-all ${
+              mode === m.id
+                ? 'bg-white shadow text-[#0D4F6C] font-bold'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <span className="block text-xs">{m.label}</span>
+            <span className={`block text-[9px] mt-0.5 font-medium ${mode === m.id ? 'text-slate-500' : 'text-slate-400'}`}>
+              {m.hint}
+            </span>
+          </button>
+        ))}
+      </div>
 
-      <section className="space-y-3 border-t border-slate-200 pt-6">
-        <h3 className="text-sm font-bold text-slate-800">Memorisation</h3>
-        <p className="text-xs text-slate-500">
-          Manual entries and Tajweed Voice Check results share the same QuranMemorization records.
-        </p>
-        <QuranMemorizationTracker />
-      </section>
-
-      <section className="space-y-3 border-t border-slate-200 pt-6">
-        <h3 className="text-sm font-bold text-slate-800">Offline access</h3>
-        <OfflineQuranViewer />
-      </section>
+      {mode === 'reading' && <QuranReadingTracker flat />}
+      {mode === 'memorize' && (
+        <div className="space-y-2">
+          <p className="text-xs text-slate-500">
+            Includes sections you add here and scores saved from Practice → Voice Check.
+          </p>
+          <QuranMemorizationTracker flat />
+        </div>
+      )}
+      {mode === 'offline' && <OfflineQuranViewer embedded />}
     </div>
   );
 }

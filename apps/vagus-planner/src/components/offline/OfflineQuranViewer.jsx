@@ -13,7 +13,7 @@ import { fetchSurah } from '@/lib/quran-api';
  * Offline Quran downloads — all 114 surahs from Al-Quran Cloud (real text),
  * cached in IndexedDB. Replaces the old 8-surah LLM stub list.
  */
-export default function OfflineQuranViewer() {
+export default function OfflineQuranViewer({ embedded = false }) {
   const [downloadedSurahs, setDownloadedSurahs] = useState([]);
   const [verseCounts, setVerseCounts] = useState({});
   const [downloading, setDownloading] = useState(null);
@@ -108,15 +108,8 @@ export default function OfflineQuranViewer() {
     setViewing(surahNumber);
   };
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <BookOpen className="w-5 h-5 text-teal-600" />
-          Offline Quran Access
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
+  const body = (
+      <div className="space-y-3">
         <p className="text-sm text-slate-600 dark:text-slate-400">
           Download any of the <strong>114 surahs</strong> (full Arabic + English from Al-Quran Cloud) for offline reading on this device.
           Large surahs like Al-Baqarah take longer and use more storage.
@@ -221,6 +214,31 @@ export default function OfflineQuranViewer() {
             );
           })}
         </div>
+      </div>
+  );
+
+  if (embedded) {
+    return (
+      <div className="space-y-3">
+        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+          <BookOpen className="w-4 h-4 text-teal-600" />
+          Offline downloads
+        </h3>
+        {body}
+      </div>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <BookOpen className="w-5 h-5 text-teal-600" />
+          Offline Quran Access
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {body}
       </CardContent>
     </Card>
   );

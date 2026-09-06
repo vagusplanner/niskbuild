@@ -504,10 +504,10 @@ function LogDialog({ open, onClose, onSubmit, isPending }) {
 }
 
 // ── Main Component ─────────────────────────────────────────────────────────────
-export default function QuranReadingTracker() {
+export default function QuranReadingTracker({ flat = false }) {
   const [showLog, setShowLog] = useState(false);
   const [showGoal, setShowGoal] = useState(false);
-  const [tab, setTab] = useState('overview'); // overview | surahs | history
+  const [tab, setTab] = useState('overview'); // used only when !flat
   const queryClient = useQueryClient();
 
   const { data: readings = [] } = useQuery({
@@ -580,13 +580,20 @@ export default function QuranReadingTracker() {
   return (
     <div className="space-y-5">
       {/* ── Header ── */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <div>
-          <h2 className="font-black text-lg text-slate-900 dark:text-slate-100 flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-emerald-600" />
-            Quran Reading Tracker
-          </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Track your daily reading · Khatmah progress · Streaks</p>
+          {!flat && (
+            <>
+              <h2 className="font-black text-lg text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-emerald-600" />
+                Quran Reading Tracker
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Track your daily reading · Khatmah progress · Streaks</p>
+            </>
+          )}
+          {flat && (
+            <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Your reading progress</p>
+          )}
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => setShowGoal(true)} className="gap-1.5 text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300">
@@ -658,61 +665,106 @@ export default function QuranReadingTracker() {
         </button>
       )}
 
-      {/* ── Tabs ── */}
-      <div className="flex gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
-        {TABS.map(({ id, label, icon: Icon }) => (
-          <button key={id} onClick={() => setTab(id)}
-            className={cn('flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-semibold rounded-lg transition-all',
-              tab === id ? 'bg-white dark:bg-slate-700 shadow text-emerald-700 dark:text-emerald-300' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-            )}>
-            <Icon className="w-3.5 h-3.5" /> {label}
-          </button>
-        ))}
-      </div>
-
-      {/* ── Tab content ── */}
-      <AnimatePresence mode="wait">
-        {tab === 'overview' && (
-          <motion.div key="overview" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-5">
+      {/* ── Content: flat scroll sections OR legacy sub-tabs ── */}
+      {flat ? (
+        <div className="space-y-6">
+          <section className="space-y-3">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">Khatmah & activity</h3>
             <KhatmahProgressBar pct={khatmahPct} completedSurahs={completedSurahs} />
             <ReadingHeatmap readings={readings} dailyGoalPages={goalPages} />
-          </motion.div>
-        )}
+          </section>
 
-        {tab === 'surahs' && (
-          <motion.div key="surahs" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+          <section className="space-y-3">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">Surah progress</h3>
             <SurahProgressGrid surahMap={surahMap} />
-          </motion.div>
-        )}
+          </section>
 
-        {tab === 'history' && (
-          <motion.div key="history" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-2">
+          <section className="space-y-3">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">Recent sessions</h3>
             {readings.length === 0 ? (
-              <div className="text-center py-8 text-slate-400">
-                <BookOpen className="w-10 h-10 mx-auto mb-2 opacity-40" />
-                <p className="text-sm">No sessions logged yet. Start reading!</p>
+              <div className="text-center py-6 text-slate-400">
+                <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                <p className="text-sm">No sessions logged yet. Tap Log Reading to start.</p>
               </div>
             ) : (
-              readings.slice(0, 20).map(r => (
-                <div key={r.id} className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-700/60 shadow-sm">
-                  <div className="p-2 bg-emerald-100 dark:bg-emerald-900/40 rounded-xl flex-shrink-0">
-                    <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <div className="space-y-2">
+                {readings.slice(0, 12).map(r => (
+                  <div key={r.id} className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-700/60 shadow-sm">
+                    <div className="p-2 bg-emerald-100 dark:bg-emerald-900/40 rounded-xl flex-shrink-0">
+                      <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 truncate">{r.surah_name}</p>
+                      <p className="text-xs text-slate-400">
+                        {r.date} · {r.verses_count} verses
+                        {r.duration_minutes ? ` · ${r.duration_minutes} min` : ''}
+                      </p>
+                      {r.notes && <p className="text-xs text-slate-500 dark:text-slate-400 italic mt-0.5 truncate">"{r.notes}"</p>}
+                    </div>
+                    {r.completed && <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 truncate">{r.surah_name}</p>
-                    <p className="text-xs text-slate-400">
-                      {r.date} · {r.verses_count} verses
-                      {r.duration_minutes ? ` · ${r.duration_minutes} min` : ''}
-                    </p>
-                    {r.notes && <p className="text-xs text-slate-500 dark:text-slate-400 italic mt-0.5 truncate">"{r.notes}"</p>}
-                  </div>
-                  {r.completed && <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />}
-                </div>
-              ))
+                ))}
+              </div>
             )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </section>
+        </div>
+      ) : (
+        <>
+          <div className="flex gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+            {TABS.map(({ id, label, icon: Icon }) => (
+              <button key={id} onClick={() => setTab(id)}
+                className={cn('flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-semibold rounded-lg transition-all',
+                  tab === id ? 'bg-white dark:bg-slate-700 shadow text-emerald-700 dark:text-emerald-300' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                )}>
+                <Icon className="w-3.5 h-3.5" /> {label}
+              </button>
+            ))}
+          </div>
+
+          <AnimatePresence mode="wait">
+            {tab === 'overview' && (
+              <motion.div key="overview" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-5">
+                <KhatmahProgressBar pct={khatmahPct} completedSurahs={completedSurahs} />
+                <ReadingHeatmap readings={readings} dailyGoalPages={goalPages} />
+              </motion.div>
+            )}
+
+            {tab === 'surahs' && (
+              <motion.div key="surahs" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                <SurahProgressGrid surahMap={surahMap} />
+              </motion.div>
+            )}
+
+            {tab === 'history' && (
+              <motion.div key="history" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-2">
+                {readings.length === 0 ? (
+                  <div className="text-center py-8 text-slate-400">
+                    <BookOpen className="w-10 h-10 mx-auto mb-2 opacity-40" />
+                    <p className="text-sm">No sessions logged yet. Start reading!</p>
+                  </div>
+                ) : (
+                  readings.slice(0, 20).map(r => (
+                    <div key={r.id} className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-700/60 shadow-sm">
+                      <div className="p-2 bg-emerald-100 dark:bg-emerald-900/40 rounded-xl flex-shrink-0">
+                        <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 truncate">{r.surah_name}</p>
+                        <p className="text-xs text-slate-400">
+                          {r.date} · {r.verses_count} verses
+                          {r.duration_minutes ? ` · ${r.duration_minutes} min` : ''}
+                        </p>
+                        {r.notes && <p className="text-xs text-slate-500 dark:text-slate-400 italic mt-0.5 truncate">"{r.notes}"</p>}
+                      </div>
+                      {r.completed && <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />}
+                    </div>
+                  ))
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </>
+      )}
 
       {/* ── Log Dialog ── */}
       <LogDialog open={showLog} onClose={() => setShowLog(false)} onSubmit={logMutation.mutate} isPending={logMutation.isPending} />
