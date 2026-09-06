@@ -13,7 +13,7 @@ import AIFinanceAdvisor from '@/components/finance/AIFinanceAdvisor';
 import SmartExpenseForm from '@/components/finance/SmartExpenseForm';
 import CSVImport from '@/components/finance/CSVImport';
 import FinanceGoalLink from '@/components/finance/FinanceGoalLink';
-import ZakatSadaqaDashboard from '@/components/islamic/ZakatSadaqaDashboard';
+import { ZakatFinanceSummaryCard } from '@/components/zakat/ZakatHub';
 import MeetingNotesRecorder from '@/components/finance/MeetingNotesRecorder';
 
 const CURRENCIES = ['USD','GBP','EUR','AED','SAR','CAD','AUD','TRY','PKR'];
@@ -118,7 +118,7 @@ export default function FinancePage() {
 
         <TabsContent value="zakat">
           <div className="mt-4">
-            <ZakatSadaqaDashboard currency={currency} />
+            <ZakatFinanceSummaryCard />
           </div>
         </TabsContent>
 

@@ -1,16 +1,16 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, AlertCircle, CheckCircle2, RefreshCw, Scale } from 'lucide-react';
+import { NISAB_GOLD_GRAMS, NISAB_SILVER_GRAMS, formatMoney } from '@/lib/zakat-engine';
 
 export default function NisabStatusCard({ goldPricePerGram, silverPricePerGram, totalWealth, zakatDue, loading, onRefresh, currency }) {
-  // Nisab = 85g gold OR 595g silver (lower of two used as threshold per most scholars)
-  const nisabGold = 85 * goldPricePerGram;
-  const nisabSilver = 595 * silverPricePerGram;
-  const nisabUsed = nisabSilver; // More accessible threshold (lower value)
-  const meetsNisab = totalWealth >= nisabUsed;
+  const nisabGold = NISAB_GOLD_GRAMS * goldPricePerGram;
+  const nisabSilver = NISAB_SILVER_GRAMS * silverPricePerGram;
+  const nisabUsed = nisabSilver;
+  const meetsNisab = totalWealth >= nisabUsed && nisabUsed > 0;
   const progressPct = nisabUsed > 0 ? Math.min((totalWealth / nisabUsed) * 100, 200) : 0;
 
-  const fmt = (n) => new Intl.NumberFormat('en-GB', { style: 'currency', currency: currency || 'GBP', maximumFractionDigits: 2 }).format(n || 0);
+  const fmt = (n) => formatMoney(n, currency || 'GBP');
 
   return (
     <div className={`relative overflow-hidden rounded-3xl border-2 p-6 ${meetsNisab ? 'border-amber-400/60 bg-gradient-to-br from-amber-900/20 to-yellow-900/10' : 'border-slate-600/40 bg-gradient-to-br from-slate-900/40 to-slate-800/20'}`}>

@@ -51,16 +51,7 @@ import RamadanCountdownPlanner from '@/components/ramadan/RamadanCountdownPlanne
 import IslamicLifeScore from '@/components/islamic/IslamicLifeScore';
 import IslamicLearningPath from '@/components/islamic/IslamicLearningPath';
 
-import IslamicMarriagePlanner from '@/components/islamic/IslamicMarriagePlanner';
-import IslamicInheritanceCalculator from '@/components/islamic/IslamicInheritanceCalculator';
-import FidyahKaffarahCalculator from '@/components/islamic/FidyahKaffarahCalculator';
-import IslamicFinanceCalculator from '@/components/islamic/IslamicFinanceCalculator';
-
-import ZakatCalculatorPanel from '@/components/islamic/zakat/ZakatCalculatorPanel';
-import ZakatSadaqaDashboard from '@/components/islamic/ZakatSadaqaDashboard';
-import IslamicFinancialPlanner from '@/components/islamic/IslamicFinancialPlanner';
-import AutoZakatTracker from '@/components/islamic/AutoZakatTracker';
-import FamilySadaqahJar from '@/components/islamic/unique/FamilySadaqahJar';
+import ZakatHub from '@/components/zakat/ZakatHub';
 
 import PrayerAndQiblaPanel from '@/components/islamic/PrayerAndQiblaPanel';
 import HijriEventsCalendar from '@/components/islamic/HijriEventsCalendar';
@@ -278,37 +269,15 @@ function DuaContent() {
   );
 }
 
-/** Zakat & Finance — fully unified */
+/** Zakat hub — Calculate / Give / Plan (canonical engine) */
 function ZakatContent() {
   return (
     <div className="space-y-1">
-      <p className="text-xs mb-3 font-medium" style={{color:'#2D4A65'}}>
-        All Islamic finance and charity tools in one place. Calculate your Zakat, log Sadaqah, auto-track from expenses, plan finances Islamically, and run a family Sadaqah jar.
+      <p className="text-xs mb-3 font-medium" style={{ color: '#2D4A65' }}>
+        One Zakat engine for the whole app: live gold/silver nisab (85g / 595g), 2.5% wealth rate,
+        giving tracker, Stripe checkout, family jar, and Islamic planning tools.
       </p>
-      <Tabs defaultValue="calculator">
-        <TabsList className="grid grid-cols-3 w-full h-auto mb-4">
-          <TabsTrigger value="calculator" className="text-[11px] py-2">🧮 Zakat Calc</TabsTrigger>
-          <TabsTrigger value="sadaqah" className="text-[11px] py-2">💝 Sadaqah</TabsTrigger>
-          <TabsTrigger value="finance" className="text-[11px] py-2">💰 Finance</TabsTrigger>
-        </TabsList>
-        <TabsContent value="calculator" className="space-y-4">
-          <p className="text-xs rounded-xl p-2.5 font-medium" style={{background:'rgba(29,111,184,0.08)', color:'#1B2A4A', border:'1px solid rgba(29,111,184,0.15)'}}>🧮 Enter your assets (cash, gold, silver, investments) and liabilities. The calculator works out your total zakatable wealth, checks against the Nisab threshold, and shows exactly how much Zakat you owe (2.5%). Multi-currency supported.</p>
-          <ZakatCalculatorPanel onZakatCalculated={() => {}} />
-        </TabsContent>
-        <TabsContent value="sadaqah" className="space-y-4">
-          <p className="text-xs rounded-xl p-2.5 font-medium" style={{background:'rgba(29,111,184,0.08)', color:'#1B2A4A', border:'1px solid rgba(29,111,184,0.15)'}}>💝 Log your voluntary charity (Sadaqah) and Zakat payments. See your giving history and impact. The Family Sadaqah Jar is a shared virtual charity pot — your whole family contributes towards a monthly goal together.</p>
-          <ZakatSadaqaDashboard />
-          <FamilySadaqahJar />
-        </TabsContent>
-        <TabsContent value="finance" className="space-y-4">
-          <p className="text-xs rounded-xl p-2.5 font-medium" style={{background:'rgba(29,111,184,0.08)', color:'#1B2A4A', border:'1px solid rgba(29,111,184,0.15)'}}>💰 Islamic Financial Planning gives AI-guided advice on halal investing, avoiding riba (interest), and planning your finances according to Islamic principles. Also includes inheritance (Mirath) and Fidyah/Kaffarah calculators.</p>
-          <IslamicFinancialPlanner />
-          <IslamicInheritanceCalculator />
-          <FidyahKaffarahCalculator />
-          <IslamicFinanceCalculator />
-          <IslamicMarriagePlanner />
-        </TabsContent>
-      </Tabs>
+      <ZakatHub />
     </div>
   );
 }
@@ -500,7 +469,7 @@ const SECTION_GROUPS = [
         icon: Heart,
         label: 'Zakat & Finance',
         arabic: 'الزكاة',
-        desc: 'Calculator · Sadaqah · Auto-Track · Planning',
+        desc: 'Calculate · Give · Plan',
         gradient: 'from-[#1D6FB8] to-[#4A55A2]',
         content: () => <ZakatContent />,
       },
