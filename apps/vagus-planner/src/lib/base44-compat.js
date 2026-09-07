@@ -232,6 +232,12 @@ function mapPayloadToRow(entityName, payload, userId) {
     if (p.location != null) row.location = p.location
     const start = p.start_date ?? p.event_date
     if (start != null) row.event_date = start
+    if (p.end_date != null) row.end_date = p.end_date
+    if (p.source != null) row.source = p.source
+    if (p.external_id != null) row.external_id = p.external_id
+    if (p.external_calendar_type != null) row.external_calendar_type = p.external_calendar_type
+    if (p.is_all_day != null) row.is_all_day = Boolean(p.is_all_day)
+    if (p.metadata != null && typeof p.metadata === 'object') row.metadata = p.metadata
     return row
   }
 
@@ -897,6 +903,10 @@ function mapRowFromDb(entityName, row) {
       ...row,
       start_date: start,
       end_date: row.end_date ?? start,
+      source: row.source ?? null,
+      external_id: row.external_id ?? null,
+      external_calendar_type: row.external_calendar_type ?? null,
+      is_all_day: row.is_all_day === true,
     }
   }
 

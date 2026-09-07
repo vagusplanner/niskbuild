@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const VP_API_CORS_METHODS = 'POST, OPTIONS';
+const VP_API_CORS_METHODS = 'GET, POST, OPTIONS';
 const VP_API_CORS_HEADERS = 'Content-Type, Authorization';
 
 /** Recognized VP client origins (preview deploys, production host, local dev, Capacitor). */

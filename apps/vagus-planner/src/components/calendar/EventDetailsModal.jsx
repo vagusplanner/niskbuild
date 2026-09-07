@@ -20,8 +20,6 @@ import {
   FileText,
   Loader2,
   MessageCircle,
-  CloudUpload,
-  CheckCircle2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -54,7 +52,6 @@ export default function EventDetailsModal({ event, isOpen, onClose, onEdit, onDe
   const [newNote, setNewNote] = useState('');
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [showGroupChat, setShowGroupChat] = useState(false);
-  const [pushingToGoogle, setPushingToGoogle] = useState(false);
 
   // Fetch AI insights
   useEffect(() => {
@@ -96,25 +93,6 @@ export default function EventDetailsModal({ event, isOpen, onClose, onEdit, onDe
 
   const handleReschedule = () => {
     onEdit(event);
-  };
-
-  const handlePushToGoogle = async () => {
-    setPushingToGoogle(true);
-    try {
-      const action = event.external_calendar_id ? 'update' : 'create';
-      const res = await base44.functions.invoke('pushEventToGoogleCalendar', {
-        event_id: event.id,
-        action,
-      });
-      if (res.data?.status === 'skipped_google_origin') {
-        toast.info('This event came from Google Calendar — no push needed.');
-      } else {
-        toast.success(action === 'update' ? 'Event updated in Google Calendar!' : 'Event pushed to Google Calendar!');
-      }
-    } catch {
-      toast.error('Failed to push to Google Calendar');
-    }
-    setPushingToGoogle(false);
   };
 
   const handleSendEmail = async () => {
@@ -521,26 +499,6 @@ export default function EventDetailsModal({ event, isOpen, onClose, onEdit, onDe
               Delete Event
             </Button>
             <div className="flex items-center gap-2">
-              {event?.source !== 'google_calendar' && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handlePushToGoogle}
-                  disabled={pushingToGoogle}
-                  className="border-blue-200 text-blue-700 hover:bg-blue-50 gap-1.5"
-                  title="Push to Google Calendar"
-                >
-                  {pushingToGoogle
-                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    : event?.is_synced && event?.external_calendar_id
-                      ? <CheckCircle2 className="w-3.5 h-3.5 text-blue-500" />
-                      : <CloudUpload className="w-3.5 h-3.5" />
-                  }
-                  <span className="hidden sm:inline text-xs">
-                    {event?.is_synced && event?.external_calendar_id ? 'Update GCal' : 'Push to Google'}
-                  </span>
-                </Button>
-              )}
               <VersionHistoryButton entityType="Event" entityId={event?.id} />
               <Button variant="outline" onClick={onClose}>Close</Button>
             </div>

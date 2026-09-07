@@ -47,6 +47,11 @@ import {
   generateTasksFromGoal,
 } from './handlers/goal-reminders-deps-ai';
 import { onNewUserWelcome, trackAnalytics } from './handlers/stubs';
+import {
+  fullCalendarSync,
+  initialGCalSync,
+  syncGoogleCalendar,
+} from './handlers/google-calendar-sync';
 
 export const VP_FUNCTION_REGISTRY = new Map<string, VpFunctionHandler>([
   ['createStripeCheckout', createStripeCheckout],
@@ -86,6 +91,9 @@ export const VP_FUNCTION_REGISTRY = new Map<string, VpFunctionHandler>([
   ['generateTasksFromGoal', generateTasksFromGoal],
   ['generateSmartReminders', generateSmartReminders],
   ['analyzeTaskDependencies', analyzeTaskDependencies],
+  ['syncGoogleCalendar', syncGoogleCalendar],
+  ['initialGCalSync', initialGCalSync],
+  ['fullCalendarSync', fullCalendarSync],
 ]);
 
 export function getVpFunctionHandler(name: string): VpFunctionHandler | undefined {

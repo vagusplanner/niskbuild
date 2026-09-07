@@ -35,6 +35,7 @@ export async function exportVagusPlannerUserData(
 ): Promise<VpExportPayload> {
   const notes: string[] = [
     'Binary upload contents are not included; only storage object paths are listed. Download files separately while the account is still active.',
+    'OAuth access/refresh tokens for Google Calendar are redacted in this export; connection metadata (email, status, scopes) is included.',
     '[LEGAL REVIEW NEEDED] Confirm this export package satisfies Article 15/20 disclosure requirements for your jurisdiction.',
   ];
 
@@ -66,7 +67,20 @@ export async function exportVagusPlannerUserData(
       }
 
       const rows = data ?? [];
-      tables[table] = rows;
+
+      // Never put OAuth secrets in a downloadable export package.
+      if (table === 'vp_google_calendar_connections') {
+        tables[table] = rows.map((raw) => {
+          const row = raw as Record<string, unknown>;
+          return {
+            ...row,
+            access_token: row.access_token ? '[REDACTED]' : null,
+            refresh_token: row.refresh_token ? '[REDACTED]' : null,
+          };
+        });
+      } else {
+        tables[table] = rows;
+      }
 
       if (table === 'vp_user_settings' && rows[0]) {
         const row = rows[0] as { preferences?: unknown };

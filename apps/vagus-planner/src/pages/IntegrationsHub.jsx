@@ -27,11 +27,11 @@ const INTEGRATIONS = [
   {
     id: 'google_calendar',
     name: 'Google Calendar',
-    description: 'Two-way sync with your Google Calendar events',
+    description: 'One-way pull of events from your primary Google Calendar',
     icon: Calendar,
     color: 'from-blue-500 to-cyan-600',
     connector: 'googlecalendar',
-    features: ['Auto-sync events', 'Conflict detection', 'Real-time updates'],
+    features: ['Pull sync', 'Incremental updates', 'Primary calendar'],
     status: 'active'
   },
   {
@@ -42,7 +42,7 @@ const INTEGRATIONS = [
     color: 'from-red-500 to-pink-600',
     connector: 'gmail',
     features: ['Auto-detect events', 'Travel bookings', 'Meeting invites'],
-    status: 'active'
+    status: 'coming_soon'
   },
   {
     id: 'google_drive',
@@ -52,7 +52,7 @@ const INTEGRATIONS = [
     color: 'from-yellow-500 to-orange-600',
     connector: 'googledrive',
     features: ['File attachments', 'Auto-sync documents', 'Shared access'],
-    status: 'active'
+    status: 'coming_soon'
   },
   {
     id: 'slack',
@@ -62,7 +62,7 @@ const INTEGRATIONS = [
     color: 'from-purple-500 to-indigo-600',
     connector: 'slack',
     features: ['Event reminders', 'Task updates', 'Meeting notifications'],
-    status: 'available'
+    status: 'coming_soon'
   }
 ];
 
@@ -105,8 +105,12 @@ export default function IntegrationsHub() {
   });
 
   const handleConnect = async (integration) => {
-    if (integration.status === 'available') {
-      toast.info('Integration coming soon! This will be available in the next update.');
+    if (integration.status !== 'active') {
+      toast.info('Integration coming soon.');
+      return;
+    }
+    if (integration.id === 'google_calendar') {
+      toast.info('Connect Google Calendar from Account → Calendar Integrations (with consent).');
     }
   };
 
@@ -129,7 +133,7 @@ export default function IntegrationsHub() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Active</p>
-                <p className="text-2xl font-bold text-teal-600">3</p>
+                <p className="text-2xl font-bold text-teal-600">1</p>
               </div>
               <CheckCircle2 className="w-8 h-8 text-teal-600" />
             </div>
@@ -140,7 +144,7 @@ export default function IntegrationsHub() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Available</p>
-                <p className="text-2xl font-bold text-slate-600">1</p>
+                <p className="text-2xl font-bold text-slate-600">3</p>
               </div>
               <Link2 className="w-8 h-8 text-slate-600" />
             </div>
@@ -188,12 +192,11 @@ export default function IntegrationsHub() {
                       </div>
                     </div>
                     {isActive ? (
-                      <Badge className="bg-green-100 text-green-700 border-green-200">
-                        <CheckCircle2 className="w-3 h-3 mr-1" />
-                        Connected
+                      <Badge className="bg-blue-100 text-blue-700 border-blue-200">
+                        Available
                       </Badge>
                     ) : (
-                      <Badge variant="outline">Available</Badge>
+                      <Badge variant="outline">Coming soon</Badge>
                     )}
                   </div>
                 </CardHeader>

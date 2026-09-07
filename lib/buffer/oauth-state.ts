@@ -9,7 +9,12 @@ export function generateOAuthState(): string {
   return randomBytes(32).toString('hex');
 }
 
-export async function storeOAuthState(userId: string, provider: 'buffer' = 'buffer'): Promise<string> {
+export type OAuthStateProvider = 'buffer' | 'google_calendar';
+
+export async function storeOAuthState(
+  userId: string,
+  provider: OAuthStateProvider = 'buffer'
+): Promise<string> {
   const state = generateOAuthState();
   const expiresAt = new Date(Date.now() + STATE_TTL_MS).toISOString();
   const admin = createAdminClient();

@@ -1,46 +1,114 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { base44, getVpApiFetchHeaders } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, Calendar, RefreshCw, Trash2, Check, X, Link as LinkIcon, CheckSquare } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
+import {
+  AlertCircle,
+  Calendar,
+  Check,
+  CheckCircle2,
+  Clock,
+  Cloud,
+  Link as LinkIcon,
+  Loader2,
+  RefreshCw,
+  Trash2,
+  Unplug,
+  X,
+} from 'lucide-react';
 import { toast } from 'sonner';
-import GoogleCalendarSyncPanel from '@/components/calendar/GoogleCalendarSyncPanel';
+import { formatDistanceToNow } from 'date-fns';
+import { createPageUrl } from '@/utils';
 
+function apiBase() {
+  return (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+}
+
+function errorMessage(err, fallback) {
+  if (!err) return fallback;
+  if (typeof err === 'string' && err.trim()) return err;
+  if (typeof err?.message === 'string' && err.message.trim()) return err.message;
+  return fallback;
+}
+
+async function fetchGoogleCalendarStatus() {
+  const res = await fetch(`${apiBase()}/api/vagus-planner/google-calendar/status`, {
+    credentials: 'include',
+    headers: await getVpApiFetchHeaders(),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(
+      typeof data.error === 'string' && data.error
+        ? data.error
+        : `Google Calendar status failed (HTTP ${res.status})`
+    );
+  }
+  return data;
+}
+
+/**
+ * Single Google Calendar integrations card (v1 one-way pull).
+ * Replaces the previous dual layout (SyncPanel + Connected Calendars).
+ */
 export default function ExternalCalendarManager() {
   const queryClient = useQueryClient();
-  const [syncingCalendar, setSyncingCalendar] = useState(null);
+  const [consentOpen, setConsentOpen] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const [pulling, setPulling] = useState(false);
 
   const { data: settings } = useQuery({
     queryKey: ['userSettings'],
-    queryFn: () => base44.entities.UserSettings.list()
+    queryFn: () => base44.entities.UserSettings.list(),
   });
-
   const userSettings = settings?.[0];
 
-  // Sync Google Calendar mutation
-  const syncGoogleMutation = useMutation({
-    mutationFn: async (calendarId = 'primary') => {
-      const response = await base44.functions.invoke('syncGoogleCalendar', {
-        calendarId
-      });
-      return response.data;
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['events'] });
-      toast.success(`Synced ${data.syncedCount} events from Google Calendar`);
-      setSyncingCalendar(null);
-    },
-    onError: () => {
-      toast.error('Failed to sync Google Calendar');
-      setSyncingCalendar(null);
-    }
+  const {
+    data: gcalStatus,
+    isLoading: statusLoading,
+    error: statusError,
+    isError: statusIsError,
+  } = useQuery({
+    queryKey: ['googleCalendarStatus'],
+    queryFn: fetchGoogleCalendarStatus,
+    staleTime: 15_000,
+    retry: 1,
   });
 
-  // Update settings mutation
+  const connected = gcalStatus?.connected === true;
+  const configured = gcalStatus?.configured === true;
+
+  const { data: gcalEvents = [] } = useQuery({
+    queryKey: ['gcal-events-count'],
+    queryFn: () =>
+      base44.entities.Event.filter({ source: 'google_calendar' }, '-start_date', 5),
+    staleTime: 30_000,
+    enabled: connected,
+  });
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const flag = params.get('google_calendar');
+    if (!flag) return;
+    if (flag === 'connected') {
+      toast.success('Google Calendar connected');
+      queryClient.invalidateQueries({ queryKey: ['googleCalendarStatus'] });
+      queryClient.invalidateQueries({ queryKey: ['userSettings'] });
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+      queryClient.invalidateQueries({ queryKey: ['gcal-events-count'] });
+      queryClient.invalidateQueries({ queryKey: ['syncState'] });
+    } else if (flag === 'denied') {
+      toast.error('Google Calendar access was denied');
+    } else {
+      toast.error(`Google Calendar connection failed (${flag})`);
+    }
+    params.delete('google_calendar');
+    const next = `${window.location.pathname}${params.toString() ? `?${params}` : ''}`;
+    window.history.replaceState({}, '', next);
+  }, [queryClient]);
+
   const updateSettingsMutation = useMutation({
     mutationFn: async (updates) => {
       if (!userSettings?.id) return;
@@ -48,195 +116,401 @@ export default function ExternalCalendarManager() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['userSettings'] });
-    }
+    },
   });
 
-  // Disconnect calendar mutation
   const disconnectMutation = useMutation({
-    mutationFn: async (calendarType) => {
-      if (!userSettings?.id) return;
-      await base44.entities.UserSettings.update(userSettings.id, {
-        [`${calendarType}_calendar_connected`]: false,
-        [`${calendarType}_calendar_sync_enabled`]: false
+    mutationFn: async () => {
+      const res = await fetch(`${apiBase()}/api/vagus-planner/google-calendar/disconnect`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: await getVpApiFetchHeaders(),
+        body: JSON.stringify({ deleteEvents: true }),
       });
-      // Delete synced events from this calendar
-      const events = await base44.entities.Event.filter({
-        external_calendar_type: calendarType
-      });
-      for (const event of events) {
-        await base44.entities.Event.delete(event.id);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === 'string' && data.error
+            ? data.error
+            : `Disconnect failed (HTTP ${res.status})`
+        );
       }
+      return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['userSettings', 'events'] });
-      toast.success('Calendar disconnected');
-    }
+      queryClient.invalidateQueries({ queryKey: ['userSettings'] });
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+      queryClient.invalidateQueries({ queryKey: ['googleCalendarStatus'] });
+      queryClient.invalidateQueries({ queryKey: ['syncState'] });
+      queryClient.invalidateQueries({ queryKey: ['gcal-events-count'] });
+      toast.success('Google Calendar disconnected');
+    },
+    onError: (err) => {
+      toast.error(errorMessage(err, 'Failed to disconnect Google Calendar'));
+    },
   });
 
   const handleConnectGoogle = async () => {
+    if (statusIsError) {
+      toast.error(
+        errorMessage(
+          statusError,
+          'Cannot reach Google Calendar status API — is the NiskBuild server running?'
+        )
+      );
+      return;
+    }
+    if (!configured) {
+      toast.error(
+        'Google Calendar OAuth is not configured on the server yet (set GOOGLE_CALENDAR_CLIENT_ID and GOOGLE_CALENDAR_CLIENT_SECRET, then restart).'
+      );
+      return;
+    }
+    setConnecting(true);
     try {
-      // Step 1: Get access token via connector
-      const response = await base44.functions.invoke('syncGoogleCalendar', {
-        calendarId: 'primary'
-      });
-
-      // Step 2: Update settings to mark as connected
-      if (userSettings?.id) {
-        await base44.entities.UserSettings.update(userSettings.id, {
-          google_calendar_connected: true,
-          google_calendar_sync_enabled: true
-        });
+      const returnTo = `${window.location.origin}${createPageUrl('Account')}`;
+      const res = await fetch(
+        `${apiBase()}/api/vagus-planner/google-calendar/connect?return_to=${encodeURIComponent(returnTo)}`,
+        {
+          credentials: 'include',
+          headers: {
+            ...(await getVpApiFetchHeaders()),
+            Accept: 'application/json',
+          },
+        }
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.authorizeUrl) {
+        throw new Error(
+          typeof data.error === 'string' && data.error
+            ? data.error
+            : typeof data.code === 'string'
+              ? data.code
+              : `Failed to start Google authorization (HTTP ${res.status})`
+        );
       }
-
-      queryClient.invalidateQueries({ queryKey: ['userSettings'] });
-      toast.success('Google Calendar connected and synced!');
-    } catch (error) {
-      toast.error('Failed to connect Google Calendar');
+      window.location.href = data.authorizeUrl;
+    } catch (err) {
+      toast.error(errorMessage(err, 'Failed to connect Google Calendar'));
+      setConnecting(false);
     }
   };
 
-  const handleSyncGoogle = async () => {
-    setSyncingCalendar('google');
-    await syncGoogleMutation.mutateAsync('primary');
+  const handlePull = async (mode = 'full') => {
+    if (!connected) {
+      toast.error('Connect Google Calendar first');
+      return;
+    }
+    setPulling(true);
+    try {
+      const fn = mode === 'incremental' ? 'syncGoogleCalendar' : 'initialGCalSync';
+      const res = await base44.functions.invoke(fn, {
+        calendarId: 'primary',
+        mode,
+      });
+      const data = res?.data || {};
+      toast.success(
+        `Pulled from Google: ${data.created ?? 0} new, ${data.updated ?? 0} updated (${data.total ?? data.imported ?? 0} from Google)`
+      );
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+      queryClient.invalidateQueries({ queryKey: ['gcal-events-count'] });
+      queryClient.invalidateQueries({ queryKey: ['syncState'] });
+      queryClient.invalidateQueries({ queryKey: ['googleCalendarStatus'] });
+      queryClient.invalidateQueries({ queryKey: ['userSettings'] });
+    } catch (err) {
+      toast.error(errorMessage(err, 'Google Calendar pull failed'));
+      queryClient.invalidateQueries({ queryKey: ['googleCalendarStatus'] });
+    } finally {
+      setPulling(false);
+    }
   };
 
-  const handleToggleSync = async (calendarType) => {
-    const isEnabled = userSettings?.[`${calendarType}_calendar_sync_enabled`];
+  const handleToggleAutoPull = async () => {
+    const isEnabled = userSettings?.google_calendar_sync_enabled;
     await updateSettingsMutation.mutateAsync({
-      [`${calendarType}_calendar_sync_enabled`]: !isEnabled
+      google_calendar_sync_enabled: !isEnabled,
     });
   };
 
-  const handleDisconnect = async (calendarType) => {
-    if (confirm(`Are you sure you want to disconnect ${calendarType.charAt(0).toUpperCase() + calendarType.slice(1)} Calendar? Synced events will be deleted.`)) {
-      await disconnectMutation.mutateAsync(calendarType);
+  const handleDisconnect = async () => {
+    if (
+      confirm(
+        'Disconnect Google Calendar? Synced events imported from Google will be deleted.'
+      )
+    ) {
+      await disconnectMutation.mutateAsync();
     }
   };
 
+  const lastSynced =
+    gcalStatus?.lastSyncedAt || userSettings?.google_calendar_last_sync || null;
+
   return (
     <div className="space-y-4">
-      {/* Live two-way sync panel */}
-      <GoogleCalendarSyncPanel />
-
-      <Card className="border-cyan-200/50 dark:border-cyan-800/50">
+      <Card className="border-cyan-200/50 dark:border-cyan-800/50 overflow-hidden">
+        <div className="h-1 bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500" />
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-cyan-600" />
-            Connected Calendars
-          </CardTitle>
-          <CardDescription>Sync events from external calendars into Vagus Planner</CardDescription>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-cyan-600" />
+                Calendar integrations
+              </CardTitle>
+              <CardDescription className="mt-1">
+                One-way pull from Google Calendar into Vagus Planner (read-only). No
+                webhooks or write-back in v1.
+              </CardDescription>
+            </div>
+            {statusLoading ? (
+              <Badge className="bg-slate-100 text-slate-600 border-slate-200">Checking…</Badge>
+            ) : connected ? (
+              <Badge className="bg-green-100 text-green-700 border-green-200">
+                <CheckCircle2 className="w-3 h-3 mr-1" /> Connected
+              </Badge>
+            ) : (
+              <Badge className="bg-slate-100 text-slate-600 border-slate-200">
+                <Unplug className="w-3 h-3 mr-1" /> Not connected
+              </Badge>
+            )}
+          </div>
         </CardHeader>
+
         <CardContent className="space-y-4">
-          {/* Google Calendar */}
-          <div className="flex items-center justify-between p-4 rounded-lg border border-slate-200 dark:border-slate-700">
-            <div className="flex-1">
-              <h3 className="font-medium flex items-center gap-2">
-                <span className="text-red-500">📅</span>
-                Google Calendar
-                {userSettings?.google_calendar_connected && (
-                  <Badge className="bg-green-100 text-green-800 ml-2">Connected</Badge>
-                )}
-              </h3>
-              {userSettings?.google_calendar_connected && (
-                <p className="text-xs text-slate-500 mt-1">
-                  Last synced: {userSettings?.google_calendar_last_sync ? new Date(userSettings.google_calendar_last_sync).toLocaleString() : 'Never'}
+          {statusIsError && (
+            <div className="p-3 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 flex gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-amber-800 dark:text-amber-200">
+                <p className="font-medium mb-1">Cannot reach Google Calendar API</p>
+                <p className="text-xs">
+                  {errorMessage(
+                    statusError,
+                    'Status request failed. For local dev, start NiskBuild on :3000 (Vite proxies /api there).'
+                  )}
                 </p>
+              </div>
+            </div>
+          )}
+
+          {!statusIsError && !statusLoading && !configured && (
+            <div className="p-3 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 flex gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-amber-800 dark:text-amber-200">
+                <p className="font-medium mb-1">OAuth not configured on server</p>
+                <p className="text-xs">
+                  Set <code className="text-[11px]">GOOGLE_CALENDAR_CLIENT_ID</code> and{' '}
+                  <code className="text-[11px]">GOOGLE_CALENDAR_CLIENT_SECRET</code>, register
+                  the redirect URI, run the SQL migration, then restart the API.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Google */}
+          <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-4 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <h3 className="font-medium flex items-center gap-2">
+                  <span className="text-red-500">📅</span>
+                  Google Calendar
+                </h3>
+                {connected ? (
+                  <p className="text-xs text-slate-500 mt-1 truncate">
+                    {gcalStatus?.googleAccountEmail
+                      ? `${gcalStatus.googleAccountEmail} · `
+                      : ''}
+                    Primary calendar · read-only pull
+                  </p>
+                ) : (
+                  <p className="text-xs text-slate-500 mt-1">
+                    Imports events from your primary Google Calendar
+                  </p>
+                )}
+              </div>
+
+              <div className="flex gap-2 flex-shrink-0">
+                {!connected ? (
+                  <Button
+                    onClick={() => setConsentOpen(true)}
+                    size="sm"
+                    className="bg-cyan-600 hover:bg-cyan-700"
+                    disabled={connecting || statusLoading || !configured || statusIsError}
+                  >
+                    <LinkIcon className="w-4 h-4 mr-1" />
+                    {connecting ? 'Connecting…' : 'Connect'}
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      onClick={() => handlePull('incremental')}
+                      size="sm"
+                      variant="outline"
+                      disabled={pulling}
+                      title="Incremental pull"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${pulling ? 'animate-spin' : ''}`} />
+                    </Button>
+                    <Button
+                      onClick={handleToggleAutoPull}
+                      size="sm"
+                      variant={
+                        userSettings?.google_calendar_sync_enabled ? 'default' : 'outline'
+                      }
+                      title="Auto-pull when visiting Calendar"
+                    >
+                      {userSettings?.google_calendar_sync_enabled ? (
+                        <Check className="w-4 h-4" />
+                      ) : (
+                        <X className="w-4 h-4" />
+                      )}
+                    </Button>
+                    <Button
+                      onClick={handleDisconnect}
+                      size="sm"
+                      variant="outline"
+                      className="text-red-600 hover:text-red-700"
+                      disabled={disconnectMutation.isPending}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900 p-3 text-center">
+              <Cloud className="w-5 h-5 text-blue-500 mx-auto mb-1" />
+              <p className="text-xs font-bold text-blue-700 dark:text-blue-300">
+                Google → Vagus Planner
+              </p>
+              <p className="text-[10px] text-slate-500 mt-0.5">
+                Manual pull, or auto-pull when you open Calendar (if enabled)
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-slate-500 bg-slate-50 dark:bg-slate-800/50 rounded-xl px-3 py-2">
+              <div className="flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5" />
+                <span>
+                  {lastSynced
+                    ? `Last synced ${formatDistanceToNow(new Date(lastSynced), { addSuffix: true })}`
+                    : connected
+                      ? 'Never synced — pull below'
+                      : 'Connect to enable sync'}
+                </span>
+              </div>
+              {gcalStatus?.hasSyncToken && (
+                <Badge className="bg-slate-100 dark:bg-slate-700 text-slate-500 border-0 text-[9px]">
+                  incremental ✓
+                </Badge>
               )}
             </div>
 
-            <div className="flex gap-2">
-              {!userSettings?.google_calendar_connected ? (
-                <Button
-                  onClick={handleConnectGoogle}
-                  size="sm"
-                  className="bg-cyan-600 hover:bg-cyan-700"
-                  disabled={syncGoogleMutation.isPending}
-                >
-                  <LinkIcon className="w-4 h-4 mr-1" />
-                  {syncGoogleMutation.isPending ? 'Connecting...' : 'Connect'}
-                </Button>
+            {connected && gcalEvents.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-slate-500 mb-1.5">
+                  Recently synced from Google
+                </p>
+                <div className="space-y-1">
+                  {gcalEvents.map((e) => (
+                    <div
+                      key={e.id}
+                      className="flex items-center gap-2 text-xs bg-blue-50/60 dark:bg-blue-950/20 rounded-lg px-2.5 py-1.5"
+                    >
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />
+                      <span className="flex-1 truncate text-slate-700 dark:text-slate-300 font-medium">
+                        {e.title}
+                      </span>
+                      <span className="text-slate-400 flex-shrink-0">
+                        {e.start_date ? new Date(e.start_date).toLocaleDateString() : ''}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <Button
+              onClick={() => handlePull('full')}
+              disabled={pulling || !connected}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {pulling ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Syncing…
+                </>
               ) : (
                 <>
-                  <Button
-                    onClick={handleSyncGoogle}
-                    size="sm"
-                    variant="outline"
-                    disabled={syncingCalendar === 'google'}
-                  >
-                    <RefreshCw className={`w-4 h-4 ${syncingCalendar === 'google' ? 'animate-spin' : ''}`} />
-                  </Button>
-                  <Button
-                    onClick={() => handleToggleSync('google')}
-                    size="sm"
-                    variant={userSettings?.google_calendar_sync_enabled ? 'default' : 'outline'}
-                  >
-                    {userSettings?.google_calendar_sync_enabled ? (
-                      <Check className="w-4 h-4" />
-                    ) : (
-                      <X className="w-4 h-4" />
-                    )}
-                  </Button>
-                  <Button
-                    onClick={() => handleDisconnect('google')}
-                    size="sm"
-                    variant="outline"
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  <RefreshCw className="w-4 h-4 mr-2" /> Pull from Google Calendar
                 </>
               )}
-            </div>
+            </Button>
+            <p className="text-[10px] text-slate-400 text-center">
+              Full pull: past 30 days + next 90 days. Write-back / webhooks are not available
+              yet.
+            </p>
           </div>
 
-          {/* Outlook Calendar (Coming Soon) */}
-          <div className="flex items-center justify-between p-4 rounded-lg border border-slate-200 dark:border-slate-700 opacity-50">
+          {/* Outlook — planned, keep visible */}
+          <div className="flex items-center justify-between p-4 rounded-lg border border-slate-200 dark:border-slate-700 opacity-60">
             <div className="flex-1">
               <h3 className="font-medium flex items-center gap-2">
                 <span>📧</span>
                 Outlook Calendar
                 <Badge className="bg-slate-100 text-slate-700 ml-2">Coming Soon</Badge>
               </h3>
+              <p className="text-xs text-slate-500 mt-1">Microsoft 365 calendar import (planned)</p>
             </div>
             <Button size="sm" disabled className="text-slate-400">
               Connect
             </Button>
           </div>
-
-          {/* Task → Google Calendar sync toggle */}
-          {userSettings?.google_calendar_connected && (
-            <div className="p-4 rounded-lg border border-[#29ABE2]/30 bg-[#29ABE2]/5 flex items-center justify-between gap-4">
-              <div className="flex items-start gap-3">
-                <CheckSquare className="w-5 h-5 text-[#29ABE2] mt-0.5 flex-shrink-0" />
-                <div>
-                  <Label htmlFor="task-gcal-sync" className="text-sm font-semibold text-slate-800 dark:text-slate-100 cursor-pointer">
-                    Sync Tasks with Due Dates
-                  </Label>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Automatically adds/updates tasks that have a due date as events in your Google Calendar. Changes in Google Calendar are also reflected here.
-                  </p>
-                </div>
-              </div>
-              <Switch
-                id="task-gcal-sync"
-                checked={!!userSettings?.task_gcal_sync_enabled}
-                onCheckedChange={(checked) =>
-                  updateSettingsMutation.mutate({ task_gcal_sync_enabled: checked })
-                }
-                disabled={updateSettingsMutation.isPending}
-              />
-            </div>
-          )}
-
-          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-900 flex gap-3">
-            <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-blue-700 dark:text-blue-300">
-              <p className="font-medium mb-1">Auto-Sync Enabled</p>
-              <p>Events are automatically synced when you visit the calendar. Use the refresh button for manual sync.</p>
-            </div>
-          </div>
         </CardContent>
       </Card>
+
+      {consentOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <Card className="max-w-md w-full shadow-xl">
+            <CardHeader>
+              <CardTitle className="text-lg">Connect Google Calendar</CardTitle>
+              <CardDescription>
+                Connecting Google Calendar imports events from your primary calendar into
+                Vagus Planner. You can disconnect at any time.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <ul className="text-sm text-slate-600 dark:text-slate-300 list-disc pl-5 space-y-1">
+                <li>Read-only access to your primary Google Calendar</li>
+                <li>
+                  Event titles, times, locations, and descriptions are stored in your account
+                </li>
+                <li>
+                  Calendar data is not sent to AI unless you use an AI feature that reads your
+                  events
+                </li>
+              </ul>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setConsentOpen(false)}
+                  disabled={connecting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-cyan-600 hover:bg-cyan-700"
+                  onClick={() => {
+                    setConsentOpen(false);
+                    handleConnectGoogle();
+                  }}
+                  disabled={connecting}
+                >
+                  Continue to Google
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

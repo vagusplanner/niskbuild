@@ -232,12 +232,17 @@ export default function CalendarPage() {
   });
   const settings = settingsData && settingsData.length > 0 ? settingsData[0] : null;
 
-  // Auto-sync Google Calendar on load
+  // Auto-pull Google Calendar on load (never crash Calendar if sync fails / revoked)
   useEffect(() => {
     if (settings?.google_calendar_connected && settings?.google_calendar_sync_enabled) {
-      base44.functions.invoke('syncGoogleCalendar', { calendarId: 'primary' }).catch(() => {});
+      base44.functions
+        .invoke('syncGoogleCalendar', { calendarId: 'primary', mode: 'incremental' })
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: ['events', user?.id] });
+        })
+        .catch(() => {});
     }
-  }, [settings?.google_calendar_connected]);
+  }, [settings?.google_calendar_connected, settings?.google_calendar_sync_enabled, queryClient, user?.id]);
 
   // Show onboarding once per user
   useEffect(() => {
@@ -356,9 +361,9 @@ export default function CalendarPage() {
   const handleFullSync = async () => {
     setSyncing(true);
     try {
-      const { data } = await base44.functions.invoke('fullCalendarSync', {});
+      const { data } = await base44.functions.invoke('fullCalendarSync', { mode: 'full' });
       queryClient.invalidateQueries({ queryKey: ['events'] });
-      alert(`Sync complete! Imported: ${data.imported || 0}, Exported: ${data.exported || 0}`);
+      alert(`Sync complete! Imported: ${data.imported || 0} (export to Google not available yet)`);
     } catch (e) { handleSyncError(e, 'Google Calendar sync'); }
     finally { setSyncing(false); }
   };

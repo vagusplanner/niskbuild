@@ -42,6 +42,9 @@ export const VP_REGISTERED_FUNCTIONS = new Set([
   'generateTasksFromGoal',
   'generateSmartReminders',
   'analyzeTaskDependencies',
+  'syncGoogleCalendar',
+  'initialGCalSync',
+  'fullCalendarSync',
 ]);
 
 /** @param {string} name */

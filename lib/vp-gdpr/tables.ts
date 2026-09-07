@@ -23,6 +23,7 @@ export const VP_GDPR_CORE_TABLES = [
   'vp_shared_files',
   'vp_event_locks',
   'vp_sync_states',
+  'vp_google_calendar_connections',
   'vp_task_shares',
   'vp_reminders',
   'vp_device_tokens',
