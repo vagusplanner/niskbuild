@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { guardApiRequest } from '@/lib/api-auth';
-import { consumeOAuthState } from '@/lib/buffer/oauth-state';
+import { consumeOAuthStateByValue } from '@/lib/buffer/oauth-state';
 import {
   exchangeGoogleCalendarCode,
   fetchGoogleAccountEmail,
+  getGoogleCalendarOAuthDebug,
+  GoogleCalendarAuthError,
   resolveGoogleCalendarReturnUrl,
 } from '@/lib/google-calendar/oauth';
 import {
@@ -15,6 +17,10 @@ import { pullGoogleCalendarForUser } from '@/lib/google-calendar/sync';
 /**
  * Google OAuth redirect target.
  * Exchanges code → stores tokens → optional first full pull → redirects to VP Account.
+ *
+ * Important: do NOT require a live Supabase session cookie here. Google redirects to
+ * www.niskbuild.com while Vagus Planner may run on a different host (e.g. vagusplanner.com),
+ * so the SPA session cookie is often invisible. User identity comes from oauth_states.
  */
 export async function GET(request: NextRequest) {
   const appErrorRedirect = (code: string) =>
@@ -26,39 +32,52 @@ export async function GET(request: NextRequest) {
 
   const errorParam = request.nextUrl.searchParams.get('error');
   if (errorParam) {
+    console.warn('[google-calendar/callback] Google returned error=', errorParam);
     return appErrorRedirect('denied');
   }
 
   const code = request.nextUrl.searchParams.get('code');
   const state = request.nextUrl.searchParams.get('state');
   if (!code || !state) {
+    console.warn('[google-calendar/callback] missing code or state');
     return appErrorRedirect('missing_params');
   }
 
-  const guard = await guardApiRequest(request, { rateLimit: 30 });
-  if (!guard.ok || !guard.user) {
-    return appErrorRedirect('auth_required');
-  }
+  // Rate-limit only — session is optional (cross-domain OAuth return).
+  await guardApiRequest(request, { requireAuth: false, rateLimit: 30 });
 
-  const verified = await consumeOAuthState(state, guard.user.id);
-  if (!verified || verified.provider !== 'google_calendar') {
+  const verified = await consumeOAuthStateByValue(state, {
+    expectedProvider: 'google_calendar',
+  });
+  if (!verified) {
+    console.warn('[google-calendar/callback] invalid/expired/used oauth state');
     return appErrorRedirect('invalid_state');
   }
+
+  const userId = verified.userId;
+  const oauthDebug = getGoogleCalendarOAuthDebug();
+  console.info('[google-calendar/callback] exchanging code', {
+    userId,
+    redirect_uri: oauthDebug.redirect_uri,
+    client_id_suffix: oauthDebug.client_id_suffix,
+    client_secret_present: oauthDebug.client_secret_present,
+    redirect_uri_source: oauthDebug.redirect_uri_source,
+  });
 
   try {
     const tokens = await exchangeGoogleCalendarCode(code);
     const email = await fetchGoogleAccountEmail(tokens.access_token);
-    await upsertGoogleCalendarConnection(guard.user.id, tokens, {
+    await upsertGoogleCalendarConnection(userId, tokens, {
       google_account_email: email,
       calendar_id: 'primary',
     });
-    await markUserSettingsConnected(guard.user.id, { email });
+    await markUserSettingsConnected(userId, { email });
 
     // Best-effort initial full pull — connection still succeeds if pull fails.
     try {
-      await pullGoogleCalendarForUser(guard.user.id, { mode: 'full' });
+      await pullGoogleCalendarForUser(userId, { mode: 'full' });
     } catch (pullErr) {
-      console.error('[google-calendar] initial pull after connect failed:', pullErr);
+      console.error('[google-calendar/callback] initial pull after connect failed:', pullErr);
     }
 
     const response = NextResponse.redirect(
@@ -73,7 +92,18 @@ export async function GET(request: NextRequest) {
     });
     return response;
   } catch (err) {
-    console.error('[google-calendar] OAuth callback failed:', err);
+    const message =
+      err instanceof GoogleCalendarAuthError
+        ? err.message
+        : err instanceof Error
+          ? err.message
+          : 'exchange_failed';
+    console.error('[google-calendar/callback] OAuth token exchange failed:', {
+      message,
+      redirect_uri: oauthDebug.redirect_uri,
+      client_id_suffix: oauthDebug.client_id_suffix,
+      client_secret_present: oauthDebug.client_secret_present,
+    });
     return appErrorRedirect('exchange_failed');
   }
 }

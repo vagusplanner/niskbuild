@@ -36,10 +36,17 @@ export type VerifiedOAuthState = {
   provider: string;
 };
 
-/** Verify state belongs to the authenticated user and has not expired. Marks as used. */
-export async function consumeOAuthState(
+/**
+ * Verify OAuth state from the DB (not memory). Marks as used.
+ * Does not require a session cookie — needed when the OAuth provider redirects
+ * back to a different host than where the SPA session cookie was set.
+ */
+export async function consumeOAuthStateByValue(
   state: string,
-  expectedUserId: string
+  options?: {
+    expectedProvider?: OAuthStateProvider;
+    expectedUserId?: string;
+  }
 ): Promise<VerifiedOAuthState | null> {
   const admin = createAdminClient();
 
@@ -53,7 +60,15 @@ export async function consumeOAuthState(
   if (error || !data) return null;
   if (data.used_at) return null;
   if (new Date(data.expires_at as string).getTime() < Date.now()) return null;
-  if (data.user_id !== expectedUserId) return null;
+  if (
+    options?.expectedProvider &&
+    data.provider !== options.expectedProvider
+  ) {
+    return null;
+  }
+  if (options?.expectedUserId && data.user_id !== options.expectedUserId) {
+    return null;
+  }
 
   await admin
     .schema('firstparty')
@@ -62,4 +77,12 @@ export async function consumeOAuthState(
     .eq('state', state);
 
   return { userId: data.user_id as string, provider: data.provider as string };
+}
+
+/** Verify state belongs to the authenticated user and has not expired. Marks as used. */
+export async function consumeOAuthState(
+  state: string,
+  expectedUserId: string
+): Promise<VerifiedOAuthState | null> {
+  return consumeOAuthStateByValue(state, { expectedUserId });
 }

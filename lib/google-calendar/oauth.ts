@@ -156,10 +156,11 @@ export type GoogleTokenResponse = {
 
 export async function exchangeGoogleCalendarCode(code: string): Promise<GoogleTokenResponse> {
   const { clientId, clientSecret } = getGoogleCalendarClientCredentials();
+  const redirectUri = getGoogleCalendarRedirectUri();
   const body = new URLSearchParams({
     client_id: clientId,
     client_secret: clientSecret,
-    redirect_uri: getGoogleCalendarRedirectUri(),
+    redirect_uri: redirectUri,
     code,
     grant_type: 'authorization_code',
   });
@@ -176,6 +177,14 @@ export async function exchangeGoogleCalendarCode(code: string): Promise<GoogleTo
   };
 
   if (!res.ok || !data.access_token) {
+    console.error('[google-calendar] token exchange rejected by Google', {
+      status: res.status,
+      error: data.error ?? null,
+      error_description: data.error_description ?? null,
+      redirect_uri: redirectUri,
+      client_id_suffix: clientId.slice(-6),
+      client_secret_present: Boolean(clientSecret),
+    });
     throw new GoogleCalendarAuthError(
       data.error_description || data.error || 'Google token exchange failed',
       'exchange_failed'
