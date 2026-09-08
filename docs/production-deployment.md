@@ -113,20 +113,29 @@ Use the **www** host (or `niskbuild.com` after apex platform-redirect is disable
 | `GOOGLE_PLACES_API_KEY` | Google Business import |
 | `GOOGLE_CALENDAR_CLIENT_ID` | Google OAuth client ID for Vagus Planner Calendar sync (Web application) |
 | `GOOGLE_CALENDAR_CLIENT_SECRET` | Google OAuth client secret for Calendar sync |
+| `GOOGLE_CALENDAR_REDIRECT_URI` | Optional but recommended: exact callback URL, e.g. `https://www.niskbuild.com/api/vagus-planner/google-calendar/callback` |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | GitHub integration |
 
 ### Google Calendar OAuth (Vagus Planner)
 
 1. Google Cloud Console → **APIs & Services → Enable APIs** → enable **Google Calendar API**.
 2. **Credentials → Create Credentials → OAuth client ID** → Application type **Web application**.
-3. Authorized redirect URIs (register both if you develop locally):
-   - Production: `https://www.niskbuild.com/api/vagus-planner/google-calendar/callback` (match `NEXT_PUBLIC_APP_URL`)
+3. Authorized redirect URIs (must match the server’s `redirect_uri` **character-for-character**):
+   - Production: `https://www.niskbuild.com/api/vagus-planner/google-calendar/callback`
    - Local: `http://localhost:3000/api/vagus-planner/google-calendar/callback`
-4. Scopes requested by the app (consent screen):
+4. Scopes on the consent screen:
    - `https://www.googleapis.com/auth/calendar.readonly`
-   - `openid` / `email` / `profile` (account email for the connection UI)
-5. Copy Client ID / Secret into `GOOGLE_CALENDAR_CLIENT_ID` and `GOOGLE_CALENDAR_CLIENT_SECRET`.
+   - `openid`
+   - `https://www.googleapis.com/auth/userinfo.email`
+   - `https://www.googleapis.com/auth/userinfo.profile`
+5. Env vars:
+   - `GOOGLE_CALENDAR_CLIENT_ID` / `GOOGLE_CALENDAR_CLIENT_SECRET`
+   - **Recommended:** `GOOGLE_CALENDAR_REDIRECT_URI=https://www.niskbuild.com/api/vagus-planner/google-calendar/callback`
+     (explicit; avoids apex/`www` mismatches when `NEXT_PUBLIC_APP_URL` is `https://niskbuild.com`)
+   - If unset, redirect is derived from `NEXT_PUBLIC_APP_URL`, with `niskbuild.com` normalized to `www.niskbuild.com`
 6. Run SQL migration `supabase/vp-google-calendar-sync-migration.sql` on Supabase.
+
+**Diagnose Google’s immediate “Sorry, an error occurred” (before consent):** almost always `redirect_uri_mismatch`. Hit Connect, then check browser console for `[google-calendar] launching OAuth` (`redirect_uri` + `client_id_suffix`), or Vercel logs for `[google-calendar/connect]`. Also `GET /api/vagus-planner/google-calendar/status` returns `oauthDebug`.
 
 ---
 

@@ -1,6 +1,9 @@
 import { NextRequest } from 'next/server';
 import { guardApiRequest } from '@/lib/api-auth';
-import { isGoogleCalendarOAuthConfigured } from '@/lib/google-calendar/oauth';
+import {
+  getGoogleCalendarOAuthDebug,
+  isGoogleCalendarOAuthConfigured,
+} from '@/lib/google-calendar/oauth';
 import { loadGoogleCalendarConnection } from '@/lib/google-calendar/tokens';
 import { createAdminClient } from '@/lib/supabase/admin';
 import {
@@ -24,6 +27,7 @@ export async function GET(request: NextRequest) {
   const configured = isGoogleCalendarOAuthConfigured();
   const row = await loadGoogleCalendarConnection(guard.user.id);
   const connected = Boolean(row && row.status === 'active' && row.access_token);
+  const oauthDebug = getGoogleCalendarOAuthDebug();
 
   let lastSyncedAt: string | null = null;
   let syncStatus: string | null = null;
@@ -55,5 +59,7 @@ export async function GET(request: NextRequest) {
     hasSyncToken,
     syncDirection: 'one_way_pull',
     scopes: connected ? row?.scopes ?? null : null,
+    /** Safe OAuth config for diagnosing redirect_uri_mismatch (no secrets). */
+    oauthDebug,
   });
 }

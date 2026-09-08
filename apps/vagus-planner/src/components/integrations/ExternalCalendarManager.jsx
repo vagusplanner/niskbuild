@@ -181,6 +181,9 @@ export default function ExternalCalendarManager() {
       );
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.authorizeUrl) {
+        if (data.oauthDebug) {
+          console.error('[google-calendar] connect failed — oauthDebug', data.oauthDebug);
+        }
         throw new Error(
           typeof data.error === 'string' && data.error
             ? data.error
@@ -188,6 +191,26 @@ export default function ExternalCalendarManager() {
               ? data.code
               : `Failed to start Google authorization (HTTP ${res.status})`
         );
+      }
+      // Log exact redirect_uri + redacted auth URL before leaving the app
+      // (Google's generic "Un problème est survenu" often means redirect_uri_mismatch).
+      if (data.oauthDebug) {
+        console.info('[google-calendar] launching OAuth', data.oauthDebug);
+      } else {
+        try {
+          const u = new URL(data.authorizeUrl);
+          console.info('[google-calendar] launching OAuth', {
+            redirect_uri: u.searchParams.get('redirect_uri'),
+            client_id_suffix: (u.searchParams.get('client_id') || '').slice(-6),
+            scope: u.searchParams.get('scope'),
+            response_type: u.searchParams.get('response_type'),
+            access_type: u.searchParams.get('access_type'),
+            prompt: u.searchParams.get('prompt'),
+            state_length: (u.searchParams.get('state') || '').length,
+          });
+        } catch {
+          /* ignore */
+        }
       }
       window.location.href = data.authorizeUrl;
     } catch (err) {

@@ -3,8 +3,10 @@ import { guardApiRequest } from '@/lib/api-auth';
 import { storeOAuthState } from '@/lib/buffer/oauth-state';
 import {
   buildGoogleCalendarAuthorizeUrl,
+  getGoogleCalendarOAuthDebug,
   GoogleCalendarAuthError,
   isGoogleCalendarOAuthConfigured,
+  redactAuthorizeUrl,
 } from '@/lib/google-calendar/oauth';
 import {
   vpApiCorsPreflightResponse,
@@ -19,7 +21,7 @@ export async function OPTIONS(request: NextRequest) {
 /**
  * Start Google Calendar OAuth (calendar.readonly).
  * Browser navigation → redirect to Google.
- * JSON Accept / fetch → { authorizeUrl }.
+ * JSON Accept / fetch → { authorizeUrl, oauthDebug }.
  */
 export async function GET(request: NextRequest) {
   const guard = await guardApiRequest(request, { rateLimit: 20 });
@@ -35,6 +37,7 @@ export async function GET(request: NextRequest) {
         error:
           'Google Calendar OAuth is not configured. Set GOOGLE_CALENDAR_CLIENT_ID and GOOGLE_CALENDAR_CLIENT_SECRET.',
         code: 'GOOGLE_CALENDAR_NOT_CONFIGURED',
+        oauthDebug: getGoogleCalendarOAuthDebug(),
       },
       { status: 503 }
     );
@@ -44,15 +47,34 @@ export async function GET(request: NextRequest) {
     const returnTo = request.nextUrl.searchParams.get('return_to');
     const state = await storeOAuthState(guard.user.id, 'google_calendar');
 
-    // Persist return_to on the state row via metadata is not available;
-    // encode a short return hint in a cookie scoped to the callback path.
     const authorizeUrl = buildGoogleCalendarAuthorizeUrl(state);
+    const oauthDebug = {
+      ...getGoogleCalendarOAuthDebug(),
+      state_length: state.length,
+      authorize_url_redacted: redactAuthorizeUrl(authorizeUrl),
+    };
+
+    // Safe server log for Vercel — redirect_uri + client_id suffix only.
+    console.info('[google-calendar/connect] OAuth authorize request', {
+      redirect_uri: oauthDebug.redirect_uri,
+      client_id_suffix: oauthDebug.client_id_suffix,
+      redirect_uri_source: oauthDebug.redirect_uri_source,
+      next_public_app_url: oauthDebug.next_public_app_url,
+      scope: oauthDebug.scope,
+      state_length: oauthDebug.state_length,
+      authorize_url_redacted: oauthDebug.authorize_url_redacted,
+    });
+
     const accept = request.headers.get('accept') || '';
     const wantsJson =
       accept.includes('application/json') && !accept.includes('text/html');
 
     if (wantsJson) {
-      const response = vpApiJson(request, { authorizeUrl, state });
+      const response = vpApiJson(request, {
+        authorizeUrl,
+        state,
+        oauthDebug,
+      });
       if (returnTo) {
         response.cookies.set('vp_gcal_return', returnTo, {
           httpOnly: true,
@@ -83,6 +105,10 @@ export async function GET(request: NextRequest) {
         : err instanceof Error
           ? err.message
           : 'Failed to start Google Calendar OAuth';
-    return vpApiJson(request, { error: message }, { status: 500 });
+    return vpApiJson(
+      request,
+      { error: message, oauthDebug: getGoogleCalendarOAuthDebug() },
+      { status: 500 }
+    );
   }
 }

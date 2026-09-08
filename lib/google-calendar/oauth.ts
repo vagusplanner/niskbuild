@@ -1,7 +1,5 @@
 import 'server-only';
 
-import { appUrl } from '@/lib/email/app-url';
-
 export const GOOGLE_CALENDAR_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 export const GOOGLE_CALENDAR_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 export const GOOGLE_CALENDAR_REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
@@ -11,13 +9,75 @@ export const GOOGLE_USERINFO_URL = 'https://www.googleapis.com/oauth2/v2/userinf
 export const GOOGLE_CALENDAR_READONLY_SCOPE =
   'https://www.googleapis.com/auth/calendar.readonly';
 
+/**
+ * Full scope URIs (not short aliases) so the authorize request matches what is
+ * typically listed on the Google Cloud OAuth consent screen.
+ */
 export const GOOGLE_CALENDAR_SCOPES = [
   GOOGLE_CALENDAR_READONLY_SCOPE,
   'openid',
-  'email',
-  'profile',
+  'https://www.googleapis.com/auth/userinfo.email',
+  'https://www.googleapis.com/auth/userinfo.profile',
 ].join(' ');
 
+/**
+ * Canonical OAuth redirect URI. Must match Google Cloud Console character-for-character.
+ *
+ * Priority:
+ * 1. GOOGLE_CALENDAR_REDIRECT_URI (explicit override — preferred in production)
+ * 2. NEXT_PUBLIC_APP_URL + /api/vagus-planner/google-calendar/callback
+ *    with apex niskbuild.com normalized to www.niskbuild.com (Console registers www)
+ */
+export function getGoogleCalendarRedirectUri(): string {
+  const explicit = process.env.GOOGLE_CALENDAR_REDIRECT_URI?.trim();
+  if (explicit) {
+    return explicit.replace(/\/$/, '');
+  }
+
+  let base = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.niskbuild.com')
+    .trim()
+    .replace(/\/$/, '');
+
+  try {
+    const u = new URL(base);
+    // Production docs historically used apex; OAuth Console URI is www.
+    if (u.hostname.toLowerCase() === 'niskbuild.com') {
+      u.hostname = 'www.niskbuild.com';
+      base = u.origin;
+    }
+  } catch {
+    /* keep base */
+  }
+
+  return `${base}/api/vagus-planner/google-calendar/callback`;
+}
+
+/** Safe diagnostics for logs / status (never includes secrets). */
+export function getGoogleCalendarOAuthDebug(): {
+  redirect_uri: string;
+  client_id_present: boolean;
+  client_id_suffix: string | null;
+  client_secret_present: boolean;
+  scope: string;
+  auth_base: string;
+  next_public_app_url: string | null;
+  redirect_uri_source: 'GOOGLE_CALENDAR_REDIRECT_URI' | 'NEXT_PUBLIC_APP_URL';
+} {
+  const explicit = Boolean(process.env.GOOGLE_CALENDAR_REDIRECT_URI?.trim());
+  const clientId = process.env.GOOGLE_CALENDAR_CLIENT_ID?.trim() || '';
+  return {
+    redirect_uri: getGoogleCalendarRedirectUri(),
+    client_id_present: Boolean(clientId),
+    client_id_suffix: clientId ? clientId.slice(-6) : null,
+    client_secret_present: Boolean(process.env.GOOGLE_CALENDAR_CLIENT_SECRET?.trim()),
+    scope: GOOGLE_CALENDAR_SCOPES,
+    auth_base: GOOGLE_CALENDAR_AUTH_URL,
+    next_public_app_url: process.env.NEXT_PUBLIC_APP_URL?.trim() || null,
+    redirect_uri_source: explicit
+      ? 'GOOGLE_CALENDAR_REDIRECT_URI'
+      : 'NEXT_PUBLIC_APP_URL',
+  };
+}
 export class GoogleCalendarAuthError extends Error {
   code: 'not_connected' | 'revoked' | 'misconfigured' | 'exchange_failed';
 
@@ -29,10 +89,6 @@ export class GoogleCalendarAuthError extends Error {
     this.name = 'GoogleCalendarAuthError';
     this.code = code;
   }
-}
-
-export function getGoogleCalendarRedirectUri(): string {
-  return `${appUrl()}/api/vagus-planner/google-calendar/callback`;
 }
 
 export function getGoogleCalendarClientCredentials(): {
@@ -58,18 +114,36 @@ export function isGoogleCalendarOAuthConfigured(): boolean {
 }
 
 export function buildGoogleCalendarAuthorizeUrl(state: string): string {
+  if (!state || !String(state).trim()) {
+    throw new GoogleCalendarAuthError('OAuth state is empty', 'misconfigured');
+  }
   const { clientId } = getGoogleCalendarClientCredentials();
+  const redirectUri = getGoogleCalendarRedirectUri();
   const params = new URLSearchParams({
     client_id: clientId,
-    redirect_uri: getGoogleCalendarRedirectUri(),
+    redirect_uri: redirectUri,
     response_type: 'code',
     scope: GOOGLE_CALENDAR_SCOPES,
     access_type: 'offline',
     prompt: 'consent',
     include_granted_scopes: 'true',
-    state,
+    state: String(state).trim(),
   });
   return `${GOOGLE_CALENDAR_AUTH_URL}?${params.toString()}`;
+}
+
+/** Redact client_id in an authorize URL for safe logging. */
+export function redactAuthorizeUrl(authorizeUrl: string): string {
+  try {
+    const u = new URL(authorizeUrl);
+    const cid = u.searchParams.get('client_id') || '';
+    if (cid.length > 6) {
+      u.searchParams.set('client_id', `…${cid.slice(-6)}`);
+    }
+    return u.toString();
+  } catch {
+    return '[invalid authorize url]';
+  }
 }
 
 export type GoogleTokenResponse = {
