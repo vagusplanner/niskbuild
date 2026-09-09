@@ -79,7 +79,13 @@ export default function EnhancedSubscriptionCard({ subscription, usageData = [],
     acc[item.feature_type] = item.count || 0;
     return acc;
   }, {});
-  const plan = planFeatures[subscription.plan] || planFeatures.free;
+  const plan = planFeatures[subscription.plan] || {
+    name: (subscription.plan || 'free').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+    price: subscription.price_per_month,
+    color: 'slate',
+    features: [],
+    limits: planFeatures.free.limits,
+  };
   const status = statusConfig[subscription.status] || statusConfig.active;
   const StatusIcon = status.icon;
 

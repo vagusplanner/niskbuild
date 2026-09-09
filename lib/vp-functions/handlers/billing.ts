@@ -109,48 +109,123 @@ export const createCustomerPortalSession: VpFunctionHandler = async ({ request }
   return { ok: true, data: { portalUrl: url } };
 };
 
+/**
+ * Cancel at period end.
+ * Accepts stripe subscription id from the client, or resolves from
+ * vp_subscriptions / profiles.subscription_id for the authenticated user.
+ */
 export const cancelStripeSubscription: VpFunctionHandler = async ({ user, payload }) => {
-  const subscriptionId =
+  let subscriptionId =
     typeof payload.subscriptionId === 'string' ? payload.subscriptionId.trim() : '';
-
-  if (!subscriptionId) {
-    return { ok: false, error: 'subscriptionId is required', status: 400 };
-  }
 
   if (!stripe) {
     return { ok: false, error: 'Stripe is not configured', status: 503 };
   }
 
   const supabase = await createClient();
-  const { data: owned } = await supabase
-    .schema('firstparty')
-    .from('vp_subscriptions')
-    .select('id')
-    .eq('user_id', user.id)
-    .eq('stripe_subscription_id', subscriptionId)
-    .maybeSingle();
+  const admin = createAdminClient();
 
-  if (!owned) {
-    return { ok: false, error: 'Subscription not found', status: 404 };
+  // Prefer an owned vp_subscriptions row; fall back to profiles.subscription_id.
+  if (subscriptionId) {
+    const { data: owned } = await supabase
+      .schema('firstparty')
+      .from('vp_subscriptions')
+      .select('id, stripe_subscription_id')
+      .eq('user_id', user.id)
+      .eq('stripe_subscription_id', subscriptionId)
+      .maybeSingle();
+
+    if (!owned) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('subscription_id')
+        .eq('id', user.id)
+        .maybeSingle();
+      const profileSubId =
+        typeof profile?.subscription_id === 'string' ? profile.subscription_id.trim() : '';
+      if (!profileSubId || profileSubId !== subscriptionId) {
+        return { ok: false, error: 'Subscription not found', status: 404 };
+      }
+    }
+  } else {
+    const { data: latestVp } = await admin
+      .schema('firstparty')
+      .from('vp_subscriptions')
+      .select('stripe_subscription_id')
+      .eq('user_id', user.id)
+      .not('stripe_subscription_id', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (typeof latestVp?.stripe_subscription_id === 'string' && latestVp.stripe_subscription_id) {
+      subscriptionId = latestVp.stripe_subscription_id;
+    } else {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('subscription_id')
+        .eq('id', user.id)
+        .maybeSingle();
+      const profileSubId =
+        typeof profile?.subscription_id === 'string' ? profile.subscription_id.trim() : '';
+      if (!profileSubId) {
+        return { ok: false, error: 'subscriptionId is required', status: 400 };
+      }
+      subscriptionId = profileSubId;
+    }
   }
 
   try {
     await stripe.subscriptions.update(subscriptionId, { cancel_at_period_end: true });
 
-    // Writes require service_role after select-only RLS hardening
-    const admin = createAdminClient();
-    await admin
+    const now = new Date().toISOString();
+    const { data: existing } = await admin
       .schema('firstparty')
       .from('vp_subscriptions')
-      .update({
-        auto_renew: false,
-        canceled_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
+      .select('id')
       .eq('user_id', user.id)
-      .eq('stripe_subscription_id', subscriptionId);
+      .eq('stripe_subscription_id', subscriptionId)
+      .maybeSingle();
 
-    return { ok: true, data: { canceled: true, atPeriodEnd: true } };
+    if (existing?.id) {
+      await admin
+        .schema('firstparty')
+        .from('vp_subscriptions')
+        .update({
+          auto_renew: false,
+          canceled_at: now,
+          updated_at: now,
+        })
+        .eq('id', existing.id);
+    } else {
+      // Profile-only entitlement: create a minimal VP row so UI + future cancels stay in sync.
+      const stripeSub = await stripe.subscriptions.retrieve(subscriptionId);
+      const { upsertVpSubscriptionFromStripe } = await import('@/lib/vp-stripe-billing-sync');
+      await upsertVpSubscriptionFromStripe(admin, {
+        subscription: stripeSub,
+        userId: user.id,
+        email: user.email || '',
+      });
+      await admin
+        .schema('firstparty')
+        .from('vp_subscriptions')
+        .update({
+          auto_renew: false,
+          canceled_at: now,
+          updated_at: now,
+        })
+        .eq('user_id', user.id)
+        .eq('stripe_subscription_id', subscriptionId);
+    }
+
+    await admin
+      .from('profiles')
+      .update({
+        cancel_at_period_end: true,
+      })
+      .eq('id', user.id);
+
+    return { ok: true, data: { canceled: true, atPeriodEnd: true, subscriptionId } };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to cancel subscription';
     return { ok: false, error: message, status: 500 };

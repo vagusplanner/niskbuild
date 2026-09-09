@@ -128,7 +128,7 @@ import {
 // Removed: Wellness, Health → Consolidated, now under Islam or Settings
 // Moved: Profile/Settings/Billing → Single Account page
 
-const ROOT_PAGES = ['Dashboard', 'Calendar', 'Islam', 'Goals', 'Wellness', 'Account'];
+const ROOT_PAGES = ['Dashboard', 'Calendar', 'Travel', 'Islam', 'Goals', 'Wellness', 'Account'];
 
 export default function Layout({ children, currentPageName }) {
   const { t } = useTranslation();
@@ -291,9 +291,12 @@ export default function Layout({ children, currentPageName }) {
   } = useIslamicEdition();
 
   // NAV_ITEMS built here so islamicEditionLoading / isIslamicEdition are already resolved
+  // Standard: Home → Calendar → Travel → Goals → Account
+  // Islamic:  Home → Calendar → Islam → Goals → Account (Travel is Tools-only)
   const NAV_ITEMS = filterNavItems([
     { name: t('nav.home'),     icon: Home,          page: 'Dashboard',     description: t('dashboard.title') },
     { name: t('nav.calendar'), icon: Calendar,      page: 'Calendar',      description: t('calendar.title') },
+    { name: t('nav.travel'),   icon: Plane,         page: 'Travel',        description: t('travel.title'), standardOnly: true },
     { name: t('nav.islamic'),  icon: Moon,          page: 'Islam',         description: t('prayer.title'), islamicOnly: true },
     { name: 'Goals',           icon: Target,        page: 'Goals',         description: 'Life & spiritual goals' },
     { name: t('nav.account'),  icon: Settings,      page: 'Account',       description: 'Settings & billing' },
@@ -303,14 +306,17 @@ export default function Layout({ children, currentPageName }) {
   usePushNotifications({ islamicMode, userEmail: user?.email });
   usePrayerTimeNotifications({ settings: userSettings ?? settings[0] ?? null, islamicMode });
 
-  // Build mobile tabs dynamically — always 5 slots, Islam replaces Travel ONLY when confirmed Islamic Edition
+  // Build mobile tabs dynamically — always 5 slots.
+  // Slot 3: Islam (islamic mode) or Travel (standard). Goals stays in primary nav + Tools.
   // Use islamicModeForNav so Layout remounts on Calendar/etc don't briefly hide Islam.
   const showIslamTab = !islamicEditionLoading && islamicModeForNav;
   // Mobile: 5 main tabs only (no nested menus)
   const MOBILE_TAB_ITEMS = [
     { name: t('nav.home'),     icon: Home,          page: 'Dashboard' },
     { name: t('nav.calendar'), icon: Calendar,      page: 'Calendar' },
-    showIslamTab ? { name: t('nav.islamic'), icon: Moon, page: 'Islam' } : { name: 'Goals', icon: Target, page: 'Goals' },
+    showIslamTab
+      ? { name: t('nav.islamic'), icon: Moon, page: 'Islam' }
+      : { name: t('nav.travel'), icon: Plane, page: 'Travel' },
     { name: 'Wellness',        icon: Activity,      page: 'Wellness' },
     { name: t('nav.account'),  icon: Settings,      page: 'Account' },
   ];
@@ -569,6 +575,7 @@ export default function Layout({ children, currentPageName }) {
             if (!item.page) return null;
             if (item.adminOnly && role !== 'admin') return null;
             if (item.islamicOnly && (islamicEditionLoading || !islamicModeForNav)) return null;
+            if (item.standardOnly && (islamicEditionLoading || islamicModeForNav)) return null;
             
             return (
               <Link
@@ -687,6 +694,7 @@ export default function Layout({ children, currentPageName }) {
                 if (!item.page) return null;
                 if (item.adminOnly && role !== 'admin') return null;
                 if (item.islamicOnly && (islamicEditionLoading || !islamicModeForNav)) return null;
+                if (item.standardOnly && (islamicEditionLoading || islamicModeForNav)) return null;
 
                 return (
                   <Link

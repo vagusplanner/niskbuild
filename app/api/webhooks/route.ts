@@ -26,8 +26,67 @@ import {
 import { resolveTierFromSubscription } from '@/lib/stripe-price-ids';
 import { notifyOrgsAfterBillingOwnerPlanChange } from '@/lib/org-billing-lifecycle';
 import { ensureSoloOrganizationForUser } from '@/lib/ensure-organization';
+import {
+  findVpSubscriptionIdByStripeId,
+  resolveVpBillingUser,
+  toVpPlanId,
+  upsertVpInvoiceFromStripe,
+  upsertVpSubscriptionFromStripe,
+} from '@/lib/vp-stripe-billing-sync';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+
+function stripeInvoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
+  const sub = (invoice as Stripe.Invoice & { subscription?: string | { id?: string } | null })
+    .subscription;
+  if (typeof sub === 'string' && sub) return sub;
+  if (sub && typeof sub === 'object' && typeof sub.id === 'string') return sub.id;
+  const parent = (
+    invoice as Stripe.Invoice & {
+      parent?: { subscription_details?: { subscription?: string | null } | null } | null;
+    }
+  ).parent;
+  const fromParent = parent?.subscription_details?.subscription;
+  if (typeof fromParent === 'string' && fromParent) return fromParent;
+  return null;
+}
+
+/** Mirror Stripe state into firstparty.vp_* for Vagus Planner Billing UI. */
+async function syncVpBillingFromSubscription(
+  supabase: ReturnType<typeof createAdminClient>,
+  opts: {
+    subscription: Stripe.Subscription;
+    userId?: string | null;
+    email?: string | null;
+    fallbackTier?: string | null;
+    forceCanceled?: boolean;
+  }
+): Promise<string | null> {
+  const customerId =
+    typeof opts.subscription.customer === 'string'
+      ? opts.subscription.customer
+      : opts.subscription.customer?.id ?? null;
+  const user = await resolveVpBillingUser(supabase, {
+    userId: opts.userId,
+    email: opts.email,
+    customerId,
+  });
+  if (!user?.userId) {
+    console.warn(
+      '[vp-billing] skip vp_subscriptions sync — no profile for',
+      opts.email || opts.userId || customerId
+    );
+    return null;
+  }
+  const row = await upsertVpSubscriptionFromStripe(supabase, {
+    subscription: opts.subscription,
+    userId: user.userId,
+    email: user.email || opts.email || '',
+    fallbackTier: opts.fallbackTier,
+    forceCanceled: opts.forceCanceled,
+  });
+  return row?.id ?? null;
+}
 
 /** Terminal subscription states — immediate downgrade (excludes past_due grace period). */
 const TERMINAL_SUBSCRIPTION_STATUSES = new Set([
@@ -273,6 +332,24 @@ async function processStripeEvent(
         }
         console.log(`✅ User ${customerEmail} upgraded to ${tier} (${updates.cloud_credits_remaining} credits)`);
       }
+
+      // VP Billing UI reads firstparty.vp_subscriptions — mirror Stripe after profile update.
+      if (subscriptionId) {
+        try {
+          const stripeSub = await stripe.subscriptions.retrieve(subscriptionId);
+          await syncVpBillingFromSubscription(supabase, {
+            subscription: stripeSub,
+            userId: typeof userId === 'string' ? userId : profileUserId,
+            email: customerEmail,
+            fallbackTier: tier,
+          });
+        } catch (err) {
+          console.error('[vp-billing] checkout.session.completed vp sync failed:', err);
+          throw err instanceof Error
+            ? err
+            : new WebhookProcessingError('Failed to sync vp_subscriptions after checkout');
+        }
+      }
     }
     return;
   }
@@ -290,6 +367,20 @@ async function processStripeEvent(
           .eq('email', customer.email)
       );
       await handleSubscriptionActivated(supabase, customer.email);
+      await syncVpBillingFromSubscription(supabase, {
+        subscription,
+        email: customer.email,
+        fallbackTier: tier,
+      });
+    } else if (!customer.deleted) {
+      // Still mirror VP row for trialing / incomplete so Billing UI is not stuck on Free.
+      await syncVpBillingFromSubscription(supabase, {
+        subscription,
+        email: !customer.deleted ? customer.email : null,
+        userId:
+          typeof subscription.metadata?.userId === 'string' ? subscription.metadata.userId : null,
+        fallbackTier: resolveTierFromSubscription(subscription),
+      });
     }
     return;
   }
@@ -365,12 +456,20 @@ async function processStripeEvent(
         console.log(`📉 Previews deactivated for ${customer.email} (subscription ${status})`);
         notifyOrgPlanSideEffects(customer.email);
       }
+
+      await syncVpBillingFromSubscription(supabase, {
+        subscription,
+        userId: syncProfile?.id,
+        email: customer.email,
+        fallbackTier: tier,
+        forceCanceled: TERMINAL_SUBSCRIPTION_STATUSES.has(status),
+      });
     }
     return;
   }
 
   if (event.type === 'customer.subscription.deleted') {
-    const subscription = event.data.object;
+    const subscription = event.data.object as Stripe.Subscription;
     const customerId = subscription.customer as string;
 
     const customer = await stripe.customers.retrieve(customerId);
@@ -392,6 +491,12 @@ async function processStripeEvent(
       await handleSubscriptionEnded(supabase, customer.email);
       console.log(`📉 User ${customer.email} downgraded — preview links expired`);
       notifyOrgPlanSideEffects(customer.email);
+
+      await syncVpBillingFromSubscription(supabase, {
+        subscription,
+        email: customer.email,
+        forceCanceled: true,
+      });
     }
     return;
   }
@@ -411,12 +516,15 @@ async function processStripeEvent(
       .single();
 
     let resolvedTier = profile?.subscription_tier || 'pro';
+    const invoiceSubId = stripeInvoiceSubscriptionId(invoice);
     const subscriptionId =
-      typeof profile?.subscription_id === 'string' ? profile.subscription_id.trim() : '';
+      invoiceSubId ||
+      (typeof profile?.subscription_id === 'string' ? profile.subscription_id.trim() : '');
+    let stripeSub: Stripe.Subscription | null = null;
     if (subscriptionId) {
       try {
-        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-        resolvedTier = resolveTierFromSubscription(subscription);
+        stripeSub = await stripe.subscriptions.retrieve(subscriptionId);
+        resolvedTier = resolveTierFromSubscription(stripeSub);
       } catch {
         // keep profile tier
       }
@@ -448,6 +556,31 @@ async function processStripeEvent(
       notifyOrgPlanSideEffects(customer.email, profile.id);
     }
 
+    const user = await resolveVpBillingUser(supabase, {
+      userId: profile?.id,
+      email: customer.email,
+      customerId,
+    });
+    if (user?.userId) {
+      let vpSubId: string | null = null;
+      if (stripeSub) {
+        await upsertVpSubscriptionFromStripe(supabase, {
+          subscription: stripeSub,
+          userId: user.userId,
+          email: user.email || customer.email,
+          fallbackTier: resolvedTier,
+        });
+        vpSubId = await findVpSubscriptionIdByStripeId(supabase, stripeSub.id);
+      }
+      await upsertVpInvoiceFromStripe(supabase, {
+        invoice,
+        userId: user.userId,
+        email: user.email || customer.email,
+        plan: toVpPlanId(resolvedTier),
+        vpSubscriptionId: vpSubId,
+      });
+    }
+
     console.log(`🔄 Credits refreshed for ${customer.email} on invoice.paid (tier: ${resolvedTier})`);
     return;
   }
@@ -462,13 +595,58 @@ async function processStripeEvent(
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('id')
+      .select('id, subscription_tier, subscription_id')
       .eq('email', customer.email)
       .single();
 
     if (profile?.id) {
       void sendPaymentFailedEmail(profile.id, customer.email);
     }
+
+    const user = await resolveVpBillingUser(supabase, {
+      userId: profile?.id,
+      email: customer.email,
+      customerId,
+    });
+    if (!user?.userId) return;
+
+    const invoiceSubId =
+      stripeInvoiceSubscriptionId(invoice) ||
+      (typeof profile?.subscription_id === 'string' ? profile.subscription_id.trim() : '');
+    let vpSubId: string | null = null;
+    let plan = toVpPlanId(profile?.subscription_tier) || 'pro';
+    if (invoiceSubId) {
+      try {
+        const stripeSub = await stripe.subscriptions.retrieve(invoiceSubId);
+        plan = toVpPlanId(resolveTierFromSubscription(stripeSub));
+        await upsertVpSubscriptionFromStripe(supabase, {
+          subscription: stripeSub,
+          userId: user.userId,
+          email: user.email || customer.email,
+          fallbackTier: plan,
+        });
+        vpSubId = await findVpSubscriptionIdByStripeId(supabase, stripeSub.id);
+        await supabase
+          .schema('firstparty')
+          .from('vp_subscriptions')
+          .update({
+            status: 'past_due',
+            payment_retry_count: (stripeSub as { attempt_count?: number }).attempt_count ?? 1,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('stripe_subscription_id', stripeSub.id);
+      } catch (err) {
+        console.error('[vp-billing] invoice.payment_failed subscription sync failed:', err);
+      }
+    }
+
+    await upsertVpInvoiceFromStripe(supabase, {
+      invoice,
+      userId: user.userId,
+      email: user.email || customer.email,
+      plan,
+      vpSubscriptionId: vpSubId,
+    });
   }
 }
 

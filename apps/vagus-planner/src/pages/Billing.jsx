@@ -5,7 +5,6 @@ import { RoleGuard } from '@/components/auth/RoleGuard';
 import { toast } from 'sonner';
 import { ChevronRight, ArrowRight, Zap, Star, Clock } from 'lucide-react';
 import PlanComparison from '@/components/billing/PlanComparison';
-import SubscriptionCard from '@/components/billing/SubscriptionCard';
 import EnhancedSubscriptionCard from '@/components/billing/EnhancedSubscriptionCard';
 import BillingHistory from '@/components/billing/BillingHistory';
 import UsageTracker from '@/components/billing/UsageTracker';
@@ -16,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import AIBusinessInsights from '@/components/analytics/AIBusinessInsights';
 import AIPlanRecommendation from '@/components/billing/AIPlanRecommendation';
+import { useBillingStatus } from '@/hooks/useBillingStatus';
 
 export default function BillingPage() {
   const queryClient = useQueryClient();
@@ -24,38 +24,37 @@ export default function BillingPage() {
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [isProcessingCheckout, setIsProcessingCheckout] = useState(false);
 
+  const {
+    isLoading: subLoading,
+    subscription: billingSubscription,
+    invoices = [],
+  } = useBillingStatus();
+
   // Handle Stripe redirect back
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('success') === 'true') {
       toast.success('Payment successful! Your subscription is being activated.');
-      queryClient.invalidateQueries({ queryKey: ['subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['billingStatus'] });
+      queryClient.invalidateQueries({ queryKey: ['planAccess'] });
       queryClient.invalidateQueries({ queryKey: ['islamicAccess'] });
-      // Clean URL
+      // Poll briefly — webhook may land a second after redirect
+      const t = setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['billingStatus'] });
+        queryClient.invalidateQueries({ queryKey: ['planAccess'] });
+      }, 2500);
       window.history.replaceState({}, '', window.location.pathname);
+      return () => clearTimeout(t);
     } else if (params.get('canceled') === 'true') {
       toast.info('Checkout cancelled. No charges were made.');
       window.history.replaceState({}, '', window.location.pathname);
     }
-  }, []);
+  }, [queryClient]);
 
   // Fetch current user
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
     queryFn: () => base44.auth.me()
-  });
-
-  // Fetch subscription
-  const { data: subscriptions = [], isLoading: subLoading } = useQuery({
-    queryKey: ['subscription'],
-    queryFn: () => base44.entities.Subscription.list()
-  });
-  const subscription = subscriptions[0];
-
-  // Fetch invoices
-  const { data: invoices = [] } = useQuery({
-    queryKey: ['invoices'],
-    queryFn: () => base44.entities.Invoice.list()
   });
 
   // Fetch usage for current user
@@ -130,17 +129,16 @@ export default function BillingPage() {
     }
   });
 
-  // Cancel subscription
+  // Cancel subscription — server resolves id from vp_subscriptions or profiles.subscription_id
   const cancelMutation = useMutation({
     mutationFn: async () => {
-      if (subscription?.stripe_subscription_id) {
-        await base44.functions.invoke('cancelStripeSubscription', {
-          subscriptionId: subscription.stripe_subscription_id,
-          reason: 'User requested cancellation'
-        });
-        await queryClient.invalidateQueries({ queryKey: ['subscription'] });
-        toast.success('Subscription cancelled');
-      }
+      await base44.functions.invoke('cancelStripeSubscription', {
+        subscriptionId: billingSubscription?.stripe_subscription_id || '',
+        reason: 'User requested cancellation'
+      });
+      await queryClient.invalidateQueries({ queryKey: ['billingStatus'] });
+      await queryClient.invalidateQueries({ queryKey: ['planAccess'] });
+      toast.success('Subscription cancelled');
     },
     onError: () => toast.error('Failed to cancel subscription')
   });
@@ -218,8 +216,8 @@ export default function BillingPage() {
     );
   }
 
-  // If no subscription, show free tier
-  const currentSubscription = subscription || {
+  // Authoritative plan from billing-status (same resolver as plan-access gating)
+  const currentSubscription = billingSubscription || {
     plan: 'free',
     status: 'active',
     user_email: user?.email
@@ -291,7 +289,7 @@ export default function BillingPage() {
             <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900 dark:text-slate-100 mb-3 sm:mb-4">Payment</h2>
             <PaymentMethodManager
               paymentMethodId={currentSubscription.payment_method_id}
-              onUpdate={() => queryClient.invalidateQueries({ queryKey: ['subscription'] })}
+              onUpdate={() => queryClient.invalidateQueries({ queryKey: ['billingStatus'] })}
             />
           </div>
         )}

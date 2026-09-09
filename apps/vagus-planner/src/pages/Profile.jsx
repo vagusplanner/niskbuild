@@ -45,6 +45,7 @@ import EnhancedSubscriptionCard from '@/components/billing/EnhancedSubscriptionC
 import BillingHistory from '@/components/billing/BillingHistory';
 import UsageTracker from '@/components/billing/UsageTracker';
 import EmailNotificationSettings from '@/components/billing/EmailNotificationSettings';
+import { useBillingStatus } from '@/hooks/useBillingStatus';
 
 export default function ProfilePage() {
   const { t } = useTranslation();
@@ -108,16 +109,7 @@ export default function ProfilePage() {
     }
   });
 
-  const { data: subscriptions = [] } = useQuery({
-    queryKey: ['subscription'],
-    queryFn: () => base44.entities.Subscription.list()
-  });
-  const subscription = subscriptions[0];
-
-  const { data: invoices = [] } = useQuery({
-    queryKey: ['invoices'],
-    queryFn: () => base44.entities.Invoice.list()
-  });
+  const { subscription, invoices = [] } = useBillingStatus();
 
   const { data: usageData = [] } = useQuery({
     queryKey: ['usage', user?.email],
@@ -422,13 +414,44 @@ export default function ProfilePage() {
 
                 {activeSection === 'billing' && (
                   <div className="space-y-6">
-                    <EnhancedSubscriptionCard subscription={subscription||{plan:'free',status:'active',user_email:user?.email}} usageData={usageData}
-                      onManage={async()=>{try{const{data}=await base44.functions.invoke('createCustomerPortalSession');if(data?.portalUrl)window.location.href=data.portalUrl;else toast.error(data?.error||'Failed')}catch{toast.error('Failed to open portal')}}}
-                      onUpgrade={()=>{window.location.href='/Billing';}}
-                      onCancel={async()=>{if(subscription?.stripe_subscription_id){await base44.functions.invoke('cancelStripeSubscription',{subscriptionId:subscription.stripe_subscription_id,reason:'User requested'});queryClient.invalidateQueries({queryKey:['subscription']});toast.success('Cancelled');}}} />
-                    <UsageTracker usageData={usageData} plan={subscription?.plan||'free'} />
+                    <EnhancedSubscriptionCard
+                      subscription={subscription || { plan: 'free', status: 'active', user_email: user?.email }}
+                      usageData={usageData}
+                      onManage={async () => {
+                        try {
+                          const { data } = await base44.functions.invoke('createCustomerPortalSession');
+                          if (data?.portalUrl) window.location.href = data.portalUrl;
+                          else toast.error(data?.error || 'Failed');
+                        } catch {
+                          toast.error('Failed to open portal');
+                        }
+                      }}
+                      onUpgrade={() => {
+                        window.location.href = '/Billing';
+                      }}
+                      onCancel={async () => {
+                        try {
+                          await base44.functions.invoke('cancelStripeSubscription', {
+                            subscriptionId: subscription?.stripe_subscription_id || '',
+                            reason: 'User requested',
+                          });
+                          queryClient.invalidateQueries({ queryKey: ['billingStatus'] });
+                          queryClient.invalidateQueries({ queryKey: ['planAccess'] });
+                          toast.success('Cancelled');
+                        } catch {
+                          toast.error('Failed to cancel');
+                        }
+                      }}
+                    />
+                    <UsageTracker usageData={usageData} plan={subscription?.plan || 'free'} />
                     <EmailNotificationSettings />
-                    <BillingHistory invoices={invoices} onViewInvoice={()=>toast.info('Invoice details')} onDownloadInvoice={(inv)=>{if(inv.pdf_url)window.open(inv.pdf_url,'_blank');}} />
+                    <BillingHistory
+                      invoices={invoices}
+                      onViewInvoice={() => toast.info('Invoice details')}
+                      onDownloadInvoice={(inv) => {
+                        if (inv.pdf_url) window.open(inv.pdf_url, '_blank');
+                      }}
+                    />
                   </div>
                 )}
 

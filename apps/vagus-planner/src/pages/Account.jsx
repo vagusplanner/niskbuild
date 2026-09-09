@@ -28,6 +28,7 @@ import PersonalPreferencesPanel from '@/components/profile/PersonalPreferencesPa
 import AccountDeletionDialog from '@/components/profile/AccountDeletionDialog';
 import ConsentPreferencesPanel from '@/components/legal/ConsentPreferencesPanel';
 import { useIslamicEdition } from '@/hooks/useIslamicEdition';
+import { useBillingStatus } from '@/hooks/useBillingStatus';
 const DEFAULT_SETTINGS = {
   theme: 'light',
   notifications: true,
@@ -161,32 +162,7 @@ export default function Account() {
     setTimeout(() => window.location.reload(), 800);
   };
 
-  const { data: subscriptions = [] } = useQuery({
-    queryKey: ['subscription'],
-    queryFn: async () => {
-      try {
-        const list = await base44.entities.Subscription.list();
-        return list ?? [];
-      } catch (error) {
-        console.error('Error fetching subscription:', error);
-        return [];
-      }
-    },
-  });
-  const subscription = subscriptions?.[0] ?? null;
-
-  const { data: invoices = [] } = useQuery({
-    queryKey: ['invoices'],
-    queryFn: async () => {
-      try {
-        const list = await base44.entities.Invoice.list();
-        return list ?? [];
-      } catch (error) {
-        console.error('Error fetching invoices:', error);
-        return [];
-      }
-    },
-  });
+  const { subscription, invoices = [], refetch: refetchBilling } = useBillingStatus();
 
   const { data: usageData = [] } = useQuery({
     queryKey: ['usage', user?.email],
@@ -233,7 +209,9 @@ export default function Account() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['currentUser'] }),
       queryClient.invalidateQueries({ queryKey: ['userSettings'] }),
-      queryClient.invalidateQueries({ queryKey: ['subscription'] })
+      queryClient.invalidateQueries({ queryKey: ['billingStatus'] }),
+      queryClient.invalidateQueries({ queryKey: ['planAccess'] }),
+      refetchBilling(),
     ]);
   };
 
@@ -417,11 +395,34 @@ export default function Account() {
 
             {activeSection === 'billing' && (
               <div className="space-y-4">
-                <EnhancedSubscriptionCard subscription={subscription||{}} usageData={usageData}
-                  onManage={async()=>{try{const{data}=await base44.functions.invoke('createCustomerPortalSession');if(data?.portalUrl)window.location.href=data.portalUrl;else toast.error(data?.error||'Failed')}catch{toast.error('Failed')}}}
-                  onUpgrade={()=>window.location.href='/Billing'}
-                  onCancel={async()=>{if(subscription?.stripe_subscription_id){await base44.functions.invoke('cancelStripeSubscription',{subscriptionId:subscription.stripe_subscription_id,reason:'User requested'});queryClient.invalidateQueries({queryKey:['subscription']});toast.success('Cancelled');}}} />
-                <UsageTracker usageData={usageData} plan={subscription?.plan||'free'} />
+                <EnhancedSubscriptionCard
+                  subscription={subscription || { plan: 'free', status: 'active' }}
+                  usageData={usageData}
+                  onManage={async () => {
+                    try {
+                      const { data } = await base44.functions.invoke('createCustomerPortalSession');
+                      if (data?.portalUrl) window.location.href = data.portalUrl;
+                      else toast.error(data?.error || 'Failed');
+                    } catch {
+                      toast.error('Failed');
+                    }
+                  }}
+                  onUpgrade={() => (window.location.href = '/Billing')}
+                  onCancel={async () => {
+                    try {
+                      await base44.functions.invoke('cancelStripeSubscription', {
+                        subscriptionId: subscription?.stripe_subscription_id || '',
+                        reason: 'User requested',
+                      });
+                      queryClient.invalidateQueries({ queryKey: ['billingStatus'] });
+                      queryClient.invalidateQueries({ queryKey: ['planAccess'] });
+                      toast.success('Cancelled');
+                    } catch {
+                      toast.error('Failed to cancel');
+                    }
+                  }}
+                />
+                <UsageTracker usageData={usageData} plan={subscription?.plan || 'free'} />
                 <EmailNotificationSettings />
                 <BillingHistory invoices={invoices} />
               </div>
