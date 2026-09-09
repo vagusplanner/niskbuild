@@ -5,11 +5,25 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Luggage, Sparkles, Download } from 'lucide-react';
+import { Loader2, Luggage, Sparkles } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
+import { toast } from 'sonner';
+import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
+
+function tripStart(trip) {
+  return (trip?.start_date || trip?.date || '').toString().split('T')[0];
+}
+
+function tripEnd(trip) {
+  const end = (trip?.end_date || '').toString().split('T')[0];
+  if (end) return end;
+  const start = tripStart(trip);
+  return start || new Date().toISOString().split('T')[0];
+}
 
 export default function AIPackingListGenerator() {
-  const [selectedTrip, setSelectedTrip] = useState(null);
+  const available = requireVpAiFunctions('planTripWithAi');
+  const [selectedTrip, setSelectedTrip] = useState('');
   const [packingList, setPackingList] = useState(null);
   const [loading, setLoading] = useState(false);
   const [checkedItems, setCheckedItems] = useState({});
@@ -22,74 +36,53 @@ export default function AIPackingListGenerator() {
     }
   });
 
-  const { data: settings = [] } = useQuery({
-    queryKey: ['userSettings'],
-    queryFn: () => base44.entities.UserSettings.list()
-  });
-
   const generatePackingList = async () => {
     if (!selectedTrip) return;
 
     const trip = upcomingTrips.find(t => t.id === selectedTrip);
-    if (!trip) return;
+    if (!trip?.destination) {
+      toast.error('Selected trip has no destination');
+      return;
+    }
+
+    const start = tripStart(trip);
+    if (!start) {
+      toast.error('Selected trip is missing a start date');
+      return;
+    }
 
     setLoading(true);
     try {
-      const response = await base44.integrations.Core.InvokeLLM({
-        prompt: `Generate a comprehensive packing list for this trip:
-
-Destination: ${trip.destination}
-Duration: ${trip.start_date} to ${trip.end_date}
-Trip type: ${trip.is_multi_city ? 'Multi-city' : 'Single destination'}
-${trip.accommodation ? `Accommodation: ${trip.accommodation}` : ''}
-
-Traveler preferences:
-- Dietary: ${settings[0]?.dietary_preferences?.join(', ') || 'None specified'}
-- Travel interests: ${settings[0]?.travel_interests?.join(', ') || 'General'}
-
-Provide:
-1. Essential items (documents, money, tech)
-2. Clothing (based on weather and activities)
-3. Toiletries & personal care
-4. Health & medications
-5. Activity-specific gear
-6. Optional comfort items
-
-Current date: ${new Date().toISOString().split('T')[0]}`,
-        add_context_from_internet: true,
-        response_json_schema: {
-          type: "object",
-          properties: {
-            categories: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  name: { type: "string" },
-                  items: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        item: { type: "string" },
-                        reason: { type: "string" },
-                        priority: { type: "string" }
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            weather_note: { type: "string" },
-            special_tips: { type: "array", items: { type: "string" } }
-          }
-        }
+      const res = await base44.functions.invoke('planTripWithAi', {
+        destination: trip.destination,
+        start_date: start,
+        end_date: tripEnd(trip),
+        packing_only: true,
+        travel_style: 'balanced',
+        create_holiday: false,
       });
+      const data = res?.data ?? res;
+      const categories =
+        data?.categories ||
+        (data?.packing_list || []).map((c) => ({
+          name: c.category,
+          items: (c.items || []).map((item) =>
+            typeof item === 'string'
+              ? { item, reason: '', priority: 'recommended' }
+              : item
+          ),
+        }));
 
-      setPackingList(response);
+      setPackingList({
+        categories,
+        weather_note: data?.weather_summary || '',
+        special_tips: data?.special_tips || data?.travel_tips || [],
+      });
       setCheckedItems({});
+      toast.success('Packing list ready');
     } catch (error) {
       console.error('Failed to generate packing list:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to generate packing list');
     } finally {
       setLoading(false);
     }
@@ -107,6 +100,12 @@ Current date: ${new Date().toISOString().split('T')[0]}`,
     return 'bg-slate-100 text-slate-700';
   };
 
+  if (!available) {
+    return (
+      <p className="text-sm text-slate-500">AI packing list is not available on this build.</p>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex gap-2">
@@ -117,13 +116,15 @@ Current date: ${new Date().toISOString().split('T')[0]}`,
           <SelectContent>
             {upcomingTrips.map(trip => (
               <SelectItem key={trip.id} value={trip.id}>
-                {trip.destination} - {new Date(trip.start_date).toLocaleDateString()}
+                {trip.destination || trip.title || trip.name} - {tripStart(trip)
+                  ? new Date(tripStart(trip)).toLocaleDateString()
+                  : 'no date'}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        
-        <Button 
+
+        <Button
           onClick={generatePackingList}
           disabled={!selectedTrip || loading}
           className="bg-teal-600 hover:bg-teal-700"
@@ -145,7 +146,7 @@ Current date: ${new Date().toISOString().split('T')[0]}`,
             <Card className="bg-blue-50 border-blue-200">
               <CardContent className="p-4">
                 <p className="text-sm text-blue-800">
-                  <span className="font-medium">Weather Info:</span> {packingList.weather_note}
+                  <span className="font-medium">Note:</span> {packingList.weather_note}
                 </p>
               </CardContent>
             </Card>
@@ -162,9 +163,10 @@ Current date: ${new Date().toISOString().split('T')[0]}`,
                   {category.items?.map((item, itemIndex) => {
                     const key = `${catIndex}-${itemIndex}`;
                     const isChecked = checkedItems[key];
-                    
+                    const label = typeof item === 'string' ? item : item.item;
+
                     return (
-                      <div 
+                      <div
                         key={itemIndex}
                         className={`flex items-start gap-3 p-2 rounded ${isChecked ? 'opacity-50' : ''}`}
                       >
@@ -176,13 +178,15 @@ Current date: ${new Date().toISOString().split('T')[0]}`,
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             <span className={`text-sm font-medium ${isChecked ? 'line-through' : ''}`}>
-                              {item.item}
+                              {label}
                             </span>
-                            <Badge className={`text-xs ${getPriorityColor(item.priority)}`}>
-                              {item.priority}
-                            </Badge>
+                            {item?.priority && (
+                              <Badge className={`text-xs ${getPriorityColor(item.priority)}`}>
+                                {item.priority}
+                              </Badge>
+                            )}
                           </div>
-                          <p className="text-xs text-slate-600">{item.reason}</p>
+                          {item?.reason && <p className="text-xs text-slate-600">{item.reason}</p>}
                         </div>
                       </div>
                     );
@@ -195,7 +199,7 @@ Current date: ${new Date().toISOString().split('T')[0]}`,
           {packingList.special_tips && packingList.special_tips.length > 0 && (
             <Card className="bg-teal-50 border-teal-200">
               <CardContent className="p-4">
-                <h3 className="font-medium text-teal-800 mb-2">💡 Travel Tips</h3>
+                <h3 className="font-medium text-teal-800 mb-2">Travel Tips</h3>
                 <ul className="space-y-1">
                   {packingList.special_tips.map((tip, i) => (
                     <li key={i} className="text-sm text-teal-700">• {tip}</li>

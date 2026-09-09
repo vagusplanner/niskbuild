@@ -52,6 +52,13 @@ import {
   initialGCalSync,
   syncGoogleCalendar,
 } from './handlers/google-calendar-sync';
+import {
+  generatePackingList,
+  generatePersonalizedTripSuggestions,
+  generateSmartPackingList,
+  planTripWithAi,
+  smartTripPlanner,
+} from './handlers/travel-ai';
 
 export const VP_FUNCTION_REGISTRY = new Map<string, VpFunctionHandler>([
   ['createStripeCheckout', createStripeCheckout],
@@ -94,6 +101,11 @@ export const VP_FUNCTION_REGISTRY = new Map<string, VpFunctionHandler>([
   ['syncGoogleCalendar', syncGoogleCalendar],
   ['initialGCalSync', initialGCalSync],
   ['fullCalendarSync', fullCalendarSync],
+  ['planTripWithAi', planTripWithAi],
+  ['smartTripPlanner', smartTripPlanner],
+  ['generatePersonalizedTripSuggestions', generatePersonalizedTripSuggestions],
+  ['generateSmartPackingList', generateSmartPackingList],
+  ['generatePackingList', generatePackingList],
 ]);
 
 export function getVpFunctionHandler(name: string): VpFunctionHandler | undefined {

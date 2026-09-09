@@ -163,7 +163,7 @@ export default function TravelPage() {
               <div className="flex gap-2">
                 <Button size="sm" onClick={() => {
                   // AI planner is P0-gated when its LLM functions are unregistered.
-                  if (requireVpAiFunctions('generatePersonalizedTripSuggestions', 'generateSmartPackingList')) {
+                  if (requireVpAiFunctions('planTripWithAi')) {
                     setShowTripPlanner(true);
                   } else {
                     setEditingHoliday(null);

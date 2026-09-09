@@ -18,16 +18,17 @@ import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
 import { cn } from '@/lib/utils';
 
 export default function SmartTravelPlanner({ isOpen, onClose, selectedDate }) {
-  const available = requireVpAiFunctions('adjustPrayerTimesForTravel', 'generatePackingList', 'scanTravelBookings', 'suggestTravelDestinations');
+  const available = requireVpAiFunctions('planTripWithAi');
   const [tripData, setTripData] = useState({
     destination: '',
     start_date: selectedDate || new Date().toISOString().split('T')[0],
     end_date: addDays(new Date(selectedDate || new Date()), 7).toISOString().split('T')[0]
   });
-  const [scanningEmail, setScanningEmail] = useState(false);
+  const [scanningEmail] = useState(false);
   const [suggestedDestinations, setSuggestedDestinations] = useState([]);
   const [packingList, setPackingList] = useState([]);
   const [itinerary, setItinerary] = useState([]);
+  const emailBookings = [];
   
   const queryClient = useQueryClient();
 
@@ -39,44 +40,12 @@ export default function SmartTravelPlanner({ isOpen, onClose, selectedDate }) {
     }
   });
 
-  const { data: emailBookings, refetch: scanEmails } = useQuery({
-    queryKey: ['emailBookings'],
-    queryFn: async () => {
-      setScanningEmail(true);
-      try {
-        const result = await base44.functions.invoke('scanTravelBookings', {});
-        return result.data?.bookings || [];
-      } finally {
-        setScanningEmail(false);
-      }
-    },
-    enabled: false
-  });
-
   const handleScanEmails = async () => {
-    toast.loading('Scanning your emails for travel bookings...', { id: 'scan' });
-    await scanEmails();
-    toast.success('Email scan complete!', { id: 'scan' });
+    toast.error("Travel email scan isn't available yet.");
   };
 
   const handleGetSuggestions = async () => {
-    if (!settings?.travel_interests || settings.travel_interests.length === 0) {
-      toast.error('Please set your travel interests in Settings first');
-      return;
-    }
-
-    toast.loading('Getting AI destination suggestions...', { id: 'suggest' });
-    try {
-      const result = await base44.functions.invoke('suggestTravelDestinations', {
-        interests: settings.travel_interests,
-        budget: tripData.budget,
-        duration_days: Math.ceil((new Date(tripData.end_date) - new Date(tripData.start_date)) / (1000 * 60 * 60 * 24))
-      });
-      setSuggestedDestinations(result.data?.destinations || []);
-      toast.success('Destinations suggested!', { id: 'suggest' });
-    } catch (error) {
-      toast.error('Failed to get suggestions', { id: 'suggest' });
-    }
+    toast.error("Destination suggestions aren't available yet — enter a destination and generate a packing list, or use Travel → AI Planner.");
   };
 
   const handleGeneratePackingList = async () => {
@@ -87,16 +56,26 @@ export default function SmartTravelPlanner({ isOpen, onClose, selectedDate }) {
 
     toast.loading('Generating smart packing list...', { id: 'packing' });
     try {
-      const result = await base44.functions.invoke('generatePackingList', {
+      const result = await base44.functions.invoke('planTripWithAi', {
         destination: tripData.destination,
         start_date: tripData.start_date,
         end_date: tripData.end_date,
-        activities: tripData.activities || []
+        packing_only: true,
+        activities: tripData.activities || [],
+        create_holiday: false,
       });
-      setPackingList(result.data?.items || []);
+      const data = result?.data ?? result;
+      const items = (data?.packing_list || []).flatMap((cat) =>
+        (cat.items || []).map((item) => ({
+          category: cat.category,
+          name: typeof item === 'string' ? item : (item.item || item.name || ''),
+          quantity: typeof item === 'object' ? item.quantity : undefined,
+        }))
+      );
+      setPackingList(items);
       toast.success('Packing list ready!', { id: 'packing' });
     } catch (error) {
-      toast.error('Failed to generate packing list', { id: 'packing' });
+      toast.error(error instanceof Error ? error.message : 'Failed to generate packing list', { id: 'packing' });
     }
   };
 

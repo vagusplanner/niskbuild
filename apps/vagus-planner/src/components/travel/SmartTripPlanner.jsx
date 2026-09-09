@@ -220,10 +220,10 @@ function GmailBookingsPanel({ data, loading, onScan, onSaveToCalendar }) {
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function SmartTripPlanner() {
-  const available = requireVpAiFunctions('scanTravelEmails', 'smartTripPlanner');
+  const available = requireVpAiFunctions('planTripWithAi');
   const [form, setForm] = useState({
     destination: '', origin: 'London, UK', start_date: '', end_date: '',
-    trip_type: 'leisure', num_travelers: '1', halal_mode: false
+    trip_type: 'leisure', num_travelers: '1', halal_mode: false, budget: ''
   });
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -244,27 +244,35 @@ export default function SmartTripPlanner() {
     setLoading(true);
     setResult(null);
     try {
-      const data = await base44.functions.invoke('smartTripPlanner', {
-        destination: form.destination, origin: form.origin,
-        start_date: form.start_date, end_date: form.end_date,
-        trip_type: form.trip_type, num_travelers: parseInt(form.num_travelers),
+      const res = await base44.functions.invoke('planTripWithAi', {
+        destination: form.destination,
+        origin: form.origin,
+        start_date: form.start_date,
+        end_date: form.end_date,
+        travel_style: form.trip_type,
+        trip_type: form.trip_type,
+        travelers: parseInt(form.num_travelers, 10) || 1,
+        num_travelers: parseInt(form.num_travelers, 10) || 1,
         halal_mode: form.halal_mode,
+        ...(form.budget ? { budget: parseInt(form.budget, 10) } : {}),
+        create_holiday: true,
+        create_calendar_events: true,
       });
+      const data = res?.data ?? res;
       setResult(data);
+      queryClient.invalidateQueries({ queryKey: ['holidays'] });
       if (data?.created_events_count > 0) {
-        toast.success(`✅ Itinerary generated & ${data.created_events_count} calendar slots blocked!`);
+        toast.success(`Itinerary generated & ${data.created_events_count} calendar slots blocked`);
         queryClient.invalidateQueries({ queryKey: ['events'] });
+      } else if (data?.holiday_id) {
+        toast.success('Trip plan saved to My Trips');
       } else {
-        toast.success('✅ Trip plan generated!');
+        toast.success('Trip plan generated');
       }
       setActiveTab('itinerary');
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      if (/not implemented/i.test(message) || /501/.test(message)) {
-        toast.error("Smart Trip Planner isn't available yet. We're still building this feature.");
-      } else {
-        toast.error(message || 'Failed to generate trip plan');
-      }
+      toast.error(message || 'Failed to generate trip plan');
     } finally {
       setLoading(false);
     }
@@ -276,7 +284,7 @@ export default function SmartTripPlanner() {
     setHalalData(null);
     try {
       const data = await base44.functions.invoke('getHalalAndPrayerLocations', { location: form.destination });
-      setHalalData(data);
+      setHalalData(data?.data ?? data);
       setActiveTab('halal');
       toast.success(`🕌 Halal spots found in ${form.destination}!`);
     } catch (error) {
@@ -288,26 +296,10 @@ export default function SmartTripPlanner() {
   };
 
   const handleScanGmail = async () => {
-    setLoadingGmail(true);
+    // Out of scope for Travel AI v1 — leave unavailable.
+    toast.error("Gmail travel scan isn't available yet.");
+    setLoadingGmail(false);
     setGmailData(null);
-    try {
-      const data = await base44.functions.invoke('scanTravelEmails', {
-        destination: form.destination, start_date: form.start_date,
-      });
-      setGmailData(data);
-      setActiveTab('gmail');
-      const count = data?.bookings?.length || data?.events?.length || 0;
-      toast.success(`📧 Found ${count} booking confirmation${count !== 1 ? 's' : ''} in Gmail`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      if (/not implemented/i.test(message) || /501/.test(message)) {
-        toast.error("Gmail travel scan isn't available yet.");
-      } else {
-        toast.error(message || 'Failed to scan Gmail');
-      }
-    } finally {
-      setLoadingGmail(false);
-    }
   };
 
   const handleSaveBookingToCalendar = async (booking) => {
@@ -457,6 +449,17 @@ export default function SmartTripPlanner() {
               </SelectContent>
             </Select>
           </div>
+
+          <div>
+            <Label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest mb-1.5 block">Budget USD (optional)</Label>
+            <Input
+              type="number"
+              value={form.budget}
+              onChange={e => setForm(f => ({ ...f, budget: e.target.value }))}
+              placeholder="e.g. 2500"
+              className="border-[#E8B84B]/30 focus:border-[#1a7ab8]"
+            />
+          </div>
         </div>
 
         {/* Action Buttons */}
@@ -505,11 +508,16 @@ export default function SmartTripPlanner() {
         <AnimatePresence>
           {(result || halalData || gmailData) && (
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-              {result?.created_events_count > 0 && (
+              {(result?.created_events_count > 0 || result?.holiday_id) && (
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-[#3ecfa0]/10 to-[#1a7ab8]/10 border border-[#3ecfa0]/30 mb-4">
                   <CalendarCheck className="w-5 h-5 text-[#3ecfa0] flex-shrink-0" />
                   <p className="text-sm text-slate-700 dark:text-slate-200">
-                    <span className="font-bold text-[#1a7ab8]">{result.created_events_count} calendar events</span> created — travel time & key activities are blocked in your calendar.
+                    {result.holiday_id && (
+                      <>Trip saved to <span className="font-bold text-[#1a7ab8]">My Trips</span>. </>
+                    )}
+                    {result.created_events_count > 0 && (
+                      <><span className="font-bold text-[#1a7ab8]">{result.created_events_count} calendar events</span> created for itinerary days.</>
+                    )}
                   </p>
                 </div>
               )}
