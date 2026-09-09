@@ -15,8 +15,19 @@ export const VP_ART9_GROQ_UNAVAILABLE_MESSAGE =
 export const VP_ART9_CONSENT_ERROR =
   'AI processing of this data category is blocked because Article 9 consent is not active. You can update consents in Account → Privacy & Consent.';
 
+/**
+ * Free-text Art.9 religious scan.
+ * Includes common holy-city spelling variants (Mekkah/Makkah/Mecca/Madinah/…);
+ * underscore-separated tokens (e.g. halal_tourism) are normalized to spaces before matching
+ * in detectArt9CategoriesFromText so `\bhalal\b` still matches.
+ */
 const RELIGIOUS_TEXT_PATTERN =
-  /\b(prayer|prayers|salah|salat|namaz|hadith|quran|qur'an|islam|islamic|mosque|masjid|ramadan|eid|fajr|dhuhr|zuhr|asr|maghrib|isha|taraweeh|umrah|hajj|dhikr|zakat|sunnah)\b/i;
+  /\b(prayer|prayers|salah|salat|namaz|hadith|quran|qur['’]?an|islam|islamic|muslim|mosque|masjid|ramadan|eid|fajr|dhuhr|zuhr|asr|maghrib|isha|taraweeh|umrah|hajj|dhikr|zakat|sunnah|halal|haram|ziyarat|pilgrim|pilgrimage|kaaba|kaabah|kabah|mekkah|makkah|mecca|makka|mekka|madinah|madina|medina)\b/i;
+
+/** @internal exported for verification scripts */
+export function __testReligiousTextPattern(): RegExp {
+  return RELIGIOUS_TEXT_PATTERN;
+}
 
 const HEALTH_TEXT_PATTERN =
   /\b(health|medical|medication|medicine|doctor|physician|symptom|symptoms|diagnosis|therapy|therapist|wellness|mental health|anxiety|depression|period|menstrual|sleep|insulin|prescription|hospital|clinic|treatment)\b/i;
@@ -31,8 +42,10 @@ export function detectArt9CategoriesFromText(text: string): VpArt9Category[] {
   const categories: VpArt9Category[] = [];
   const trimmed = text.trim();
   if (!trimmed) return categories;
-  if (RELIGIOUS_TEXT_PATTERN.test(trimmed)) categories.push('religious');
-  if (HEALTH_TEXT_PATTERN.test(trimmed)) categories.push('health');
+  // Normalize underscores/hyphens so trip_type values like "halal_tourism" match `\bhalal\b`.
+  const normalized = trimmed.replace(/[_-]+/g, ' ');
+  if (RELIGIOUS_TEXT_PATTERN.test(normalized)) categories.push('religious');
+  if (HEALTH_TEXT_PATTERN.test(normalized)) categories.push('health');
   return categories;
 }
 

@@ -260,12 +260,23 @@ export default function SmartTripPlanner() {
       });
       const data = res?.data ?? res;
       setResult(data);
+      if (data?.art9_categories?.length || data?.ai_provider) {
+        console.info('[SmartTripPlanner] Art.9 / provider', {
+          art9_categories: data.art9_categories,
+          ai_provider: data.ai_provider,
+          halal_mode: data.halal_mode,
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ['holidays'] });
       if (data?.created_events_count > 0) {
         toast.success(`Itinerary generated & ${data.created_events_count} calendar slots blocked`);
         queryClient.invalidateQueries({ queryKey: ['events'] });
       } else if (data?.holiday_id) {
-        toast.success('Trip plan saved to My Trips');
+        toast.success(
+          data.ai_provider
+            ? `Trip plan saved (${data.ai_provider}${data.art9_categories?.length ? ', Art.9' : ''})`
+            : 'Trip plan saved to My Trips'
+        );
       } else {
         toast.success('Trip plan generated');
       }

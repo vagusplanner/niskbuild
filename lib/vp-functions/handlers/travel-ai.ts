@@ -4,11 +4,15 @@ import {
   mergeArt9Categories,
 } from '@/lib/vp-gdpr/art9-ai-gate';
 import type { VpArt9Category } from '@/lib/vp-gdpr/tables';
+import { vpChatCompletionJson } from '@/lib/vp-ai-providers';
+import {
+  logGroqParseFailure,
+  parseGroqJsonContent,
+} from '@/lib/shift-ai/groq-json';
 import type { VpFunctionHandler, VpFunctionResult } from '../types';
 import {
   aiUnavailableMessage,
   gateFeatureWithArt9,
-  groqJson,
 } from './calendar-ai';
 
 function asString(value: unknown): string {
@@ -16,7 +20,13 @@ function asString(value: unknown): string {
 }
 
 function asBool(value: unknown): boolean {
-  return value === true || value === 'true' || value === 1 || value === '1';
+  if (value === true || value === 1) return true;
+  if (value === false || value === 0 || value == null) return false;
+  if (typeof value === 'string') {
+    const lower = value.trim().toLowerCase();
+    return lower === 'true' || lower === '1' || lower === 'yes' || lower === 'on';
+  }
+  return false;
 }
 
 function asPositiveInt(value: unknown, fallback: number): number {
@@ -57,9 +67,6 @@ function daysBetweenInclusive(start: string, end: string): number {
   return Math.max(1, Math.round((b - a) / 86_400_000) + 1);
 }
 
-const RELIGIOUS_STYLE_PATTERN =
-  /\b(hajj|umrah|halal|ziyarat|spiritual|pilgrim|makkah|mecca|madinah|medina)\b/i;
-
 function isPackingOnly(payload: Record<string, unknown>): boolean {
   const mode = asString(payload.mode).toLowerCase();
   if (mode === 'packing' || mode === 'packing_only') return true;
@@ -75,27 +82,79 @@ function resolveTravelStyle(payload: Record<string, unknown>): string {
   );
 }
 
-function scanTravelArt9(parts: {
+/** Halal Mode / islamic flags — unconditional Art.9 religious trigger (ignore destination text). */
+function resolveHalalMode(payload: Record<string, unknown>): boolean {
+  return (
+    asBool(payload.halal_mode) ||
+    asBool(payload.halalMode) ||
+    asBool(payload.islamic_mode) ||
+    asBool(payload.islamicMode)
+  );
+}
+
+/**
+ * Travel Art.9 scan.
+ * - halal_mode / islamic_mode → always religious (even if destination is "Tokyo")
+ * - destination / style / origin / extras scanned via shared detectArt9CategoriesFromText
+ *   (covers Mekkah/Makkah/Mecca/Madinah and underscore styles like halal_tourism)
+ */
+export function scanTravelArt9(parts: {
   destination: string;
   travelStyle: string;
   origin: string;
   halalMode: boolean;
   extra?: string;
 }): VpArt9Category[] {
-  const categories = mergeArt9Categories(
+  // Unconditional: Halal Mode alone is sufficient — do not depend on destination spelling.
+  if (parts.halalMode) {
+    return mergeArt9Categories(
+      ['religious'],
+      detectArt9CategoriesFromText(parts.destination),
+      detectArt9CategoriesFromText(parts.travelStyle),
+      detectArt9CategoriesFromText(parts.origin),
+      detectArt9CategoriesFromText(parts.extra || '')
+    );
+  }
+
+  return mergeArt9Categories(
     detectArt9CategoriesFromText(parts.destination),
     detectArt9CategoriesFromText(parts.travelStyle),
     detectArt9CategoriesFromText(parts.origin),
     detectArt9CategoriesFromText(parts.extra || '')
   );
-  if (
-    parts.halalMode ||
-    RELIGIOUS_STYLE_PATTERN.test(parts.travelStyle) ||
-    RELIGIOUS_STYLE_PATTERN.test(parts.destination)
-  ) {
-    return mergeArt9Categories(categories, ['religious']);
+}
+
+async function travelAiJson<T extends Record<string, unknown>>(
+  system: string,
+  userPrompt: string,
+  label: string,
+  userTier: string,
+  art9Categories: VpArt9Category[]
+): Promise<{ data: T; provider: string } | null> {
+  const result = await vpChatCompletionJson(system, userPrompt, {
+    userTier,
+    label,
+    temperature: 0.4,
+    art9Categories,
+  });
+
+  if (!result.ok) {
+    console.warn(`VP AI [${label}] providers failed:`, result.error, {
+      art9Categories,
+      triedProviders: result.triedProviders,
+      groqOnly: art9Categories.length > 0,
+    });
+    return null;
   }
-  return categories;
+
+  const parsed = parseGroqJsonContent(result.content, 'Could not parse AI response');
+  if (!parsed.ok) {
+    logGroqParseFailure(label, result.content, parsed.error);
+    return null;
+  }
+
+  console.info(`[planTripWithAi] AI provider=${result.provider} art9=${JSON.stringify(art9Categories)} label=${label}`);
+  return { data: parsed.json as T, provider: result.provider };
 }
 
 type ItineraryActivity = {
@@ -340,7 +399,7 @@ async function runPlanTripWithAi(
   const budget = asOptionalBudget(payload.budget);
   const travelStyle = resolveTravelStyle(payload);
   const origin = asString(payload.origin);
-  const halalMode = asBool(payload.halal_mode);
+  const halalMode = resolveHalalMode(payload);
   const activitiesHint = Array.isArray(payload.activities)
     ? payload.activities.map((a) => asString(a)).filter(Boolean).slice(0, 12)
     : [];
@@ -368,8 +427,27 @@ async function runPlanTripWithAi(
     extra: activitiesHint.join(' '),
   });
 
+  console.info('[planTripWithAi] Art.9 scan', {
+    destination,
+    travelStyle,
+    origin,
+    packingOnly,
+    halalMode,
+    payload_halal_mode: payload.halal_mode,
+    payload_halalMode: payload.halalMode,
+    art9Categories,
+  });
+
   const gate = await gateFeatureWithArt9(user, 'ai_requests', art9Categories);
-  if (!gate.ok) return gate.result;
+  if (!gate.ok) {
+    const blocked = gate.result;
+    console.info('[planTripWithAi] Art.9/feature gate blocked', {
+      art9Categories,
+      error: blocked.ok === false ? blocked.error : 'blocked',
+      status: blocked.ok === false ? blocked.status : 403,
+    });
+    return gate.result;
+  }
 
   const religiousHint =
     gate.art9Categories.length > 0
@@ -445,7 +523,7 @@ Return JSON:
 
 Include exactly ${dayCount} itinerary days with correct dates from ${startDate} through ${endDate}.`;
 
-  const result = await groqJson<TripPlanAiResult>(
+  const ai = await travelAiJson<TripPlanAiResult>(
     system,
     userPrompt,
     packingOnly ? 'vp-planTripWithAi-packing' : 'vp-planTripWithAi',
@@ -453,13 +531,16 @@ Include exactly ${dayCount} itinerary days with correct dates from ${startDate} 
     gate.art9Categories
   );
 
-  if (!result) {
+  if (!ai) {
     return {
       ok: false,
       error: aiUnavailableMessage(gate.art9Categories),
       status: 503,
     };
   }
+
+  const result = ai.data;
+  const aiProvider = ai.provider;
 
   const packing_list = normalizePackingList(result.packing_list);
   const travel_tips = normalizeTips(result.travel_tips);
@@ -480,6 +561,9 @@ Include exactly ${dayCount} itinerary days with correct dates from ${startDate} 
         travel_tips,
         weather_summary: asString(result.summary) || undefined,
         special_tips: travel_tips,
+        art9_categories: gate.art9Categories,
+        ai_provider: aiProvider,
+        halal_mode: halalMode,
       },
     };
   }
@@ -531,6 +615,8 @@ Include exactly ${dayCount} itinerary days with correct dates from ${startDate} 
       holiday_id: holidayId,
       created_events_count: createdEventsCount,
       art9_categories: gate.art9Categories,
+      ai_provider: aiProvider,
+      halal_mode: halalMode,
     },
   };
 }
