@@ -109,7 +109,7 @@ export default function ProfilePage() {
     }
   });
 
-  const { subscription, invoices = [] } = useBillingStatus();
+  const { subscription, invoices = [], platformOwnerBypass = false } = useBillingStatus();
 
   const { data: usageData = [] } = useQuery({
     queryKey: ['usage', user?.email],
@@ -417,6 +417,7 @@ export default function ProfilePage() {
                     <EnhancedSubscriptionCard
                       subscription={subscription || { plan: 'free', status: 'active', user_email: user?.email }}
                       usageData={usageData}
+                      platformOwnerBypass={platformOwnerBypass}
                       onManage={async () => {
                         try {
                           const { data } = await base44.functions.invoke('createCustomerPortalSession');
@@ -444,14 +445,16 @@ export default function ProfilePage() {
                       }}
                     />
                     <UsageTracker usageData={usageData} plan={subscription?.plan || 'free'} />
-                    <EmailNotificationSettings />
-                    <BillingHistory
-                      invoices={invoices}
-                      onViewInvoice={() => toast.info('Invoice details')}
-                      onDownloadInvoice={(inv) => {
-                        if (inv.pdf_url) window.open(inv.pdf_url, '_blank');
-                      }}
-                    />
+                    {!platformOwnerBypass && <EmailNotificationSettings />}
+                    {!platformOwnerBypass && (
+                      <BillingHistory
+                        invoices={invoices}
+                        onViewInvoice={() => toast.info('Invoice details')}
+                        onDownloadInvoice={(inv) => {
+                          if (inv.pdf_url) window.open(inv.pdf_url, '_blank');
+                        }}
+                      />
+                    )}
                   </div>
                 )}
 

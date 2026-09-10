@@ -28,6 +28,7 @@ export default function BillingPage() {
     isLoading: subLoading,
     subscription: billingSubscription,
     invoices = [],
+    platformOwnerBypass = false,
   } = useBillingStatus();
 
   // Handle Stripe redirect back
@@ -232,8 +233,8 @@ export default function BillingPage() {
         <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Manage your plan, invoices, and usage</p>
       </div>
 
-      {/* Free Trial CTA — shown prominently for free users */}
-      {currentSubscription.plan === 'free' && (
+      {/* Free Trial CTA — shown prominently for free users (not platform owners) */}
+      {currentSubscription.plan === 'free' && !platformOwnerBypass && (
         <div className="rounded-2xl bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 p-5 sm:p-6 text-white shadow-xl">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="flex-1">
@@ -275,6 +276,7 @@ export default function BillingPage() {
           <EnhancedSubscriptionCard
             subscription={currentSubscription}
             usageData={usageData}
+            platformOwnerBypass={platformOwnerBypass}
             onManage={handleManageSubscription}
             onUpgrade={(planId, planName) => {
               if (planId !== currentSubscription.plan) {
@@ -284,7 +286,7 @@ export default function BillingPage() {
             onCancel={() => cancelMutation.mutate()}
           />
         </div>
-        {currentSubscription.plan !== 'free' && (
+        {currentSubscription.plan !== 'free' && !platformOwnerBypass && (
           <div>
             <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900 dark:text-slate-100 mb-3 sm:mb-4">Payment</h2>
             <PaymentMethodManager
@@ -307,7 +309,7 @@ export default function BillingPage() {
       </section>
 
       {/* AI Plan Recommendation */}
-      {currentSubscription.plan !== 'enterprise' && (
+      {!platformOwnerBypass && currentSubscription.plan !== 'enterprise' && currentSubscription.plan !== 'enterprise_islamic' && (
         <section>
           <AIPlanRecommendation
             currentPlan={currentSubscription.plan}
@@ -318,7 +320,7 @@ export default function BillingPage() {
       )}
 
       {/* Upgrade Section */}
-      {currentSubscription.plan === 'free' && (
+      {!platformOwnerBypass && currentSubscription.plan === 'free' && (
         <Card className="bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-950/40 dark:to-cyan-950/40 border-teal-200 dark:border-teal-800">
           <CardHeader>
             <CardTitle className="text-teal-900 dark:text-teal-100">Ready to unlock more features?</CardTitle>
@@ -371,21 +373,25 @@ export default function BillingPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Email Notification Settings */}
-      <section>
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4">Email Preferences</h2>
-        <EmailNotificationSettings />
-      </section>
+      {/* Email Notification Settings — real billing relationship only */}
+      {!platformOwnerBypass && (
+        <section>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4">Email Preferences</h2>
+          <EmailNotificationSettings />
+        </section>
+      )}
 
-      {/* Billing History */}
-      <section>
-        <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900 dark:text-slate-100 mb-3 sm:mb-4">Billing History</h2>
-        <BillingHistory
-          invoices={invoices}
-          onViewInvoice={handleViewInvoice}
-          onDownloadInvoice={handleDownloadInvoice}
-        />
-      </section>
+      {/* Billing History — real billing relationship only */}
+      {!platformOwnerBypass && (
+        <section>
+          <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900 dark:text-slate-100 mb-3 sm:mb-4">Billing History</h2>
+          <BillingHistory
+            invoices={invoices}
+            onViewInvoice={handleViewInvoice}
+            onDownloadInvoice={handleDownloadInvoice}
+          />
+        </section>
+      )}
 
       {/* Invoice Modal */}
       <Dialog open={showInvoiceModal} onOpenChange={setShowInvoiceModal}>

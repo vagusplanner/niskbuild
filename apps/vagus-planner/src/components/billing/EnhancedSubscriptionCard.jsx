@@ -11,7 +11,8 @@ import {
   CheckCircle, 
   XCircle,
   Clock,
-  Zap
+  Zap,
+  Shield,
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -43,7 +44,18 @@ const planFeatures = {
     color: 'amber',
     features: ['Unlimited AI requests', 'Unlimited events & tasks', 'Priority support', 'Advanced analytics', 'Custom integrations'],
     limits: { ai_requests: -1, events: -1, tasks: -1 }
-  }
+  },
+  enterprise_islamic: {
+    name: 'Enterprise Islamic',
+    color: 'amber',
+    features: [
+      'Full Islamic Edition access',
+      'Unlimited AI requests',
+      'Unlimited events & tasks',
+      'Priority support',
+    ],
+    limits: { ai_requests: -1, events: -1, tasks: -1 },
+  },
 };
 
 const statusConfig = {
@@ -73,7 +85,21 @@ const statusConfig = {
   }
 };
 
-export default function EnhancedSubscriptionCard({ subscription, usageData = [], onManage, onUpgrade, onCancel }) {
+/**
+ * @param {object} props
+ * @param {boolean} [props.platformOwnerBypass] — server-verified via billing-status
+ *   (`isPlatformOwner` → firstparty.platform_owners). Not client-spoofable.
+ */
+export default function EnhancedSubscriptionCard({
+  subscription,
+  usageData = [],
+  onManage,
+  onUpgrade,
+  onCancel,
+  platformOwnerBypass = false,
+}) {
+  const isPlatformOwnerAccess = platformOwnerBypass === true;
+
   // Convert array to object keyed by feature_type
   const usage = usageData.reduce((acc, item) => {
     acc[item.feature_type] = item.count || 0;
@@ -84,7 +110,9 @@ export default function EnhancedSubscriptionCard({ subscription, usageData = [],
     price: subscription.price_per_month,
     color: 'slate',
     features: [],
-    limits: planFeatures.free.limits,
+    limits: isPlatformOwnerAccess
+      ? { ai_requests: -1, events: -1, tasks: -1 }
+      : planFeatures.free.limits,
   };
   const status = statusConfig[subscription.status] || statusConfig.active;
   const StatusIcon = status.icon;
@@ -93,7 +121,8 @@ export default function EnhancedSubscriptionCard({ subscription, usageData = [],
     ? differenceInDays(new Date(subscription.current_period_end), new Date())
     : 0;
 
-  const isNearRenewal = daysUntilRenewal <= 3 && daysUntilRenewal >= 0;
+  const isNearRenewal =
+    !isPlatformOwnerAccess && daysUntilRenewal <= 3 && daysUntilRenewal >= 0;
 
   const calculateUsagePercent = (feature) => {
     const limit = plan.limits[feature];
@@ -108,10 +137,30 @@ export default function EnhancedSubscriptionCard({ subscription, usageData = [],
     return 'bg-teal-500';
   };
 
+  const showPaidBillingUi =
+    !isPlatformOwnerAccess && subscription.plan !== 'free';
+  const showUpgrade =
+    !isPlatformOwnerAccess &&
+    subscription.plan !== 'enterprise' &&
+    subscription.plan !== 'enterprise_islamic' &&
+    typeof onUpgrade === 'function';
+  const showCancel =
+    !isPlatformOwnerAccess &&
+    subscription.plan !== 'free' &&
+    subscription.status === 'active' &&
+    typeof onCancel === 'function';
+
   return (
     <Card className="relative overflow-hidden">
+      {isPlatformOwnerAccess && (
+        <div className="px-4 py-2 text-sm font-medium flex items-center gap-2 bg-amber-50 text-amber-900 border-b border-amber-100">
+          <Shield className="w-4 h-4 text-amber-700" />
+          <span>Platform Owner Access — not a Stripe subscription</span>
+        </div>
+      )}
+
       {/* Status Banner */}
-      {subscription.status !== 'active' && (
+      {!isPlatformOwnerAccess && subscription.status !== 'active' && (
         <div className={cn("px-4 py-2 text-sm font-medium flex items-center gap-2", status.bg)}>
           <StatusIcon className={cn("w-4 h-4", status.color)} />
           <span className={status.color}>{status.label}</span>
@@ -124,27 +173,37 @@ export default function EnhancedSubscriptionCard({ subscription, usageData = [],
       )}
 
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <div>
-            <CardTitle className="text-2xl flex items-center gap-2">
-              {plan.name}
-              {subscription.plan !== 'free' && (
-                <Badge variant="outline" className="text-lg">
-                  ${plan.price}/mo
+            <CardTitle className="text-2xl flex items-center gap-2 flex-wrap">
+              {isPlatformOwnerAccess ? 'Full Access' : plan.name}
+              {isPlatformOwnerAccess ? (
+                <Badge variant="outline" className="text-sm border-amber-300 text-amber-800 bg-amber-50">
+                  Platform Owner
                 </Badge>
+              ) : (
+                subscription.plan !== 'free' && plan.price != null && (
+                  <Badge variant="outline" className="text-lg">
+                    ${plan.price}/mo
+                  </Badge>
+                )
               )}
             </CardTitle>
             <CardDescription className="mt-1">
-              {subscription.plan === 'free' ? 'Get started with essential features' : 'Your current subscription plan'}
+              {isPlatformOwnerAccess
+                ? 'Unlimited product access for platform owners. No billing cycle or payment method.'
+                : subscription.plan === 'free'
+                  ? 'Get started with essential features'
+                  : 'Your current subscription plan'}
             </CardDescription>
           </div>
-          {subscription.plan !== 'enterprise' && onUpgrade && (
+          {showUpgrade && (
             <Button 
               onClick={() => {
                 const targetPlan = subscription.plan === 'free' ? 'basic' : subscription.plan === 'basic' ? 'pro' : 'enterprise';
                 onUpgrade(targetPlan, plan.name);
               }}
-              className="gap-2"
+              className="gap-2 flex-shrink-0"
             >
               <TrendingUp className="w-4 h-4" />
               Upgrade
@@ -154,8 +213,8 @@ export default function EnhancedSubscriptionCard({ subscription, usageData = [],
       </CardHeader>
 
       <CardContent className="space-y-6">
-        {/* Billing Info */}
-        {subscription.plan !== 'free' && (
+        {/* Billing Info — real Stripe subscribers only */}
+        {showPaidBillingUi && (
           <div className="space-y-3">
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2 text-slate-600">
@@ -192,7 +251,7 @@ export default function EnhancedSubscriptionCard({ subscription, usageData = [],
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h4 className="font-semibold text-sm">Usage this month</h4>
-            {subscription.plan !== 'enterprise' && (
+            {showUpgrade && (
               <Button variant="link" size="sm" onClick={() => onUpgrade('enterprise', 'Enterprise')}>
                 <Zap className="w-3 h-3 mr-1" />
                 Get unlimited
@@ -230,20 +289,22 @@ export default function EnhancedSubscriptionCard({ subscription, usageData = [],
         </div>
 
         {/* Features */}
-        <div className="pt-4 border-t">
-          <h4 className="font-semibold text-sm mb-3">Included features</h4>
-          <ul className="space-y-2">
-            {plan.features.map((feature, idx) => (
-              <li key={idx} className="flex items-center gap-2 text-sm text-slate-600">
-                <CheckCircle className="w-4 h-4 text-teal-600" />
-                <span>{feature}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        {plan.features?.length > 0 && (
+          <div className="pt-4 border-t">
+            <h4 className="font-semibold text-sm mb-3">Included features</h4>
+            <ul className="space-y-2">
+              {plan.features.map((feature, idx) => (
+                <li key={idx} className="flex items-center gap-2 text-sm text-slate-600">
+                  <CheckCircle className="w-4 h-4 text-teal-600" />
+                  <span>{feature}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
-        {/* Actions */}
-        {subscription.plan !== 'free' && subscription.status === 'active' && (
+        {/* Cancel — real Stripe subscribers only */}
+        {showCancel && (
           <div className="pt-4 border-t">
             <Button 
               variant="outline" 

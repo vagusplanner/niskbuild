@@ -162,7 +162,7 @@ export default function Account() {
     setTimeout(() => window.location.reload(), 800);
   };
 
-  const { subscription, invoices = [], refetch: refetchBilling } = useBillingStatus();
+  const { subscription, invoices = [], refetch: refetchBilling, platformOwnerBypass = false } = useBillingStatus();
 
   const { data: usageData = [] } = useQuery({
     queryKey: ['usage', user?.email],
@@ -398,6 +398,7 @@ export default function Account() {
                 <EnhancedSubscriptionCard
                   subscription={subscription || { plan: 'free', status: 'active' }}
                   usageData={usageData}
+                  platformOwnerBypass={platformOwnerBypass}
                   onManage={async () => {
                     try {
                       const { data } = await base44.functions.invoke('createCustomerPortalSession');
@@ -423,8 +424,8 @@ export default function Account() {
                   }}
                 />
                 <UsageTracker usageData={usageData} plan={subscription?.plan || 'free'} />
-                <EmailNotificationSettings />
-                <BillingHistory invoices={invoices} />
+                {!platformOwnerBypass && <EmailNotificationSettings />}
+                {!platformOwnerBypass && <BillingHistory invoices={invoices} />}
               </div>
             )}
 
