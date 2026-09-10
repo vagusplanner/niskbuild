@@ -2,26 +2,27 @@ import React, { useEffect, useState } from 'react';
 import { Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+/**
+ * Theme toggle.
+ * Default is LIGHT. Only use dark when the user has explicitly saved 'dark'
+ * in localStorage (via this toggle). Do NOT follow prefers-color-scheme and
+ * do NOT write a theme to localStorage on first paint — that was causing
+ * macOS/iOS dark-mode users to get permanently stuck in dark after login
+ * (ThemeToggle overwrote Layout's light default and persisted it).
+ */
 export default function ThemeToggle() {
   const [theme, setTheme] = useState('light');
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    // Check localStorage first, then system preference
     const saved = localStorage.getItem('theme');
-    if (saved) {
-      setTheme(saved);
-      applyTheme(saved);
-    } else {
-      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const initialTheme = isDark ? 'dark' : 'light';
-      setTheme(initialTheme);
-      applyTheme(initialTheme);
-    }
+    const initialTheme = saved === 'dark' ? 'dark' : 'light';
+    setTheme(initialTheme);
+    applyTheme(initialTheme, { persist: false });
   }, []);
 
-  const applyTheme = (newTheme) => {
+  const applyTheme = (newTheme, { persist = true } = {}) => {
     if (newTheme === 'dark') {
       document.documentElement.classList.add('dark');
       document.body.style.colorScheme = 'dark';
@@ -29,13 +30,15 @@ export default function ThemeToggle() {
       document.documentElement.classList.remove('dark');
       document.body.style.colorScheme = 'light';
     }
-    localStorage.setItem('theme', newTheme);
+    if (persist) {
+      localStorage.setItem('theme', newTheme);
+    }
   };
 
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
-    applyTheme(newTheme);
+    applyTheme(newTheme, { persist: true });
   };
 
   if (!mounted) return null;

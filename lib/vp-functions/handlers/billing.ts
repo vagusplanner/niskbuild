@@ -1,7 +1,6 @@
 import Stripe from 'stripe';
 import { callInternalApi, vpAppOrigin } from '../internal-fetch';
 import type { VpFunctionHandler } from '../types';
-import { getAuthenticatedProfile } from '@/lib/server-profile';
 import { normalizePriceInterval } from '@/lib/stripe-price-ids';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -19,7 +18,7 @@ function mapPlanToTier(planName: unknown): string {
   return map[name] ?? name;
 }
 
-export const createStripeCheckout: VpFunctionHandler = async ({ request, payload }) => {
+export const createStripeCheckout: VpFunctionHandler = async ({ request, user, payload }) => {
   const planName = payload.planName;
   const billingCycle = payload.billingCycle;
   const priceIdFromClient =
@@ -33,15 +32,35 @@ export const createStripeCheckout: VpFunctionHandler = async ({ request, payload
 
   if (stripe && priceIdFromClient) {
     try {
-      const { user, profile } = await getAuthenticatedProfile();
-      if (!user?.email) {
+      // VP SPA authenticates via Bearer to /api/vagus-planner/functions — NOT cookies.
+      // getAuthenticatedProfile() only reads the cookie session (supabase/server), so on
+      // vagusplanner.com → niskbuild API it returns user:null and falsely yields
+      // "Email is required". Use the guard-authenticated `user` from dispatch instead.
+      const admin = createAdminClient();
+      const { data: profile } = await admin
+        .from('profiles')
+        .select('email, admin_discount_percent')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      const email =
+        (typeof user.email === 'string' && user.email.trim()) ||
+        (typeof profile?.email === 'string' && profile.email.trim()) ||
+        '';
+
+      if (!email) {
+        console.error('[createStripeCheckout] Email is required', {
+          userId: user.id,
+          hasAuthEmail: Boolean(user.email),
+          hasProfileEmail: Boolean(profile?.email),
+        });
         return { ok: false, error: 'Email is required', status: 400 };
       }
 
       const sessionParams: Stripe.Checkout.SessionCreateParams = {
         mode: 'subscription',
         payment_method_types: ['card'],
-        customer_email: user.email,
+        customer_email: email,
         subscription_data: {
           metadata: { tier, userId: user.id, interval, source: 'vagus-planner' },
         },
@@ -66,6 +85,7 @@ export const createStripeCheckout: VpFunctionHandler = async ({ request, payload
       return { ok: true, data: { sessionUrl: session.url } };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create checkout session';
+      console.error('[createStripeCheckout] Stripe session create failed:', message);
       return { ok: false, error: message, status: 500 };
     }
   }
