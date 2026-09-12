@@ -33,10 +33,12 @@ export default function UserAvatar({ user, size = 'md', className = '' }) {
 
   const gradient = getGradient(user?.email);
 
-  if (user?.photo_url) {
+  const photoSrc = user?.photo_url || user?.profile_picture || null;
+
+  if (photoSrc) {
     return (
       <img
-        src={user.photo_url}
+        src={photoSrc}
         alt={user.full_name || 'User'}
         className={cn('rounded-xl object-cover flex-shrink-0 ring-2 ring-[#E8B84B]/40', sizes[size], className)}
         onError={(e) => { e.target.style.display = 'none'; }}

@@ -1559,7 +1559,28 @@ export const base44 = {
     },
     me: async () => {
       const { data: { user } } = await supabase.auth.getUser()
-      return mapSupabaseUserToVpUser(user)
+      const mapped = mapSupabaseUserToVpUser(user)
+      if (!mapped) return null
+
+      // Profile photos live in the private `uploads` bucket — metadata stores the
+      // durable storage path; re-sign on each me() so the UI never depends on a
+      // 1-hour signed URL that was baked into user_metadata at upload time.
+      const meta = user?.user_metadata ?? {}
+      const storagePath =
+        (typeof meta.photo_storage_path === 'string' && meta.photo_storage_path) ||
+        (typeof meta.avatar_storage_path === 'string' && meta.avatar_storage_path) ||
+        null
+      if (storagePath) {
+        const { data: signed, error: signError } = await supabase.storage
+          .from('uploads')
+          .createSignedUrl(storagePath, 60 * 60 * 24 * 7)
+        if (!signError && signed?.signedUrl) {
+          mapped.photo_url = signed.signedUrl
+          mapped.profile_picture = signed.signedUrl
+        }
+      }
+
+      return mapped
     },
     isAuthenticated: async () => {
       const { data: { user } } = await supabase.auth.getUser()
@@ -1571,8 +1592,30 @@ export const base44 = {
     redirectToSignup: (nextPath) => {
       redirectToVpSignup(typeof nextPath === 'string' ? nextPath : '/dashboard')
     },
+    /**
+     * Base44-style flat profile patch → Supabase Auth user_metadata.
+     * Callers pass `{ full_name, photo_url, … }`; GoTrue only persists metadata
+     * under `{ data: { … } }`. Passing flat keys is a silent no-op (no error).
+     */
     updateMe: async (updates) => {
-      const { data, error } = await supabase.auth.updateUser(updates)
+      if (!updates || typeof updates !== 'object') {
+        throw new Error('updateMe requires an object')
+      }
+
+      // Already shaped for supabase.auth.updateUser
+      if (
+        Object.prototype.hasOwnProperty.call(updates, 'data') ||
+        Object.prototype.hasOwnProperty.call(updates, 'email') ||
+        Object.prototype.hasOwnProperty.call(updates, 'password') ||
+        Object.prototype.hasOwnProperty.call(updates, 'phone') ||
+        Object.prototype.hasOwnProperty.call(updates, 'nonce')
+      ) {
+        const { data, error } = await supabase.auth.updateUser(updates)
+        if (error) throw error
+        return data
+      }
+
+      const { data, error } = await supabase.auth.updateUser({ data: updates })
       if (error) throw error
       return data
     }

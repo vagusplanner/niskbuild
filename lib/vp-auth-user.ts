@@ -4,6 +4,8 @@ import type { User } from '@supabase/supabase-js';
 export type VpAuthUser = User & {
   full_name: string | null;
   profile_picture: string | null;
+  photo_url: string | null;
+  photo_storage_path: string | null;
   role: string;
   created_date: string | null;
 };
@@ -14,13 +16,23 @@ export function mapSupabaseUserToVpUser(authUser: User | null | undefined): VpAu
   const meta = authUser.user_metadata ?? {};
   const appMeta = authUser.app_metadata ?? {};
 
+  const picture =
+    (meta.photo_url as string | undefined) ??
+    (meta.avatar_url as string | undefined) ??
+    (meta.profile_picture as string | undefined) ??
+    null;
+
   return {
     ...authUser,
     id: authUser.id,
     email: authUser.email,
     full_name: (meta.full_name as string | undefined) ?? (meta.name as string | undefined) ?? null,
-    profile_picture:
-      (meta.avatar_url as string | undefined) ?? (meta.profile_picture as string | undefined) ?? null,
+    profile_picture: picture,
+    photo_url: picture,
+    photo_storage_path:
+      (meta.photo_storage_path as string | undefined) ??
+      (meta.avatar_storage_path as string | undefined) ??
+      null,
     role: (meta.role as string | undefined) ?? (appMeta.role as string | undefined) ?? 'user',
     created_date: authUser.created_at ?? null,
   };

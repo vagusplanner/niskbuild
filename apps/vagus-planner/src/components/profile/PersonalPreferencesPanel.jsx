@@ -13,13 +13,12 @@ import { Separator } from '@/components/ui/separator';
 import { motion } from 'framer-motion';
 import { 
   Utensils, Moon, Globe, Clock, Save, CheckCircle2, 
-  Loader2, ChevronDown, ChevronUp, Info, Sparkles, Calendar
+  Loader2, ChevronDown, ChevronUp, Info
 } from 'lucide-react';
 import PublicHolidaysSettings from '@/components/settings/PublicHolidaysSettings';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useIslamicEdition } from '@/hooks/useIslamicEdition';
-import { useNavigate } from 'react-router-dom';
 
 // All IANA timezones grouped for usability
 const TIMEZONES = Intl.supportedValuesOf
@@ -47,9 +46,10 @@ const PRAYERS = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
 
 export default function PersonalPreferencesPanel({ settingsData: settingsDataProp }) {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const [showPrayerAdvanced, setShowPrayerAdvanced] = useState(false);
-  const { hasPaidIslamicAccess, isLoading: islamicAccessLoading } = useIslamicEdition();
+  // Edition switching lives once in Account → Preferences (Account.jsx).
+  // This panel only reads islamic_mode to gate prayer-time prefs.
+  const { hasPaidIslamicAccess } = useIslamicEdition();
 
   const { data: settingsQueryData = [] } = useQuery({
     queryKey: ['userSettings'],
@@ -110,39 +110,6 @@ export default function PersonalPreferencesPanel({ settingsData: settingsDataPro
     }
   });
 
-  const handleIslamicModeChange = (value) => {
-    if (value && !hasPaidIslamicAccess) {
-      toast.error('Islamic Edition requires an active Islamic plan. Upgrade in Billing.');
-      navigate('/Billing');
-      return;
-    }
-    const edition = value ? 'islamic' : 'standard';
-    const updated = { ...form, islamic_mode: value, edition };
-    setForm(updated);
-    try { localStorage.setItem('vagus_islamic_mode', value ? '1' : '0'); localStorage.setItem('vagus_edition', edition); } catch (e) {}
-    const existingPrefs =
-      settings?.preferences && typeof settings.preferences === 'object' ? settings.preferences : {};
-    const payload = {
-      islamic_mode: value,
-      edition,
-      preferences: { ...existingPrefs, edition },
-    };
-    const save = settings?.id
-      ? base44.entities.UserSettings.update(settings.id, payload)
-      : base44.entities.UserSettings.create(payload);
-    save.then(() => {
-      queryClient.invalidateQueries({ queryKey: ['userSettings'] });
-      queryClient.invalidateQueries({ queryKey: ['islamicAccess'] });
-      toast.success(`${value ? 'Islamic' : 'Standard'} edition enabled! Reloading…`);
-      setTimeout(() => window.location.reload(), 800);
-    }).catch((error) => {
-      console.error('Error saving edition preference:', error);
-      toast.error('Failed to save edition preference');
-      setForm((prev) => ({ ...prev, islamic_mode: !value }));
-      try { localStorage.setItem('vagus_islamic_mode', !value ? '1' : '0'); } catch (e) {}
-    });
-  };
-
   const toggleDiet = (id) => {
     setForm(prev => ({
       ...prev,
@@ -156,64 +123,6 @@ export default function PersonalPreferencesPanel({ settingsData: settingsDataPro
 
   return (
     <div className="space-y-6">
-
-      {/* ── Edition Toggle ── */}
-      <Card className="border-0 shadow-sm bg-white dark:bg-slate-900">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-            </div>
-            App Edition
-          </CardTitle>
-          <CardDescription>
-            Switch between Standard and Islamic edition. Islamic Edition features require an active Islamic subscription plan.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!hasPaidIslamicAccess && !islamicAccessLoading && (
-            <p className="text-xs text-amber-700 dark:text-amber-300 mb-3">
-              Unlock Islamic Edition from Billing — preferences alone cannot enable paid features.
-            </p>
-          )}
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { value: false, icon: Calendar, label: 'Standard', desc: 'Calendar, Health, Travel & AI', gradient: 'from-teal-500 to-cyan-500' },
-              { value: true,  icon: Moon,     label: 'Islamic',  desc: hasPaidIslamicAccess ? '+ Prayer, Quran, Hajj & more' : 'Requires Islamic plan', gradient: 'from-indigo-600 to-purple-600' },
-            ].map(opt => {
-              const Icon = opt.icon;
-              const active = hasPaidIslamicAccess
-                ? form.islamic_mode === opt.value
-                : opt.value === false;
-              return (
-                <button
-                 key={String(opt.value)}
-                 type="button"
-                 disabled={islamicAccessLoading}
-                 onClick={() => {
-                   const desired = opt.value;
-                   const currentlyIslamic = hasPaidIslamicAccess && form.islamic_mode;
-                   if (Boolean(currentlyIslamic) !== desired) handleIslamicModeChange(desired);
-                 }}
-                  className={cn(
-                    'flex items-center gap-3 p-4 rounded-xl border-2 text-left transition-all',
-                    active ? 'border-teal-500 bg-teal-50 dark:bg-teal-950/30' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
-                  )}
-                >
-                  <div className={`w-9 h-9 bg-gradient-to-br ${opt.gradient} rounded-lg flex items-center justify-center flex-shrink-0`}>
-                    <Icon className="w-4 h-4 text-white" />
-                  </div>
-                  <div>
-                    <p className={cn('text-sm font-semibold', active ? 'text-teal-700 dark:text-teal-300' : 'text-slate-700 dark:text-slate-300')}>{opt.label}</p>
-                    <p className="text-xs text-slate-400">{opt.desc}</p>
-                  </div>
-                  {active && <CheckCircle2 className="w-4 h-4 text-teal-500 ml-auto flex-shrink-0" />}
-                </button>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
 
       {/* ── Dietary Preferences ── */}
       <Card className="border-0 shadow-sm bg-white dark:bg-slate-900">
