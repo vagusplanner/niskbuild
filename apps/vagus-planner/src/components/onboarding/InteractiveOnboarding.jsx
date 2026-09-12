@@ -1,15 +1,20 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, X, Play, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useIslamicEdition } from '@/hooks/useIslamicEdition';
 
-const ONBOARDING_STEPS = [
+const BASE_STEPS = [
   {
     id: 'welcome',
     title: 'Welcome to Vagus Planner',
-    subtitle: 'Your unified hub for calendar, goals, prayer, family & more',
+    subtitleStandard: 'Your unified hub for calendar, goals, family & more',
+    subtitleIslamic: 'Your unified hub for calendar, goals, prayer, family & more',
     image: '🎯',
-    description: 'Simplify your life with one app for everything that matters — calendar, tasks, goals, Islamic features, family & more.',
+    descriptionStandard:
+      'Simplify your life with one app for everything that matters — calendar, tasks, goals, family & more.',
+    descriptionIslamic:
+      'Simplify your life with one app for everything that matters — calendar, tasks, goals, Islamic features, family & more.',
     action: 'Get Started',
     duration: '2 min tour'
   },
@@ -24,21 +29,28 @@ const ONBOARDING_STEPS = [
   {
     id: 'calendar',
     title: 'Calendar — Master Your Time',
-    subtitle: 'View & manage events, tasks, and prayers',
+    subtitleStandard: 'View & manage events and tasks',
+    subtitleIslamic: 'View & manage events, tasks, and prayers',
     image: '📅',
-    description: 'Synced events from Google & Outlook. Prayer times auto-scheduled. Trip planning integrated.',
-    tips: ['Drag-drop events to reschedule', 'See prayer times + external calendars', 'AI finds optimal meeting times']
+    descriptionStandard: 'Synced events from Google & Outlook. Trip planning integrated.',
+    descriptionIslamic: 'Synced events from Google & Outlook. Prayer times auto-scheduled. Trip planning integrated.',
+    tipsStandard: ['Drag-drop events to reschedule', 'Connect external calendars', 'AI finds optimal meeting times'],
+    tipsIslamic: ['Drag-drop events to reschedule', 'See prayer times + external calendars', 'AI finds optimal meeting times']
   },
   {
     id: 'goals',
     title: 'Goals & Aspirations',
-    subtitle: 'Life goals + spiritual growth in one place',
+    subtitleStandard: 'Life goals in one place',
+    subtitleIslamic: 'Life goals + spiritual growth in one place',
     image: '🏆',
-    description: 'Track life, financial, and spiritual goals. Get AI coaching & collaborate with family.',
-    tips: ['Create life goals (professional, fitness, etc)', 'Track spiritual growth (prayer, Quran, Hajj)', 'AI suggests next steps & milestones']
+    descriptionStandard: 'Track life and financial goals. Get AI coaching & collaborate with family.',
+    descriptionIslamic: 'Track life, financial, and spiritual goals. Get AI coaching & collaborate with family.',
+    tipsStandard: ['Create life goals (professional, fitness, etc)', 'Track progress with milestones', 'AI suggests next steps'],
+    tipsIslamic: ['Create life goals (professional, fitness, etc)', 'Track spiritual growth (prayer, Quran, Hajj)', 'AI suggests next steps & milestones']
   },
   {
     id: 'islam',
+    islamicOnly: true,
     title: 'Islam Edition',
     subtitle: 'Prayers, Quran, Hajj, family & more',
     image: '🕌',
@@ -64,12 +76,44 @@ const ONBOARDING_STEPS = [
   }
 ];
 
+function resolveStep(raw, islamicMode) {
+  return {
+    id: raw.id,
+    title: raw.title,
+    image: raw.image,
+    action: raw.action,
+    duration: raw.duration,
+    subtitle: islamicMode
+      ? (raw.subtitleIslamic || raw.subtitle)
+      : (raw.subtitleStandard || raw.subtitle),
+    description: islamicMode
+      ? (raw.descriptionIslamic || raw.description)
+      : (raw.descriptionStandard || raw.description),
+    tips: islamicMode
+      ? (raw.tipsIslamic || raw.tips)
+      : (raw.tipsStandard || raw.tips),
+  };
+}
+
 export default function InteractiveOnboarding({ isOpen, onClose, onComplete, showDontShowAgain = false }) {
+  const { islamicMode } = useIslamicEdition();
+  const steps = useMemo(
+    () =>
+      BASE_STEPS.filter((s) => !s.islamicOnly || islamicMode).map((s) =>
+        resolveStep(s, islamicMode)
+      ),
+    [islamicMode]
+  );
   const [currentStep, setCurrentStep] = useState(0);
-  const step = ONBOARDING_STEPS[currentStep];
+
+  useEffect(() => {
+    if (currentStep >= steps.length) setCurrentStep(0);
+  }, [steps.length, currentStep]);
+
+  const step = steps[currentStep] || steps[0];
 
   const handleNext = () => {
-    if (currentStep < ONBOARDING_STEPS.length - 1) {
+    if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
       onComplete?.();
@@ -86,11 +130,11 @@ export default function InteractiveOnboarding({ isOpen, onClose, onComplete, sho
     onClose();
   };
 
-  const progress = Math.round(((currentStep + 1) / ONBOARDING_STEPS.length) * 100);
+  const progress = Math.round(((currentStep + 1) / Math.max(steps.length, 1)) * 100);
 
   return (
     <AnimatePresence>
-      {isOpen && (
+      {isOpen && step && (
         <>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200]" />
@@ -111,7 +155,7 @@ export default function InteractiveOnboarding({ isOpen, onClose, onComplete, sho
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-xs font-bold uppercase tracking-widest" style={{color:'#E8B84B'}}>
-                      Step {currentStep + 1} of {ONBOARDING_STEPS.length}
+                      Step {currentStep + 1} of {steps.length}
                     </span>
                   </div>
                   <div className="w-full h-1.5 rounded-full" style={{background:'rgba(255,255,255,0.15)'}}>
@@ -162,14 +206,13 @@ export default function InteractiveOnboarding({ isOpen, onClose, onComplete, sho
                     ← Back
                   </Button>
                   <Button onClick={handleNext} className="flex-1 text-white" style={{background:'linear-gradient(135deg, #1D6FB8, #29ABE2)'}}>
-                    {currentStep === ONBOARDING_STEPS.length - 1 ? (
+                    {currentStep === steps.length - 1 ? (
                       <><CheckCircle2 className="w-4 h-4 mr-2" />{step.action || 'Complete'}</>
                     ) : (
                       <>{step.action || 'Next'}<ChevronRight className="w-4 h-4 ml-2" /></>
                     )}
                   </Button>
                 </div>
-                {/* Don't show again — appears from step 1 onward */}
                 {showDontShowAgain && currentStep > 0 && (
                   <button onClick={handleDontShow} className="w-full text-center text-xs py-1 hover:underline" style={{color:'#607B8B'}}>
                     Don't show this again

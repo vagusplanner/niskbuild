@@ -7,10 +7,12 @@ import { base44 } from '@/api/base44Client';
 import confetti from 'canvas-confetti';
 import { toast } from 'sonner';
 
-export default function ImprovedOnboardingResults({ onboardingData, onComplete }) {
+export default function ImprovedOnboardingResults({ onboardingData, onComplete, islamicMode = false }) {
   const [aiSuggestions, setAiSuggestions] = useState(null);
   const [loading, setLoading] = useState(true);
   const [setupComplete, setSetupComplete] = useState(false);
+
+  const showIslamicContent = islamicMode === true;
 
   useEffect(() => {
     generatePersonalizedPlan();
@@ -46,6 +48,37 @@ export default function ImprovedOnboardingResults({ onboardingData, onComplete }
     }, 250);
   };
 
+  const standardFallback = {
+    welcome_message: "Welcome to Vagus Planner! We're excited to have you here.",
+    recommended_features: [
+      { icon: '📅', title: 'Smart Calendar', description: 'Manage your events and schedule' },
+      { icon: '✅', title: 'Tasks & Goals', description: 'Stay on top of what matters' },
+      { icon: '🤖', title: 'AI Assistant', description: 'Get intelligent suggestions' }
+    ],
+    motivational_tip: 'Start by exploring the calendar and adding your first event!',
+    quick_win: 'Add one event or task for today'
+  };
+
+  const islamicFallback = {
+    welcome_message: "Welcome to Vagus Planner! We're excited to have you here.",
+    recommended_features: [
+      { icon: '📅', title: 'Smart Calendar', description: 'Manage your events and schedule' },
+      { icon: '🕌', title: 'Prayer Times', description: 'Never miss a prayer' },
+      { icon: '🤖', title: 'AI Assistant', description: 'Get intelligent suggestions' }
+    ],
+    motivational_tip: 'Start by exploring the calendar and adding your first event!',
+    quick_win: "Check today's prayer times and set up reminders"
+  };
+
+  const stripIslamicRecommendations = (features) => {
+    if (!Array.isArray(features)) return features;
+    if (showIslamicContent) return features;
+    return features.filter((f) => {
+      const t = `${f?.title || ''} ${f?.description || ''}`.toLowerCase();
+      return !/(prayer|quran|islam|mosque|hijri|adhan|zakat|hajj)/i.test(t);
+    });
+  };
+
   const generatePersonalizedPlan = async () => {
     try {
       // Get current user
@@ -68,7 +101,7 @@ Work Style: ${onboardingData.work_style || 'Not specified'}
 Focus Areas: ${onboardingData.focus_areas?.join(', ') || 'Not specified'}
 Travel Interests: ${onboardingData.travel_interests?.join(', ') || 'None'}
 Dietary Preferences: ${onboardingData.dietary_preferences?.join(', ') || 'None'}
-Prayer Times Enabled: ${onboardingData.prayer_enabled}
+Islamic Edition / Prayer Times: ${showIslamicContent ? 'enabled' : 'disabled (standard edition — do NOT mention prayer, Quran, mosque, or Islamic features)'}
 
 Generate:
 1. A personalized welcome message (2-3 sentences)
@@ -76,7 +109,7 @@ Generate:
 3. A motivational tip for getting started
 4. A "quick win" they can achieve today
 
-Make it friendly, personal, and Islamic-focused if prayer is enabled.`,
+Make it friendly and personal.${showIslamicContent ? ' Include Islamic-focused suggestions where relevant.' : ' Keep it secular/productivity-focused only — no Islamic religious content.'}`,
         response_json_schema: {
           type: 'object',
           properties: {
@@ -98,22 +131,16 @@ Make it friendly, personal, and Islamic-focused if prayer is enabled.`,
         }
       });
 
-      setAiSuggestions(result);
+      setAiSuggestions({
+        ...result,
+        recommended_features: stripIslamicRecommendations(result?.recommended_features),
+      });
       setSetupComplete(true);
       
       toast.success('🎉 Setup complete! Check your email for more tips.');
     } catch (error) {
       console.error('Failed to generate personalized plan:', error);
-      setAiSuggestions({
-        welcome_message: "Welcome to MyAssistant! We're excited to have you here.",
-        recommended_features: [
-          { icon: '📅', title: 'Smart Calendar', description: 'Manage your events and schedule' },
-          { icon: '🕌', title: 'Prayer Times', description: 'Never miss a prayer' },
-          { icon: '🤖', title: 'AI Assistant', description: 'Get intelligent suggestions' }
-        ],
-        motivational_tip: 'Start by exploring the calendar and adding your first event!',
-        quick_win: 'Check today\'s prayer times and set up reminders'
-      });
+      setAiSuggestions(showIslamicContent ? islamicFallback : standardFallback);
       setSetupComplete(true);
     } finally {
       setLoading(false);
@@ -235,10 +262,12 @@ Make it friendly, personal, and Islamic-focused if prayer is enabled.`,
                 <CheckCircle2 className="w-4 h-4 text-teal-600" />
                 <span className="text-slate-700">2 starter tasks to complete</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Moon className="w-4 h-4 text-teal-600" />
-                <span className="text-slate-700">Today's Quran verse</span>
-              </div>
+              {showIslamicContent && (
+                <div className="flex items-center gap-2">
+                  <Moon className="w-4 h-4 text-teal-600" />
+                  <span className="text-slate-700">Today's Quran verse</span>
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <Trophy className="w-4 h-4 text-amber-600" />
                 <span className="text-slate-700">Your first achievement badge</span>

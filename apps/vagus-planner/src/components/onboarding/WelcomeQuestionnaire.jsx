@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import {
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import ImprovedOnboardingResults from './ImprovedOnboardingResults';
+import { useIslamicEdition } from '@/hooks/useIslamicEdition';
 
 const WORK_STYLES = [
   { id: 'early-bird', label: 'Early Bird', desc: 'Best work 6am-12pm', icon: '🌅' },
@@ -36,6 +37,7 @@ const DIETARY_PREFS = [
 ];
 
 export default function WelcomeQuestionnaire({ user, onComplete, onSkip }) {
+  const { islamicMode } = useIslamicEdition();
   const [step, setStep] = useState(1);
   const [showResults, setShowResults] = useState(false);
   const [formData, setFormData] = useState({
@@ -43,12 +45,20 @@ export default function WelcomeQuestionnaire({ user, onComplete, onSkip }) {
     location_country: '',
     work_style: '',
     focus_areas: [],
-    prayer_enabled: true,
+    prayer_enabled: false,
     prayer_method: 'MWL',
     travel_interests: [],
     dietary_preferences: [],
     period_tracker_enabled: false
   });
+
+  // Sync prayer defaults with edition — never enable prayer framing in standard mode.
+  useEffect(() => {
+    setFormData((prev) => ({
+      ...prev,
+      prayer_enabled: islamicMode ? prev.prayer_enabled || true : false,
+    }));
+  }, [islamicMode]);
 
   const toggleArray = (array, item) => {
     return array.includes(item) 
@@ -80,9 +90,11 @@ export default function WelcomeQuestionnaire({ user, onComplete, onSkip }) {
       // Check if settings already exist
       const existingSettings = await base44.entities.UserSettings.list();
       
+      const prayerEnabled = islamicMode && formData.prayer_enabled === true;
       const settingsData = {
         ...formData,
         ...coords,
+        prayer_enabled: prayerEnabled,
         onboarding_completed: true,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
       };
@@ -102,6 +114,7 @@ export default function WelcomeQuestionnaire({ user, onComplete, onSkip }) {
       // Show AI-powered results with user info for email
       const finalData = {
         ...formData,
+        prayer_enabled: prayerEnabled,
         user_email: currentUser.email,
         user_name: currentUser.full_name
       };
@@ -116,7 +129,8 @@ export default function WelcomeQuestionnaire({ user, onComplete, onSkip }) {
   if (showResults) {
     return (
       <ImprovedOnboardingResults 
-        onboardingData={formData} 
+        onboardingData={formData}
+        islamicMode={islamicMode}
         onComplete={() => {
           toast.success('Welcome! Your personalized setup is complete.');
           // Pass focus_areas back so the tour can personalise
@@ -126,10 +140,12 @@ export default function WelcomeQuestionnaire({ user, onComplete, onSkip }) {
     );
   }
 
-  const steps = [
+  const steps = useMemo(() => [
     {
       title: 'Where are you located?',
-      subtitle: 'For prayer times and timezone settings',
+      subtitle: islamicMode
+        ? 'For prayer times and timezone settings'
+        : 'For timezone and local calendar features',
       icon: MapPin,
       content: (
         <div className="space-y-4">
@@ -153,39 +169,41 @@ export default function WelcomeQuestionnaire({ user, onComplete, onSkip }) {
               className="mt-2"
             />
           </div>
-          <div className="pt-4 border-t space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-base">Enable Prayer Times</Label>
-                <p className="text-xs text-slate-500">Display Islamic prayer times in calendar</p>
-              </div>
-              <Button
-                type="button"
-                variant={formData.prayer_enabled ? "default" : "outline"}
-                size="sm"
-                onClick={() => setFormData({ ...formData, prayer_enabled: !formData.prayer_enabled })}
-                className={formData.prayer_enabled ? 'bg-teal-600' : ''}
-              >
-                {formData.prayer_enabled ? 'Yes' : 'No'}
-              </Button>
-            </div>
-            {formData.prayer_enabled && (
-              <div>
-                <Label className="text-sm mb-2 block">Prayer Calculation Method</Label>
-                <select
-                  value={formData.prayer_method}
-                  onChange={(e) => setFormData({ ...formData, prayer_method: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+          {islamicMode && (
+            <div className="pt-4 border-t space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-base">Enable Prayer Times</Label>
+                  <p className="text-xs text-slate-500">Display Islamic prayer times in calendar</p>
+                </div>
+                <Button
+                  type="button"
+                  variant={formData.prayer_enabled ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setFormData({ ...formData, prayer_enabled: !formData.prayer_enabled })}
+                  className={formData.prayer_enabled ? 'bg-teal-600' : ''}
                 >
-                  <option value="MWL">Muslim World League</option>
-                  <option value="ISNA">Islamic Society of North America</option>
-                  <option value="Egypt">Egyptian General Authority</option>
-                  <option value="Makkah">Umm Al-Qura (Makkah)</option>
-                  <option value="Karachi">University of Islamic Sciences, Karachi</option>
-                </select>
+                  {formData.prayer_enabled ? 'Yes' : 'No'}
+                </Button>
               </div>
-            )}
-          </div>
+              {formData.prayer_enabled && (
+                <div>
+                  <Label className="text-sm mb-2 block">Prayer Calculation Method</Label>
+                  <select
+                    value={formData.prayer_method}
+                    onChange={(e) => setFormData({ ...formData, prayer_method: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  >
+                    <option value="MWL">Muslim World League</option>
+                    <option value="ISNA">Islamic Society of North America</option>
+                    <option value="Egypt">Egyptian General Authority</option>
+                    <option value="Makkah">Umm Al-Qura (Makkah)</option>
+                    <option value="Karachi">University of Islamic Sciences, Karachi</option>
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )
     },
@@ -226,7 +244,7 @@ export default function WelcomeQuestionnaire({ user, onComplete, onSkip }) {
       icon: Briefcase,
       content: (
         <div className="space-y-3">
-          {FOCUS_AREAS.map(area => {
+          {(islamicMode ? FOCUS_AREAS : FOCUS_AREAS.filter((a) => a.id !== 'spiritual')).map(area => {
             const Icon = area.icon;
             const isSelected = formData.focus_areas.includes(area.id);
             return (
@@ -287,7 +305,7 @@ export default function WelcomeQuestionnaire({ user, onComplete, onSkip }) {
           <div>
             <Label className="mb-3 block">Dietary Preferences</Label>
             <div className="flex flex-wrap gap-2">
-              {DIETARY_PREFS.map(pref => (
+              {(islamicMode ? DIETARY_PREFS : DIETARY_PREFS.filter((p) => p !== 'Halal')).map(pref => (
                 <Badge
                   key={pref}
                   onClick={() => setFormData({
@@ -308,7 +326,7 @@ export default function WelcomeQuestionnaire({ user, onComplete, onSkip }) {
         </div>
       )
     }
-  ];
+  ], [islamicMode, formData]);
 
   const currentStep = steps[step - 1];
   const Icon = currentStep.icon;
