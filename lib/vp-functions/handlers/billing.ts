@@ -4,6 +4,7 @@ import type { VpFunctionHandler } from '../types';
 import { normalizePriceInterval } from '@/lib/stripe-price-ids';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { ensureProfileForUser } from '@/lib/ensure-profile';
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY?.trim();
 const stripe = stripeSecret ? new Stripe(stripeSecret) : null;
@@ -37,6 +38,13 @@ export const createStripeCheckout: VpFunctionHandler = async ({ request, user, p
       // vagusplanner.com → niskbuild API it returns user:null and falsely yields
       // "Email is required". Use the guard-authenticated `user` from dispatch instead.
       const admin = createAdminClient();
+      // VP users may exist in auth without a public.profiles row — create it before checkout
+      // so Stripe webhooks can attach the subscription to the same user id.
+      await ensureProfileForUser({
+        userId: user.id,
+        email: typeof user.email === 'string' ? user.email : null,
+      });
+
       const { data: profile } = await admin
         .from('profiles')
         .select('email, admin_discount_percent')

@@ -39,17 +39,43 @@ export default function LegalConsentFlow({ isOpen, onAccept, onDecline }) {
     return age < 13;
   })();
 
-  const handleAccept = () => {
-    if (!requiredOk || underMinimumAge) return;
-    onAccept({
-      terms_accepted: consents.terms,
-      privacy_accepted: consents.privacy,
-      cookies_essential_accepted: consents.cookies,
-      age_confirmed: consents.age,
-      date_of_birth: dateOfBirth || null,
-      art9_religious_accepted: consents.art9Religious,
-      art9_health_accepted: consents.art9Health,
-    });
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+
+  const missingRequired = [];
+  if (!consents.age) missingRequired.push('age confirmation');
+  if (!dateOfBirth) missingRequired.push('date of birth');
+  if (!consents.terms) missingRequired.push('Terms of Service');
+  if (!consents.privacy) missingRequired.push('Privacy Policy');
+  if (!consents.cookies) missingRequired.push('essential cookies');
+
+  const handleAccept = async () => {
+    if (!requiredOk || underMinimumAge || saving) return;
+    setSaveError('');
+    setSaving(true);
+    try {
+      await Promise.resolve(
+        onAccept({
+          terms_accepted: consents.terms,
+          privacy_accepted: consents.privacy,
+          cookies_essential_accepted: consents.cookies,
+          age_confirmed: consents.age,
+          date_of_birth: dateOfBirth || null,
+          art9_religious_accepted: consents.art9Religious,
+          art9_health_accepted: consents.art9Health,
+        })
+      );
+    } catch (err) {
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : 'Could not save your consent preferences.';
+      setSaveError(
+        `${message} Check your connection, refresh the page, and try again. If it still fails, sign out and back in, or contact support.`
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -240,29 +266,50 @@ export default function LegalConsentFlow({ isOpen, onAccept, onDecline }) {
         </ScrollArea>
 
         <div className="flex gap-3 pt-4 border-t">
-          <Button variant="outline" onClick={onDecline} className="flex-1">
+          <Button variant="outline" onClick={onDecline} className="flex-1" disabled={saving}>
             Decline
           </Button>
           <Button
             onClick={handleAccept}
-            disabled={!requiredOk || underMinimumAge}
-            className="flex-1 bg-teal-600 hover:bg-teal-700"
+            disabled={!requiredOk || underMinimumAge || saving}
+            aria-disabled={!requiredOk || underMinimumAge || saving}
+            title={
+              !requiredOk
+                ? `Still needed: ${missingRequired.join(', ')}`
+                : underMinimumAge
+                  ? 'Under minimum age'
+                  : undefined
+            }
+            className={`flex-1 ${
+              !requiredOk || underMinimumAge
+                ? 'bg-slate-300 text-slate-500 cursor-not-allowed hover:bg-slate-300 opacity-70'
+                : 'bg-teal-600 hover:bg-teal-700'
+            }`}
           >
-            Accept &amp; Continue
+            {saving ? 'Saving…' : 'Accept & Continue'}
           </Button>
         </div>
 
         {underMinimumAge && (
-          <p className="text-xs text-center text-red-600">
-            [LEGAL REVIEW NEEDED] Based on the date of birth entered, you appear under the minimum
-            age (draft: 13). Account creation cannot continue until legal review defines the correct
-            flow.
+          <p className="text-xs text-center text-red-600" role="alert">
+            Based on the date of birth entered, you appear under the minimum age (draft: 13). You
+            cannot continue until this is resolved.
           </p>
         )}
 
         {!requiredOk && !underMinimumAge && (
-          <p className="text-xs text-center text-red-600">
-            Please complete required consents and date of birth to continue
+          <p
+            className="text-xs text-center text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2"
+            role="status"
+          >
+            Accept is disabled until you complete:{' '}
+            <span className="font-semibold">{missingRequired.join(', ')}</span>.
+          </p>
+        )}
+
+        {saveError && (
+          <p className="text-xs text-center text-red-700 bg-red-50 border border-red-200 rounded-md px-3 py-2" role="alert">
+            {saveError}
           </p>
         )}
       </DialogContent>

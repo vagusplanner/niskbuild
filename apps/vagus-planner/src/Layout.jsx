@@ -57,6 +57,7 @@ import { AISchedulingProvider } from '@/components/assistant/AISchedulingBridge'
         Sparkles
       } from 'lucide-react';
       import { cn } from '@/lib/utils';
+      import { Button } from '@/components/ui/button';
       import { Toaster, toast } from 'sonner';
       import { base44 } from '@/api/base44Client';
       import { useQuery } from '@tanstack/react-query';
@@ -101,9 +102,6 @@ import {
         return <SuperAgent isOpen={isOpen} onClose={() => setIsOpen(false)} />;
       }
       const UnifiedFAB = React.lazy(() => import('@/components/unified/UnifiedFAB'));
-      const OnboardingFlow = React.lazy(() => import('@/components/onboarding/OnboardingFlow'));
-      const EnhancedOnboardingFlow = React.lazy(() => import('@/components/onboarding/EnhancedOnboardingFlow'));
-      const GuidedTour = React.lazy(() => import('@/components/onboarding/GuidedTour'));
       const SupportFAB = React.lazy(() => import('@/components/support/SupportFAB').catch(() => ({ default: () => null })));
       const GlobalSearch = React.lazy(() => import('@/components/search/GlobalSearch'));
       const PWAInstallPrompt = React.lazy(() => import('@/components/pwa/PWAInstallPrompt').catch(() => ({ default: () => null })));
@@ -136,10 +134,6 @@ export default function Layout({ children, currentPageName }) {
   const [showSplash, setShowSplash] = useState(() => !sessionStorage.getItem('splash_shown'));
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false); // kept for legacy, unused
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const [showGuidedTour, setShowGuidedTour] = useState(false);
-  const [blockingOverlay, setBlockingOverlay] = useState(false);
-  const [tourInterests, setTourInterests] = useState([]);
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [showHelpCenter, setShowHelpCenter] = useState(false);
   const [showHalalFinder, setShowHalalFinder] = useState(false);
@@ -148,6 +142,8 @@ export default function Layout({ children, currentPageName }) {
   const [planningPeriod, setPlanningPeriod] = useState('week');
   const [isMobile, setIsMobile] = useState(false);
   const [showLegalConsent, setShowLegalConsent] = useState(false);
+  /** After Decline: show a clear gate instead of re-opening the same dialog in a loop. */
+  const [legalConsentDeclined, setLegalConsentDeclined] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
@@ -324,6 +320,7 @@ export default function Layout({ children, currentPageName }) {
   // Check legal consent on first visit (only once per user)
   useEffect(() => {
     if (!user?.email) return;
+    if (legalConsentDeclined) return;
 
     const mirror = readLocalConsentMirror(user.email);
     if (mirror && hasCompletedLegalConsent(mirror)) return;
@@ -346,7 +343,7 @@ export default function Layout({ children, currentPageName }) {
       const timer = setTimeout(() => setShowLegalConsent(true), 800);
       return () => clearTimeout(timer);
     }
-  }, [user?.email, userSettings, settings, showLegalConsent]);
+  }, [user?.email, userSettings, settings, showLegalConsent, legalConsentDeclined]);
 
   const isRootPage = ROOT_PAGES.includes(currentPageName);
   
@@ -404,48 +401,13 @@ export default function Layout({ children, currentPageName }) {
   });
 
   useEffect(() => {
-  if (settings.length > 0 && !settings[0]?.onboarding_completed) {
-    // Only show onboarding once per session
-    const hasShownOnboarding = sessionStorage.getItem('onboarding_shown');
-    if (!hasShownOnboarding) {
-      setShowOnboarding(true);
-      sessionStorage.setItem('onboarding_shown', '1');
-    }
-  }
-  }, [settings]);
-
-  useEffect(() => {
-    const handleStartTour = () => setShowGuidedTour(true);
-    const handleOnboardingComplete = (e) => {
-      const interests = e.detail?.interests || [];
-      setTourInterests(interests);
-      // Auto-launch tour after short delay
-      setTimeout(() => setShowGuidedTour(true), 800);
-    };
     const handleOpenPlanner = (e) => {
       setPlanningPeriod(e.detail?.period || 'week');
       setShowPlanningAssistant(true);
     };
-
-    window.addEventListener('start_guided_tour', handleStartTour);
-    window.addEventListener('onboarding_complete', handleOnboardingComplete);
     window.addEventListener('open_planning_assistant', handleOpenPlanner);
-    return () => {
-      window.removeEventListener('start_guided_tour', handleStartTour);
-      window.removeEventListener('onboarding_complete', handleOnboardingComplete);
-      window.removeEventListener('open_planning_assistant', handleOpenPlanner);
-    };
+    return () => window.removeEventListener('open_planning_assistant', handleOpenPlanner);
   }, []);
-
-  // Emit first-access events when landing on key pages
-  useEffect(() => {
-    const pages = ['Islam', 'Wellness', 'Calendar', 'Dashboard'];
-    if (!pages.includes(currentPageName)) return;
-    const storageKey = `first_access_${currentPageName}`;
-    if (!localStorage.getItem(storageKey)) {
-      window.dispatchEvent(new CustomEvent('page_first_access', { detail: { page: currentPageName } }));
-    }
-  }, [currentPageName]);
 
     useEffect(() => {
       const handleKeyDown = (e) => {
@@ -802,31 +764,72 @@ export default function Layout({ children, currentPageName }) {
       <CapacitorPushRegistration />
       <CapacitorStatusBarSetup />
 
-      {/* GDPR legal consent — must mount (was previously imported but never rendered) */}
+      {/* GDPR legal consent gate */}
       <React.Suspense fallback={null}>
-        {showLegalConsent && (
+        {showLegalConsent && !legalConsentDeclined && (
           <LegalConsentFlow
             isOpen={showLegalConsent}
             onDecline={() => {
               setShowLegalConsent(false);
-              toast.error(
-                '[LEGAL REVIEW NEEDED] You must accept required terms to use Vagus Planner.'
-              );
+              setLegalConsentDeclined(true);
             }}
             onAccept={async (payload) => {
               try {
                 await saveGdprConsents(payload, { email: user?.email });
                 setShowLegalConsent(false);
+                setLegalConsentDeclined(false);
                 queryClient.invalidateQueries({ queryKey: ['userSettings'] });
                 toast.success('Preferences saved');
               } catch (err) {
                 console.error(err);
-                toast.error('Could not save consent preferences');
+                const detail =
+                  err instanceof Error && err.message
+                    ? err.message
+                    : 'Unknown error saving preferences';
+                // Re-throw so LegalConsentFlow can show the inline actionable error.
+                throw new Error(
+                  `${detail} Your answers were not saved. Stay on this screen, check your connection, and tap Accept again.`
+                );
               }
             }}
           />
         )}
       </React.Suspense>
+
+      {legalConsentDeclined && (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center bg-slate-950/80 p-4">
+          <div className="max-w-md w-full rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-6 shadow-2xl space-y-4 text-center">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+              Required terms not accepted
+            </h2>
+            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              You must accept the Terms of Service, Privacy Policy, essential cookies, and age
+              confirmation to use Vagus Planner. You can review the policies and accept below, or
+              leave the app.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button
+                className="flex-1 bg-teal-600 hover:bg-teal-700"
+                onClick={() => {
+                  setLegalConsentDeclined(false);
+                  setShowLegalConsent(true);
+                }}
+              >
+                Review &amp; Accept
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  navigate('/');
+                }}
+              >
+                Leave app
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Lazy non-critical components */}
       <React.Suspense fallback={null}>

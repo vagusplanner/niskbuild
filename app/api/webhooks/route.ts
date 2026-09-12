@@ -33,6 +33,7 @@ import {
   upsertVpInvoiceFromStripe,
   upsertVpSubscriptionFromStripe,
 } from '@/lib/vp-stripe-billing-sync';
+import { ensureProfileForUser } from '@/lib/ensure-profile';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -66,11 +67,21 @@ async function syncVpBillingFromSubscription(
     typeof opts.subscription.customer === 'string'
       ? opts.subscription.customer
       : opts.subscription.customer?.id ?? null;
-  const user = await resolveVpBillingUser(supabase, {
+
+  // VP-only signups historically lacked a profiles row — create one from metadata before sync.
+  if (opts.userId) {
+    await ensureProfileForUser({
+      userId: opts.userId,
+      email: opts.email,
+    });
+  }
+
+  let user = await resolveVpBillingUser(supabase, {
     userId: opts.userId,
     email: opts.email,
     customerId,
   });
+
   if (!user?.userId) {
     console.warn(
       '[vp-billing] skip vp_subscriptions sync — no profile for',
@@ -281,6 +292,12 @@ async function processStripeEvent(
         typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
 
       let profileUserId = typeof userId === 'string' ? userId : null;
+      if (profileUserId) {
+        await ensureProfileForUser({
+          userId: profileUserId,
+          email: customerEmail,
+        });
+      }
       if (!profileUserId && customerEmail) {
         const { data: existing } = await supabase
           .from('profiles')
@@ -357,18 +374,24 @@ async function processStripeEvent(
   if (event.type === 'customer.subscription.created') {
     const subscription = event.data.object as Stripe.Subscription;
     const customerId = subscription.customer as string;
+    const metaUserId =
+      typeof subscription.metadata?.userId === 'string' ? subscription.metadata.userId : null;
     const customer = await stripe.customers.retrieve(customerId);
     if (!customer.deleted && customer.email && subscription.status === 'active') {
       const tier = resolveTierFromSubscription(subscription);
+      if (metaUserId) {
+        await ensureProfileForUser({ userId: metaUserId, email: customer.email });
+      }
       await requireProfileUpdate(
         supabase
           .from('profiles')
           .update(profileUpdatesForNewSubscription(tier, customerId, subscription.id))
-          .eq('email', customer.email)
+          .eq(metaUserId ? 'id' : 'email', metaUserId || customer.email)
       );
-      await handleSubscriptionActivated(supabase, customer.email);
+      await handleSubscriptionActivated(supabase, customer.email, metaUserId);
       await syncVpBillingFromSubscription(supabase, {
         subscription,
+        userId: metaUserId,
         email: customer.email,
         fallbackTier: tier,
       });
@@ -377,8 +400,7 @@ async function processStripeEvent(
       await syncVpBillingFromSubscription(supabase, {
         subscription,
         email: !customer.deleted ? customer.email : null,
-        userId:
-          typeof subscription.metadata?.userId === 'string' ? subscription.metadata.userId : null,
+        userId: metaUserId,
         fallbackTier: resolveTierFromSubscription(subscription),
       });
     }

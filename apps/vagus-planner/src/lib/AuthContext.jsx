@@ -3,6 +3,7 @@ import { supabase } from './base44-compat';
 import { getSafeSession } from './supabaseSession';
 import { mapSupabaseUserToVpUser } from './vp-auth-user';
 import { isStaticBundleContext, redirectToVpLogin } from './static-bundle';
+import { ensureVpBillingProfile } from './ensureVpBillingProfile';
 
 const AuthContext = createContext();
 
@@ -45,6 +46,7 @@ function applyUserState(authUser, { setUser, setIsAuthenticated, setAuthError })
   setIsAuthenticated(!!vpUser);
   if (vpUser) {
     setAuthError(null);
+    void ensureVpBillingProfile(vpUser.id);
   }
 }
 
@@ -63,7 +65,10 @@ export const AuthProvider = ({ children }) => {
       const vpUser = await resolveAuthenticatedUser();
       setUser(vpUser);
       setIsAuthenticated(!!vpUser);
-      if (!vpUser) {
+      if (vpUser) {
+        setAuthError(null);
+        void ensureVpBillingProfile(vpUser.id);
+      } else {
         setAuthError(null);
       }
     } catch (error) {
@@ -131,6 +136,7 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(true);
       setAuthError(null);
       setAuthChecked(true);
+      void ensureVpBillingProfile(vpUser?.id);
       return { user: vpUser, session: data.session };
     } catch (error) {
       console.error('Sign in error:', error);
@@ -155,6 +161,9 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(!!vpUser);
       setAuthError(null);
       setAuthChecked(true);
+      if (vpUser?.id) {
+        void ensureVpBillingProfile(vpUser.id);
+      }
       return { user: vpUser, session: data.session };
     } catch (error) {
       console.error('Sign up error:', error);
