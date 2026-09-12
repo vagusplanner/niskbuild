@@ -23,12 +23,6 @@ import HijriCalendar from '@/components/islamic/HijriCalendar';
 import PeriodTracker, { getPredictedPeriodDays } from '@/components/health/PeriodTracker';
 import ConflictResolutionModal from '@/components/calendar/ConflictResolutionModal';
 import ConflictNotificationBanner from '@/components/calendar/ConflictNotificationBanner';
-import WelcomeQuestionnaire from '@/components/onboarding/WelcomeQuestionnaire';
-import {
-  isOnboardingSeenLocally,
-  markOnboardingSeenLocally,
-  persistOnboardingCompleted,
-} from '@/lib/vp-onboarding-seen';
 import AdvancedMeetingScheduler from '@/components/calendar/AdvancedMeetingScheduler';
 import DayHourlyView from '@/components/calendar/DayHourlyView';
 import CalendarAgendaView from '@/components/calendar/CalendarAgendaView';
@@ -75,7 +69,6 @@ export default function CalendarPage() {
   const [editingEvent, setEditingEvent] = useState(null);
   const [showAdvancedScheduler, setShowAdvancedScheduler] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
   const [showDayView, setShowDayView] = useState(false);
   const [conflictToResolve, setConflictToResolve] = useState(null);
   const [showLegend, setShowLegend] = useState(false);
@@ -109,8 +102,6 @@ export default function CalendarPage() {
   const [showIslamicPanel, setShowIslamicPanel] = useState(false);
   const [showAISchedulePlanner, setShowAISchedulePlanner] = useState(false);
   const calendarRef = useRef(null);
-  const onboardingPersistStartedRef = useRef(false);
-  const settingsRef = useRef(null);
 
   const queryClient = useQueryClient();
 
@@ -227,7 +218,7 @@ export default function CalendarPage() {
     });
   }, [rawEvents]);
 
-  const { data: settingsData, isLoading: settingsLoading } = useQuery({
+  const { data: settingsData } = useQuery({
     queryKey: ['userSettings'],
     // Match useIslamicEdition staleTime. Never swallow errors as [] — that poisons
     // the shared cache and makes Layout hide Islam on Calendar until Account refetches.
@@ -251,41 +242,6 @@ export default function CalendarPage() {
     }
   }, [settings?.google_calendar_connected, settings?.google_calendar_sync_enabled, queryClient, user?.id]);
 
-  // Show WelcomeQuestionnaire once per user. Mark localStorage immediately when shown so
-  // navigating away from Calendar cannot re-prompt; persist DB on complete/skip/unmount.
-  useEffect(() => {
-    settingsRef.current = settings;
-  }, [settings]);
-
-  useEffect(() => {
-    if (!user?.email || settingsLoading) return;
-    const done = settings?.onboarding_completed;
-    if (done || isOnboardingSeenLocally(user.email)) return;
-    markOnboardingSeenLocally(user.email);
-    setShowOnboarding(true);
-  }, [user?.email, settings, settingsLoading]);
-
-  const markOnboardingSeen = React.useCallback(async () => {
-    if (!user?.email || onboardingPersistStartedRef.current) return;
-    onboardingPersistStartedRef.current = true;
-    markOnboardingSeenLocally(user.email);
-    await persistOnboardingCompleted({ email: user.email, settings: settingsRef.current });
-    queryClient.invalidateQueries({ queryKey: ['userSettings'] });
-  }, [user?.email, queryClient]);
-
-  // Any dismissal path — including route unmount without Skip/X — persists "seen".
-  // Depend only on showOnboarding so settings refetch does not re-run cleanup mid-flow.
-  useEffect(() => {
-    if (!showOnboarding) return undefined;
-    return () => {
-      void markOnboardingSeen();
-    };
-  }, [showOnboarding, markOnboardingSeen]);
-
-  const onboardingComplete = async () => {
-    setShowOnboarding(false);
-    await markOnboardingSeen();
-  };
   const { data: periods = [] } = useQuery({
     queryKey: ['periods'],
     queryFn: () => base44.entities.Period.list('-start_date', 50)
@@ -453,11 +409,6 @@ export default function CalendarPage() {
   return (
     <PullToRefresh onRefresh={handleRefresh}>
       <div className="h-[calc(100dvh-3.5rem)] lg:h-screen bg-transparent" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-
-        {/* Onboarding */}
-        {showOnboarding && user && (
-          <WelcomeQuestionnaire onComplete={onboardingComplete} onSkip={onboardingComplete} />
-        )}
 
         {/* Mobile toolbar FAB */}
         {isMobile && !showVerticalToolbar && (

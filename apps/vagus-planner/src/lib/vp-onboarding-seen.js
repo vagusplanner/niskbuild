@@ -1,7 +1,9 @@
 /**
- * WelcomeQuestionnaire "seen" flags — localStorage + vp_user_settings.preferences.onboarding_completed.
- * localStorage is written first (sync) so Calendar navigation-away cannot re-prompt even if the
- * async DB write is still in flight or fails.
+ * Unified welcome completion tracking.
+ * Key: localStorage `onboarding_completed_<email>` + UserSettings.onboarding_completed
+ *
+ * Used by OnboardingGate → WelcomeQuestionnaire (post LegalConsentFlow).
+ * Legacy `onboarding_seen_*` (old InteractiveOnboarding tour) is no longer written.
  */
 
 import { base44 } from '@/api/base44Client';
@@ -30,7 +32,7 @@ export function markOnboardingSeenLocally(email) {
 }
 
 /**
- * Persist onboarding_completed into UserSettings preferences (create or update).
+ * Persist onboarding_completed into UserSettings (create or update).
  * Always writes localStorage first.
  */
 export async function persistOnboardingCompleted({ email, settings }) {

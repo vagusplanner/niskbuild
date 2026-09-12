@@ -803,6 +803,11 @@ export default function Layout({ children, currentPageName }) {
                 setShowLegalConsent(false);
                 setLegalConsentDeclined(false);
                 queryClient.invalidateQueries({ queryKey: ['userSettings'] });
+                try {
+                  window.dispatchEvent(new CustomEvent('vp_legal_consent_saved'));
+                } catch {
+                  // ignore
+                }
                 toast.success('Preferences saved');
               } catch (err) {
                 console.error(err);

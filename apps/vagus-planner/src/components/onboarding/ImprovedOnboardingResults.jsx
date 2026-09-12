@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Sparkles, CheckCircle2, TrendingUp, Target, Zap, Trophy, Gift, Moon, Calendar } from 'lucide-react';
+import { Sparkles, CheckCircle2, TrendingUp, Target, Zap, Trophy, Gift, Moon, Calendar, Keyboard, Compass } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import confetti from 'canvas-confetti';
 import { toast } from 'sonner';
@@ -216,6 +216,35 @@ Make it friendly and personal.${showIslamicContent ? ' Include Islamic-focused s
                 <strong>📧 Check your inbox!</strong> We've sent you a welcome email with helpful tips and resources.
               </p>
             </div>
+          </Card>
+
+          {/* Getting around — essentials from the former InteractiveOnboarding tour */}
+          <Card className="p-5 bg-gradient-to-br from-slate-50 to-teal-50 border-teal-200">
+            <div className="flex items-start gap-3 mb-3">
+              <div className="p-2 bg-teal-600 rounded-lg">
+                <Compass className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h4 className="font-bold text-slate-900">Getting around</h4>
+                <p className="text-sm text-slate-600">
+                  Five main tabs cover most of the app — Calendar, Dashboard, Goals, Connect, and Account.
+                </p>
+              </div>
+            </div>
+            <ul className="space-y-2 text-sm text-slate-700 pl-1">
+              <li className="flex items-start gap-2">
+                <Keyboard className="w-4 h-4 text-teal-600 mt-0.5 shrink-0" />
+                <span>Press <kbd className="px-1.5 py-0.5 rounded bg-white border text-xs font-mono">⌘K</kbd> or <kbd className="px-1.5 py-0.5 rounded bg-white border text-xs font-mono">Ctrl+K</kbd> to search anything instantly</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 text-teal-600 mt-0.5 shrink-0" />
+                <span>Customise theme and colours in Account → Preferences</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 text-teal-600 mt-0.5 shrink-0" />
+                <span>Check Notifications for reminders and updates</span>
+              </li>
+            </ul>
           </Card>
 
           {/* Recommended Features */}

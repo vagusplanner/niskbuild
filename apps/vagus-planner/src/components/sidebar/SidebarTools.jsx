@@ -92,51 +92,105 @@ function QuickNotesWidget({ onClose }) {
 }
 
 // ── Weather Widget ────────────────────────────────────────────────────────────
+// Real Open-Meteo via getWeatherForecast (lat/lon). Not InvokeLLM — the old LLM
+// path invented temps and defaulted city to "London" when settings were empty.
 function WeatherWidget({ settings }) {
-  const city = settings?.location_city || 'London';
+  const savedLat =
+    typeof settings?.latitude === 'number'
+      ? settings.latitude
+      : typeof settings?.lat === 'number'
+        ? settings.lat
+        : null;
+  const savedLon =
+    typeof settings?.longitude === 'number'
+      ? settings.longitude
+      : typeof settings?.lon === 'number'
+        ? settings.lon
+        : null;
+
+  const [coords, setCoords] = useState(() =>
+    savedLat != null && savedLon != null ? { lat: savedLat, lon: savedLon, source: 'settings' } : { lat: null, lon: null, source: null }
+  );
+
+  useEffect(() => {
+    if (savedLat != null && savedLon != null) {
+      setCoords({ lat: savedLat, lon: savedLon, source: 'settings' });
+      return;
+    }
+    if (!navigator.geolocation) {
+      setCoords({ lat: 51.5074, lon: -0.1278, source: 'fallback' });
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) =>
+        setCoords({
+          lat: pos.coords.latitude,
+          lon: pos.coords.longitude,
+          source: 'geo',
+        }),
+      () => setCoords({ lat: 51.5074, lon: -0.1278, source: 'fallback' }),
+      { maximumAge: 1000 * 60 * 10, timeout: 8000 }
+    );
+  }, [savedLat, savedLon]);
+
+  const label =
+    [settings?.location_city, settings?.location_country].filter(Boolean).join(', ') ||
+    (coords.source === 'fallback' ? 'London' : 'Near you');
+
+  const today = new Date().toISOString().slice(0, 10);
   const { data: weather, isLoading } = useQuery({
-    queryKey: ['sidebar_weather', city],
+    queryKey: ['sidebar_weather', coords.lat, coords.lon, today],
     queryFn: async () => {
-      const res = await base44.integrations.Core.InvokeLLM({
-        prompt: `Current weather in ${city}. Return temp_c (number), condition (short string max 3 words), emoji (1 weather emoji), humidity (number), feels_like_c (number).`,
-        add_context_from_internet: true,
-        response_json_schema: {
-          type: 'object',
-          properties: {
-            temp_c: { type: 'number' },
-            condition: { type: 'string' },
-            emoji: { type: 'string' },
-            humidity: { type: 'number' },
-            feels_like_c: { type: 'number' },
-          }
-        }
+      const res = await base44.functions.invoke('getWeatherForecast', {
+        latitude: coords.lat,
+        longitude: coords.lon,
+        date: today,
       });
-      return res;
+      return res?.data ?? res;
     },
+    enabled: coords.lat != null && coords.lon != null,
     staleTime: 1000 * 60 * 30,
     retry: 1,
   });
+
+  const displayTemp =
+    weather &&
+    typeof weather.temperature_min === 'number' &&
+    typeof weather.temperature_max === 'number'
+      ? Math.round((weather.temperature_min + weather.temperature_max) / 2)
+      : null;
 
   return (
     <div className="mx-3 mb-2 rounded-xl p-3" style={{background:`${C.darkSteel}80`, border:`1px solid ${C.steel}30`}}>
       <div className="flex items-center gap-1 mb-1">
         <CloudSun className="w-3 h-3" style={{color:C.sky}} />
-        <span className="text-[10px] font-bold uppercase tracking-wide" style={{color:C.sky}}>Weather · {city}</span>
+        <span className="text-[10px] font-bold uppercase tracking-wide truncate" style={{color:C.sky}}>
+          Weather · {label}
+        </span>
       </div>
-      {isLoading ? (
+      {isLoading || coords.lat == null ? (
         <div className="flex gap-1 items-center">
           <div className="w-3 h-3 rounded-full border-2 animate-spin" style={{borderColor:`${C.cyan}30`, borderTopColor:C.cyan}} />
           <span className="text-[10px]" style={{color:`${C.ice}50`}}>Loading...</span>
         </div>
-      ) : weather ? (
+      ) : weather && displayTemp != null ? (
         <div className="flex items-center justify-between">
           <div>
-            <span className="text-2xl font-black" style={{color:C.ice}}>{weather.temp_c}°</span>
-            <p className="text-[10px]" style={{color:`${C.ice}70`}}>{weather.condition}</p>
+            <span className="text-2xl font-black" style={{color:C.ice}}>
+              {displayTemp}°{weather.unit || 'C'}
+            </span>
+            <p className="text-[10px]" style={{color:`${C.ice}70`}}>{weather.description}</p>
+            <p className="text-[9px]" style={{color:`${C.ice}45`}}>
+              {weather.temperature_min}–{weather.temperature_max}°{weather.unit || 'C'}
+            </p>
           </div>
           <div className="text-right">
-            <span className="text-2xl">{weather.emoji}</span>
-            <p className="text-[10px]" style={{color:`${C.ice}60`}}>💧 {weather.humidity}%</p>
+            <span className="text-2xl">{weather.icon}</span>
+            {weather.precipitation_probability > 0 && (
+              <p className="text-[10px]" style={{color:`${C.ice}60`}}>
+                💧 {weather.precipitation_probability}%
+              </p>
+            )}
           </div>
         </div>
       ) : (
