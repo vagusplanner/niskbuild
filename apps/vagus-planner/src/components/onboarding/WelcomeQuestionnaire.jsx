@@ -126,20 +126,9 @@ export default function WelcomeQuestionnaire({ user, onComplete, onSkip }) {
     }
   };
 
-  if (showResults) {
-    return (
-      <ImprovedOnboardingResults 
-        onboardingData={formData}
-        islamicMode={islamicMode}
-        onComplete={() => {
-          toast.success('Welcome! Your personalized setup is complete.');
-          // Pass focus_areas back so the tour can personalise
-          onComplete({ focus_areas: formData.focus_areas });
-        }} 
-      />
-    );
-  }
-
+  // useMemo MUST run every render — never after a conditional return (Rules of Hooks).
+  // Completing setup sets showResults=true; an early return here previously crashed React
+  // with "Rendered fewer hooks than expected" → blank page.
   const steps = useMemo(() => [
     {
       title: 'Where are you located?',
@@ -342,7 +331,7 @@ export default function WelcomeQuestionnaire({ user, onComplete, onSkip }) {
   ], [islamicMode, formData]);
 
   const currentStep = steps[step - 1];
-  const Icon = currentStep.icon;
+  const Icon = currentStep?.icon || MapPin;
 
   return (
     <motion.div
@@ -350,17 +339,28 @@ export default function WelcomeQuestionnaire({ user, onComplete, onSkip }) {
       animate={{ opacity: 1 }}
       className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[150] flex items-center justify-center p-4"
       onClick={(e) => {
-        // Allow clicking backdrop to skip
-        if (e.target === e.currentTarget) {
+        // Allow clicking backdrop to skip (not during results — finish via Complete)
+        if (e.target === e.currentTarget && !showResults) {
           onSkip();
         }
       }}
     >
-      <Card 
+      <Card
         className="w-full max-w-2xl max-h-[90vh] overflow-y-auto relative z-[151] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6">
+          {showResults ? (
+            <ImprovedOnboardingResults
+              onboardingData={formData}
+              islamicMode={islamicMode}
+              onComplete={() => {
+                toast.success('Welcome! Your personalized setup is complete.');
+                onComplete({ focus_areas: formData.focus_areas });
+              }}
+            />
+          ) : (
+            <>
           {/* Header */}
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-center gap-3 flex-1">
@@ -456,6 +456,8 @@ export default function WelcomeQuestionnaire({ user, onComplete, onSkip }) {
               )}
             </Button>
           </div>
+            </>
+          )}
         </div>
       </Card>
     </motion.div>

@@ -110,6 +110,7 @@ export default function CalendarPage() {
   const [showAISchedulePlanner, setShowAISchedulePlanner] = useState(false);
   const calendarRef = useRef(null);
   const onboardingPersistStartedRef = useRef(false);
+  const settingsRef = useRef(null);
 
   const queryClient = useQueryClient();
 
@@ -253,6 +254,10 @@ export default function CalendarPage() {
   // Show WelcomeQuestionnaire once per user. Mark localStorage immediately when shown so
   // navigating away from Calendar cannot re-prompt; persist DB on complete/skip/unmount.
   useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
+
+  useEffect(() => {
     if (!user?.email || settingsLoading) return;
     const done = settings?.onboarding_completed;
     if (done || isOnboardingSeenLocally(user.email)) return;
@@ -264,11 +269,12 @@ export default function CalendarPage() {
     if (!user?.email || onboardingPersistStartedRef.current) return;
     onboardingPersistStartedRef.current = true;
     markOnboardingSeenLocally(user.email);
-    await persistOnboardingCompleted({ email: user.email, settings });
+    await persistOnboardingCompleted({ email: user.email, settings: settingsRef.current });
     queryClient.invalidateQueries({ queryKey: ['userSettings'] });
-  }, [user?.email, settings, queryClient]);
+  }, [user?.email, queryClient]);
 
   // Any dismissal path — including route unmount without Skip/X — persists "seen".
+  // Depend only on showOnboarding so settings refetch does not re-run cleanup mid-flow.
   useEffect(() => {
     if (!showOnboarding) return undefined;
     return () => {
