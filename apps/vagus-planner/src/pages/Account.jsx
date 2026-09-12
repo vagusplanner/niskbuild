@@ -347,6 +347,15 @@ export default function Account() {
                   </div>
                 </motion.button>
               ))}
+              <p className="sm:col-span-2 lg:col-span-3 text-center pt-1">
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent('open_help_center'))}
+                  className="text-sm font-medium text-[#1D6FB8] hover:underline"
+                >
+                  Tips &amp; Help
+                </button>
+              </p>
             </motion.div>
           ) : (
             <motion.div

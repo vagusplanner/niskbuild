@@ -139,6 +139,12 @@ export default function Layout({ children, currentPageName }) {
   const [showHalalFinder, setShowHalalFinder] = useState(false);
   const [showPlanningAssistant, setShowPlanningAssistant] = useState(false);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+
+  useEffect(() => {
+    const openHelp = () => setShowHelpCenter(true);
+    window.addEventListener('open_help_center', openHelp);
+    return () => window.removeEventListener('open_help_center', openHelp);
+  }, []);
   const [planningPeriod, setPlanningPeriod] = useState('week');
   const [isMobile, setIsMobile] = useState(false);
   const [showLegalConsent, setShowLegalConsent] = useState(false);
@@ -572,6 +578,22 @@ export default function Layout({ children, currentPageName }) {
           />
         </div>
 
+        {/* Tips & Help — single chrome entry (opens HelpCenter modal) */}
+        <div className="p-3" style={{ borderTop: '1px solid rgba(122,158,181,0.25)' }}>
+          <button
+            type="button"
+            onClick={() => setShowHelpCenter(true)}
+            className="w-full text-left px-3 py-2.5 rounded-lg transition-all group flex items-center gap-2"
+            style={{ background: 'rgba(29,111,184,0.12)', border: '1px solid rgba(41,171,226,0.2)' }}
+            title="Tips & Help"
+          >
+            <HelpCircle className="w-4 h-4" style={{ color: '#7BB8D4' }} />
+            <span className="text-sm font-medium" style={{ color: '#D4E0EC' }}>
+              Tips &amp; Help
+            </span>
+          </button>
+        </div>
+
         {/* NSC gold+blue footer accent */}
         <div className="h-[2px] w-full" style={{background:'linear-gradient(90deg, #1D6FB8, #E8B84B, #29ABE2)'}} />
       </aside>
@@ -614,6 +636,15 @@ export default function Layout({ children, currentPageName }) {
               </button>
             )}
             <SmartNotificationCenter />
+            <button
+              type="button"
+              onClick={() => setShowHelpCenter(true)}
+              className="p-1.5 sm:p-2 rounded-lg hover:bg-white/10 transition-colors no-select min-w-[40px] min-h-[40px] flex items-center justify-center"
+              title="Tips & Help"
+              aria-label="Tips and Help"
+            >
+              <HelpCircle className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+            </button>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-1.5 sm:p-2 rounded-lg hover:bg-white/10 transition-colors no-select min-w-[40px] min-h-[40px] flex items-center justify-center"
@@ -842,7 +873,13 @@ export default function Layout({ children, currentPageName }) {
         )}
         {showGlobalSearch && <GlobalSearch isOpen={showGlobalSearch} onOpenChange={setShowGlobalSearch} />}
         <KeyboardShortcutsModal isOpen={showKeyboardShortcuts} onClose={() => setShowKeyboardShortcuts(false)} />
-        {showHelpCenter && <HelpCenter isOpen={showHelpCenter} onClose={() => setShowHelpCenter(false)} />}
+        {showHelpCenter && (
+          <HelpCenter
+            isOpen={showHelpCenter}
+            onClose={() => setShowHelpCenter(false)}
+            islamicMode={!!islamicMode}
+          />
+        )}
         {showHalalFinder && <HalalRestaurantFinder isOpen={showHalalFinder} onClose={() => setShowHalalFinder(false)} />}
         <SuperAgentManager />
         <UnifiedFAB />

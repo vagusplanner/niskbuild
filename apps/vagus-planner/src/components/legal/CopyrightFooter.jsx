@@ -57,8 +57,8 @@ export default function CopyrightFooter() {
                 </Link>
               </li>
               <li>
-                <a href="mailto:support@myassistant.com" className="hover:text-teal-400 transition-colors">
-                  support@myassistant.com
+                <a href="mailto:support@vagusplanner.com" className="hover:text-teal-400 transition-colors">
+                  support@vagusplanner.com
                 </a>
               </li>
               <li>

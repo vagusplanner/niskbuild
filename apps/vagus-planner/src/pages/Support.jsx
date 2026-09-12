@@ -25,7 +25,7 @@ export default function SupportPage() {
 
     try {
       await base44.integrations.Core.SendEmail({
-        to: 'support@myassistant.com',
+        to: 'support@vagusplanner.com',
         replyTo: formData.email,
         subject: `Support Request: ${formData.subject}`,
         body: `
@@ -74,7 +74,7 @@ ${formData.message}
               <div className="p-4 bg-blue-50 rounded-lg text-center">
                 <Mail className="w-6 h-6 text-blue-600 mx-auto mb-2" />
                 <h3 className="font-semibold text-blue-900 mb-1">Email Support</h3>
-                <p className="text-xs text-slate-600">support@myassistant.com</p>
+                <p className="text-xs text-slate-600">support@vagusplanner.com</p>
                 <p className="text-xs text-slate-500 mt-1">Response within 24h</p>
               </div>
               <div className="p-4 bg-purple-50 rounded-lg text-center">
