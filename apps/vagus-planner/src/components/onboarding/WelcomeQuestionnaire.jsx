@@ -144,11 +144,24 @@ export default function WelcomeQuestionnaire({ user, onComplete, onSkip }) {
     {
       title: 'Where are you located?',
       subtitle: islamicMode
-        ? 'For prayer times and timezone settings'
-        : 'For timezone and local calendar features',
+        ? 'We use your location for prayer times, timezone, and calendar accuracy'
+        : 'We use this for your timezone and which public holiday calendar to show — not for prayer or Qibla',
       icon: MapPin,
       content: (
         <div className="space-y-4">
+          {!islamicMode && (
+            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 p-3">
+              Accurate city and country help schedule events in the right timezone and display the
+              correct local/public holidays on your calendar. You can refine timezone and holiday
+              country anytime in Account → Preferences.
+            </p>
+          )}
+          {islamicMode && (
+            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed rounded-xl bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900 p-3">
+              Location powers prayer-time calculations and keeps your calendar timezone correct.
+              Enable prayer times below if you want them on the calendar.
+            </p>
+          )}
           <div>
             <Label htmlFor="city">City</Label>
             <Input

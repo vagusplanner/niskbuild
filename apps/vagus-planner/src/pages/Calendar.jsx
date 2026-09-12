@@ -24,6 +24,11 @@ import PeriodTracker, { getPredictedPeriodDays } from '@/components/health/Perio
 import ConflictResolutionModal from '@/components/calendar/ConflictResolutionModal';
 import ConflictNotificationBanner from '@/components/calendar/ConflictNotificationBanner';
 import WelcomeQuestionnaire from '@/components/onboarding/WelcomeQuestionnaire';
+import {
+  isOnboardingSeenLocally,
+  markOnboardingSeenLocally,
+  persistOnboardingCompleted,
+} from '@/lib/vp-onboarding-seen';
 import AdvancedMeetingScheduler from '@/components/calendar/AdvancedMeetingScheduler';
 import DayHourlyView from '@/components/calendar/DayHourlyView';
 import CalendarAgendaView from '@/components/calendar/CalendarAgendaView';
@@ -104,6 +109,7 @@ export default function CalendarPage() {
   const [showIslamicPanel, setShowIslamicPanel] = useState(false);
   const [showAISchedulePlanner, setShowAISchedulePlanner] = useState(false);
   const calendarRef = useRef(null);
+  const onboardingPersistStartedRef = useRef(false);
 
   const queryClient = useQueryClient();
 
@@ -244,14 +250,36 @@ export default function CalendarPage() {
     }
   }, [settings?.google_calendar_connected, settings?.google_calendar_sync_enabled, queryClient, user?.id]);
 
-  // Show onboarding once per user
+  // Show WelcomeQuestionnaire once per user. Mark localStorage immediately when shown so
+  // navigating away from Calendar cannot re-prompt; persist DB on complete/skip/unmount.
   useEffect(() => {
-    if (!user || settingsLoading) return;
+    if (!user?.email || settingsLoading) return;
     const done = settings?.onboarding_completed;
-    const shownKey = `onboarding_completed_${user.email}`;
-    if (!done && !localStorage.getItem(shownKey)) setShowOnboarding(true);
-  }, [user, settings, settingsLoading]);
+    if (done || isOnboardingSeenLocally(user.email)) return;
+    markOnboardingSeenLocally(user.email);
+    setShowOnboarding(true);
+  }, [user?.email, settings, settingsLoading]);
 
+  const markOnboardingSeen = React.useCallback(async () => {
+    if (!user?.email || onboardingPersistStartedRef.current) return;
+    onboardingPersistStartedRef.current = true;
+    markOnboardingSeenLocally(user.email);
+    await persistOnboardingCompleted({ email: user.email, settings });
+    queryClient.invalidateQueries({ queryKey: ['userSettings'] });
+  }, [user?.email, settings, queryClient]);
+
+  // Any dismissal path — including route unmount without Skip/X — persists "seen".
+  useEffect(() => {
+    if (!showOnboarding) return undefined;
+    return () => {
+      void markOnboardingSeen();
+    };
+  }, [showOnboarding, markOnboardingSeen]);
+
+  const onboardingComplete = async () => {
+    setShowOnboarding(false);
+    await markOnboardingSeen();
+  };
   const { data: periods = [] } = useQuery({
     queryKey: ['periods'],
     queryFn: () => base44.entities.Period.list('-start_date', 50)
@@ -385,17 +413,6 @@ export default function CalendarPage() {
     }),
     [events, selectedDate]
   );
-
-  const onboardingComplete = async () => {
-    setShowOnboarding(false);
-    localStorage.setItem(`onboarding_completed_${user.email}`, 'true');
-    if (!settings) {
-      await base44.entities.UserSettings.create({ onboarding_completed: true });
-    } else {
-      await base44.entities.UserSettings.update(settings.id, { onboarding_completed: true });
-    }
-    queryClient.invalidateQueries({ queryKey: ['userSettings'] });
-  };
 
   // Shared event click handler
   const openEventDetails = (event) => { setSelectedEventForDetails(event); setShowEventDetails(true); };

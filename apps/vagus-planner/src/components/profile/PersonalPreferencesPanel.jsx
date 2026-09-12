@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -16,6 +16,7 @@ import {
   Loader2, ChevronDown, ChevronUp, Info
 } from 'lucide-react';
 import PublicHolidaysSettings from '@/components/settings/PublicHolidaysSettings';
+import LocationDetailsPrompt from '@/components/profile/LocationDetailsPrompt';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useIslamicEdition } from '@/hooks/useIslamicEdition';
@@ -47,9 +48,12 @@ const PRAYERS = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
 export default function PersonalPreferencesPanel({ settingsData: settingsDataProp }) {
   const queryClient = useQueryClient();
   const [showPrayerAdvanced, setShowPrayerAdvanced] = useState(false);
+  const [locationPromptOpen, setLocationPromptOpen] = useState(false);
+  const [changedLocationFields, setChangedLocationFields] = useState([]);
+  const locationPromptHandledRef = useRef(false);
   // Edition switching lives once in Account → Preferences (Account.jsx).
   // This panel only reads islamic_mode to gate prayer-time prefs.
-  const { hasPaidIslamicAccess } = useIslamicEdition();
+  const { hasPaidIslamicAccess, islamicMode } = useIslamicEdition();
 
   const { data: settingsQueryData = [] } = useQuery({
     queryKey: ['userSettings'],
@@ -105,10 +109,29 @@ export default function PersonalPreferencesPanel({ settingsData: settingsDataPro
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['userSettings'] });
+    },
+  });
+
+  const finishSaveAndReload = async (payload) => {
+    try {
+      await saveMutation.mutateAsync(payload);
       toast.success('Preferences saved! Reloading to apply changes…');
       setTimeout(() => window.location.reload(), 800);
+    } catch (error) {
+      console.error('Error saving preferences:', error);
+      toast.error('Failed to save preferences');
     }
-  });
+  };
+
+  const locationRelevantChanges = () => {
+    const baselineTz =
+      settings?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    const baselineCountry = settings?.public_holidays_country || 'GB';
+    const fields = [];
+    if (form.timezone !== baselineTz) fields.push('timezone');
+    if (form.public_holidays_country !== baselineCountry) fields.push('holiday country');
+    return fields;
+  };
 
   const toggleDiet = (id) => {
     setForm(prev => ({
@@ -119,10 +142,59 @@ export default function PersonalPreferencesPanel({ settingsData: settingsDataPro
     }));
   };
 
-  const handleSave = () => saveMutation.mutate(form);
+  const handleSave = () => {
+    const fields = locationRelevantChanges();
+    if (fields.length > 0) {
+      locationPromptHandledRef.current = false;
+      setChangedLocationFields(fields);
+      setLocationPromptOpen(true);
+      return;
+    }
+    void finishSaveAndReload(form);
+  };
+
+  const handleLocationPromptSkip = () => {
+    if (locationPromptHandledRef.current) return;
+    locationPromptHandledRef.current = true;
+    setLocationPromptOpen(false);
+    void finishSaveAndReload(form);
+  };
+
+  const handleLocationPromptConfirm = ({ location_city, location_country }) => {
+    if (locationPromptHandledRef.current) return;
+    locationPromptHandledRef.current = true;
+    setLocationPromptOpen(false);
+    void finishSaveAndReload({
+      ...form,
+      location_city: location_city || settings?.location_city || '',
+      location_country: location_country || settings?.location_country || '',
+    });
+  };
 
   return (
     <div className="space-y-6">
+
+      <LocationDetailsPrompt
+        open={locationPromptOpen}
+        onOpenChange={(open) => {
+          if (open) {
+            setLocationPromptOpen(true);
+            return;
+          }
+          // Escape / overlay dismiss — still save prefs, same as "Not now"
+          if (!locationPromptHandledRef.current) {
+            handleLocationPromptSkip();
+          } else {
+            setLocationPromptOpen(false);
+          }
+        }}
+        islamicMode={!!(islamicMode && hasPaidIslamicAccess)}
+        initialCity={settings?.location_city || ''}
+        initialCountry={settings?.location_country || ''}
+        changedFields={changedLocationFields}
+        onConfirm={handleLocationPromptConfirm}
+        onSkip={handleLocationPromptSkip}
+      />
 
       {/* ── Dietary Preferences ── */}
       <Card className="border-0 shadow-sm bg-white dark:bg-slate-900">
@@ -187,7 +259,9 @@ export default function PersonalPreferencesPanel({ settingsData: settingsDataPro
             Timezone
           </CardTitle>
           <CardDescription>
-            Used for event scheduling, prayer time calculation, and all time-based features.
+            Used for event scheduling and all time-based features
+            {form.islamic_mode && hasPaidIslamicAccess ? ', including prayer times' : ''}.
+            Changing timezone prompts you to refresh city/country for holiday accuracy.
           </CardDescription>
         </CardHeader>
         <CardContent>
