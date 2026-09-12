@@ -78,6 +78,12 @@ export default function BillingPage() {
 
       setIsProcessingCheckout(true);
       const priceId = overridePriceId || getPriceId(planId, billingCycle);
+
+      if (!priceId) {
+        setIsProcessingCheckout(false);
+        toast.error('This plan requires contacting sales — no self-serve checkout.');
+        return;
+      }
       
       // Show loading toast
       const loadingToast = toast.loading('Preparing checkout session...');
@@ -178,21 +184,26 @@ export default function BillingPage() {
   };
 
   const getPriceId = (planId, billingCycle = 'monthly') => {
+    // Enterprise / Enterprise Islamic are contact-sales only — no Stripe price IDs.
     const priceIds = {
       basic: {
-        monthly: 'price_1T1BluJyFnU6pCi2dPp6i0GS',
-        annual: 'price_1T1BluJyFnU6pCi2W4CQkEvy'
+        monthly: 'price_1UEsCtDffiW7XraejBFwVrhM',
+        annual: 'price_1UEsLZDffiW7XraeShnl44RZ',
       },
       pro: {
-        monthly: 'price_1T1BluJyFnU6pCi2imsJixKd',
-        annual: 'price_1T1BluJyFnU6pCi2RtkCllVn'
+        monthly: 'price_1UEsNyDffiW7XraeRSw8DWzq',
+        annual: 'price_1UEsRXDffiW7Xraegd8wRHJm',
       },
-      enterprise: {
-        monthly: 'price_1T1BluJyFnU6pCi2hxmAwN6t',
-        annual: 'price_1T1BluJyFnU6pCi2ncPv3r6R'
-      }
+      basic_islamic: {
+        monthly: 'price_1UEsf1DffiW7Xraec1IYssZQ',
+        annual: 'price_1UEshtDffiW7XraeDIPGDQL9',
+      },
+      pro_islamic: {
+        monthly: 'price_1UEszGDffiW7Xrae5pf4We07',
+        annual: 'price_1UEt1TDffiW7XraeTRYGtCGr',
+      },
     };
-    return priceIds[planId]?.[billingCycle] || priceIds.basic.monthly;
+    return priceIds[planId]?.[billingCycle] || null;
   };
 
   const handleViewInvoice = (invoice) => {

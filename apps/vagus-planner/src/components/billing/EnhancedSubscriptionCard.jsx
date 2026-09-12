@@ -26,21 +26,34 @@ const planFeatures = {
   },
   basic: {
     name: 'Basic',
-    price: 9.99,
+    price: 7.99,
     color: 'blue',
     features: ['1,000 AI requests/month', '500 events', '500 tasks', 'Email support'],
     limits: { ai_requests: 1000, events: 500, tasks: 500 }
   },
   pro: {
     name: 'Pro',
-    price: 19.99,
+    price: 14.99,
     color: 'purple',
     features: ['5,000 AI requests/month', 'Unlimited events & tasks', 'Priority support', 'Advanced analytics'],
     limits: { ai_requests: 5000, events: -1, tasks: -1 }
   },
+  basic_islamic: {
+    name: 'Basic Islamic',
+    price: 9.99,
+    color: 'blue',
+    features: ['1,000 AI requests/month', '500 events', 'Full Islamic Edition basics', 'Email support'],
+    limits: { ai_requests: 1000, events: 500, tasks: 500 }
+  },
+  pro_islamic: {
+    name: 'Pro Islamic',
+    price: 19.99,
+    color: 'purple',
+    features: ['5,000 AI requests/month', 'Unlimited events & tasks', 'Full Islamic suite', 'Priority support'],
+    limits: { ai_requests: 5000, events: -1, tasks: -1 }
+  },
   enterprise: {
     name: 'Enterprise',
-    price: 49.99,
     color: 'amber',
     features: ['Unlimited AI requests', 'Unlimited events & tasks', 'Priority support', 'Advanced analytics', 'Custom integrations'],
     limits: { ai_requests: -1, events: -1, tasks: -1 }

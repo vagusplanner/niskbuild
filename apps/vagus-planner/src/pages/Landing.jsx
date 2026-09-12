@@ -309,9 +309,9 @@ function PricingSection({ onSelectPlan }) {
   const standardPlans = [
     { name:'Free', monthlyPrice:0, yearlyPrice:0, border:'border-white/10', badge:null, highlighted:false, isCustom:false, isFree:true,
       features:['Basic Calendar','Task Management','Mobile Access','Limited AI','1 User'] },
-    { name:'Basic', monthlyPrice:7.99, yearlyPrice:70, border:'border-white/10', badge:null, highlighted:false, isCustom:false,
+    { name:'Basic', monthlyPrice:7.99, yearlyPrice:79.99, border:'border-white/10', badge:null, highlighted:false, isCustom:false,
       features:['Smart Calendar','Basic AI Assistant','Wellness Tracking','Goals & Habits','Mobile App','1 User'] },
-    { name:'Pro', monthlyPrice:14.99, yearlyPrice:149, border:'border-[#E8B84B]/50', badge:'Most Popular', highlighted:true, isCustom:false,
+    { name:'Pro', monthlyPrice:14.99, yearlyPrice:149.99, border:'border-[#E8B84B]/50', badge:'Most Popular', highlighted:true, isCustom:false,
       features:['Everything in Basic','Full AI Features','Advanced Analytics','Finance Tracker','Travel Planner','Team (5 users)','Priority Support'] },
     { name:'Enterprise', monthlyPrice:null, yearlyPrice:null, border:'border-[#3ecfa0]/30', badge:null, highlighted:false, isCustom:true,
       features:['Everything in Pro','Unlimited Members','Custom Integrations','API Access','White-label','Account Manager'] },
@@ -319,9 +319,9 @@ function PricingSection({ onSelectPlan }) {
   const islamicPlans = [
     { name:'Free', monthlyPrice:0, yearlyPrice:0, border:'border-white/10', badge:null, highlighted:false, isCustom:false, isFree:true,
       features:['Basic Calendar','Prayer Times','Quran Reader','Task Management','Mobile Access'] },
-    { name:'Basic Islamic', monthlyPrice:9.99, yearlyPrice:89, border:'border-white/10', badge:null, highlighted:false, isCustom:false,
+    { name:'Basic Islamic', monthlyPrice:9.99, yearlyPrice:99.99, border:'border-white/10', badge:null, highlighted:false, isCustom:false,
       features:['Smart Calendar','Full Islamic Mode','Prayer & Qibla','Quran Reader','Wellness','Goals & Habits'] },
-    { name:'Pro Islamic', monthlyPrice:17.99, yearlyPrice:179, border:'border-[#E8B84B]/50', badge:'Most Popular', highlighted:true, isCustom:false,
+    { name:'Pro Islamic', monthlyPrice:19.99, yearlyPrice:199.99, border:'border-[#E8B84B]/50', badge:'Most Popular', highlighted:true, isCustom:false,
       features:['Everything in Basic Islamic','All 8 Unique Islamic Tools','Zakat Calculator','Ramadan Planner','Hajj Guide','AI Islamic Coach','Team (5 users)'] },
     { name:'Enterprise Islamic', monthlyPrice:null, yearlyPrice:null, border:'border-[#3ecfa0]/30', badge:null, highlighted:false, isCustom:true,
       features:['Everything in Pro Islamic','Unlimited Members','Mosque/Org Features','Custom Content','White-label','Account Manager'] },
