@@ -13,11 +13,15 @@ export const NAVIGATION_MAP = {
   'wellness': '/Wellness',
   'account': '/Account',
 
-  // Consolidated Deep Links (avoid duplicates)
-  'profile': '/Account#profile',
-  'settings': '/Account#settings',
+  // Consolidated Deep Links (Account ownership tabs)
+  'profile': '/Account#personal',
+  'personal': '/Account#personal',
+  'security': '/Account#security',
+  'settings': '/Account#preferences',
+  'preferences': '/Account#preferences',
   'billing': '/Account#billing',
-  'notifications': '/Account#settings',
+  'notifications': '/Account#preferences',
+  'privacy': '/Account#privacy',
 
   // Islamic Edition Features (in Islam page)
   'prayer': '/Islam?section=prayer',
@@ -39,7 +43,7 @@ export const QUICK_ACTIONS = [
   { label: 'New Goal', icon: 'Target', link: '/Goals', shortcut: 'G' },
   { label: 'New Task', icon: 'CheckSquare', link: '/Calendar?tab=tasks', shortcut: 'T' },
   { label: 'Wellness', icon: 'Heart', link: '/Wellness', shortcut: 'W' },
-  { label: 'Settings', icon: 'Settings', link: '/Account#settings', shortcut: 'S' },
+  { label: 'Settings', icon: 'Settings', link: '/Account#preferences', shortcut: 'S' },
 ];
 
 /**

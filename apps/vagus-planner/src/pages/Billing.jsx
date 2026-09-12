@@ -9,9 +9,9 @@ import EnhancedSubscriptionCard from '@/components/billing/EnhancedSubscriptionC
 import BillingHistory from '@/components/billing/BillingHistory';
 import UsageTracker from '@/components/billing/UsageTracker';
 import PaymentMethodManager from '@/components/billing/PaymentMethodManager';
-import EmailNotificationSettings from '@/components/billing/EmailNotificationSettings';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Link } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import AIBusinessInsights from '@/components/analytics/AIBusinessInsights';
 import AIPlanRecommendation from '@/components/billing/AIPlanRecommendation';
@@ -384,11 +384,19 @@ export default function BillingPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Email Notification Settings — real billing relationship only */}
+      {/* Email prefs live in Account → Preferences (single ownership) */}
       {!platformOwnerBypass && (
-        <section>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4">Email Preferences</h2>
-          <EmailNotificationSettings />
+        <section className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/40 p-4">
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            Billing and product email alerts are managed under{' '}
+            <Link
+              to="/Account#preferences"
+              className="font-semibold text-[#1D6FB8] hover:underline"
+            >
+              Account → Preferences
+            </Link>
+            .
+          </p>
         </section>
       )}
 

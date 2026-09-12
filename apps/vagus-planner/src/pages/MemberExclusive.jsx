@@ -1,12 +1,11 @@
-// Member Perks redirects to Profile (Billing tab)
+// Member Perks redirects to Account → Subscription & Billing
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
 
 export default function MemberExclusivePage() {
   const navigate = useNavigate();
   useEffect(() => {
-    navigate(createPageUrl('Profile') + '?tab=billing', { replace: true });
-  }, []);
+    navigate('/Account#billing', { replace: true });
+  }, [navigate]);
   return null;
 }

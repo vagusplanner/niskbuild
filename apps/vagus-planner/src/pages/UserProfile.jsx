@@ -1,12 +1,11 @@
-// UserProfile redirects to Profile page
+// UserProfile redirects to Account → Personal Info
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
 
 export default function UserProfilePage() {
   const navigate = useNavigate();
   useEffect(() => {
-    navigate(createPageUrl('Profile'), { replace: true });
-  }, []);
+    navigate('/Account#personal', { replace: true });
+  }, [navigate]);
   return null;
 }

@@ -1,12 +1,11 @@
-// Settings page redirects to the Account/Profile page (Settings tab)
+// Settings page redirects to Account → Preferences
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
 
 export default function SettingsPage() {
   const navigate = useNavigate();
   useEffect(() => {
-    navigate(createPageUrl('Profile') + '?tab=settings', { replace: true });
-  }, []);
+    navigate('/Account#preferences', { replace: true });
+  }, [navigate]);
   return null;
 }
