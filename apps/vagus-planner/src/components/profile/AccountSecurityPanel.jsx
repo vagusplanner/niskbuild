@@ -1,21 +1,23 @@
 import React from 'react';
-import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Lock, LogOut, KeyRound, Info } from 'lucide-react';
 import TwoFactorAuth from '@/components/settings/TwoFactorAuth';
+import { useAuth } from '@/lib/AuthContext';
 
 /**
  * Security tab: password reset guidance, sign-out, and 2FA overview.
  */
 export default function AccountSecurityPanel() {
+  const { logout } = useAuth();
+
   const handleChangePassword = () => {
     // Sign out so the user can use Forgot Password on the login page.
-    void base44.auth.logout();
+    void logout();
   };
 
   const handleLogout = () => {
-    void base44.auth.logout();
+    void logout();
   };
 
   return (

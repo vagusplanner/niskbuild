@@ -441,15 +441,6 @@ async function processStripeEvent(
             .eq('email', customer.email)
         );
         await handleSubscriptionActivated(supabase, customer.email);
-
-        if (subscription.cancel_at_period_end) {
-          if (syncProfile?.id) {
-            const product = lifecycleProductFromSubscription(subscription);
-            void sendCancelWarningEmail(syncProfile.id, customer.email, product, {
-              islamic: product === 'vagus-planner' && vagusPlannerCancelHadIslamic(subscription),
-            });
-          }
-        }
         notifyOrgPlanSideEffects(customer.email);
       } else if (status === 'past_due') {
         await requireProfileUpdate(
@@ -493,6 +484,31 @@ async function processStripeEvent(
         fallbackTier: tier,
         forceCanceled: TERMINAL_SUBSCRIPTION_STATUSES.has(status),
       });
+
+      const shouldSendCancelWarning =
+        Boolean(subscription.cancel_at_period_end) &&
+        (status === 'active' || status === 'trialing');
+      if (shouldSendCancelWarning) {
+        if (!syncProfile?.id) {
+          console.error('[stripe webhook] cancel warning skipped: no profiles row for', customer.email, {
+            status,
+            subscriptionId: subscription.id,
+          });
+        } else {
+          const product = lifecycleProductFromSubscription(subscription);
+          const sent = await sendCancelWarningEmail(syncProfile.id, customer.email, product, {
+            islamic: product === 'vagus-planner' && vagusPlannerCancelHadIslamic(subscription),
+          });
+          if (!sent) {
+            console.error('[stripe webhook] cancel warning email not delivered', {
+              email: customer.email,
+              userId: syncProfile.id,
+              product,
+              status,
+            });
+          }
+        }
+      }
     }
     return;
   }

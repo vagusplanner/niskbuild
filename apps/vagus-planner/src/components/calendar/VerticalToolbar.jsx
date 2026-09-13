@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
@@ -438,40 +439,53 @@ export default function VerticalToolbar({
         <div className="h-0.5 rounded-full bg-gradient-to-r from-transparent via-[#E8B84B]/50 to-transparent" />
       </div>
 
-      {/* ── Color Picker Popup ───────────────────────────────── */}
-      <AnimatePresence>
-        {showColorPicker && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[90]" onClick={() => setShowColorPicker(false)} />
-            <motion.div
-              initial={{ opacity: 0, x: -16, scale: 0.96 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: -16, scale: 0.96 }}
-              className="fixed left-[13.5rem] top-1/2 -translate-y-1/2 z-[100] w-72 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 text-sm">
-                  <Palette className="w-4 h-4 text-purple-500" /> Event Colors
-                </h3>
-                <button onClick={() => setShowColorPicker(false)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="space-y-2">
-                {(isIslamicEdition
-                  ? ['work', 'personal', 'health', 'prayer', 'family', 'social']
-                  : ['work', 'personal', 'health', 'family', 'social']
-                ).map(cat => (
-                  <div key={cat} className="flex items-center gap-3">
-                    <span className="text-xs capitalize text-slate-700 dark:text-slate-300 w-16 font-medium">{cat}</span>
-                    <ColorPicker value={eventColorMode?.[cat] || '#3b82f6'} onChange={color => onEventColorChange?.(cat, color)} compact />
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      {/* Portaled: toolbar + Calendar drawer both clip `position:fixed` via overflow + Framer transforms */}
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {showColorPicker && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[200]"
+                onClick={() => setShowColorPicker(false)}
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.96, x: isMobileView ? '-50%' : 0, y: '-46%' }}
+                animate={{ opacity: 1, scale: 1, x: isMobileView ? '-50%' : 0, y: '-50%' }}
+                exit={{ opacity: 0, scale: 0.96, x: isMobileView ? '-50%' : 0, y: '-46%' }}
+                className={cn(
+                  'fixed z-[210] w-72 max-w-[calc(100vw-1.5rem)] max-h-[min(28rem,calc(100dvh-6rem))] overflow-y-auto',
+                  'bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-4',
+                  isMobileView ? 'left-1/2 top-1/2' : 'left-[14.5rem] top-1/2'
+                )}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 text-sm">
+                    <Palette className="w-4 h-4 text-purple-500" /> Event Colors
+                  </h3>
+                  <button onClick={() => setShowColorPicker(false)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {(isIslamicEdition
+                    ? ['work', 'personal', 'health', 'prayer', 'family', 'social']
+                    : ['work', 'personal', 'health', 'family', 'social']
+                  ).map(cat => (
+                    <div key={cat} className="flex items-center gap-3">
+                      <span className="text-xs capitalize text-slate-700 dark:text-slate-300 w-16 font-medium">{cat}</span>
+                      <ColorPicker value={eventColorMode?.[cat] || '#3b82f6'} onChange={color => onEventColorChange?.(cat, color)} compact />
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }

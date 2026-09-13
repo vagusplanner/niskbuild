@@ -54,7 +54,8 @@ import { AISchedulingProvider } from '@/components/assistant/AISchedulingBridge'
         BookOpen,
         Crown,
         History as HistoryIcon,
-        Sparkles
+        Sparkles,
+        LogOut
       } from 'lucide-react';
       import { cn } from '@/lib/utils';
       import { Button } from '@/components/ui/button';
@@ -63,6 +64,7 @@ import { AISchedulingProvider } from '@/components/assistant/AISchedulingBridge'
       import { useQuery } from '@tanstack/react-query';
 import { useRoleAccess } from '@/components/auth/useRoleAccess';
 import { useIslamicEdition } from '@/hooks/useIslamicEdition';
+import { useAuth } from '@/lib/AuthContext';
 import { useTranslation } from 'react-i18next';
 import SidebarTools from '@/components/sidebar/SidebarTools';
       // Critical: loaded immediately
@@ -130,6 +132,7 @@ const ROOT_PAGES = ['Dashboard', 'Calendar', 'Travel', 'Islam', 'Goals', 'Wellne
 
 export default function Layout({ children, currentPageName }) {
   const { t } = useTranslation();
+  const { logout } = useAuth();
 
   const [showSplash, setShowSplash] = useState(() => !sessionStorage.getItem('splash_shown'));
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -587,6 +590,17 @@ export default function Layout({ children, currentPageName }) {
           />
         </div>
 
+        <div className="p-3 pt-1">
+          <button
+            type="button"
+            onClick={() => { void logout(); }}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all border border-transparent hover:bg-white/10"
+          >
+            <LogOut className="w-4 h-4 flex-shrink-0" style={{ color: '#FCA5A5' }} />
+            <span className="text-sm font-medium" style={{ color: '#FECACA' }}>{t('profile.logout')}</span>
+          </button>
+        </div>
+
         {/* NSC gold+blue footer accent */}
         <div className="h-[2px] w-full" style={{background:'linear-gradient(90deg, #1D6FB8, #E8B84B, #29ABE2)'}} />
       </aside>
@@ -706,6 +720,20 @@ export default function Layout({ children, currentPageName }) {
                 onOpenHalal={() => { setShowHalalFinder(true); setMobileMenuOpen(false); }}
                 onOpenPlanner={() => { setShowPlanningAssistant(true); setMobileMenuOpen(false); }}
               />
+
+              <div className="mt-4 pt-3" style={{ borderTop: '1px solid rgba(122,158,181,0.25)' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    void logout();
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all border border-transparent hover:bg-white/10"
+                >
+                  <LogOut className="w-5 h-5" style={{ color: '#FCA5A5' }} />
+                  <span className="font-semibold" style={{ color: '#FECACA' }}>{t('profile.logout')}</span>
+                </button>
+              </div>
             </motion.nav>
           </>
         )}

@@ -4,6 +4,11 @@ import type { VpFunctionHandler } from '../types';
 import { normalizePriceInterval } from '@/lib/stripe-price-ids';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { ensureProfileForUser } from '@/lib/ensure-profile';
+import { sendCancelWarningEmail } from '@/lib/email/lifecycle';
+import {
+  lifecycleProductFromSubscription,
+  vagusPlannerCancelHadIslamic,
+} from '@/lib/stripe-subscription-product';
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY?.trim();
 const stripe = stripeSecret ? new Stripe(stripeSecret) : null;
@@ -227,6 +232,26 @@ export const cancelStripeSubscription: VpFunctionHandler = async ({ user, payloa
         cancel_at_period_end: true,
       })
       .eq('id', user.id);
+
+    const to = typeof user.email === 'string' ? user.email.trim() : '';
+    if (!to) {
+      console.error('[vp cancel] warning email skipped: user has no email', { userId: user.id, subscriptionId });
+    } else {
+      const stripeSub = await stripe.subscriptions.retrieve(subscriptionId);
+      const product = lifecycleProductFromSubscription(stripeSub);
+      const sent = await sendCancelWarningEmail(user.id, to, product, {
+        islamic: product === 'vagus-planner' && vagusPlannerCancelHadIslamic(stripeSub),
+        force: true,
+      });
+      if (!sent) {
+        console.error('[vp cancel] warning email not delivered', {
+          userId: user.id,
+          email: to,
+          product,
+          subscriptionId,
+        });
+      }
+    }
 
     return { ok: true, data: { canceled: true, atPeriodEnd: true, subscriptionId } };
   } catch (err) {

@@ -103,6 +103,14 @@ export async function maybeSendUsageAlert(
 
 async function sendLifecycle(params: Parameters<typeof sendLifecycleEmail>[0]): Promise<boolean> {
   const result = await sendLifecycleEmail(params);
+  if (!result.ok) {
+    console.error('[lifecycle email] send failed', {
+      templateKey: params.templateKey,
+      to: params.to,
+      userId: params.userId,
+      error: result.error,
+    });
+  }
   return result.ok;
 }
 
@@ -186,7 +194,7 @@ export async function sendCancelWarningEmail(
   userId: string,
   email: string,
   product: LifecycleProduct = 'niskbuild',
-  opts?: { islamic?: boolean }
+  opts?: { islamic?: boolean; force?: boolean }
 ): Promise<boolean> {
   if (product === 'vagus-planner') {
     return sendLifecycle({
@@ -196,6 +204,7 @@ export async function sendCancelWarningEmail(
       subject: 'Before you cancel — your Vagus Planner data stays saved',
       html: T.cancelWarningVpHtml({ islamic: opts?.islamic === true }),
       from: VP_FROM(),
+      force: opts?.force,
     });
   }
   return sendLifecycle({
