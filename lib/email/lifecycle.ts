@@ -10,6 +10,7 @@ import {
 import { EMAIL_TEMPLATE } from '@/lib/email/constants';
 import { sendLifecycleEmail, type LifecycleSendResult } from '@/lib/email/send-log';
 import { createWinbackPromoCode } from '@/lib/email/stripe-promo';
+import type { LifecycleProduct } from '@/lib/stripe-subscription-product';
 import * as T from '@/lib/email/templates';
 
 function estimateDaysUntilEmpty(creditsUsed: number, creditsRemaining: number): number {
@@ -178,7 +179,21 @@ export async function sendManualReengagementEmail(
   });
 }
 
-export async function sendCancelWarningEmail(userId: string, email: string): Promise<boolean> {
+export async function sendCancelWarningEmail(
+  userId: string,
+  email: string,
+  product: LifecycleProduct = 'niskbuild',
+  opts?: { islamic?: boolean }
+): Promise<boolean> {
+  if (product === 'vagus-planner') {
+    return sendLifecycle({
+      userId,
+      to: email,
+      templateKey: EMAIL_TEMPLATE.CANCEL_WARNING_VP,
+      subject: 'Before you cancel — your Vagus Planner data stays saved',
+      html: T.cancelWarningVpHtml({ islamic: opts?.islamic === true }),
+    });
+  }
   return sendLifecycle({
     userId,
     to: email,
@@ -188,7 +203,20 @@ export async function sendCancelWarningEmail(userId: string, email: string): Pro
   });
 }
 
-export async function sendWinback7dEmail(userId: string, email: string): Promise<boolean> {
+export async function sendWinback7dEmail(
+  userId: string,
+  email: string,
+  product: LifecycleProduct = 'niskbuild'
+): Promise<boolean> {
+  if (product === 'vagus-planner') {
+    return sendLifecycle({
+      userId,
+      to: email,
+      templateKey: EMAIL_TEMPLATE.WINBACK_7D_VP,
+      subject: 'Your Vagus Planner data is still saved',
+      html: T.winback7dVpHtml(),
+    });
+  }
   return sendLifecycle({
     userId,
     to: email,
@@ -198,7 +226,20 @@ export async function sendWinback7dEmail(userId: string, email: string): Promise
   });
 }
 
-export async function sendWinback30dEmail(userId: string, email: string): Promise<boolean> {
+export async function sendWinback30dEmail(
+  userId: string,
+  email: string,
+  product: LifecycleProduct = 'niskbuild'
+): Promise<boolean> {
+  if (product === 'vagus-planner') {
+    return sendLifecycle({
+      userId,
+      to: email,
+      templateKey: EMAIL_TEMPLATE.WINBACK_30D_VP,
+      subject: 'Come back to Vagus Planner',
+      html: T.winback30dVpHtml(),
+    });
+  }
   const promoCode = await createWinbackPromoCode(userId);
   const html = T.winback30dHtml(promoCode);
   const subject = promoCode

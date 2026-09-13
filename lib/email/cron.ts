@@ -14,6 +14,26 @@ import {
   sendWinback7dEmail,
 } from '@/lib/email/lifecycle';
 import { hasEmailBeenSent } from '@/lib/email/send-log';
+import type { LifecycleProduct } from '@/lib/stripe-subscription-product';
+
+async function inferLifecycleProduct(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string
+): Promise<LifecycleProduct> {
+  const [{ data: vp }, { count }] = await Promise.all([
+    admin
+      .schema('firstparty')
+      .from('vp_subscriptions')
+      .select('id')
+      .eq('user_id', userId)
+      .limit(1)
+      .maybeSingle(),
+    admin.from('projects').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+  ]);
+  // VP-only customers share the Stripe account but have no builder projects.
+  if (vp && (count ?? 0) === 0) return 'vagus-planner';
+  return 'niskbuild';
+}
 
 const MS_DAY = 24 * 60 * 60 * 1000;
 
@@ -109,10 +129,12 @@ export async function processEmailLifecycleCron(): Promise<Record<string, number
     if (endedAt && !paidActive) {
       const daysSinceEnd = (Date.now() - new Date(endedAt).getTime()) / MS_DAY;
       if (daysSinceEnd >= 7 && daysSinceEnd < 8) {
-        if (await sendWinback7dEmail(userId, email)) stats.winback7d++;
+        const product = await inferLifecycleProduct(admin, userId);
+        if (await sendWinback7dEmail(userId, email, product)) stats.winback7d++;
       }
       if (daysSinceEnd >= 30 && daysSinceEnd < 31) {
-        if (await sendWinback30dEmail(userId, email)) stats.winback30d++;
+        const product = await inferLifecycleProduct(admin, userId);
+        if (await sendWinback30dEmail(userId, email, product)) stats.winback30d++;
       }
     }
 

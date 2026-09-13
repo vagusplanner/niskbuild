@@ -24,6 +24,10 @@ import {
   sendUpgradeConfirmedEmail,
 } from '@/lib/email/lifecycle';
 import { resolveTierFromSubscription } from '@/lib/stripe-price-ids';
+import {
+  lifecycleProductFromSubscription,
+  vagusPlannerCancelHadIslamic,
+} from '@/lib/stripe-subscription-product';
 import { notifyOrgsAfterBillingOwnerPlanChange } from '@/lib/org-billing-lifecycle';
 import { ensureSoloOrganizationForUser } from '@/lib/ensure-organization';
 import {
@@ -440,7 +444,10 @@ async function processStripeEvent(
 
         if (subscription.cancel_at_period_end) {
           if (syncProfile?.id) {
-            void sendCancelWarningEmail(syncProfile.id, customer.email);
+            const product = lifecycleProductFromSubscription(subscription);
+            void sendCancelWarningEmail(syncProfile.id, customer.email, product, {
+              islamic: product === 'vagus-planner' && vagusPlannerCancelHadIslamic(subscription),
+            });
           }
         }
         notifyOrgPlanSideEffects(customer.email);

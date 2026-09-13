@@ -1,4 +1,4 @@
-import { appUrl } from '@/lib/email/app-url';
+import { appUrl, vpAppUrl } from '@/lib/email/app-url';
 import { npsScoreUrl } from '@/lib/nps-link';
 
 function shell(title: string, body: string): string {
@@ -125,6 +125,45 @@ export function cancelWarningHtml(): string {
     'Before you go — here is what you will lose',
     `<p style="color:#94a3b8;line-height:1.6;">If you cancel, your preview links go offline and cloud AI credits stop renewing. Your projects stay saved — reactivate anytime.</p>
      <p style="margin:24px 0;">${cta(appUrl('/dashboard/settings?tab=billing'), 'Keep my plan')}</p>`
+  );
+}
+
+/** Vagus Planner cancel-at-period-end — never reuse NiskBuild builder copy. */
+export function cancelWarningVpHtml(opts?: { islamic?: boolean }): string {
+  const islamicLine = opts?.islamic
+    ? '<li>Islamic Edition extras (full prayer tools, Quran, Zakat, Ramadan/Hajj features) revert to Free</li>'
+    : '';
+  return shell(
+    'Before you go — your Vagus Planner data stays saved',
+    `<p style="color:#94a3b8;line-height:1.6;">
+      Your subscription will stay active until the end of the current billing period.
+      Canceling does <strong style="color:#fff;">not</strong> delete your calendar, events, tasks, goals,
+      journal entries, or prayer logs.
+    </p>
+    <p style="color:#94a3b8;line-height:1.6;">After this period ends, paid-tier features step down to the Free plan, including:</p>
+    <ul style="color:#94a3b8;line-height:1.8;padding-left:20px;">
+      <li>Higher monthly AI limits (trip planner, scheduling help, and other Pro AI)</li>
+      <li>Google Calendar sync and other paid integrations</li>
+      ${islamicLine}
+    </ul>
+    <p style="color:#94a3b8;line-height:1.6;">Resubscribe anytime and those features come back. Your existing data is still there.</p>
+    <p style="margin:24px 0;">${cta(vpAppUrl('/Billing'), 'Keep my plan')}</p>`
+  );
+}
+
+export function winback7dVpHtml(): string {
+  return shell(
+    'Your Vagus Planner data is still saved',
+    `<p style="color:#94a3b8;line-height:1.6;">Your events, goals, and logs were not deleted when the subscription ended. Reactivate Pro to restore higher AI limits, Google Calendar sync, and other paid features.</p>
+     <p style="margin:24px 0;">${cta(vpAppUrl('/Billing'), 'Resubscribe')}</p>`
+  );
+}
+
+export function winback30dVpHtml(): string {
+  return shell(
+    'Come back to Vagus Planner',
+    `<p style="color:#94a3b8;line-height:1.6;">Your planner data is still here. Resubscribe to unlock Pro AI, calendar sync, and the rest of your paid plan.</p>
+     <p style="margin:24px 0;">${cta(vpAppUrl('/Billing'), 'View plans')}</p>`
   );
 }
 

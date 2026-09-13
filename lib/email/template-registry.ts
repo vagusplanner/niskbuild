@@ -80,7 +80,14 @@ export const EMAIL_TEMPLATE_CATALOG: EmailTemplateCatalogEntry[] = [
     key: EMAIL_TEMPLATE.CANCEL_WARNING,
     label: 'Cancel warning',
     subject: 'Before you cancel — what you will lose',
-    description: 'Sent when user sets cancel_at_period_end in Stripe.',
+    description: 'Sent when a NiskBuild builder subscription is set to cancel at period end.',
+    category: 'billing',
+  },
+  {
+    key: EMAIL_TEMPLATE.CANCEL_WARNING_VP,
+    label: 'Cancel warning (Vagus Planner)',
+    subject: 'Before you cancel — your Vagus Planner data stays saved',
+    description: 'Sent when a Vagus Planner Stripe subscription is set to cancel at period end.',
     category: 'billing',
   },
   {
@@ -91,10 +98,24 @@ export const EMAIL_TEMPLATE_CATALOG: EmailTemplateCatalogEntry[] = [
     category: 'winback',
   },
   {
+    key: EMAIL_TEMPLATE.WINBACK_7D_VP,
+    label: 'Win-back 7 days (Vagus Planner)',
+    subject: 'Your Vagus Planner data is still saved',
+    description: '7 days after a Vagus Planner subscription ended.',
+    category: 'winback',
+  },
+  {
     key: EMAIL_TEMPLATE.WINBACK_30D,
     label: 'Win-back 30 days',
     subject: 'Come back to NiskBuild — 20% off',
     description: '30 days after cancel; includes Stripe promo code when configured.',
+    category: 'winback',
+  },
+  {
+    key: EMAIL_TEMPLATE.WINBACK_30D_VP,
+    label: 'Win-back 30 days (Vagus Planner)',
+    subject: 'Come back to Vagus Planner',
+    description: '30 days after a Vagus Planner subscription ended.',
     category: 'winback',
   },
   {
@@ -174,8 +195,14 @@ export function renderTemplateHtml(
       return { subject: entry!.subject, html: T.reengagementManualHtml() };
     case EMAIL_TEMPLATE.CANCEL_WARNING:
       return { subject: entry!.subject, html: T.cancelWarningHtml() };
+    case EMAIL_TEMPLATE.CANCEL_WARNING_VP:
+      return { subject: entry!.subject, html: T.cancelWarningVpHtml({ islamic: true }) };
     case EMAIL_TEMPLATE.WINBACK_7D:
       return { subject: entry!.subject, html: T.winback7dHtml() };
+    case EMAIL_TEMPLATE.WINBACK_7D_VP:
+      return { subject: entry!.subject, html: T.winback7dVpHtml() };
+    case EMAIL_TEMPLATE.WINBACK_30D_VP:
+      return { subject: entry!.subject, html: T.winback30dVpHtml() };
     case EMAIL_TEMPLATE.WINBACK_30D:
       return {
         subject: entry!.subject,

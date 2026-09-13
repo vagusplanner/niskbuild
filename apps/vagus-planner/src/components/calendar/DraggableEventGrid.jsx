@@ -11,14 +11,14 @@ import HabitCalendarOverlay from '@/components/habits/HabitCalendarOverlay';
 import { useQuery } from '@tanstack/react-query';
 
 const CATEGORY_COLORS = {
-  work: 'bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-100',
-  personal: 'bg-emerald-100 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100',
-  health: 'bg-rose-100 text-rose-900 dark:bg-rose-900 dark:text-rose-100',
-  prayer: 'bg-violet-100 text-violet-900 dark:bg-violet-900 dark:text-violet-100',
-  holiday: 'bg-amber-100 text-amber-900 dark:bg-amber-900 dark:text-amber-100',
-  family: 'bg-pink-100 text-pink-900 dark:bg-pink-900 dark:text-pink-100',
-  social: 'bg-cyan-100 text-cyan-900 dark:bg-cyan-900 dark:text-cyan-100',
-  other: 'bg-slate-100 text-slate-900 dark:bg-slate-700 dark:text-slate-100'
+  work: 'bg-blue-200 text-blue-950 dark:bg-blue-700 dark:text-blue-50',
+  personal: 'bg-emerald-200 text-emerald-950 dark:bg-emerald-700 dark:text-emerald-50',
+  health: 'bg-rose-200 text-rose-950 dark:bg-rose-700 dark:text-rose-50',
+  prayer: 'bg-violet-200 text-violet-950 dark:bg-violet-700 dark:text-violet-50',
+  holiday: 'bg-amber-200 text-amber-950 dark:bg-amber-700 dark:text-amber-50',
+  family: 'bg-pink-200 text-pink-950 dark:bg-pink-700 dark:text-pink-50',
+  social: 'bg-cyan-200 text-cyan-950 dark:bg-cyan-700 dark:text-cyan-50',
+  other: 'bg-slate-200 text-slate-950 dark:bg-slate-600 dark:text-slate-50'
 };
 
 const CATEGORY_ACCENT = {
@@ -31,6 +31,15 @@ const CATEGORY_ACCENT = {
   social: '#06b6d4',
   other: '#64748b',
 };
+
+function hexLuminance(hex) {
+  const raw = hex.replace('#', '');
+  const full = raw.length === 3 ? raw.split('').map((c) => c + c).join('') : raw;
+  const r = parseInt(full.slice(0, 2), 16) / 255;
+  const g = parseInt(full.slice(2, 4), 16) / 255;
+  const b = parseInt(full.slice(4, 6), 16) / 255;
+  return 0.299 * r + 0.587 * g + 0.114 * b;
+}
 
 export default function DraggableEventGrid({ 
   currentDate, 
@@ -261,8 +270,8 @@ export default function DraggableEventGrid({
                                   }
                                 }}
                                 className={cn(
-                                  "group p-1.5 lg:p-2 rounded-md border border-white dark:border-slate-900 border-l-[3px] lg:border-l-4 shadow-sm transition-all cursor-move hover:shadow-md touch-manipulation relative isolate",
-                                  categoryStyle,
+                                  "group p-1.5 lg:p-2 rounded-md border-l-4 shadow-sm ring-1 ring-black/5 dark:ring-white/10 transition-all cursor-move hover:shadow-md touch-manipulation relative isolate",
+                                  !customColor && categoryStyle,
                                   snapshot.isDragging && "shadow-2xl rotate-2 scale-105 ring-4 ring-teal-500/50",
                                   event.priority === 'high' && "ring-1 lg:ring-2 ring-red-400"
                                 )}
@@ -272,6 +281,12 @@ export default function DraggableEventGrid({
                                     customColor ||
                                     CATEGORY_ACCENT[event.category] ||
                                     CATEGORY_ACCENT.other,
+                                  ...(customColor
+                                    ? {
+                                        backgroundColor: customColor,
+                                        color: hexLuminance(customColor) > 0.55 ? '#0f172a' : '#ffffff',
+                                      }
+                                    : {}),
                                 }}
                               >
                                 {/* Glitter only for all-day events created within the last 24h */}
