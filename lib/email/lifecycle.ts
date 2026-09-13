@@ -12,6 +12,9 @@ import { sendLifecycleEmail, type LifecycleSendResult } from '@/lib/email/send-l
 import { createWinbackPromoCode } from '@/lib/email/stripe-promo';
 import type { LifecycleProduct } from '@/lib/stripe-subscription-product';
 import * as T from '@/lib/email/templates';
+import { resolveEmailFrom } from '@/lib/send-email';
+
+const VP_FROM = () => resolveEmailFrom('vagus-planner');
 
 function estimateDaysUntilEmpty(creditsUsed: number, creditsRemaining: number): number {
   const dayOfMonth = new Date().getDate();
@@ -192,6 +195,7 @@ export async function sendCancelWarningEmail(
       templateKey: EMAIL_TEMPLATE.CANCEL_WARNING_VP,
       subject: 'Before you cancel — your Vagus Planner data stays saved',
       html: T.cancelWarningVpHtml({ islamic: opts?.islamic === true }),
+      from: VP_FROM(),
     });
   }
   return sendLifecycle({
@@ -215,6 +219,7 @@ export async function sendWinback7dEmail(
       templateKey: EMAIL_TEMPLATE.WINBACK_7D_VP,
       subject: 'Your Vagus Planner data is still saved',
       html: T.winback7dVpHtml(),
+      from: VP_FROM(),
     });
   }
   return sendLifecycle({
@@ -238,6 +243,7 @@ export async function sendWinback30dEmail(
       templateKey: EMAIL_TEMPLATE.WINBACK_30D_VP,
       subject: 'Come back to Vagus Planner',
       html: T.winback30dVpHtml(),
+      from: VP_FROM(),
     });
   }
   const promoCode = await createWinbackPromoCode(userId);

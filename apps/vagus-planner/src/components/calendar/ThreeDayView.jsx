@@ -4,23 +4,15 @@ import { Badge } from '@/components/ui/badge';
 import { format, addDays, isSameDay } from 'date-fns';
 import { Clock, MapPin } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { eventChipStyle } from '@/lib/event-chip-colors';
 
-export default function ThreeDayView({ currentDate, events, onEventClick, onDateClick }) {
+export default function ThreeDayView({ currentDate, events, onEventClick, onDateClick, eventColorMode = {} }) {
   const days = [currentDate, addDays(currentDate, 1), addDays(currentDate, 2)];
 
   const getEventsForDay = (day) => {
     return events.filter(event => 
       isSameDay(new Date(event.start_date), day)
     ).sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
-  };
-
-  const categoryColors = {
-    work: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300',
-    personal: 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300',
-    health: 'bg-green-100 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300',
-    prayer: 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300',
-    family: 'bg-pink-100 text-pink-700 border-pink-200 dark:bg-pink-950 dark:text-pink-300',
-    social: 'bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-950 dark:text-cyan-300'
   };
 
   return (
@@ -68,9 +60,8 @@ export default function ThreeDayView({ currentDate, events, onEventClick, onDate
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: dayIndex * 0.1 + index * 0.05 }}
                       onClick={() => onEventClick?.(event)}
-                      className={`p-3 rounded-lg border-l-4 cursor-pointer transition-all hover:shadow-md ${
-                        categoryColors[event.category] || categoryColors.personal
-                      }`}
+                      className="p-3 rounded-lg ring-1 ring-black/5 cursor-pointer transition-all hover:shadow-md"
+                      style={eventChipStyle(event, eventColorMode)}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">

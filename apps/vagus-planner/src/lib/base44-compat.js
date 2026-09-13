@@ -1547,6 +1547,8 @@ export const base44 = {
     },
     /** Alias used by older UI — same as signOut */
     logout: async () => {
+      const { confirmLogoutIfUnsaved } = await import('./unsaved-work.js')
+      if (!confirmLogoutIfUnsaved()) return { success: false, cancelled: true }
       const { error } = await supabase.auth.signOut()
       if (error) throw error
       return { success: true }

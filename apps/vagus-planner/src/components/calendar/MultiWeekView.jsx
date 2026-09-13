@@ -5,16 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Clock, MapPin } from 'lucide-react';
 
-const CATEGORY_COLORS = {
-  work: 'bg-blue-500 border-blue-600 text-white',
-  personal: 'bg-emerald-500 border-emerald-600 text-white',
-  health: 'bg-rose-500 border-rose-600 text-white',
-  prayer: 'bg-violet-500 border-violet-600 text-white',
-  holiday: 'bg-amber-500 border-amber-600 text-white',
-  family: 'bg-pink-500 border-pink-600 text-white',
-  social: 'bg-cyan-500 border-cyan-600 text-white',
-  other: 'bg-slate-500 border-slate-600 text-white'
-};
+import { eventChipStyle } from '@/lib/event-chip-colors';
 
 const PRIORITY_STYLES = {
   high: 'ring-2 ring-red-400 shadow-lg',
@@ -22,7 +13,7 @@ const PRIORITY_STYLES = {
   low: 'opacity-90'
 };
 
-export default function MultiWeekView({ currentDate, events = [], onEventClick, weekStartsOn = 1, weeksToShow = 4 }) {
+export default function MultiWeekView({ currentDate, events = [], onEventClick, weekStartsOn = 1, weeksToShow = 4, eventColorMode = {} }) {
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
   
@@ -99,7 +90,6 @@ export default function MultiWeekView({ currentDate, events = [], onEventClick, 
                 >
                   <div className="space-y-1">
                     {dayEvents.slice(0, 3).map((event, idx) => {
-                      const categoryStyle = CATEGORY_COLORS[event.category] || CATEGORY_COLORS.other;
                       const priorityStyle = PRIORITY_STYLES[event.priority] || '';
                       
                       return (
@@ -107,11 +97,11 @@ export default function MultiWeekView({ currentDate, events = [], onEventClick, 
                           key={idx}
                           onClick={() => onEventClick?.(event)}
                           className={cn(
-                            "w-full text-left p-2 rounded-md border-l-4 transition-all hover:scale-105",
-                            categoryStyle,
+                            "w-full text-left p-2 rounded-md ring-1 ring-black/5 transition-all hover:scale-105",
                             priorityStyle,
                             "cursor-pointer group"
                           )}
+                          style={eventChipStyle(event, eventColorMode)}
                         >
                           <div className="flex items-start justify-between gap-1">
                             <div className="flex-1 min-w-0">

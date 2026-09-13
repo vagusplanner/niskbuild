@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import VoiceReflection from './VoiceReflection';
 import JournalStarter from './JournalStarter';
+import { useUnsavedWork } from '@/lib/unsaved-work';
 
 const MOODS = [
   { value: 'joyful',     emoji: '😄', label: 'Joyful' },
@@ -68,6 +69,11 @@ export default function JournalEditor({ entry, onSaved, onCancel }) {
   };
 
   const removeTag = (t) => set('tags', form.tags.filter(x => x !== t));
+
+  useUnsavedWork(
+    'journal-editor',
+    Boolean(form.title?.trim() || form.content?.trim())
+  );
 
   const addListItem = (key, val) => {
     const v = val.trim();

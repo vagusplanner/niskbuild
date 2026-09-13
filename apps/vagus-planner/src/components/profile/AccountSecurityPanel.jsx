@@ -11,11 +11,11 @@ import TwoFactorAuth from '@/components/settings/TwoFactorAuth';
 export default function AccountSecurityPanel() {
   const handleChangePassword = () => {
     // Sign out so the user can use Forgot Password on the login page.
-    base44.auth.logout();
+    void base44.auth.logout();
   };
 
   const handleLogout = () => {
-    base44.auth.logout();
+    void base44.auth.logout();
   };
 
   return (

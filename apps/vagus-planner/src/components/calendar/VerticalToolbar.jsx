@@ -405,7 +405,7 @@ export default function VerticalToolbar({
 
       <div className="px-2 space-y-0.5">
         {/* Fasting toggle */}
-        {settings?.prayer_enabled !== false && (
+        {isIslamicEdition && (
           <button onClick={onToggleFasting} title={showFasting ? 'Hide Fasting' : 'Show Fasting'}
             className={cn(
               "flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left w-full group transition-all",
@@ -458,7 +458,10 @@ export default function VerticalToolbar({
                 </button>
               </div>
               <div className="space-y-2">
-                {['work', 'personal', 'health', 'prayer', 'family', 'social'].map(cat => (
+                {(isIslamicEdition
+                  ? ['work', 'personal', 'health', 'prayer', 'family', 'social']
+                  : ['work', 'personal', 'health', 'family', 'social']
+                ).map(cat => (
                   <div key={cat} className="flex items-center gap-3">
                     <span className="text-xs capitalize text-slate-700 dark:text-slate-300 w-16 font-medium">{cat}</span>
                     <ColorPicker value={eventColorMode?.[cat] || '#3b82f6'} onChange={color => onEventColorChange?.(cat, color)} compact />

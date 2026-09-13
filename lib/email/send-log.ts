@@ -31,6 +31,7 @@ export async function sendLifecycleEmail(params: {
   force?: boolean;
   source?: 'system' | 'admin' | 'cron';
   htmlSnapshot?: string;
+  from?: string;
 }): Promise<LifecycleSendResult> {
   if (!params.force) {
     const sent = await hasEmailBeenSent(params.userId, params.templateKey);
@@ -43,6 +44,7 @@ export async function sendLifecycleEmail(params: {
     to: params.to,
     subject: params.subject,
     html: params.html,
+    from: params.from,
   });
 
   if (!result.ok) {

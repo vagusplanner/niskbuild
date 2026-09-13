@@ -58,9 +58,11 @@ import { usePublicHolidays } from '@/components/calendar/PublicHolidaysOverlay';
 import TaskTimelineCalendar from '@/components/tasks/TaskTimelineCalendar';
 import AISchedulePlanner from '@/components/calendar/AISchedulePlanner';
 import { toast } from 'sonner';
+import { useIslamicEdition } from '@/hooks/useIslamicEdition';
 
 export default function CalendarPage() {
   const { t } = useTranslation();
+  const { islamicMode } = useIslamicEdition();
   const [searchParams, setSearchParams] = useSearchParams();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -468,6 +470,7 @@ export default function CalendarPage() {
                     onToggleHabits={() => setShowHabitPanel(s => !s)}
                     onToggleIslamic={() => setShowIslamicPanel(s => !s)}
                     showIslamicPanel={showIslamicPanel}
+                    isIslamicEdition={islamicMode}
                     onClose={() => setShowVerticalToolbar(false)}
                   />
                 </motion.div>
@@ -531,7 +534,7 @@ export default function CalendarPage() {
 
               {showLegend && (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mb-4">
-                  <InteractiveCalendarLegend compact />
+                  <InteractiveCalendarLegend compact islamicMode={islamicMode} />
                 </motion.div>
               )}
 
@@ -544,20 +547,21 @@ export default function CalendarPage() {
                   onEventClick={openEventDetails}
                   onDayClick={(date) => { setMobileDayModalDate(date); setShowMobileDayModal(true); }}
                   weekStartsOn={1}
-                  showFastingDays={showFastingEvents}
+                  showFastingDays={islamicMode && showFastingEvents}
+                  eventColorMode={eventColorMode}
                 />
               )}
-              {view === 'week' && <WeekView currentDate={currentDate} events={eventsWithHolidays} onEventClick={openEventDetails} weekStartsOn={1} showFastingDays={showFastingEvents} />}
-              {view === 'work-week' && <WorkWeekView events={events} selectedDate={selectedDate} onDateChange={setSelectedDate} onEventClick={openEventDetails} />}
-              {view === 'day' && <DayView currentDate={selectedDate} events={events} onEventClick={openEventDetails} showFastingDays={showFastingEvents} />}
-              {view === '3day' && <ThreeDayView currentDate={selectedDate} events={events} onEventClick={openEventDetails} onDateClick={(d) => { setSelectedDate(d); setEditingEvent(null); setShowEventForm(true); }} />}
-              {view === 'agenda' && <CalendarAgendaView events={events} onEventClick={openEventDetails} currentMonth={currentDate} />}
+              {view === 'week' && <WeekView currentDate={currentDate} events={eventsWithHolidays} onEventClick={openEventDetails} weekStartsOn={1} showFastingDays={islamicMode && showFastingEvents} eventColorMode={eventColorMode} />}
+              {view === 'work-week' && <WorkWeekView events={events} selectedDate={selectedDate} onDateChange={setSelectedDate} onEventClick={openEventDetails} eventColorMode={eventColorMode} />}
+              {view === 'day' && <DayView currentDate={selectedDate} events={events} onEventClick={openEventDetails} showFastingDays={islamicMode && showFastingEvents} eventColorMode={eventColorMode} />}
+              {view === '3day' && <ThreeDayView currentDate={selectedDate} events={events} onEventClick={openEventDetails} onDateClick={(d) => { setSelectedDate(d); setEditingEvent(null); setShowEventForm(true); }} eventColorMode={eventColorMode} />}
+              {view === 'agenda' && <CalendarAgendaView events={events} onEventClick={openEventDetails} currentMonth={currentDate} eventColorMode={eventColorMode} />}
               {view === 'timeline' && <CalendarTimelineView events={events} onEventClick={openEventDetails} currentDate={currentDate} />}
               {view === 'year' && <YearlyView events={events} selectedDate={selectedDate} onDateSelect={(d) => { setSelectedDate(d); setView('day'); }} onEventClick={openEventDetails} />}
               {view === 'list' && <ListView currentDate={currentDate} events={events} onEventClick={openEventDetails} />}
               {view === 'workload' && <WorkloadView currentDate={currentDate} events={events} onDateClick={(d) => { setSelectedDate(d); setEditingEvent(null); setShowEventForm(true); }} />}
-              {view === 'unified' && <UnifiedCalendarView events={events} onEventClick={openEventDetails} onEditEvent={handleEditEvent} />}
-              {view === 'multiweek' && <MultiWeekView currentDate={currentDate} events={events} onEventClick={openEventDetails} weekStartsOn={1} weeksToShow={4} />}
+              {view === 'unified' && <UnifiedCalendarView events={events} onEventClick={openEventDetails} onEditEvent={handleEditEvent} showFastingDays={islamicMode && showFastingEvents} eventColorMode={eventColorMode} />}
+              {view === 'multiweek' && <MultiWeekView currentDate={currentDate} events={events} onEventClick={openEventDetails} weekStartsOn={1} weeksToShow={4} eventColorMode={eventColorMode} />}
               {view === 'task-timeline' && (
                 <TaskTimelineCalendar onTaskClick={(task) => {
                   if (task.event_id) {

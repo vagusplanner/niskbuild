@@ -4,6 +4,7 @@ import { getSafeSession } from './supabaseSession';
 import { mapSupabaseUserToVpUser } from './vp-auth-user';
 import { isStaticBundleContext, redirectToVpLogin } from './static-bundle';
 import { ensureVpBillingProfile } from './ensureVpBillingProfile';
+import { confirmLogoutIfUnsaved } from './unsaved-work';
 
 const AuthContext = createContext();
 
@@ -189,6 +190,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async (shouldRedirect = true) => {
+    if (!confirmLogoutIfUnsaved()) return;
     await signOut();
     if (shouldRedirect) {
       redirectToVpLogin();

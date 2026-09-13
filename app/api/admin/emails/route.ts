@@ -8,6 +8,14 @@ import {
   renderTemplateHtml,
 } from '@/lib/email/template-registry';
 import { sendLifecycleEmail } from '@/lib/email/send-log';
+import { EMAIL_TEMPLATE } from '@/lib/email/constants';
+import { resolveEmailFrom } from '@/lib/send-email';
+
+const VP_TEMPLATE_KEYS = new Set<string>([
+  EMAIL_TEMPLATE.CANCEL_WARNING_VP,
+  EMAIL_TEMPLATE.WINBACK_7D_VP,
+  EMAIL_TEMPLATE.WINBACK_30D_VP,
+]);
 
 export async function GET(request: NextRequest) {
   const owner = await requirePlatformOwner(request);
@@ -139,6 +147,9 @@ export async function POST(request: NextRequest) {
       force,
       source: 'admin',
       htmlSnapshot: html,
+      from: VP_TEMPLATE_KEYS.has(String(templateKey || ''))
+        ? resolveEmailFrom('vagus-planner')
+        : undefined,
     });
 
     if (!result.ok) {

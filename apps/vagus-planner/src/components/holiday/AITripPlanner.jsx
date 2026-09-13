@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { addDays, format } from 'date-fns';
 import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
+import { useIslamicEdition } from '@/hooks/useIslamicEdition';
 
 function unwrapFn(res) {
   return res?.data ?? res;
@@ -23,6 +24,7 @@ function unwrapFn(res) {
 
 export default function AITripPlanner({ open, onClose }) {
   const available = requireVpAiFunctions('planTripWithAi');
+  const { islamicMode } = useIslamicEdition();
   const queryClient = useQueryClient();
   const [form, setForm] = useState({
     destination: '',
@@ -36,6 +38,12 @@ export default function AITripPlanner({ open, onClose }) {
   const [loading, setLoading] = useState(false);
   const [packingLoading, setPackingLoading] = useState(false);
   const [result, setResult] = useState(null);
+
+  useEffect(() => {
+    if (!islamicMode) {
+      setForm((f) => (f.halal_mode ? { ...f, halal_mode: false, style: f.style === 'umrah' ? 'balanced' : f.style } : f));
+    }
+  }, [islamicMode]);
 
   const planTrip = async () => {
     if (!form.destination || !form.start_date || !form.end_date) {
@@ -56,7 +64,7 @@ export default function AITripPlanner({ open, onClose }) {
         end_date: form.end_date,
         travelers: Number(form.travelers) || 1,
         travel_style: form.style,
-        halal_mode: form.halal_mode || form.style === 'hajj' || form.style === 'umrah',
+        halal_mode: islamicMode && (form.halal_mode || form.style === 'hajj' || form.style === 'umrah'),
         ...(form.budget ? { budget: parseInt(form.budget, 10) } : {}),
         create_holiday: true,
         create_calendar_events: true,
@@ -95,7 +103,7 @@ export default function AITripPlanner({ open, onClose }) {
         travelers: Number(form.travelers) || 1,
         travel_style: form.style,
         packing_only: true,
-        halal_mode: form.halal_mode || form.style === 'hajj' || form.style === 'umrah',
+        halal_mode: islamicMode && (form.halal_mode || form.style === 'hajj' || form.style === 'umrah'),
       }));
       setResult((prev) => ({
         ...(prev || {}),
@@ -124,6 +132,7 @@ export default function AITripPlanner({ open, onClose }) {
         </DialogHeader>
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 py-2">
+          {islamicMode && (
           <div className="flex items-center justify-between p-3 rounded-xl border bg-slate-50 dark:bg-slate-800/60">
             <div>
               <p className="text-sm font-semibold">Halal / prayer-aware mode</p>
@@ -138,6 +147,7 @@ export default function AITripPlanner({ open, onClose }) {
               }))}
             />
           </div>
+          )}
 
           <div>
             <Label>Destination</Label>
@@ -218,8 +228,8 @@ export default function AITripPlanner({ open, onClose }) {
                 <SelectItem value="budget">Budget-Friendly</SelectItem>
                 <SelectItem value="adventure">Adventure & Active</SelectItem>
                 <SelectItem value="relaxation">Relaxation & Leisure</SelectItem>
-                <SelectItem value="hajj">Hajj Pilgrimage</SelectItem>
-                <SelectItem value="umrah">Umrah</SelectItem>
+                {islamicMode && <SelectItem value="hajj">Hajj Pilgrimage</SelectItem>}
+                {islamicMode && <SelectItem value="umrah">Umrah</SelectItem>}
               </SelectContent>
             </Select>
           </div>

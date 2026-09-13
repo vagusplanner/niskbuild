@@ -4,10 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { format, startOfWeek, addDays, isSameDay, parseISO, isWithinInterval, setHours, setMinutes } from 'date-fns';
+import { eventChipStyle } from '@/lib/event-chip-colors';
 
 const WORK_HOURS = Array.from({ length: 12 }, (_, i) => i + 7); // 7am to 6pm
 
-export default function WorkWeekView({ events = [], selectedDate, onDateChange, onEventClick }) {
+export default function WorkWeekView({ events = [], selectedDate, onDateChange, onEventClick, eventColorMode = {} }) {
   const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 }); // Monday
   const workDays = Array.from({ length: 5 }, (_, i) => addDays(weekStart, i)); // Mon-Fri
 
@@ -112,12 +113,13 @@ export default function WorkWeekView({ events = [], selectedDate, onDateChange, 
                           <button
                             key={eventIndex}
                             onClick={() => onEventClick(event)}
-                            className="w-full text-left p-1.5 mb-1 rounded bg-blue-100 hover:bg-blue-200 border-l-2 border-blue-600 transition-colors"
+                            className="w-full text-left p-1.5 mb-1 rounded ring-1 ring-black/5 transition-colors hover:brightness-110"
+                            style={eventChipStyle(event, eventColorMode)}
                           >
-                            <p className="text-xs font-medium text-blue-900 truncate">
+                            <p className="text-xs font-medium truncate">
                               {event.title}
                             </p>
-                            <p className="text-xs text-blue-700">
+                            <p className="text-xs opacity-80">
                               {event.start_date && format(parseISO(event.start_date), 'h:mm a')}
                             </p>
                           </button>

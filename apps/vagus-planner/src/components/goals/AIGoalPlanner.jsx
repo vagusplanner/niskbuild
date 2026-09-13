@@ -13,16 +13,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
+import { useIslamicEdition } from '@/hooks/useIslamicEdition';
 
 const GOAL_PRESETS = [
-  { label: 'Memorise Quran (Hifz)', emoji: '📖', category: 'spiritual', timeframe: '12 months' },
-  { label: 'Pray all 5 daily prayers consistently', emoji: '🕌', category: 'spiritual', timeframe: '1 month' },
+  { label: 'Memorise Quran (Hifz)', emoji: '📖', category: 'spiritual', timeframe: '12 months', islamicOnly: true },
+  { label: 'Pray all 5 daily prayers consistently', emoji: '🕌', category: 'spiritual', timeframe: '1 month', islamicOnly: true },
   { label: 'Read 30 books this year', emoji: '📚', category: 'learning', timeframe: '12 months' },
   { label: 'Get financially debt-free', emoji: '💰', category: 'financial', timeframe: '24 months' },
   { label: 'Improve my health & fitness', emoji: '💪', category: 'health', timeframe: '6 months' },
   { label: 'Build a consistent morning routine', emoji: '🌅', category: 'personal', timeframe: '1 month' },
-  { label: 'Complete Hajj or Umrah', emoji: '🕋', category: 'spiritual', timeframe: '12 months' },
-  { label: 'Learn Arabic', emoji: '🌙', category: 'spiritual', timeframe: '12 months' },
+  { label: 'Complete Hajj or Umrah', emoji: '🕋', category: 'spiritual', timeframe: '12 months', islamicOnly: true },
+  { label: 'Learn Arabic', emoji: '🌙', category: 'spiritual', timeframe: '12 months', islamicOnly: true },
 ];
 
 const CATEGORY_STYLES = {
@@ -136,7 +137,9 @@ export default function AIGoalPlanner({
   defaultTab = 'plan', // 'plan' | 'analyze' | 'tasks'
 } = {}) {
   const queryClient = useQueryClient();
+  const { islamicMode } = useIslamicEdition();
   const canGenerateTasks = requireVpAiFunctions('generateTasksFromGoal');
+  const visiblePresets = GOAL_PRESETS.filter((p) => islamicMode || !p.islamicOnly);
   const isModal = variant === 'modal' || typeof isOpen === 'boolean';
   const [tab, setTab] = useState(goal ? (defaultTab === 'plan' ? 'analyze' : defaultTab) : defaultTab);
   const [goalText, setGoalText] = useState(goal?.title || '');
@@ -329,7 +332,7 @@ Return concrete, actionable guidance.`,
     setPlan(null);
     try {
       const result = await base44.integrations.Core.InvokeLLM({
-        prompt: `You are an expert life coach and Islamic productivity advisor. Break down this long-term goal into a complete actionable plan.
+        prompt: `You are an expert life coach${islamicMode ? ' and Islamic productivity advisor' : ''}. Break down this long-term goal into a complete actionable plan.
 
 Goal: "${goalText}"
 Timeframe: ${timeframe}
@@ -338,7 +341,7 @@ Today: ${format(new Date(), 'yyyy-MM-dd')}
 Generate:
 1. A category (one of: spiritual, health, financial, learning, personal, relationships, professional, other)
 2. A motivational description (2 sentences)
-3. 3-5 daily habits to build (each with a title, frequency: daily/weekly, target_count as a number, unit: e.g. pages/minutes/times/rakah)
+3. 3-5 daily habits to build (each with a title, frequency: daily/weekly, target_count as a number, unit: e.g. pages/minutes/times${islamicMode ? '/rakah' : ''})
 4. 4-6 milestone tasks to complete over the timeframe (with priority: high/medium/low and due_days offset from today)
 5. 3-4 calendar milestones to mark progress (with title and week_offset from today)
 6. 3-5 action steps (short milestone titles) for the goal record
@@ -508,7 +511,7 @@ Generate:
               <div>
                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Quick Start</p>
                 <div className="grid grid-cols-2 gap-2">
-                  {GOAL_PRESETS.map((p, i) => (
+                  {visiblePresets.map((p, i) => (
                     <button key={i} onClick={() => selectPreset(p)}
                       className={cn('flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 text-left transition-all text-xs font-semibold',
                         selectedPreset?.label === p.label
@@ -527,7 +530,7 @@ Generate:
                   value={goalText}
                   onChange={e => setGoalText(e.target.value)}
                   rows={2}
-                  placeholder="Describe your long-term life or spiritual goal…"
+                  placeholder={islamicMode ? 'Describe your long-term life or spiritual goal…' : 'Describe your long-term goal…'}
                   className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
                 />
                 <div className="flex items-center gap-2">

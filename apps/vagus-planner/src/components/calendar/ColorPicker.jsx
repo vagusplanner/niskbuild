@@ -34,17 +34,25 @@ export default function ColorPicker({
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         {compact ? (
-          <Button variant="outline" size="icon" className="relative">
-            <Palette className="w-4 h-4" />
-            <div 
-              className={cn("absolute bottom-1 right-1 w-2 h-2 rounded-full border border-white", selectedColor.bg)}
+          <Button
+            variant="outline"
+            size="icon"
+            className="relative overflow-hidden p-0 w-9 h-9"
+            title={selectedColor.name}
+          >
+            <span
+              className="absolute inset-0"
+              style={{ backgroundColor: value || selectedColor.value }}
             />
           </Button>
         ) : (
           <Button variant="outline" className="w-full justify-start gap-2">
             <Palette className="w-4 h-4" />
             <span>{label}</span>
-            <div className={cn("ml-auto w-6 h-6 rounded-md", selectedColor.bg)} />
+            <div
+              className="ml-auto w-6 h-6 rounded-md ring-1 ring-black/10"
+              style={{ backgroundColor: value || selectedColor.value }}
+            />
           </Button>
         )}
       </PopoverTrigger>

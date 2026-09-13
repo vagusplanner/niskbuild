@@ -93,6 +93,7 @@ Events: `checkout.session.completed`, `customer.subscription.*`, `invoice.paid`.
 | `TOGETHER_API_KEY` | Fallback AI provider |
 | `RESEND_API_KEY` | Transactional email |
 | `EMAIL_FROM` | Sender, e.g. `NiskBuild <support@niskbuild.com>` |
+| `EMAIL_FROM_VP` | Vagus Planner sender. Default if unset: `Vagus Planner <support@vagusplanner.com>`. Requires the vagusplanner.com domain verified in Resend (DKIM `resend._domainkey` is already published). |
 | `CRON_SECRET` | Bearer secret for `/api/cron/email-lifecycle` and VP reminders (Vercel Cron) |
 | `RESEND_WEBHOOK_SECRET` | Resend webhook **Signing secret** (`whsec_...`) from Resend → Webhooks — used for Svix verification on `/api/webhooks/resend` |
 

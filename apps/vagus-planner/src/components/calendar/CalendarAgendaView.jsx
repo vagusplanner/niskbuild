@@ -3,8 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
 import { Calendar, MapPin, Clock } from 'lucide-react';
+import { eventChipStyle } from '@/lib/event-chip-colors';
 
-export default function CalendarAgendaView({ events = [], onEventClick = () => {}, currentMonth = new Date() }) {
+export default function CalendarAgendaView({ events = [], onEventClick = () => {}, currentMonth = new Date(), eventColorMode = {} }) {
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
   const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
@@ -52,26 +53,23 @@ export default function CalendarAgendaView({ events = [], onEventClick = () => {
                 <button
                   key={event.id}
                   onClick={() => onEventClick(event)}
-                  className="w-full text-left p-4 rounded-lg border hover:border-teal-300 hover:bg-teal-50/50 transition-all"
-                  style={{
-                    borderLeftWidth: '4px',
-                    borderLeftColor: event.color || '#14b8a6'
-                  }}
+                  className="w-full text-left p-4 rounded-lg ring-1 ring-black/5 hover:brightness-110 transition-all"
+                  style={eventChipStyle(event, eventColorMode)}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-slate-800">{event.title}</h3>
+                        <h3 className="font-semibold">{event.title}</h3>
                         <Badge variant="outline" className="text-xs">
                           {event.category}
                         </Badge>
                       </div>
                       
                       {event.description && (
-                        <p className="text-sm text-slate-600 mb-2">{event.description}</p>
+                        <p className="text-sm opacity-80 mb-2">{event.description}</p>
                       )}
                       
-                      <div className="flex items-center gap-4 text-xs text-slate-500">
+                      <div className="flex items-center gap-4 text-xs opacity-80">
                        {!event.is_all_day && event.start_date && event.end_date && (
                          <div className="flex items-center gap-1">
                            <Clock className="w-3 h-3" />

@@ -5,6 +5,17 @@ interface SendEmailOptions {
   subject: string;
   html: string;
   replyTo?: string;
+  from?: string;
+}
+
+export function resolveEmailFrom(product: 'niskbuild' | 'vagus-planner' = 'niskbuild'): string {
+  if (product === 'vagus-planner') {
+    return (
+      process.env.EMAIL_FROM_VP?.trim() ||
+      'Vagus Planner <support@vagusplanner.com>'
+    );
+  }
+  return process.env.EMAIL_FROM || 'NiskBuild <support@niskbuild.com>';
 }
 
 export async function sendEmail({
@@ -12,9 +23,10 @@ export async function sendEmail({
   subject,
   html,
   replyTo,
+  from: fromOverride,
 }: SendEmailOptions): Promise<{ ok: boolean; id?: string; error?: string }> {
   const resendKey = process.env.RESEND_API_KEY?.trim();
-  const from = process.env.EMAIL_FROM || 'NiskBuild <support@niskbuild.com>';
+  const from = fromOverride || process.env.EMAIL_FROM || 'NiskBuild <support@niskbuild.com>';
 
   if (!resendKey) {
     console.log('📧 [dev email]', { to, subject });

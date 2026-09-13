@@ -77,13 +77,18 @@ const CALENDAR_LEGEND = [
   }
 ];
 
-export default function InteractiveCalendarLegend({ compact = false }) {
+const ISLAMIC_LEGEND_IDS = new Set(['ritual', 'prayer', 'fasting']);
+
+export default function InteractiveCalendarLegend({ compact = false, islamicMode = false }) {
   const [expandedItem, setExpandedItem] = useState(null);
+  const items = islamicMode
+    ? CALENDAR_LEGEND
+    : CALENDAR_LEGEND.filter((item) => !ISLAMIC_LEGEND_IDS.has(item.id));
 
   if (compact) {
     return (
       <div className="flex flex-wrap gap-2">
-        {CALENDAR_LEGEND.map(item => (
+        {items.map(item => (
           <div
             key={item.id}
             className="relative group"
@@ -130,7 +135,7 @@ export default function InteractiveCalendarLegend({ compact = false }) {
           Calendar Color Guide
         </h3>
         <div className="space-y-2">
-          {CALENDAR_LEGEND.map(item => (
+          {items.map(item => (
             <motion.div key={item.id}>
               <button
                 onClick={() => setExpandedItem(expandedItem === item.id ? null : item.id)}

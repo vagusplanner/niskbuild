@@ -33,6 +33,7 @@ import OptimalTimeSuggestions from './OptimalTimeSuggestions';
 import RecurringExceptionManager from './RecurringExceptionManager';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import MobileSelectSheet from '@/components/ui/MobileSelectSheet';
+import { useUnsavedWork } from '@/lib/unsaved-work';
 
 const CATEGORIES = [
   { value: 'work',     label: 'Work',     color: 'bg-teal-600' },
@@ -219,6 +220,14 @@ export default function EventForm({ isOpen, onClose, onSave, event, selectedDate
       });
     }
   }, [event, selectedDate, isOpen]);
+
+  useUnsavedWork(
+    'event-form',
+    Boolean(
+      isOpen &&
+        (formData.title?.trim() || formData.description?.trim() || formData.location?.trim())
+    )
+  );
 
   const handleSubmit = (e) => {
     e.preventDefault();

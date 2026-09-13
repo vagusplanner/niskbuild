@@ -10,11 +10,29 @@ function shell(title: string, body: string): string {
   `;
 }
 
+function vpShell(title: string, body: string): string {
+  return `
+    <div style="font-family:system-ui,sans-serif;max-width:520px;color:#e2e8f0;background:#0c1a24;padding:32px;border-radius:12px;">
+      <div style="margin-bottom:20px;">
+        <div style="font-size:12px;letter-spacing:0.14em;font-weight:800;color:#E8B84B;text-transform:uppercase;">Vagus Planner</div>
+        <div style="height:3px;width:48px;background:#1D6FB8;border-radius:2px;margin-top:8px;"></div>
+      </div>
+      <h2 style="color:#fff;margin:0 0 12px;">${title}</h2>
+      ${body}
+      <p style="color:#64748b;font-size:12px;margin-top:28px;">Sent by Vagus Planner · <a href="https://vagusplanner.com" style="color:#29ABE2;">vagusplanner.com</a></p>
+    </div>
+  `;
+}
+
 function cta(href: string, label: string, primary = true): string {
   const style = primary
     ? 'display:inline-block;background:linear-gradient(135deg,#4F6EF7,#7C3AED);color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;'
     : 'display:inline-block;border:1px solid #4F6EF7;color:#4F6EF7;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;';
   return `<a href="${href}" style="${style}">${label}</a>`;
+}
+
+function vpCta(href: string, label: string): string {
+  return `<a href="${href}" style="display:inline-block;background:#1D6FB8;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">${label}</a>`;
 }
 
 export function welcomeEmailHtml(): string {
@@ -133,7 +151,7 @@ export function cancelWarningVpHtml(opts?: { islamic?: boolean }): string {
   const islamicLine = opts?.islamic
     ? '<li>Islamic Edition extras (full prayer tools, Quran, Zakat, Ramadan/Hajj features) revert to Free</li>'
     : '';
-  return shell(
+  return vpShell(
     'Before you go — your Vagus Planner data stays saved',
     `<p style="color:#94a3b8;line-height:1.6;">
       Your subscription will stay active until the end of the current billing period.
@@ -147,23 +165,23 @@ export function cancelWarningVpHtml(opts?: { islamic?: boolean }): string {
       ${islamicLine}
     </ul>
     <p style="color:#94a3b8;line-height:1.6;">Resubscribe anytime and those features come back. Your existing data is still there.</p>
-    <p style="margin:24px 0;">${cta(vpAppUrl('/Billing'), 'Keep my plan')}</p>`
+    <p style="margin:24px 0;">${vpCta(vpAppUrl('/Billing'), 'Keep my plan')}</p>`
   );
 }
 
 export function winback7dVpHtml(): string {
-  return shell(
+  return vpShell(
     'Your Vagus Planner data is still saved',
     `<p style="color:#94a3b8;line-height:1.6;">Your events, goals, and logs were not deleted when the subscription ended. Reactivate Pro to restore higher AI limits, Google Calendar sync, and other paid features.</p>
-     <p style="margin:24px 0;">${cta(vpAppUrl('/Billing'), 'Resubscribe')}</p>`
+     <p style="margin:24px 0;">${vpCta(vpAppUrl('/Billing'), 'Resubscribe')}</p>`
   );
 }
 
 export function winback30dVpHtml(): string {
-  return shell(
+  return vpShell(
     'Come back to Vagus Planner',
     `<p style="color:#94a3b8;line-height:1.6;">Your planner data is still here. Resubscribe to unlock Pro AI, calendar sync, and the rest of your paid plan.</p>
-     <p style="margin:24px 0;">${cta(vpAppUrl('/Billing'), 'View plans')}</p>`
+     <p style="margin:24px 0;">${vpCta(vpAppUrl('/Billing'), 'View plans')}</p>`
   );
 }
 

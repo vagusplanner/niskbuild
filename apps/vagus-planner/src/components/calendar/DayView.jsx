@@ -4,8 +4,9 @@ import { cn } from '@/lib/utils';
 import { Clock, MapPin } from 'lucide-react';
 import { toHijri } from '@/components/utils/hijriUtils';
 import HabitCalendarOverlay from '@/components/habits/HabitCalendarOverlay';
+import { eventChipStyle } from '@/lib/event-chip-colors';
 
-export default function DayView({ currentDate, events = [], onEventClick, showFastingDays = true }) {
+export default function DayView({ currentDate, events = [], onEventClick, showFastingDays = false, eventColorMode = {} }) {
   const [hijriDate, setHijriDate] = useState(null);
 
   useEffect(() => {
@@ -27,17 +28,6 @@ export default function DayView({ currentDate, events = [], onEventClick, showFa
       const eventDate = new Date(event.start_date);
       return event.is_all_day && isSameDay(eventDate, currentDate);
     });
-  };
-
-  const categoryColors = {
-    work: 'bg-blue-50 text-blue-900 border-l-blue-500',
-    personal: 'bg-emerald-50 text-emerald-900 border-l-emerald-500',
-    health: 'bg-rose-50 text-rose-900 border-l-rose-500',
-    prayer: 'bg-violet-50 text-violet-900 border-l-violet-500',
-    holiday: 'bg-amber-50 text-amber-900 border-l-amber-500',
-    family: 'bg-pink-50 text-pink-900 border-l-pink-500',
-    social: 'bg-cyan-50 text-cyan-900 border-l-cyan-500',
-    other: 'bg-slate-50 text-slate-900 border-l-slate-500'
   };
 
   const allDayEvents = getAllDayEvents();
@@ -89,10 +79,8 @@ export default function DayView({ currentDate, events = [], onEventClick, showFa
               <button
                 key={event.id}
                 onClick={() => onEventClick(event)}
-                className={cn(
-                  "w-full p-3 rounded-lg text-left border-l-4 transition-all hover:scale-[1.01]",
-                  categoryColors[event.category] || categoryColors.other
-                )}
+                className="w-full p-3 rounded-lg text-left ring-1 ring-black/5 transition-all hover:scale-[1.01]"
+                style={eventChipStyle(event, eventColorMode)}
               >
                 <div className="font-semibold">{event.title}</div>
                 {event.location && (
@@ -121,10 +109,8 @@ export default function DayView({ currentDate, events = [], onEventClick, showFa
                   <button
                     key={event.id}
                     onClick={() => onEventClick(event)}
-                    className={cn(
-                      "w-full p-3 rounded-lg text-left border-l-4 transition-all hover:scale-[1.01]",
-                      categoryColors[event.category] || categoryColors.other
-                    )}
+                    className="w-full p-3 rounded-lg text-left ring-1 ring-black/5 transition-all hover:scale-[1.01]"
+                    style={eventChipStyle(event, eventColorMode)}
                   >
                     <div className="flex items-center justify-between mb-1">
                       <div className="font-semibold">{event.title}</div>

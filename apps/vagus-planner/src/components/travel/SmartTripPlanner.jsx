@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plane, MapPin, Calendar, Package, List, Lightbulb, Clock,
@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
+import { useIslamicEdition } from '@/hooks/useIslamicEdition';
 
 const ACTIVITY_ICONS = {
   morning: '🌅', afternoon: '☀️', evening: '🌆', night: '🌙',
@@ -221,6 +222,7 @@ function GmailBookingsPanel({ data, loading, onScan, onSaveToCalendar }) {
 
 export default function SmartTripPlanner() {
   const available = requireVpAiFunctions('planTripWithAi');
+  const { islamicMode } = useIslamicEdition();
   const [form, setForm] = useState({
     destination: '', origin: 'London, UK', start_date: '', end_date: '',
     trip_type: 'leisure', num_travelers: '1', halal_mode: false, budget: ''
@@ -233,6 +235,16 @@ export default function SmartTripPlanner() {
   const [gmailData, setGmailData] = useState(null);
   const [loadingGmail, setLoadingGmail] = useState(false);
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!islamicMode) {
+      setForm((f) => (
+        f.halal_mode
+          ? { ...f, halal_mode: false, trip_type: f.trip_type === 'halal_tourism' ? 'leisure' : f.trip_type }
+          : f
+      ));
+    }
+  }, [islamicMode]);
 
   const handleGenerate = async () => {
     if (!form.destination || !form.start_date || !form.end_date) {
@@ -365,7 +377,8 @@ export default function SmartTripPlanner() {
       </div>
 
       <div className="p-5">
-        {/* Halal Mode Toggle */}
+        {/* Halal Mode Toggle — Islamic Edition only */}
+        {islamicMode && (
         <div className={cn("flex items-center justify-between p-3 rounded-xl border mb-5 transition-all",
           form.halal_mode
             ? "bg-gradient-to-r from-emerald-50 to-amber-50 dark:from-emerald-950/30 dark:to-amber-950/30 border-[#E8B84B]/50"
@@ -386,6 +399,7 @@ export default function SmartTripPlanner() {
             className="data-[state=checked]:bg-emerald-600"
           />
         </div>
+        )}
 
         {/* Form Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">

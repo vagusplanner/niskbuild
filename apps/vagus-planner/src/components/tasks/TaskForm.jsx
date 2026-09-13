@@ -18,6 +18,7 @@ import RecurringTaskForm from './RecurringTaskForm';
 import AITaskDependencyAnalyzer from './AITaskDependencyAnalyzer';
 import AIRecurringTaskHelper from './AIRecurringTaskHelper';
 import AITaskGenerator from './AITaskGenerator';
+import { useUnsavedWork } from '@/lib/unsaved-work';
 import AIPrioritySuggester from './AIPrioritySuggester';
 import PrayerAwareTaskScheduler from './PrayerAwareTaskScheduler';
 import { cn } from '@/lib/utils';
@@ -87,6 +88,11 @@ export default function TaskForm({ isOpen, onClose, onSubmit, task = null, showA
       });
     }
   }, [task]);
+
+  useUnsavedWork(
+    'task-form',
+    Boolean(isOpen && (formData.title?.trim() || formData.description?.trim() || formData.notes?.trim()))
+  );
 
   const handleSubmit = (e) => {
     e.preventDefault();

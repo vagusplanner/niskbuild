@@ -18,19 +18,7 @@ import {
 import { toHijri } from '@/components/utils/hijriUtils';
 import ConflictResolutionModal from './ConflictResolutionModal';
 import { toast } from 'sonner';
-
-// ─── helpers ─────────────────────────────────────────────────────────────────
-
-const CAT_COLORS = {
-  work:     { bg: 'bg-blue-100 dark:bg-blue-900/40',     text: 'text-blue-800 dark:text-blue-200',     border: 'border-l-blue-500',   dot: 'bg-blue-500' },
-  personal: { bg: 'bg-emerald-100 dark:bg-emerald-900/40', text: 'text-emerald-800 dark:text-emerald-200', border: 'border-l-emerald-500', dot: 'bg-emerald-500' },
-  health:   { bg: 'bg-rose-100 dark:bg-rose-900/40',     text: 'text-rose-800 dark:text-rose-200',     border: 'border-l-rose-500',   dot: 'bg-rose-500' },
-  prayer:   { bg: 'bg-violet-100 dark:bg-violet-900/40', text: 'text-violet-800 dark:text-violet-200', border: 'border-l-violet-500', dot: 'bg-violet-500' },
-  holiday:  { bg: 'bg-amber-100 dark:bg-amber-900/40',   text: 'text-amber-800 dark:text-amber-200',   border: 'border-l-amber-500',  dot: 'bg-amber-500' },
-  family:   { bg: 'bg-pink-100 dark:bg-pink-900/40',     text: 'text-pink-800 dark:text-pink-200',     border: 'border-l-pink-500',   dot: 'bg-pink-500' },
-  social:   { bg: 'bg-cyan-100 dark:bg-cyan-900/40',     text: 'text-cyan-800 dark:text-cyan-200',     border: 'border-l-cyan-500',   dot: 'bg-cyan-500' },
-  other:    { bg: 'bg-slate-100 dark:bg-slate-800',      text: 'text-slate-800 dark:text-slate-200',   border: 'border-l-slate-400',  dot: 'bg-slate-400' },
-};
+import { eventChipStyle } from '@/lib/event-chip-colors';
 
 const TASK_PRIORITY = {
   urgent: 'bg-red-100 text-red-700 border-l-red-500',
@@ -38,8 +26,6 @@ const TASK_PRIORITY = {
   medium: 'bg-yellow-100 text-yellow-700 border-l-yellow-500',
   low:    'bg-slate-100 text-slate-600 border-l-slate-400',
 };
-
-function catStyle(cat) { return CAT_COLORS[cat] || CAT_COLORS.other; }
 
 function formatTime(isoStr) {
   if (!isoStr) return '';
@@ -65,17 +51,16 @@ function detectDayConflicts(dayEvents) {
 
 // ─── sub-components ───────────────────────────────────────────────────────────
 
-function EventPill({ event, conflicting, onClick, compact = false }) {
-  const s = catStyle(event.category);
+function EventPill({ event, conflicting, onClick, compact = false, eventColorMode = {} }) {
   return (
     <button
       onClick={() => onClick(event)}
       className={cn(
-        'w-full text-left rounded-lg border-l-4 transition-all hover:opacity-90 hover:shadow-sm',
+        'w-full text-left rounded-lg ring-1 ring-black/5 transition-all hover:opacity-90 hover:shadow-sm',
         compact ? 'px-1.5 py-0.5' : 'px-2 py-1.5',
-        s.bg, s.text, s.border,
         conflicting && 'ring-2 ring-orange-400 ring-offset-1'
       )}
+      style={eventChipStyle(event, eventColorMode)}
     >
       <div className={cn('font-medium truncate flex items-center gap-1', compact ? 'text-[11px]' : 'text-xs')}>
         {conflicting && <AlertTriangle className="w-2.5 h-2.5 text-orange-500 flex-shrink-0" />}
@@ -107,8 +92,8 @@ function TaskPill({ task, compact = false }) {
   );
 }
 
-function FastingBadge({ hijri, dayOfWeek, compact = false }) {
-  if (!hijri) return null;
+function FastingBadge({ hijri, dayOfWeek, compact = false, enabled = false }) {
+  if (!enabled || !hijri) return null;
   const tags = [];
   if (hijri.month === 9) tags.push({ label: 'Ramadan', icon: '⭐', cls: 'bg-indigo-100 text-indigo-700' });
   if (dayOfWeek === 1 || dayOfWeek === 4) tags.push({ label: compact ? 'M/T' : 'Mon/Thu', icon: '🌙', cls: 'bg-purple-100 text-purple-700' });
@@ -127,7 +112,7 @@ function FastingBadge({ hijri, dayOfWeek, compact = false }) {
 
 // ─── MONTH VIEW ───────────────────────────────────────────────────────────────
 
-function MonthView({ currentDate, events, tasks, conflicts, onEventClick, onConflictClick, weekStartsOn = 1, hijriCache }) {
+function MonthView({ currentDate, events, tasks, conflicts, onEventClick, onConflictClick, weekStartsOn = 1, hijriCache, showFastingDays = false, eventColorMode = {} }) {
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
   const calStart = startOfWeek(monthStart, { weekStartsOn });
@@ -190,14 +175,14 @@ function MonthView({ currentDate, events, tasks, conflicts, onEventClick, onConf
                       <AlertTriangle className="w-3 h-3" />
                     </button>
                   )}
-                  <FastingBadge hijri={hijri} dayOfWeek={day.getDay()} compact />
+                  <FastingBadge hijri={hijri} dayOfWeek={day.getDay()} compact enabled={showFastingDays} />
                 </div>
               </div>
 
               {/* Events */}
               <div className="space-y-0.5">
                 {dayEvents.slice(0, 2).map(evt => (
-                  <EventPill key={evt.id} event={evt} conflicting={conflictSet.has(evt.id)} onClick={onEventClick} compact />
+                  <EventPill key={evt.id} event={evt} conflicting={conflictSet.has(evt.id)} onClick={onEventClick} compact eventColorMode={eventColorMode} />
                 ))}
                 {dayTasks.slice(0, 1).map(t => (
                   <TaskPill key={t.id} task={t} compact />
@@ -218,7 +203,7 @@ function MonthView({ currentDate, events, tasks, conflicts, onEventClick, onConf
 
 // ─── WEEK VIEW ────────────────────────────────────────────────────────────────
 
-function WeekViewUnified({ currentDate, events, tasks, conflicts, onEventClick, onConflictClick, weekStartsOn = 1, hijriCache }) {
+function WeekViewUnified({ currentDate, events, tasks, conflicts, onEventClick, onConflictClick, weekStartsOn = 1, hijriCache, showFastingDays = false, eventColorMode = {} }) {
   const weekStart = startOfWeek(currentDate, { weekStartsOn });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const hours = Array.from({ length: 24 }, (_, i) => i);
@@ -240,7 +225,7 @@ function WeekViewUnified({ currentDate, events, tasks, conflicts, onEventClick, 
                 {format(day, 'd')}
               </div>
               {hijri && <div className="text-[10px] text-violet-500">{hijri.day}</div>}
-              <FastingBadge hijri={hijri} dayOfWeek={day.getDay()} compact />
+              <FastingBadge hijri={hijri} dayOfWeek={day.getDay()} compact enabled={showFastingDays} />
               {dayConflicts.length > 0 && (
                 <button onClick={() => onConflictClick(dayConflicts[0])} className="mt-0.5">
                   <Badge variant="outline" className="text-[9px] border-orange-400 text-orange-600 px-1 gap-0.5">
@@ -261,7 +246,7 @@ function WeekViewUnified({ currentDate, events, tasks, conflicts, onEventClick, 
           const dayTasks = tasks.filter(t => t.due_date && isSameDay(new Date(t.due_date), day));
           return (
             <div key={day.toISOString()} className="p-1 border-r border-slate-200 dark:border-slate-700 space-y-0.5 min-h-[48px]">
-              {allDay.map(e => <EventPill key={e.id} event={e} conflicting={false} onClick={onEventClick} compact />)}
+              {allDay.map(e => <EventPill key={e.id} event={e} conflicting={false} onClick={onEventClick} compact eventColorMode={eventColorMode} />)}
               {dayTasks.map(t => <TaskPill key={t.id} task={t} compact />)}
             </div>
           );
@@ -284,7 +269,7 @@ function WeekViewUnified({ currentDate, events, tasks, conflicts, onEventClick, 
             return (
               <div key={day.toISOString()} className="p-1 border-r border-slate-200 dark:border-slate-700 space-y-0.5 min-h-[48px]">
                 {hourEvents.map(e => (
-                  <EventPill key={e.id} event={e} conflicting={conflictSet.has(e.id)} onClick={onEventClick} compact />
+                  <EventPill key={e.id} event={e} conflicting={conflictSet.has(e.id)} onClick={onEventClick} compact eventColorMode={eventColorMode} />
                 ))}
               </div>
             );
@@ -297,7 +282,7 @@ function WeekViewUnified({ currentDate, events, tasks, conflicts, onEventClick, 
 
 // ─── DAY VIEW ─────────────────────────────────────────────────────────────────
 
-function DayViewUnified({ currentDate, events, tasks, conflicts, onEventClick, onConflictClick, hijriCache }) {
+function DayViewUnified({ currentDate, events, tasks, conflicts, onEventClick, onConflictClick, hijriCache, showFastingDays = false, eventColorMode = {} }) {
   const dateKey = format(currentDate, 'yyyy-MM-dd');
   const hijri = hijriCache[dateKey];
   const dayEvents = events.filter(e => e.start_date && isSameDay(parseISO(e.start_date), currentDate));
@@ -318,7 +303,7 @@ function DayViewUnified({ currentDate, events, tasks, conflicts, onEventClick, o
             {hijri && (
               <div className="flex items-center gap-3 mt-1">
                 <span className="text-sm text-violet-600 dark:text-violet-400">{hijri.day} {hijri.monthName} {hijri.year} AH</span>
-                <FastingBadge hijri={hijri} dayOfWeek={currentDate.getDay()} />
+                <FastingBadge hijri={hijri} dayOfWeek={currentDate.getDay()} enabled={showFastingDays} />
               </div>
             )}
           </div>
@@ -337,7 +322,7 @@ function DayViewUnified({ currentDate, events, tasks, conflicts, onEventClick, o
         <div className="border-b bg-slate-50 dark:bg-slate-800/50 p-3 space-y-1.5">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">All Day & Tasks</p>
           {dayEvents.filter(e => e.is_all_day).map(e => (
-            <EventPill key={e.id} event={e} conflicting={conflictSet.has(e.id)} onClick={onEventClick} />
+            <EventPill key={e.id} event={e} conflicting={conflictSet.has(e.id)} onClick={onEventClick} eventColorMode={eventColorMode} />
           ))}
           {dayTasks.map(t => <TaskPill key={t.id} task={t} />)}
         </div>
@@ -352,7 +337,7 @@ function DayViewUnified({ currentDate, events, tasks, conflicts, onEventClick, o
               {format(new Date().setHours(hour, 0), 'h:mm a')}
             </div>
             <div className="p-2 space-y-1.5 min-h-[56px]">
-              {hourEvents.map(e => <EventPill key={e.id} event={e} conflicting={conflictSet.has(e.id)} onClick={onEventClick} />)}
+              {hourEvents.map(e => <EventPill key={e.id} event={e} conflicting={conflictSet.has(e.id)} onClick={onEventClick} eventColorMode={eventColorMode} />)}
             </div>
           </div>
         );
@@ -363,7 +348,7 @@ function DayViewUnified({ currentDate, events, tasks, conflicts, onEventClick, o
 
 // ─── AGENDA VIEW ─────────────────────────────────────────────────────────────
 
-function AgendaView({ currentDate, events, tasks, conflicts, onEventClick, onConflictClick, hijriCache }) {
+function AgendaView({ currentDate, events, tasks, conflicts, onEventClick, onConflictClick, hijriCache, showFastingDays = false, eventColorMode = {} }) {
   const rangeStart = startOfMonth(currentDate);
   const rangeEnd = endOfMonth(currentDate);
   const days = eachDayOfInterval({ start: rangeStart, end: rangeEnd });
@@ -411,7 +396,7 @@ function AgendaView({ currentDate, events, tasks, conflicts, onEventClick, onCon
                   <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">{format(day, 'MMMM yyyy')}</div>
                   {hijri && <div className="text-xs text-violet-600 dark:text-violet-400">{hijri.day} {hijri.monthName}</div>}
                 </div>
-                <FastingBadge hijri={hijri} dayOfWeek={day.getDay()} />
+                <FastingBadge hijri={hijri} dayOfWeek={day.getDay()} enabled={showFastingDays} />
               </div>
               <div className="flex items-center gap-2">
                 {dayConflicts.length > 0 && (
@@ -430,17 +415,17 @@ function AgendaView({ currentDate, events, tasks, conflicts, onEventClick, onCon
             {/* Items */}
             <div className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
               {dayEvents.map(evt => {
-                const s = catStyle(evt.category);
+                const fill = eventChipStyle(evt, eventColorMode);
                 const hasConflict = conflictSet.has(evt.id);
                 return (
                   <button key={evt.id} onClick={() => onEventClick(evt)}
                     className={cn('w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors',
                       hasConflict && 'bg-orange-50/50 dark:bg-orange-950/20')}>
-                    <div className={cn('w-1 self-stretch rounded-full flex-shrink-0', s.dot)} />
+                    <div className="w-2 self-stretch rounded-full flex-shrink-0" style={{ backgroundColor: fill.backgroundColor }} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         {hasConflict && <AlertTriangle className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" />}
-                        <span className={cn('font-semibold text-sm', s.text)}>{evt.title}</span>
+                        <span className="font-semibold text-sm">{evt.title}</span>
                         <Badge variant="outline" className="text-[10px] px-1">{evt.category}</Badge>
                         {hasConflict && <Badge variant="outline" className="text-[10px] px-1 border-orange-400 text-orange-600">conflict</Badge>}
                       </div>
@@ -497,6 +482,8 @@ export default function UnifiedCalendarView({
   events = [],
   onEventClick = () => {},
   onEditEvent = () => {},
+  showFastingDays = false,
+  eventColorMode = {},
 }) {
   const [view, setView] = useState('month');
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -638,9 +625,11 @@ export default function UnifiedCalendarView({
         <span className="flex items-center gap-1">
           <CheckSquare className="w-3 h-3 text-slate-400" /> task deadline
         </span>
+        {showFastingDays && (
         <span className="flex items-center gap-1">
           <Moon className="w-3 h-3 text-purple-400" /> fasting day
         </span>
+        )}
         <span className="flex items-center gap-1">
           <AlertTriangle className="w-3 h-3 text-orange-400" /> conflict
         </span>
@@ -653,28 +642,28 @@ export default function UnifiedCalendarView({
             <MonthView
               currentDate={currentDate} events={events} tasks={tasks}
               conflicts={conflicts} onEventClick={onEventClick} onConflictClick={setConflictModal}
-              hijriCache={hijriCache}
+              hijriCache={hijriCache} showFastingDays={showFastingDays} eventColorMode={eventColorMode}
             />
           )}
           {view === 'week' && (
             <WeekViewUnified
               currentDate={currentDate} events={events} tasks={tasks}
               conflicts={conflicts} onEventClick={onEventClick} onConflictClick={setConflictModal}
-              hijriCache={hijriCache}
+              hijriCache={hijriCache} showFastingDays={showFastingDays} eventColorMode={eventColorMode}
             />
           )}
           {view === 'day' && (
             <DayViewUnified
               currentDate={currentDate} events={events} tasks={tasks}
               conflicts={conflicts} onEventClick={onEventClick} onConflictClick={setConflictModal}
-              hijriCache={hijriCache}
+              hijriCache={hijriCache} showFastingDays={showFastingDays} eventColorMode={eventColorMode}
             />
           )}
           {view === 'agenda' && (
             <AgendaView
               currentDate={currentDate} events={events} tasks={tasks}
               conflicts={conflicts} onEventClick={onEventClick} onConflictClick={setConflictModal}
-              hijriCache={hijriCache}
+              hijriCache={hijriCache} showFastingDays={showFastingDays} eventColorMode={eventColorMode}
             />
           )}
         </motion.div>

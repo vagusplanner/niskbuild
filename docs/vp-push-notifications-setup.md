@@ -15,7 +15,7 @@ Infrastructure for scheduled reminders via **Resend (email)** and **APNs (iOS pu
 | `/api/cron/vp-send-reminders` | Processes due reminders (Resend + APNs) |
 | `supabase/functions/vp-send-reminders` | Cron trigger → delegates to Next.js cron |
 
-**Email service:** Reuses platform **Resend** (`RESEND_API_KEY`, `EMAIL_FROM`) — same as NiskBuild auth/support mail. No new provider.
+**Email service:** Reuses platform **Resend** (`RESEND_API_KEY`). NiskBuild mail uses `EMAIL_FROM`. VP lifecycle mail (cancel / win-back) uses `EMAIL_FROM_VP` or defaults to `Vagus Planner <support@vagusplanner.com>`.
 
 ---
 
@@ -36,7 +36,8 @@ Add to Vercel / production env:
 ```env
 # Existing — already used by NiskBuild
 RESEND_API_KEY=re_...
-EMAIL_FROM="Vagus Planner <notifications@yourdomain.com>"
+EMAIL_FROM="NiskBuild <support@niskbuild.com>"
+EMAIL_FROM_VP="Vagus Planner <support@vagusplanner.com>"
 
 # Cron auth (shared by edge function + /api/cron/vp-send-reminders)
 CRON_SECRET=<random-long-secret>

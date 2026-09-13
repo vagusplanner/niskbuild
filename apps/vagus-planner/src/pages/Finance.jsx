@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -15,14 +15,20 @@ import CSVImport from '@/components/finance/CSVImport';
 import FinanceGoalLink from '@/components/finance/FinanceGoalLink';
 import { ZakatFinanceSummaryCard } from '@/components/zakat/ZakatHub';
 import MeetingNotesRecorder from '@/components/finance/MeetingNotesRecorder';
+import { useIslamicEdition } from '@/hooks/useIslamicEdition';
 
 const CURRENCIES = ['USD','GBP','EUR','AED','SAR','CAD','AUD','TRY','PKR'];
 
 export default function FinancePage() {
+  const { islamicMode } = useIslamicEdition();
   const [showForm, setShowForm] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [currency, setCurrency] = useState(() => localStorage.getItem('vagus_currency') || 'USD');
   const setCurrencyPersist = (c) => { setCurrency(c); localStorage.setItem('vagus_currency', c); };
+
+  useEffect(() => {
+    if (!islamicMode && activeTab === 'zakat') setActiveTab('overview');
+  }, [islamicMode, activeTab]);
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
@@ -77,7 +83,7 @@ export default function FinancePage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-7 w-full">
+        <TabsList className={islamicMode ? 'grid grid-cols-7 w-full' : 'grid grid-cols-6 w-full'}>
           <TabsTrigger value="overview" className="text-xs">
             <PieChart className="w-3 h-3 mr-1 hidden sm:block" /> Overview
           </TabsTrigger>
@@ -87,9 +93,11 @@ export default function FinancePage() {
           <TabsTrigger value="budget" className="text-xs">
             <Target className="w-3 h-3 mr-1 hidden sm:block" /> Budget
           </TabsTrigger>
+          {islamicMode && (
           <TabsTrigger value="zakat" className="text-xs">
             <Scale className="w-3 h-3 mr-1 hidden sm:block" /> Zakāt
           </TabsTrigger>
+          )}
           <TabsTrigger value="ai" className="text-xs">
             <Brain className="w-3 h-3 mr-1 hidden sm:block" /> AI
           </TabsTrigger>
@@ -116,11 +124,13 @@ export default function FinancePage() {
           <BudgetRolloverPanel currency={currency} />
         </TabsContent>
 
+        {islamicMode && (
         <TabsContent value="zakat">
           <div className="mt-4">
             <ZakatFinanceSummaryCard />
           </div>
         </TabsContent>
+        )}
 
         <TabsContent value="ai">
           <AIFinanceAdvisor />
