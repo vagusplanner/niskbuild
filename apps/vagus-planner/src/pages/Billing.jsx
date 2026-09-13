@@ -147,15 +147,19 @@ export default function BillingPage() {
   // Cancel subscription — server resolves id from vp_subscriptions or profiles.subscription_id
   const cancelMutation = useMutation({
     mutationFn: async () => {
-      await base44.functions.invoke('cancelStripeSubscription', {
+      const result = await base44.functions.invoke('cancelStripeSubscription', {
         subscriptionId: billingSubscription?.stripe_subscription_id || '',
         reason: 'User requested cancellation'
       });
+      const payload = result?.data ?? result;
+      if (payload?.ok === false || payload?.error) {
+        throw new Error(payload.error || 'Failed to cancel subscription');
+      }
       await queryClient.invalidateQueries({ queryKey: ['billingStatus'] });
       await queryClient.invalidateQueries({ queryKey: ['planAccess'] });
-      toast.success('Subscription cancelled');
+      toast.success('Subscription will cancel at the end of the billing period');
     },
-    onError: () => toast.error('Failed to cancel subscription')
+    onError: (error) => toast.error(error?.message || 'Failed to cancel subscription')
   });
 
   // Customer Portal

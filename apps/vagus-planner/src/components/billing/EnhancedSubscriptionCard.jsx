@@ -132,12 +132,16 @@ export default function EnhancedSubscriptionCard({
   const status = statusConfig[subscription.status] || statusConfig.active;
   const StatusIcon = status.icon;
 
-  const daysUntilRenewal = subscription.current_period_end 
+  const hasPeriodEnd = Boolean(subscription.current_period_end);
+  const daysUntilRenewal = hasPeriodEnd
     ? differenceInDays(new Date(subscription.current_period_end), new Date())
-    : 0;
+    : null;
 
   const isNearRenewal =
-    !isPlatformOwnerAccess && daysUntilRenewal <= 3 && daysUntilRenewal >= 0;
+    !isPlatformOwnerAccess &&
+    daysUntilRenewal != null &&
+    daysUntilRenewal <= 3 &&
+    daysUntilRenewal >= 0;
 
   const calculateUsagePercent = (feature) => {
     const limit = plan.limits[feature];
@@ -163,10 +167,12 @@ export default function EnhancedSubscriptionCard({
     typeof onUpgrade === 'function';
   const showManage =
     allowStripePurchases && showPaidBillingUi && typeof onManage === 'function';
+  const statusLower = String(subscription.status || '').toLowerCase();
+  // Cancel is not a purchase — never hide it behind canUseStripePurchases().
   const showCancel =
     !isPlatformOwnerAccess &&
     subscription.plan !== 'free' &&
-    subscription.status === 'active' &&
+    !['canceled', 'cancelled', 'incomplete_expired'].includes(statusLower) &&
     typeof onCancel === 'function';
   const showIosWebNotice = !allowStripePurchases && !isPlatformOwnerAccess;
 
@@ -234,6 +240,18 @@ export default function EnhancedSubscriptionCard({
 
       <CardContent className="space-y-6">
         {showIosWebNotice && <IosWebSubscriptionNotice />}
+
+        {showCancel && (
+          <div className="pt-1">
+            <Button
+              variant="outline"
+              className="w-full text-red-600 hover:text-red-700"
+              onClick={onCancel}
+            >
+              Cancel Subscription
+            </Button>
+          </div>
+        )}
 
         {/* Billing Info — real Stripe subscribers only */}
         {showPaidBillingUi && (
@@ -333,18 +351,7 @@ export default function EnhancedSubscriptionCard({
           </div>
         )}
 
-        {/* Cancel — real Stripe subscribers only */}
-        {showCancel && (
-          <div className="pt-4 border-t">
-            <Button 
-              variant="outline" 
-              className="w-full text-red-600 hover:text-red-700"
-              onClick={onCancel}
-            >
-              Cancel Subscription
-            </Button>
-          </div>
-        )}
+        {/* Cancel is rendered above (not gated by iOS purchase lock) */}
       </CardContent>
     </Card>
   );

@@ -1589,6 +1589,21 @@ export const base44 = {
         }
       }
 
+      // Account → Personal Info mirrors to profiles.full_name. Prefer that over
+      // OAuth user_metadata.name so the dashboard greeting matches Personal Info.
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', user.id)
+          .maybeSingle()
+        const fromProfile =
+          typeof profile?.full_name === 'string' ? profile.full_name.trim() : ''
+        if (fromProfile) mapped.full_name = fromProfile
+      } catch {
+        // ignore — greeting can still fall back to metadata / email
+      }
+
       return mapped
     },
     isAuthenticated: async () => {
@@ -1626,6 +1641,18 @@ export const base44 = {
 
       const { data, error } = await supabase.auth.updateUser({ data: updates })
       if (error) throw error
+
+      if (typeof updates.full_name === 'string' && data?.user?.id) {
+        try {
+          await supabase
+            .from('profiles')
+            .update({ full_name: updates.full_name.trim() })
+            .eq('id', data.user.id)
+        } catch {
+          // Auth metadata is the primary write; profile mirror is best-effort.
+        }
+      }
+
       return data
     }
   },

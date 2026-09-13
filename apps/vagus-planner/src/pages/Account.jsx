@@ -581,15 +581,19 @@ export default function Account() {
                     }
                     onCancel={async () => {
                       try {
-                        await base44.functions.invoke('cancelStripeSubscription', {
+                        const result = await base44.functions.invoke('cancelStripeSubscription', {
                           subscriptionId: subscription?.stripe_subscription_id || '',
                           reason: 'User requested',
                         });
+                        const payload = result?.data ?? result;
+                        if (payload?.ok === false || payload?.error) {
+                          throw new Error(payload.error || 'Failed to cancel');
+                        }
                         queryClient.invalidateQueries({ queryKey: ['billingStatus'] });
                         queryClient.invalidateQueries({ queryKey: ['planAccess'] });
-                        toast.success('Cancelled');
-                      } catch {
-                        toast.error('Failed to cancel');
+                        toast.success('Subscription will cancel at the end of the billing period');
+                      } catch (err) {
+                        toast.error(err?.message || 'Failed to cancel');
                       }
                     }}
                   />

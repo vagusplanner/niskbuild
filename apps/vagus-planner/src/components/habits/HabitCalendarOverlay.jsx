@@ -39,7 +39,7 @@ export default function HabitCalendarOverlay({ date }) {
   if (habitsForDate.length === 0) return null;
 
   return (
-    <div className="absolute bottom-1 left-1 right-1 flex items-center justify-between">
+    <div className="flex items-center justify-between">
       <div className="flex gap-0.5">
         {habitsForDate.slice(0, 3).map(habit => {
           const isCompleted = completedHabits.some(ch => ch.id === habit.id);

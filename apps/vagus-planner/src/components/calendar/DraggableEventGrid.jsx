@@ -11,14 +11,25 @@ import HabitCalendarOverlay from '@/components/habits/HabitCalendarOverlay';
 import { useQuery } from '@tanstack/react-query';
 
 const CATEGORY_COLORS = {
-  work: 'bg-blue-100 border-blue-500 text-blue-900 dark:bg-blue-900 dark:text-blue-100',
-  personal: 'bg-emerald-100 border-emerald-500 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100',
-  health: 'bg-rose-100 border-rose-500 text-rose-900 dark:bg-rose-900 dark:text-rose-100',
-  prayer: 'bg-violet-100 border-violet-500 text-violet-900 dark:bg-violet-900 dark:text-violet-100',
-  holiday: 'bg-amber-100 border-amber-500 text-amber-900 dark:bg-amber-900 dark:text-amber-100',
-  family: 'bg-pink-100 border-pink-500 text-pink-900 dark:bg-pink-900 dark:text-pink-100',
-  social: 'bg-cyan-100 border-cyan-500 text-cyan-900 dark:bg-cyan-900 dark:text-cyan-100',
-  other: 'bg-slate-100 border-slate-500 text-slate-900 dark:bg-slate-700 dark:text-slate-100'
+  work: 'bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-100',
+  personal: 'bg-emerald-100 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100',
+  health: 'bg-rose-100 text-rose-900 dark:bg-rose-900 dark:text-rose-100',
+  prayer: 'bg-violet-100 text-violet-900 dark:bg-violet-900 dark:text-violet-100',
+  holiday: 'bg-amber-100 text-amber-900 dark:bg-amber-900 dark:text-amber-100',
+  family: 'bg-pink-100 text-pink-900 dark:bg-pink-900 dark:text-pink-100',
+  social: 'bg-cyan-100 text-cyan-900 dark:bg-cyan-900 dark:text-cyan-100',
+  other: 'bg-slate-100 text-slate-900 dark:bg-slate-700 dark:text-slate-100'
+};
+
+const CATEGORY_ACCENT = {
+  work: '#3b82f6',
+  personal: '#10b981',
+  health: '#f43f5e',
+  prayer: '#8b5cf6',
+  holiday: '#f59e0b',
+  family: '#ec4899',
+  social: '#06b6d4',
+  other: '#64748b',
 };
 
 export default function DraggableEventGrid({ 
@@ -223,15 +234,19 @@ export default function DraggableEventGrid({
                       </div>
                     )}
 
-                    {/* Events */}
-                    <div className="space-y-0.5 lg:space-y-1">
+                    {/* Events — isolated chips so adjacent category colors do not visually merge */}
+                    <div className="space-y-1">
                       {dayEvents.slice(0, isMobile ? 2 : 4).map((event, index) => {
                         const categoryStyle = CATEGORY_COLORS[event.category] || CATEGORY_COLORS.other;
-                        
+                        const customColor =
+                          typeof event.color === 'string' && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(event.color.trim())
+                            ? event.color.trim()
+                            : null;
+
                         return (
                           <Draggable
                             key={event.id}
-                            draggableId={event.id}
+                            draggableId={String(event.id)}
                             index={index}
                           >
                             {(provided, snapshot) => (
@@ -246,11 +261,18 @@ export default function DraggableEventGrid({
                                   }
                                 }}
                                 className={cn(
-                                  "group p-1.5 lg:p-2 rounded-md border-l-2 lg:border-l-4 transition-all cursor-move hover:shadow-md touch-manipulation relative overflow-hidden",
+                                  "group p-1.5 lg:p-2 rounded-md border border-white dark:border-slate-900 border-l-[3px] lg:border-l-4 shadow-sm transition-all cursor-move hover:shadow-md touch-manipulation relative isolate",
                                   categoryStyle,
                                   snapshot.isDragging && "shadow-2xl rotate-2 scale-105 ring-4 ring-teal-500/50",
                                   event.priority === 'high' && "ring-1 lg:ring-2 ring-red-400"
                                 )}
+                                style={{
+                                  ...provided.draggableProps.style,
+                                  borderLeftColor:
+                                    customColor ||
+                                    CATEGORY_ACCENT[event.category] ||
+                                    CATEGORY_ACCENT.other,
+                                }}
                               >
                                 {/* Glitter only for all-day events created within the last 24h */}
                                 {event.is_all_day && event.created_date && (new Date() - new Date(event.created_date)) < 86400000 && (
@@ -305,8 +327,12 @@ export default function DraggableEventGrid({
                       </div>
                     )}
 
-                    {/* Habit overlay */}
-                    {isCurrentMonth && <HabitCalendarOverlay date={dayItem} />}
+                    {/* Habits sit in flow under events — not absolutely over chips */}
+                    {isCurrentMonth && (
+                      <div className="relative mt-1 min-h-[8px]">
+                        <HabitCalendarOverlay date={dayItem} />
+                      </div>
+                    )}
                   </div>
                 )}
               </Droppable>

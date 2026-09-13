@@ -2,7 +2,6 @@ import Stripe from 'stripe';
 import { callInternalApi, vpAppOrigin } from '../internal-fetch';
 import type { VpFunctionHandler } from '../types';
 import { normalizePriceInterval } from '@/lib/stripe-price-ids';
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { ensureProfileForUser } from '@/lib/ensure-profile';
 
@@ -150,33 +149,12 @@ export const cancelStripeSubscription: VpFunctionHandler = async ({ user, payloa
     return { ok: false, error: 'Stripe is not configured', status: 503 };
   }
 
-  const supabase = await createClient();
   const admin = createAdminClient();
 
-  // Prefer an owned vp_subscriptions row; fall back to profiles.subscription_id.
-  if (subscriptionId) {
-    const { data: owned } = await supabase
-      .schema('firstparty')
-      .from('vp_subscriptions')
-      .select('id, stripe_subscription_id')
-      .eq('user_id', user.id)
-      .eq('stripe_subscription_id', subscriptionId)
-      .maybeSingle();
-
-    if (!owned) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('subscription_id')
-        .eq('id', user.id)
-        .maybeSingle();
-      const profileSubId =
-        typeof profile?.subscription_id === 'string' ? profile.subscription_id.trim() : '';
-      if (!profileSubId || profileSubId !== subscriptionId) {
-        return { ok: false, error: 'Subscription not found', status: 404 };
-      }
-    }
-  } else {
-    const { data: latestVp } = await admin
+  // Resolve the caller's Stripe subscription with the admin client so RLS on
+  // firstparty.vp_subscriptions cannot 404 a real cancel (iOS often sends '').
+  const [{ data: latestVp }, { data: profile }] = await Promise.all([
+    admin
       .schema('firstparty')
       .from('vp_subscriptions')
       .select('stripe_subscription_id')
@@ -184,23 +162,20 @@ export const cancelStripeSubscription: VpFunctionHandler = async ({ user, payloa
       .not('stripe_subscription_id', 'is', null)
       .order('created_at', { ascending: false })
       .limit(1)
-      .maybeSingle();
+      .maybeSingle(),
+    admin.from('profiles').select('subscription_id').eq('id', user.id).maybeSingle(),
+  ]);
 
-    if (typeof latestVp?.stripe_subscription_id === 'string' && latestVp.stripe_subscription_id) {
-      subscriptionId = latestVp.stripe_subscription_id;
-    } else {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('subscription_id')
-        .eq('id', user.id)
-        .maybeSingle();
-      const profileSubId =
-        typeof profile?.subscription_id === 'string' ? profile.subscription_id.trim() : '';
-      if (!profileSubId) {
-        return { ok: false, error: 'subscriptionId is required', status: 400 };
-      }
-      subscriptionId = profileSubId;
-    }
+  const ownedIds = [latestVp?.stripe_subscription_id, profile?.subscription_id]
+    .filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+    .map((id) => id.trim());
+
+  if (subscriptionId && ownedIds.includes(subscriptionId)) {
+    // keep the client-provided id
+  } else if (ownedIds[0]) {
+    subscriptionId = ownedIds[0];
+  } else {
+    return { ok: false, error: 'subscriptionId is required', status: 400 };
   }
 
   try {

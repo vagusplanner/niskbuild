@@ -412,9 +412,17 @@ export default function CalendarPage() {
 
         {/* Mobile toolbar FAB */}
         {isMobile && !showVerticalToolbar && (
-          <button onClick={() => setShowVerticalToolbar(true)}
-            className="fixed left-4 z-[45] w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-white" style={{background:'linear-gradient(135deg, #1D6FB8, #29ABE2)', boxShadow:'0 4px 20px rgba(41,171,226,0.4)'}}
-            style={{ bottom: 'calc(8rem + env(safe-area-inset-bottom))' }}>
+          <button
+            type="button"
+            onClick={() => setShowVerticalToolbar(true)}
+            aria-label="Open calendar menu"
+            className="fixed left-4 z-[45] w-14 h-14 rounded-full flex items-center justify-center text-white bg-[#1D6FB8]"
+            style={{
+              bottom: 'calc(8rem + env(safe-area-inset-bottom))',
+              background: 'linear-gradient(135deg, #1D6FB8, #29ABE2)',
+              boxShadow: '0 4px 20px rgba(41,171,226,0.45)',
+            }}
+          >
             <Menu className="w-5 h-5" />
           </button>
         )}

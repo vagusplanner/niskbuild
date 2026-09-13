@@ -102,8 +102,45 @@ function GanttBar({ event, days, onEventClick }) {
   } catch { return null; }
 }
 
+function layoutOverlappingEvents(events) {
+  const items = events
+    .map((event) => {
+      try {
+        const start = parseISO(event.start_date);
+        const end = event.end_date
+          ? parseISO(event.end_date)
+          : new Date(start.getTime() + 60 * 60 * 1000);
+        const startMin = start.getHours() * 60 + start.getMinutes();
+        const endMin = Math.max(startMin + 30, end.getHours() * 60 + end.getMinutes());
+        return { event, startMin, endMin, col: 0, cols: 1 };
+      } catch {
+        return { event, startMin: 0, endMin: 30, col: 0, cols: 1 };
+      }
+    })
+    .sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin);
+
+  const columnEnds = [];
+  for (const item of items) {
+    let col = columnEnds.findIndex((end) => end <= item.startMin);
+    if (col === -1) {
+      col = columnEnds.length;
+      columnEnds.push(item.endMin);
+    } else {
+      columnEnds[col] = item.endMin;
+    }
+    item.col = col;
+  }
+
+  for (const item of items) {
+    item.cols = items
+      .filter((other) => other.startMin < item.endMin && other.endMin > item.startMin)
+      .reduce((max, other) => Math.max(max, other.col + 1), 1);
+  }
+  return items;
+}
+
 // ─── Hour-level timed event block ─────────────────────────────────────────────
-function TimedEventBlock({ event, onEventClick }) {
+function TimedEventBlock({ event, onEventClick, col = 0, cols = 1 }) {
   const color = getEventColor(event);
   try {
     const start = parseISO(event.start_date);
@@ -112,14 +149,22 @@ function TimedEventBlock({ event, onEventClick }) {
     const durationMins = Math.max(30, differenceInMinutes(end, start));
     const topPx    = (startMinutes / 60) * HOUR_HEIGHT;
     const heightPx = Math.max(28, (durationMins / 60) * HOUR_HEIGHT - 2);
+    const widthPct = 100 / cols;
+    const leftPct = col * widthPct;
 
     return (
       <motion.button
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         onClick={() => onEventClick(event)}
-        className="absolute left-1 right-1 rounded-md text-white text-[11px] font-medium flex flex-col px-1.5 py-0.5 hover:brightness-110 transition-all shadow-sm overflow-hidden cursor-pointer z-10"
-        style={{ top: topPx, height: heightPx, background: color }}
+        className="absolute rounded-md text-white text-[11px] font-medium flex flex-col px-1.5 py-0.5 hover:brightness-110 transition-all shadow-sm overflow-hidden cursor-pointer z-10 border border-white/30"
+        style={{
+          top: topPx,
+          height: heightPx,
+          background: color,
+          left: `calc(${leftPct}% + 2px)`,
+          width: `calc(${widthPct}% - 4px)`,
+        }}
       >
         <span className="font-semibold truncate">{event.title}</span>
         <span className="opacity-80 text-[9px]">
@@ -348,9 +393,15 @@ export default function CalendarTimelineView({ events = [], onEventClick = () =>
                       </div>
                     </div>
                   )}
-                  {/* Events */}
-                  {dayEvents.map(event => (
-                    <TimedEventBlock key={event.id} event={event} onEventClick={onEventClick} />
+                  {/* Events — packed into columns so overlapping colors do not stack */}
+                  {layoutOverlappingEvents(dayEvents).map(({ event, col, cols }) => (
+                    <TimedEventBlock
+                      key={event.id}
+                      event={event}
+                      onEventClick={onEventClick}
+                      col={col}
+                      cols={cols}
+                    />
                   ))}
                 </div>
               );

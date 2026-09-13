@@ -5,7 +5,12 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { resolveEffectivePlanForUser } from '@/lib/vp-plan-access';
 import { loadUserPlanContext } from '@/lib/vp-usage-meter';
 import { isPlatformOwner } from '@/lib/platform-owner-auth';
-import { toVpPlanId } from '@/lib/vp-stripe-billing-sync';
+import Stripe from 'stripe';
+import {
+  toVpPlanId,
+  upsertVpInvoiceFromStripe,
+  upsertVpSubscriptionFromStripe,
+} from '@/lib/vp-stripe-billing-sync';
 import {
   vpApiCorsPreflightResponse,
   vpApiJson,
@@ -114,7 +119,7 @@ export async function GET(request: NextRequest) {
       (typeof profileBilling?.subscription_id === 'string' && profileBilling.subscription_id) ||
       null;
 
-    const subscription =
+    let subscription =
       matchingSub != null
         ? {
             ...matchingSub,
@@ -143,9 +148,78 @@ export async function GET(request: NextRequest) {
             auto_renew: displayPlan !== 'free',
           };
 
-    const invoices = (invoiceRows || []).map((row) =>
+    let invoices = (invoiceRows || []).map((row) =>
       normalizeInvoiceForUi(row as Record<string, unknown>)
     );
+
+    // Paid users whose plan comes from profiles (no vp_subscriptions row) would
+    // otherwise show "Renewal in 0 days" and an empty invoice list. Hydrate from
+    // Stripe — pre-existing gap, not iOS-gate related.
+    const stripeSecret = process.env.STRIPE_SECRET_KEY?.trim();
+    const needsStripeHydrate =
+      Boolean(stripeSecret && stripeSubscriptionId && displayPlan !== 'free') &&
+      (!subscription.current_period_end || invoices.length === 0);
+    if (needsStripeHydrate) {
+      try {
+        const stripe = new Stripe(stripeSecret!);
+        const stripeSub = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+        await upsertVpSubscriptionFromStripe(admin, {
+          subscription: stripeSub,
+          userId,
+          email: subscription.user_email || guard.user!.email || '',
+        });
+        const customerId =
+          typeof stripeSub.customer === 'string'
+            ? stripeSub.customer
+            : stripeSub.customer && typeof stripeSub.customer === 'object'
+              ? stripeSub.customer.id
+              : null;
+        if (customerId && invoices.length === 0) {
+          const listed = await stripe.invoices.list({ customer: customerId, limit: 20 });
+          for (const inv of listed.data) {
+            await upsertVpInvoiceFromStripe(admin, {
+              invoice: inv,
+              userId,
+              email: subscription.user_email || guard.user!.email || '',
+              plan: displayPlan,
+            });
+          }
+        }
+
+        const [{ data: freshSub }, { data: freshInvoices }] = await Promise.all([
+          admin
+            .schema('firstparty')
+            .from('vp_subscriptions')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('stripe_subscription_id', stripeSubscriptionId)
+            .maybeSingle(),
+          admin
+            .schema('firstparty')
+            .from('vp_invoices')
+            .select('*')
+            .eq('user_id', userId)
+            .order('issued_date', { ascending: false })
+            .limit(50),
+        ]);
+        if (freshSub) {
+          subscription = {
+            ...freshSub,
+            plan: displayPlan,
+            status: freshSub.status || subscription.status,
+            user_email: freshSub.user_email || subscription.user_email,
+            stripe_subscription_id: stripeSubscriptionId,
+          };
+        }
+        if (freshInvoices?.length) {
+          invoices = freshInvoices.map((row) =>
+            normalizeInvoiceForUi(row as Record<string, unknown>)
+          );
+        }
+      } catch (hydrateError) {
+        console.error('[billing-status] Stripe hydrate failed:', hydrateError);
+      }
+    }
 
     return vpApiJson(request, {
       plan: displayPlan,

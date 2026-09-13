@@ -18,7 +18,11 @@ export function mapSupabaseUserToVpUser(authUser) {
     ...authUser,
     id: authUser.id,
     email: authUser.email ?? null,
-    full_name: meta.full_name ?? meta.name ?? null,
+    full_name:
+      (typeof meta.full_name === 'string' && meta.full_name.trim()) ||
+      (typeof meta.name === 'string' && meta.name.trim()) ||
+      (typeof meta.given_name === 'string' && meta.given_name.trim()) ||
+      null,
     profile_picture: picture,
     photo_url: picture,
     photo_storage_path: meta.photo_storage_path ?? meta.avatar_storage_path ?? null,

@@ -24,6 +24,7 @@ import MonthlyLifeRecap from '@/components/dashboard/MonthlyLifeRecap';
 import TravelAwareAlert from '@/components/calendar/TravelAwareAlert';
 import TravelModeActivator from '@/components/travel/TravelModeActivator';
 import { toHijri } from '@/components/utils/hijriUtils';
+import { isIosNativeApp } from '@/lib/vp-platform';
 
 function getTimeGreeting(t) {
   const h = new Date().getHours();
@@ -147,8 +148,15 @@ export default function DashboardPage() {
   });
 
   const lang = typeof localStorage !== 'undefined' ? (localStorage.getItem('vagus_language') || 'en') : 'en';
-  const rawName = user?.full_name?.split(' ')[0] || t('common.noData');
-  const firstName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+  const resolvedName =
+    (typeof user?.full_name === 'string' && user.full_name.trim()) ||
+    (typeof user?.email === 'string' && user.email.split('@')[0]) ||
+    '';
+  const rawName = resolvedName.split(/[\s._-]+/)[0] || '';
+  const firstName = rawName
+    ? rawName.charAt(0).toUpperCase() + rawName.slice(1)
+    : '';
+  const iosNative = isIosNativeApp();
 
   // Gregorian date
   const localeMap = { en: 'en-US', ar: 'ar-SA', fr: 'fr-FR', tr: 'tr-TR', ur: 'ur-PK' };
@@ -197,7 +205,20 @@ export default function DashboardPage() {
 
           <h1 className="text-3xl sm:text-4xl font-black tracking-tight leading-none" style={{color:'#0D1A2A'}}>
             {islamicMode ? t('islamic.assalamu') + ',' : getTimeGreeting(t) + ','}<br />
-            <span style={{background:'linear-gradient(90deg, #1D6FB8, #29ABE2, #E8B84B)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text'}}>{firstName}</span>
+            <span
+              style={
+                iosNative
+                  ? { color: '#1D6FB8' }
+                  : {
+                      background: 'linear-gradient(90deg, #1D6FB8, #29ABE2, #E8B84B)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text',
+                    }
+              }
+            >
+              {firstName || 'there'}
+            </span>
           </h1>
           <p className="text-sm flex items-center gap-2 mt-1 flex-wrap" style={{color:'#2D4A65'}}>
             <Clock className="w-3.5 h-3.5" style={{color:'#29ABE2'}} />

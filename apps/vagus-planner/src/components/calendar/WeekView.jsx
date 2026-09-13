@@ -120,7 +120,7 @@ export default function WeekView({ currentDate, events = [], onEventClick, weekS
                   <div className="font-medium truncate">{event.title}</div>
                 </button>
               ))}
-              <div className="absolute bottom-1 left-1 right-1">
+              <div className="mt-1">
                 <HabitCalendarOverlay date={day} />
               </div>
             </div>
