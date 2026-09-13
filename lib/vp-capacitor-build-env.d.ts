@@ -2,6 +2,7 @@ export const VP_API_BASE_URL_EXPORT_WARNING: string;
 export const VP_SUPABASE_EXPORT_WARNING: string;
 
 export function resolveVpApiBaseUrl(): string;
+export function normalizeSupabaseProjectUrl(raw: string | undefined | null): string;
 export function resolveVpSupabaseUrl(): string;
 export function resolveVpSupabaseAnonKey(): string;
 

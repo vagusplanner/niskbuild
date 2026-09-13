@@ -9,7 +9,16 @@ import { mapSupabaseUserToVpUser } from './vp-auth-user'
 import { isUnavailableAiFunction } from './vp-registered-functions'
 import { buildWhatsAppConnectURL } from './whatsapp'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+function normalizeSupabaseProjectUrl(raw) {
+  if (!raw || typeof raw !== 'string') return ''
+  return raw
+    .trim()
+    .replace(/\/$/, '')
+    .replace(/\/rest\/v1$/i, '')
+    .replace(/\/$/, '')
+}
+
+const supabaseUrl = normalizeSupabaseProjectUrl(import.meta.env.VITE_SUPABASE_URL)
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 if (!supabaseUrl || !supabaseAnonKey) {
