@@ -4,6 +4,8 @@ import { createPageUrl } from '@/utils';
 import { Zap, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { canUseStripePurchases } from '@/lib/vp-platform';
+import IosWebSubscriptionNotice from '@/components/billing/IosWebSubscriptionNotice';
 
 /**
  * UpgradeGate — UX-only blur overlay + upgrade CTA.
@@ -12,19 +14,8 @@ import { cn } from '@/lib/utils';
  * This component is NOT authorization — enforce paid actions in
  * VP functions / LLM / plan-access APIs.
  *
- * Usage:
- *   <UpgradeGate locked={!usage.allowed} feature="AI Scheduling" requiredPlan="Pro">
- *     <MyFeatureComponent />
- *   </UpgradeGate>
- *
- * Props:
- *   locked       — boolean: whether to show the gate
- *   feature      — string: human-readable feature name shown in the prompt
- *   requiredPlan — string: e.g. "Pro", "Basic" (display only)
- *   description  — optional string: extra context shown in the prompt
- *   children     — the feature UI (blurred when locked)
- *   className    — optional extra classes on the wrapper
- *   minimal      — boolean: show a smaller inline banner instead of full blur overlay
+ * On iOS native (Guideline 3.1.1): Upgrade buttons are replaced with
+ * informational text pointing users to vagusplanner.com — no purchase CTA.
  */
 export default function UpgradeGate({
   locked,
@@ -36,6 +27,8 @@ export default function UpgradeGate({
   minimal = false,
 }) {
   if (!locked) return children;
+
+  const allowStripePurchases = canUseStripePurchases();
 
   if (minimal) {
     return (
@@ -51,12 +44,17 @@ export default function UpgradeGate({
             {description && (
               <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">{description}</p>
             )}
+            {!allowStripePurchases && (
+              <IosWebSubscriptionNotice compact className="mt-1.5 text-amber-700 dark:text-amber-400" />
+            )}
           </div>
-          <Link to={createPageUrl('Billing')}>
-            <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white text-xs px-3 h-8 flex-shrink-0">
-              Upgrade
-            </Button>
-          </Link>
+          {allowStripePurchases && (
+            <Link to={createPageUrl('Billing')}>
+              <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white text-xs px-3 h-8 flex-shrink-0">
+                Upgrade
+              </Button>
+            </Link>
+          )}
         </div>
         <div className="opacity-40 pointer-events-none select-none">
           {children}
@@ -84,13 +82,19 @@ export default function UpgradeGate({
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
             {description || `Unlock ${feature} by upgrading to the ${requiredPlan} plan.`}
           </p>
-          <Link to={createPageUrl('Billing')}>
-            <Button className="w-full bg-teal-600 hover:bg-teal-700 text-white gap-2">
-              <Zap className="w-4 h-4" />
-              Upgrade to {requiredPlan}
-            </Button>
-          </Link>
-          <p className="text-xs text-slate-400 mt-2">14-day free trial • No credit card needed</p>
+          {allowStripePurchases ? (
+            <>
+              <Link to={createPageUrl('Billing')}>
+                <Button className="w-full bg-teal-600 hover:bg-teal-700 text-white gap-2">
+                  <Zap className="w-4 h-4" />
+                  Upgrade to {requiredPlan}
+                </Button>
+              </Link>
+              <p className="text-xs text-slate-400 mt-2">14-day free trial • No credit card needed</p>
+            </>
+          ) : (
+            <IosWebSubscriptionNotice className="text-left" />
+          )}
         </div>
       </div>
     </div>

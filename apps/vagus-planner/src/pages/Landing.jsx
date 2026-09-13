@@ -12,6 +12,8 @@ import {
   Star, Globe, BarChart2,
   Gift, Trophy, Mic, Camera, Map, Sparkles, FileText
 } from 'lucide-react';
+import { toast } from 'sonner';
+import { canUseStripePurchases } from '@/lib/vp-platform';
 
 const LOGO = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6965607bc386491646bad6e8/10b500d37_IMG_6630.png";
 
@@ -795,6 +797,12 @@ export default function Landing() {
   const handleSignIn = () => isAuthenticated ? navigate('/dashboard') : goToLogin('/dashboard');
   const handleGetStarted = () => isAuthenticated ? navigate('/dashboard') : goToSignup('/dashboard');
   const handleSelectPlan = (planName) => {
+    if (!canUseStripePurchases()) {
+      toast.info(
+        "Subscriptions can't be purchased in the iOS app. Manage your subscription at vagusplanner.com."
+      );
+      return;
+    }
     if (planName?.includes('Enterprise')) { navigate('/Contact'); return; }
     if (isAuthenticated) navigate('/Billing'); else goToLogin('/Billing');
   };

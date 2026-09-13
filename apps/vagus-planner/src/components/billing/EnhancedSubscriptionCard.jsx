@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { canUseStripePurchases } from '@/lib/vp-platform';
+import IosWebSubscriptionNotice from '@/components/billing/IosWebSubscriptionNotice';
 
 const planFeatures = {
   free: {
@@ -150,18 +152,23 @@ export default function EnhancedSubscriptionCard({
     return 'bg-teal-500';
   };
 
+  const allowStripePurchases = canUseStripePurchases();
   const showPaidBillingUi =
     !isPlatformOwnerAccess && subscription.plan !== 'free';
   const showUpgrade =
+    allowStripePurchases &&
     !isPlatformOwnerAccess &&
     subscription.plan !== 'enterprise' &&
     subscription.plan !== 'enterprise_islamic' &&
     typeof onUpgrade === 'function';
+  const showManage =
+    allowStripePurchases && showPaidBillingUi && typeof onManage === 'function';
   const showCancel =
     !isPlatformOwnerAccess &&
     subscription.plan !== 'free' &&
     subscription.status === 'active' &&
     typeof onCancel === 'function';
+  const showIosWebNotice = !allowStripePurchases && !isPlatformOwnerAccess;
 
   return (
     <Card className="relative overflow-hidden">
@@ -226,6 +233,8 @@ export default function EnhancedSubscriptionCard({
       </CardHeader>
 
       <CardContent className="space-y-6">
+        {showIosWebNotice && <IosWebSubscriptionNotice />}
+
         {/* Billing Info — real Stripe subscribers only */}
         {showPaidBillingUi && (
           <div className="space-y-3">
@@ -253,9 +262,17 @@ export default function EnhancedSubscriptionCard({
                 <CreditCard className="w-4 h-4" />
                 <span>Payment method</span>
               </div>
-              <Button variant="link" size="sm" onClick={onManage}>
-                Manage
-              </Button>
+              {showManage ? (
+                <Button variant="link" size="sm" onClick={onManage}>
+                  Manage
+                </Button>
+              ) : (
+                <span className="text-sm text-slate-500">
+                  {subscription.payment_method_id
+                    ? `•••• ${String(subscription.payment_method_id).slice(-4)}`
+                    : '—'}
+                </span>
+              )}
             </div>
           </div>
         )}

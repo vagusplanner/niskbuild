@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { AlertCircle, Calendar, CreditCard, Zap } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { canUseStripePurchases } from '@/lib/vp-platform';
+import IosWebSubscriptionNotice from '@/components/billing/IosWebSubscriptionNotice';
 
 const PLAN_COLORS = {
   free: { bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-slate-700', badge: 'bg-slate-100 text-slate-700' },
@@ -16,6 +18,9 @@ const PLAN_COLORS = {
 export default function SubscriptionCard({ subscription, onManage, onUpgrade, onCancel }) {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const colors = PLAN_COLORS[subscription.plan];
+  const allowStripePurchases = canUseStripePurchases();
+  const showManage = allowStripePurchases && typeof onManage === 'function';
+  const showUpgrade = allowStripePurchases && typeof onUpgrade === 'function';
 
   return (
     <Card className={cn(colors.bg, colors.border, 'border-2')}>
@@ -98,12 +103,16 @@ export default function SubscriptionCard({ subscription, onManage, onUpgrade, on
         </div>
 
         {/* Actions */}
-        <div className="flex gap-3 pt-4 border-t border-slate-200">
+        <div className="flex flex-col gap-3 pt-4 border-t border-slate-200">
+          {!allowStripePurchases && <IosWebSubscriptionNotice compact />}
+          <div className="flex gap-3">
           {subscription.plan !== 'free' && (
             <>
-              <Button variant="outline" className="flex-1" onClick={onManage}>
-                Manage Billing
-              </Button>
+              {showManage && (
+                <Button variant="outline" className="flex-1" onClick={onManage}>
+                  Manage Billing
+                </Button>
+              )}
               {!showCancelConfirm ? (
                 <Button 
                   variant="outline" 
@@ -132,11 +141,12 @@ export default function SubscriptionCard({ subscription, onManage, onUpgrade, on
               )}
             </>
           )}
-          {subscription.plan === 'free' && (
+          {subscription.plan === 'free' && showUpgrade && (
             <Button className="w-full bg-teal-600 hover:bg-teal-700" onClick={() => onUpgrade('basic')}>
               Upgrade Now
             </Button>
           )}
+          </div>
         </div>
       </CardContent>
     </Card>

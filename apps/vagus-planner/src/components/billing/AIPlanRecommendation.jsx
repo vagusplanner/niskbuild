@@ -8,10 +8,13 @@ import { Sparkles, TrendingUp, CheckCircle, AlertCircle, Loader2 } from 'lucide-
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
+import { canUseStripePurchases } from '@/lib/vp-platform';
+import IosWebSubscriptionNotice from '@/components/billing/IosWebSubscriptionNotice';
 
 export default function AIPlanRecommendation({ currentPlan, usageData, onUpgrade }) {
   const available = requireVpAiFunctions('recommendUpgradePlan');
   const [recommendation, setRecommendation] = useState(null);
+  const allowStripePurchases = canUseStripePurchases();
 
   const analyzeMutation = useMutation({
     mutationFn: async () => {
@@ -170,25 +173,40 @@ export default function AIPlanRecommendation({ currentPlan, usageData, onUpgrade
           )}
 
           {/* Action Buttons */}
-          <div className="flex gap-3 pt-2">
-            <Button
-              onClick={() => onUpgrade(recommendation.recommended_plan)}
-              className={cn(
-                "flex-1",
-                recommendation.urgency === 'high' && "bg-red-600 hover:bg-red-700",
-                recommendation.urgency === 'medium' && "bg-yellow-600 hover:bg-yellow-700",
-                recommendation.urgency === 'low' && "bg-teal-600 hover:bg-teal-700"
-              )}
-            >
-              Upgrade to {recommendation.recommended_plan}
-            </Button>
-            <Button
-              onClick={() => analyzeMutation.mutate()}
-              variant="outline"
-              disabled={analyzeMutation.isPending}
-            >
-              Re-analyze
-            </Button>
+          <div className="flex flex-col gap-3 pt-2">
+            {allowStripePurchases && typeof onUpgrade === 'function' ? (
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => onUpgrade(recommendation.recommended_plan)}
+                  className={cn(
+                    "flex-1",
+                    recommendation.urgency === 'high' && "bg-red-600 hover:bg-red-700",
+                    recommendation.urgency === 'medium' && "bg-yellow-600 hover:bg-yellow-700",
+                    recommendation.urgency === 'low' && "bg-teal-600 hover:bg-teal-700"
+                  )}
+                >
+                  Upgrade to {recommendation.recommended_plan}
+                </Button>
+                <Button
+                  onClick={() => analyzeMutation.mutate()}
+                  variant="outline"
+                  disabled={analyzeMutation.isPending}
+                >
+                  Re-analyze
+                </Button>
+              </div>
+            ) : (
+              <>
+                <IosWebSubscriptionNotice />
+                <Button
+                  onClick={() => analyzeMutation.mutate()}
+                  variant="outline"
+                  disabled={analyzeMutation.isPending}
+                >
+                  Re-analyze
+                </Button>
+              </>
+            )}
           </div>
         </CardContent>
       )}

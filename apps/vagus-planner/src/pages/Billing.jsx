@@ -15,7 +15,9 @@ import { Link } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import AIBusinessInsights from '@/components/analytics/AIBusinessInsights';
 import AIPlanRecommendation from '@/components/billing/AIPlanRecommendation';
+import IosWebSubscriptionNotice from '@/components/billing/IosWebSubscriptionNotice';
 import { useBillingStatus } from '@/hooks/useBillingStatus';
+import { canUseStripePurchases } from '@/lib/vp-platform';
 
 export default function BillingPage() {
   const queryClient = useQueryClient();
@@ -23,6 +25,7 @@ export default function BillingPage() {
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [isProcessingCheckout, setIsProcessingCheckout] = useState(false);
+  const allowStripePurchases = canUseStripePurchases();
 
   const {
     isLoading: subLoading,
@@ -71,6 +74,11 @@ export default function BillingPage() {
   // Upgrade mutation
   const upgradeMutation = useMutation({
     mutationFn: async ({ planId, planName, billingCycle, overridePriceId }) => {
+      if (!canUseStripePurchases()) {
+        toast.info("Subscriptions can't be purchased in the iOS app. Manage your subscription at vagusplanner.com.");
+        return;
+      }
+
       if (window.self !== window.top) {
         toast.error('Checkout is only available in the published app, not in the preview.');
         return;
@@ -152,6 +160,11 @@ export default function BillingPage() {
 
   // Customer Portal
   const handleManageSubscription = async () => {
+    if (!canUseStripePurchases()) {
+      toast.info("Subscriptions can't be purchased in the iOS app. Manage your subscription at vagusplanner.com.");
+      return;
+    }
+
     try {
       setIsProcessingCheckout(true);
       const loadingToast = toast.loading('Opening Stripe Customer Portal...');
@@ -244,8 +257,12 @@ export default function BillingPage() {
         <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Manage your plan, invoices, and usage</p>
       </div>
 
-      {/* Free Trial CTA — shown prominently for free users (not platform owners) */}
-      {currentSubscription.plan === 'free' && !platformOwnerBypass && (
+      {!allowStripePurchases && !platformOwnerBypass && (
+        <IosWebSubscriptionNotice />
+      )}
+
+      {/* Free Trial CTA — shown prominently for free users (not platform owners); web/Android only */}
+      {allowStripePurchases && currentSubscription.plan === 'free' && !platformOwnerBypass && (
         <div className="rounded-2xl bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 p-5 sm:p-6 text-white shadow-xl">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="flex-1">
@@ -288,16 +305,20 @@ export default function BillingPage() {
             subscription={currentSubscription}
             usageData={usageData}
             platformOwnerBypass={platformOwnerBypass}
-            onManage={handleManageSubscription}
-            onUpgrade={(planId, planName) => {
-              if (planId !== currentSubscription.plan) {
-                setShowPlanComparison(true);
-              }
-            }}
+            onManage={allowStripePurchases ? handleManageSubscription : undefined}
+            onUpgrade={
+              allowStripePurchases
+                ? (planId) => {
+                    if (planId !== currentSubscription.plan) {
+                      setShowPlanComparison(true);
+                    }
+                  }
+                : undefined
+            }
             onCancel={() => cancelMutation.mutate()}
           />
         </div>
-        {currentSubscription.plan !== 'free' && !platformOwnerBypass && (
+        {allowStripePurchases && currentSubscription.plan !== 'free' && !platformOwnerBypass && (
           <div>
             <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900 dark:text-slate-100 mb-3 sm:mb-4">Payment</h2>
             <PaymentMethodManager
@@ -319,19 +340,19 @@ export default function BillingPage() {
         <UsageTracker usageData={usageData} plan={currentSubscription.plan} />
       </section>
 
-      {/* AI Plan Recommendation */}
-      {!platformOwnerBypass && currentSubscription.plan !== 'enterprise' && currentSubscription.plan !== 'enterprise_islamic' && (
+      {/* AI Plan Recommendation — purchase CTA hidden on iOS native */}
+      {allowStripePurchases && !platformOwnerBypass && currentSubscription.plan !== 'enterprise' && currentSubscription.plan !== 'enterprise_islamic' && (
         <section>
           <AIPlanRecommendation
             currentPlan={currentSubscription.plan}
             usageData={usageData}
-            onUpgrade={(planId) => setShowPlanComparison(true)}
+            onUpgrade={() => setShowPlanComparison(true)}
           />
         </section>
       )}
 
-      {/* Upgrade Section */}
-      {!platformOwnerBypass && currentSubscription.plan === 'free' && (
+      {/* Upgrade Section — web/Android only */}
+      {allowStripePurchases && !platformOwnerBypass && currentSubscription.plan === 'free' && (
         <Card className="bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-950/40 dark:to-cyan-950/40 border-teal-200 dark:border-teal-800">
           <CardHeader>
             <CardTitle className="text-teal-900 dark:text-teal-100">Ready to unlock more features?</CardTitle>
@@ -350,8 +371,8 @@ export default function BillingPage() {
         </Card>
       )}
 
-      {/* Plan Comparison Modal */}
-      <Dialog open={showPlanComparison} onOpenChange={(open) => {
+      {/* Plan Comparison Modal — never open purchase dialog on iOS native */}
+      <Dialog open={allowStripePurchases && showPlanComparison} onOpenChange={(open) => {
         if (!isProcessingCheckout) setShowPlanComparison(open);
       }}>
         <DialogContent className="max-w-[95vw] sm:max-w-6xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 z-[200]">

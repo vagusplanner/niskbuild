@@ -22,6 +22,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import PullToRefresh from '@/components/mobile/PullToRefresh';
+import { canUseStripePurchases } from '@/lib/vp-platform';
 
 import AccountSettings from '@/components/profile/AccountSettings';
 import AccountSecurityPanel from '@/components/profile/AccountSecurityPanel';
@@ -237,6 +238,12 @@ export default function Account() {
   const handleEditionToggle = async (checked) => {
     const edition = checked ? 'islamic' : 'standard';
     if (edition === 'islamic' && !hasPaidIslamicAccess) {
+      if (!canUseStripePurchases()) {
+        toast.info(
+          "Subscriptions can't be purchased in the iOS app. Manage your subscription at vagusplanner.com."
+        );
+        return;
+      }
       toast.error('Islamic Edition requires an active Islamic plan. Upgrade in Billing.');
       window.location.href = '/Billing';
       return;
@@ -549,6 +556,12 @@ export default function Account() {
                     usageData={usageData}
                     platformOwnerBypass={platformOwnerBypass}
                     onManage={async () => {
+                      if (!canUseStripePurchases()) {
+                        toast.info(
+                          "Subscriptions can't be purchased in the iOS app. Manage your subscription at vagusplanner.com."
+                        );
+                        return;
+                      }
                       try {
                         const { data } = await base44.functions.invoke(
                           'createCustomerPortalSession'
@@ -559,7 +572,13 @@ export default function Account() {
                         toast.error('Failed');
                       }
                     }}
-                    onUpgrade={() => (window.location.href = '/Billing')}
+                    onUpgrade={
+                      canUseStripePurchases()
+                        ? () => {
+                            window.location.href = '/Billing';
+                          }
+                        : undefined
+                    }
                     onCancel={async () => {
                       try {
                         await base44.functions.invoke('cancelStripeSubscription', {

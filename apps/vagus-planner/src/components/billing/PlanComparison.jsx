@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { canUseStripePurchases } from '@/lib/vp-platform';
+import IosWebSubscriptionNotice from '@/components/billing/IosWebSubscriptionNotice';
 
 const STANDARD_PLANS = [
   {
@@ -203,7 +205,7 @@ const colorMap = {
   purple: { badge: 'bg-purple-100 text-purple-700', border: 'border-t-purple-500', btn: 'bg-purple-600 hover:bg-purple-700', ring: '' },
 };
 
-function PlanCard({ plan, currentPlan, billingCycle, onUpgrade, isProcessing, selectedPlan, islamicMode }) {
+function PlanCard({ plan, currentPlan, billingCycle, onUpgrade, isProcessing, selectedPlan, islamicMode, allowStripePurchases }) {
   const colors = colorMap[plan.color] || colorMap.slate;
   const isCurrentPlan = plan.id === currentPlan;
 
@@ -282,8 +284,16 @@ function PlanCard({ plan, currentPlan, billingCycle, onUpgrade, isProcessing, se
         </CardHeader>
 
         <CardContent className="flex-1 flex flex-col pt-0 gap-4">
-          {/* CTA Button */}
-          {plan.contactOnly ? (
+          {/* CTA Button — purchase/contact CTAs blocked on iOS native (Guideline 3.1.1) */}
+          {!allowStripePurchases ? (
+            isCurrentPlan || plan.id === 'free' ? (
+              <Button disabled variant="outline" className="w-full text-sm font-semibold">
+                {isCurrentPlan ? 'Current Plan' : 'Free Forever'}
+              </Button>
+            ) : (
+              <IosWebSubscriptionNotice compact className="text-center" />
+            )
+          ) : plan.contactOnly ? (
             <a
               href="mailto:team@vagusplanner.com?subject=Enterprise%20Plan%20Enquiry"
               className="w-full flex items-center justify-center gap-2 h-9 px-4 rounded-md text-sm font-semibold transition-colors bg-purple-600 hover:bg-purple-700 text-white"
@@ -306,7 +316,7 @@ function PlanCard({ plan, currentPlan, billingCycle, onUpgrade, isProcessing, se
             </Button>
           )}
 
-          {!plan.contactOnly && plan.id !== 'free' && (
+          {allowStripePurchases && !plan.contactOnly && plan.id !== 'free' && (
             <p className="text-center text-xs text-slate-400 -mt-2">14-day free trial · No card required · Cancel anytime</p>
           )}
 
@@ -337,12 +347,14 @@ export default function PlanComparison({ currentPlan, onUpgrade, isProcessing = 
   const currentIsIslamic =
     typeof currentPlan === 'string' && currentPlan.toLowerCase().includes('islamic');
   const [showIslamicCatalog, setShowIslamicCatalog] = useState(currentIsIslamic);
+  const allowStripePurchases = canUseStripePurchases();
 
   const plans = showIslamicCatalog ? ISLAMIC_PLANS : STANDARD_PLANS;
 
-  const handleUpgrade = (planId, billingCycle, priceId) => {
+  const handleUpgrade = (planId, billingCycleArg, priceId) => {
+    if (!canUseStripePurchases()) return;
     setSelectedPlan(planId);
-    onUpgrade(planId, billingCycle, priceId);
+    onUpgrade(planId, billingCycleArg, priceId);
   };
 
   return (
@@ -386,8 +398,15 @@ export default function PlanComparison({ currentPlan, onUpgrade, isProcessing = 
       <div className="text-center space-y-4">
         <div>
           <h2 className="text-2xl font-black text-slate-900 dark:text-slate-100">Simple, Transparent Pricing</h2>
-          <p className="text-slate-500 text-sm mt-1">14-day free trial on all paid plans · No credit card required · Cancel anytime</p>
+          {allowStripePurchases ? (
+            <p className="text-slate-500 text-sm mt-1">14-day free trial on all paid plans · No credit card required · Cancel anytime</p>
+          ) : (
+            <div className="mt-2">
+              <IosWebSubscriptionNotice />
+            </div>
+          )}
         </div>
+        {allowStripePurchases && (
         <div className="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
           <button
             onClick={() => setBillingCycle('monthly')}
@@ -403,6 +422,7 @@ export default function PlanComparison({ currentPlan, onUpgrade, isProcessing = 
             <Badge className="bg-green-500 hover:bg-green-500 text-white text-xs px-1.5">Save ~26%</Badge>
           </button>
         </div>
+        )}
       </div>
 
       {/* Plan cards */}
@@ -417,6 +437,7 @@ export default function PlanComparison({ currentPlan, onUpgrade, isProcessing = 
             isProcessing={isProcessing}
             selectedPlan={selectedPlan}
             islamicMode={showIslamicCatalog}
+            allowStripePurchases={allowStripePurchases}
           />
         ))}
       </div>

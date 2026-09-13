@@ -15,9 +15,11 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Moon, Lock, Star, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Moon, Lock, Star, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useIslamicEdition } from '@/hooks/useIslamicEdition';
+import { canUseStripePurchases } from '@/lib/vp-platform';
+import IosWebSubscriptionNotice from '@/components/billing/IosWebSubscriptionNotice';
 
 const ISLAMIC_HIGHLIGHTS = [
   { icon: '🕌', text: 'Never miss a prayer — Adhan alerts & Qibla finder' },
@@ -32,6 +34,7 @@ const ISLAMIC_HIGHLIGHTS = [
 
 function UpgradePrompt({ compact = false }) {
   const navigate = useNavigate();
+  const allowStripePurchases = canUseStripePurchases();
 
   if (compact) {
     return (
@@ -42,14 +45,19 @@ function UpgradePrompt({ compact = false }) {
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-amber-800 dark:text-amber-200">Islamic Edition Required</p>
           <p className="text-xs text-amber-600 dark:text-amber-400">Upgrade to access prayer, Quran, Zakat & more.</p>
+          {!allowStripePurchases && (
+            <IosWebSubscriptionNotice compact className="mt-1.5 text-amber-700 dark:text-amber-400" />
+          )}
         </div>
-        <Button
-          size="sm"
-          className="bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:opacity-90 flex-shrink-0 h-8 text-xs font-bold"
-          onClick={() => navigate('/Billing')}
-        >
-          Upgrade
-        </Button>
+        {allowStripePurchases && (
+          <Button
+            size="sm"
+            className="bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:opacity-90 flex-shrink-0 h-8 text-xs font-bold"
+            onClick={() => navigate('/Billing')}
+          >
+            Upgrade
+          </Button>
+        )}
       </div>
     );
   }
@@ -61,7 +69,6 @@ function UpgradePrompt({ compact = false }) {
       className="min-h-[60vh] flex items-center justify-center px-4 py-12"
     >
       <div className="max-w-md w-full text-center space-y-6">
-        {/* Icon */}
         <div className="relative inline-block">
           <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mx-auto shadow-xl shadow-amber-400/30">
             <Moon className="w-10 h-10 text-white" />
@@ -71,7 +78,6 @@ function UpgradePrompt({ compact = false }) {
           </div>
         </div>
 
-        {/* Heading */}
         <div>
           <div className="inline-flex items-center gap-1.5 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs font-bold px-3 py-1 rounded-full mb-3 border border-amber-200 dark:border-amber-700">
             <Star className="w-3 h-3 fill-amber-500" />
@@ -85,9 +91,8 @@ function UpgradePrompt({ compact = false }) {
           </p>
         </div>
 
-        {/* Features */}
         <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20 rounded-2xl border border-amber-200 dark:border-amber-800 p-4 text-left space-y-2.5">
-          {ISLAMIC_HIGHLIGHTS.map(f => (
+          {ISLAMIC_HIGHLIGHTS.map((f) => (
             <div key={f.text} className="flex items-center gap-3 text-sm">
               <span className="text-base flex-shrink-0">{f.icon}</span>
               <span className="text-slate-700 dark:text-slate-300">{f.text}</span>
@@ -95,19 +100,23 @@ function UpgradePrompt({ compact = false }) {
           ))}
         </div>
 
-        {/* Pricing hint */}
-        <p className="text-xs text-slate-400">
-          Starting from <span className="text-amber-600 dark:text-amber-400 font-bold">$9.99/month</span> · 14-day free trial · Cancel anytime
-        </p>
+        {allowStripePurchases && (
+          <p className="text-xs text-slate-400">
+            Starting from <span className="text-amber-600 dark:text-amber-400 font-bold">$9.99/month</span> · 14-day free trial · Cancel anytime
+          </p>
+        )}
 
-        {/* CTAs */}
         <div className="flex flex-col gap-2">
-          <Button
-            className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold h-11 hover:opacity-90 shadow-lg shadow-amber-400/20"
-            onClick={() => navigate('/Billing')}
-          >
-            Upgrade to Islamic Edition <ArrowRight className="w-4 h-4 ml-1" />
-          </Button>
+          {allowStripePurchases ? (
+            <Button
+              className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold h-11 hover:opacity-90 shadow-lg shadow-amber-400/20"
+              onClick={() => navigate('/Billing')}
+            >
+              Upgrade to Islamic Edition <ArrowRight className="w-4 h-4 ml-1" />
+            </Button>
+          ) : (
+            <IosWebSubscriptionNotice />
+          )}
           <Button variant="outline" className="w-full h-11 text-slate-500" onClick={() => navigate('/dashboard')}>
             Back to Dashboard
           </Button>
