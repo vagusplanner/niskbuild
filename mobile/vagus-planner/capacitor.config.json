@@ -8,6 +8,9 @@
   "plugins": {
     "StatusBar": {
       "overlaysWebView": false
+    },
+    "PushNotifications": {
+      "presentationOptions": ["alert", "badge", "sound"]
     }
   }
 }

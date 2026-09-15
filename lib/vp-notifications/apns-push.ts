@@ -48,6 +48,7 @@ export interface ApnsSendResult {
   ok: boolean;
   status?: number;
   error?: string;
+  apnsId?: string;
 }
 
 export async function sendApnsPush(options: {
@@ -79,10 +80,15 @@ export async function sendApnsPush(options: {
     reminderId: options.reminderId,
   });
 
+  const tokenPrefix = options.deviceToken.slice(0, 8);
+
   return new Promise((resolve) => {
     const client = http2.connect(`https://${host}`);
+    let settled = false;
 
     const finish = (result: ApnsSendResult) => {
+      if (settled) return;
+      settled = true;
       try {
         client.close();
       } catch {
@@ -91,7 +97,16 @@ export async function sendApnsPush(options: {
       resolve(result);
     };
 
-    client.on('error', (err) => finish({ ok: false, error: err.message }));
+    client.on('error', (err) => {
+      console.error('[APNs] connection error', {
+        host,
+        topic: bundleId,
+        tokenPrefix,
+        reminderId: options.reminderId,
+        error: err.message,
+      });
+      finish({ ok: false, error: err.message });
+    });
 
     const req = client.request({
       ':method': 'POST',
@@ -103,12 +118,59 @@ export async function sendApnsPush(options: {
     });
 
     let status = 0;
+    let apnsId: string | undefined;
+    let responseBody = '';
+
     req.on('response', (headers) => {
       status = Number(headers[':status'] ?? 0);
+      const rawId = headers['apns-id'];
+      apnsId = Array.isArray(rawId) ? rawId[0] : rawId;
     });
 
-    req.on('end', () => finish({ ok: status === 200, status }));
-    req.on('error', (err) => finish({ ok: false, error: err.message }));
+    req.setEncoding('utf8');
+    req.on('data', (chunk) => {
+      responseBody += chunk;
+    });
+
+    req.on('end', () => {
+      const ok = status === 200;
+      const logPayload = {
+        host,
+        topic: bundleId,
+        status,
+        apnsId: apnsId ?? null,
+        responseBody: responseBody || '(empty)',
+        tokenPrefix,
+        reminderId: options.reminderId ?? null,
+        ok,
+      };
+      if (ok) {
+        console.log('[APNs] send result', logPayload);
+      } else {
+        console.error('[APNs] send failed', logPayload);
+      }
+      finish({
+        ok,
+        status,
+        apnsId,
+        error: ok
+          ? undefined
+          : responseBody
+            ? responseBody.slice(0, 500)
+            : `APNs HTTP ${status || 'unknown'}`,
+      });
+    });
+
+    req.on('error', (err) => {
+      console.error('[APNs] request error', {
+        host,
+        topic: bundleId,
+        tokenPrefix,
+        reminderId: options.reminderId,
+        error: err.message,
+      });
+      finish({ ok: false, error: err.message });
+    });
 
     req.write(payload);
     req.end();
