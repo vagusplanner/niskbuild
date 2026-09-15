@@ -83,7 +83,7 @@ cd apps/vagus-planner
 npm install   # includes @capacitor/core + @capacitor/push-notifications
 ```
 
-Set `VITE_NISKBUILD_ORIGIN=https://your-domain.com` in the Capacitor build env so device registration hits the correct API.
+Set `VITE_API_BASE_URL=https://www.niskbuild.com` in the Capacitor build env (same as billing/LLM) so device registration hits the correct API. `CapacitorPushRegistration` uses `VITE_API_BASE_URL`, not `VITE_NISKBUILD_ORIGIN`.
 
 ---
 

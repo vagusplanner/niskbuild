@@ -1,12 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { guardApiRequest } from '@/lib/api-auth';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import {
+  vpApiCorsPreflightResponse,
+  vpApiJson,
+  withVpApiCors,
+} from '@/lib/vp-api-cors';
 
 const VALID_PLATFORMS = new Set(['ios', 'android']);
 
+export async function OPTIONS(request: NextRequest) {
+  return vpApiCorsPreflightResponse(request);
+}
+
+/**
+ * Store Capacitor APNs/FCM device tokens for VP push delivery.
+ * Auth via Bearer (Capacitor) or cookies (web); writes use admin client so
+ * RLS is not blocked when there is no cookie session on capacitor:// origins.
+ */
 export async function POST(request: NextRequest) {
   const guard = await guardApiRequest(request);
-  if (!guard.ok) return guard.response;
+  if (!guard.ok) return withVpApiCors(request, guard.response);
 
   const user = guard.user!;
   const body = await request.json().catch(() => ({}));
@@ -17,11 +31,11 @@ export async function POST(request: NextRequest) {
       : 'ios';
 
   if (!pushToken || pushToken.length < 32) {
-    return NextResponse.json({ error: 'Invalid push token' }, { status: 400 });
+    return vpApiJson(request, { error: 'Invalid push token' }, { status: 400 });
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase
+  const admin = createAdminClient();
+  const { error } = await admin
     .schema('firstparty')
     .from('vp_device_tokens')
     .upsert(
@@ -36,25 +50,25 @@ export async function POST(request: NextRequest) {
 
   if (error) {
     console.error('register-device error:', error);
-    return NextResponse.json({ error: 'Failed to register device' }, { status: 500 });
+    return vpApiJson(request, { error: 'Failed to register device' }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true, platform });
+  return vpApiJson(request, { success: true, platform });
 }
 
 export async function DELETE(request: NextRequest) {
   const guard = await guardApiRequest(request);
-  if (!guard.ok) return guard.response;
+  if (!guard.ok) return withVpApiCors(request, guard.response);
 
   const body = await request.json().catch(() => ({}));
   const pushToken = typeof body.pushToken === 'string' ? body.pushToken.trim() : '';
 
   if (!pushToken) {
-    return NextResponse.json({ error: 'pushToken required' }, { status: 400 });
+    return vpApiJson(request, { error: 'pushToken required' }, { status: 400 });
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase
+  const admin = createAdminClient();
+  const { error } = await admin
     .schema('firstparty')
     .from('vp_device_tokens')
     .delete()
@@ -62,8 +76,8 @@ export async function DELETE(request: NextRequest) {
     .eq('push_token', pushToken);
 
   if (error) {
-    return NextResponse.json({ error: 'Failed to unregister device' }, { status: 500 });
+    return vpApiJson(request, { error: 'Failed to unregister device' }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true });
+  return vpApiJson(request, { success: true });
 }
