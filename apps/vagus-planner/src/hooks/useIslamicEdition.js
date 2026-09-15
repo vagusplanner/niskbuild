@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44, getVpApiFetchHeaders } from '@/api/base44Client';
 
@@ -24,6 +24,15 @@ function readStickyFlag(key) {
   }
 }
 
+function hasStickyKey(key) {
+  try {
+    const v = sessionStorage.getItem(key);
+    return v === '0' || v === '1';
+  } catch {
+    return false;
+  }
+}
+
 function writeStickyFlag(key, value) {
   try {
     sessionStorage.setItem(key, value ? '1' : '0');
@@ -32,17 +41,36 @@ function writeStickyFlag(key, value) {
   }
 }
 
-function resolveEditionPreference(userSettings) {
+/** Immediate sticky update for explicit user actions (Account edition toggle). */
+export function persistIslamicEditionSticky({ paid, mode }) {
+  writeStickyFlag(NAV_ISLAMIC_PAID_KEY, !!paid);
+  writeStickyFlag(NAV_ISLAMIC_MODE_KEY, !!mode);
+}
+
+/**
+ * Resolve edition preference with an explicit source tag.
+ * `default` means we inferred Standard with no user/DB signal — never persist that
+ * back into sticky (that was the remount race that flipped Islamic → Standard).
+ */
+function resolveEditionPreferenceDetailed(userSettings) {
   if (userSettings?.edition === 'islamic' || userSettings?.edition === 'standard') {
-    return userSettings.edition;
+    return { edition: userSettings.edition, source: 'edition' };
   }
   const prefs = userSettings?.preferences;
   if (prefs && typeof prefs === 'object' && (prefs.edition === 'islamic' || prefs.edition === 'standard')) {
-    return prefs.edition;
+    return { edition: prefs.edition, source: 'preferences' };
   }
-  if (userSettings?.islamic_mode === true) return 'islamic';
+  if (userSettings?.islamic_mode === true) {
+    return { edition: 'islamic', source: 'islamic_mode' };
+  }
+  if (userSettings?.islamic_mode === false) {
+    return { edition: 'standard', source: 'islamic_mode' };
+  }
   const local = readLocalEditionPreference();
-  return local === 'islamic' ? 'islamic' : 'standard';
+  if (local === 'islamic' || local === 'standard') {
+    return { edition: local, source: 'local' };
+  }
+  return { edition: 'standard', source: 'default' };
 }
 
 async function fetchIslamicAccess() {
@@ -59,18 +87,16 @@ async function fetchIslamicAccess() {
 }
 
 /**
- * Islamic Edition entitlement.
+ * Islamic Edition entitlement + stable UI mode.
  *
  * Paid access is ONLY granted via server-verified subscription
  * (GET /api/vagus-planner/islamic-access). localStorage / edition preference
  * never unlocks Islamic Edition features by themselves — they only choose UI
  * mode for users who already have paid access.
  *
- * Nav uses sticky session flags so Layout remounts on route change don't hide
- * the Islam item. Critical: do NOT treat an empty UserSettings list (failed
- * fetch swallowed as [], or mid-invalidate cache) as "user chose Standard" —
- * that was rewriting sticky flags to 0 on Calendar and making Islam stay gone
- * until Account refetched real settings.
+ * UI/nav MUST use `islamicMode` / `islamicModeForNav` (same value). These are
+ * sticky-protected so route changes never flicker or permanently flip to Standard.
+ * Use `islamicModeLive` only when you intentionally need the raw unresolved live value.
  */
 export function useIslamicEdition() {
   const settingsQuery = useQuery({
@@ -92,7 +118,8 @@ export function useIslamicEdition() {
 
   const settingsList = settingsQuery.data;
   const settingsTrustworthy = Array.isArray(settingsList) && settingsList.length > 0;
-  const accessTrustworthy = accessQuery.data !== undefined && !accessQuery.isPending;
+  const accessTrustworthy =
+    accessQuery.data !== undefined && !accessQuery.isPending && !accessQuery.isFetching;
 
   // Only "loading" when we have nothing cached yet — background refetch must not hide nav.
   const isInitialLoading =
@@ -104,37 +131,75 @@ export function useIslamicEdition() {
     accessQuery.data?.hasPaidIslamicAccess === true ||
     accessQuery.data?.platformOwnerBypass === true;
 
-  const editionPreference = resolveEditionPreference(userSettings);
+  const { edition: editionPreference, source: editionSource } =
+    resolveEditionPreferenceDetailed(userSettings);
   const edition = hasPaidIslamicAccess ? editionPreference : 'standard';
   const isIslamicEdition = hasPaidIslamicAccess;
-  const islamicMode = hasPaidIslamicAccess && edition === 'islamic';
+  const islamicModeLive = hasPaidIslamicAccess && edition === 'islamic';
+
+  // Require the same live mode on two consecutive settled renders before sticky write.
+  const stableLiveRef = useRef({ mode: null, count: 0 });
 
   useEffect(() => {
-    // Never persist sticky from empty/failed settings — Calendar's shared
-    // ['userSettings'] observer used to overwrite the cache with [] and then
-    // this effect wrote islamicMode=false into sessionStorage permanently.
+    // Never persist sticky from empty/failed settings or mid-fetch races.
     if (isInitialLoading || !accessTrustworthy || !settingsTrustworthy) return;
+    if (settingsQuery.isFetching || accessQuery.isFetching) return;
+    // Inferred Standard with no DB/local signal must never clobber sticky Islamic.
+    if (editionSource === 'default') return;
+
+    const prev = stableLiveRef.current;
+    if (prev.mode === islamicModeLive) {
+      prev.count += 1;
+    } else {
+      prev.mode = islamicModeLive;
+      prev.count = 1;
+    }
+    // First settled resolution can seed sticky Islamic; Standard requires 2 stable frames
+    // so a remount race cannot permanently flip the user out of Islamic mode.
+    if (islamicModeLive) {
+      if (prev.count < 1) return;
+    } else if (prev.count < 2) {
+      return;
+    }
+
     writeStickyFlag(NAV_ISLAMIC_PAID_KEY, hasPaidIslamicAccess);
-    writeStickyFlag(NAV_ISLAMIC_MODE_KEY, islamicMode);
+    writeStickyFlag(NAV_ISLAMIC_MODE_KEY, islamicModeLive);
   }, [
     isInitialLoading,
     accessTrustworthy,
     settingsTrustworthy,
+    settingsQuery.isFetching,
+    accessQuery.isFetching,
     hasPaidIslamicAccess,
-    islamicMode,
+    islamicModeLive,
+    editionSource,
   ]);
 
   const stickyPaid = readStickyFlag(NAV_ISLAMIC_PAID_KEY);
   const stickyMode = readStickyFlag(NAV_ISLAMIC_MODE_KEY);
-  const useSticky =
+  const stickyInitialized =
+    hasStickyKey(NAV_ISLAMIC_MODE_KEY) && hasStickyKey(NAV_ISLAMIC_PAID_KEY);
+
+  const dataUncertain =
     isInitialLoading ||
     settingsQuery.data === undefined ||
     !settingsTrustworthy ||
-    accessQuery.data === undefined;
+    accessQuery.data === undefined ||
+    settingsQuery.isFetching ||
+    accessQuery.isFetching;
 
-  // While remounting / settings empty / access unknown, keep last-known nav visibility.
-  const islamicModeForNav = useSticky ? stickyPaid && stickyMode : islamicMode;
-  const islamicEditionLoading = useSticky && !(stickyPaid && stickyMode);
+  // Once sticky exists, always prefer it for UI — live only seeds the first session paint.
+  const islamicModeForNav = stickyInitialized
+    ? stickyPaid && stickyMode
+    : dataUncertain
+      ? false
+      : islamicModeLive;
+
+  // No edition-loading flicker once sticky is seeded; otherwise wait for settled data.
+  const islamicEditionLoading = !stickyInitialized && dataUncertain;
+
+  // islamicMode === islamicModeForNav so UI consumers cannot accidentally read the flaky live value.
+  const islamicMode = islamicModeForNav;
 
   return {
     isIslamicEdition,
@@ -143,9 +208,12 @@ export function useIslamicEdition() {
     editionPreference,
     isLoading: islamicEditionLoading,
     userSettings,
+    /** Stable UI/nav edition mode (sticky-protected). Same as islamicModeForNav. */
     islamicMode,
-    /** Prefer this for sidebar / mobile tab / SidebarTools visibility (anti-flicker). */
+    /** @deprecated Alias of islamicMode — kept for call sites already migrated to ForNav. */
     islamicModeForNav,
+    /** Raw live resolution — may flicker on remount; do not use for UI/nav. */
+    islamicModeLive,
     subscriptionPlan: accessQuery.data?.plan ?? null,
     subscriptionStatus: accessQuery.data?.status ?? null,
     accessSource: accessQuery.data?.source ?? null,

@@ -37,7 +37,7 @@ const DEFAULT_COLOR = { gradient: 'linear-gradient(135deg, #E8B84B 0%, #f0c060 1
 
 export default function UnifiedFAB() {
   const { t } = useTranslation();
-  const { islamicMode } = useIslamicEdition();
+  const { islamicModeForNav: islamicMode } = useIslamicEdition();
   const [menuOpen, setMenuOpen] = useState(false);
   const [mode, setMode] = useState(null); // null | 'quickactions' | 'ai' | 'voice' | 'capture_voice' | 'capture_type'
   const [input, setInput] = useState('');

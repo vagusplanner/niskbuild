@@ -62,7 +62,7 @@ import { useIslamicEdition } from '@/hooks/useIslamicEdition';
 
 export default function CalendarPage() {
   const { t } = useTranslation();
-  const { islamicMode } = useIslamicEdition();
+  const { islamicModeForNav: islamicMode } = useIslamicEdition();
   const [searchParams, setSearchParams] = useSearchParams();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());

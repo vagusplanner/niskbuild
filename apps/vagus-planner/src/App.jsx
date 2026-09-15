@@ -6,7 +6,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import NavigationTracker from '@/lib/NavigationTracker'
 import { pagesConfig } from './pages.config'
-import { BrowserRouter, HashRouter, Route, Routes, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Route, Routes, Navigate, useLocation, Outlet } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { isStaticBundleContext } from '@/lib/static-bundle';
@@ -50,9 +50,30 @@ const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
 const MainPage = mainPageKey ? Pages[mainPageKey] : <></>;
 
-const LayoutWrapper = ({ children, currentPageName }) => Layout ?
-  <Layout currentPageName={currentPageName}>{children}</Layout>
-  : <>{children}</>;
+/** Pages that must not mount the authenticated app chrome. */
+const NO_APP_LAYOUT = new Set(['Landing', 'PrivacyPolicy', 'TermsOfService']);
+
+/** Derive Layout currentPageName from the URL (stable across Outlet child swaps). */
+function pageNameFromPath(pathname) {
+  const seg = (pathname || '/').replace(/^\//, '').split('/')[0] || '';
+  if (!seg || seg.toLowerCase() === 'dashboard') return 'Dashboard';
+  return seg;
+}
+
+/**
+ * Single persistent Layout shell — child routes render via <Outlet />.
+ * Prevents remounting Layout (and resetting edition/modal state) on every tab change.
+ */
+function AppLayoutShell() {
+  const location = useLocation();
+  const currentPageName = pageNameFromPath(location.pathname);
+  if (!Layout) return <Outlet />;
+  return (
+    <Layout currentPageName={currentPageName}>
+      <Outlet />
+    </Layout>
+  );
+}
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated } = useAuth();
@@ -128,64 +149,51 @@ const AuthenticatedApp = () => {
     return <Navigate to={`/login?next=${encodeURIComponent(path)}`} replace />;
   }
 
-  // Render the main app (protected routes)
+  // Protected app — one Layout instance for all chrome routes (Outlet children swap).
   return (
     <Routes>
-      {/* Public Landing Routes */}
       <Route path="/" element={<Landing />} />
       <Route path="/Landing" element={<Landing />} />
-
-      {/* Dashboard as /dashboard for logged-in users */}
-      <Route
-        path="/dashboard"
-        element={
-          <LayoutWrapper currentPageName={mainPageKey}>
-            <MainPage />
-          </LayoutWrapper>
-        }
-      />
-      {Object.entries(Pages).map(([p, Page]) => (
-        <Route
-          key={p}
-          path={`/${p}`}
-          element={
-            <LayoutWrapper currentPageName={p}>
-              <Page />
-            </LayoutWrapper>
-          }
-        />
-      ))}
-      <Route path="/Goals" element={<LayoutWrapper currentPageName="Goals"><Goals /></LayoutWrapper>} />
-      <Route path="/Notifications" element={<LayoutWrapper currentPageName="Notifications"><Notifications /></LayoutWrapper>} />
-      <Route path="/ZakatCalculator" element={<LayoutWrapper currentPageName="ZakatCalculator"><IslamicEditionGate page><ZakatCalculator /></IslamicEditionGate></LayoutWrapper>} />
-      <Route path="/HajjUmrahDashboard" element={<LayoutWrapper currentPageName="HajjUmrahDashboard"><IslamicEditionGate page><HajjUmrahDashboard /></IslamicEditionGate></LayoutWrapper>} />
-      <Route path="/Finance" element={<LayoutWrapper currentPageName="Finance"><Finance /></LayoutWrapper>} />
-      <Route path="/MosqueCommunityCalendar" element={<LayoutWrapper currentPageName="MosqueCommunityCalendar"><MosqueCommunityCalendar /></LayoutWrapper>} />
-      <Route path="/ZakatDonation" element={<LayoutWrapper currentPageName="ZakatDonation"><ZakatDonation /></LayoutWrapper>} />
-      <Route path="/MosqueMap" element={<LayoutWrapper currentPageName="MosqueMap"><MosqueMap /></LayoutWrapper>} />
-      <Route path="/FamilyHub" element={<LayoutWrapper currentPageName="FamilyHub"><FamilyHub /></LayoutWrapper>} />
-      <Route path="/Account" element={<LayoutWrapper currentPageName="Account"><Account /></LayoutWrapper>} />
-      <Route path="/ActivityFeed" element={<LayoutWrapper currentPageName="ActivityFeed"><ActivityFeedPage /></LayoutWrapper>} />
-      <Route path="/VoiceJournal" element={<LayoutWrapper currentPageName="VoiceJournal"><VoiceJournalPage /></LayoutWrapper>} />
-      <Route path="/AIGoalPlanner" element={<LayoutWrapper currentPageName="AIGoalPlanner"><AIGoalPlannerPage /></LayoutWrapper>} />
-      <Route path="/NotificationSettings" element={<LayoutWrapper currentPageName="NotificationSettings"><NotificationSettings /></LayoutWrapper>} />
-      <Route path="/ZakatDashboard" element={<LayoutWrapper currentPageName="ZakatDashboard"><ZakatDashboard /></LayoutWrapper>} />
-      <Route path="/FamilyDashboard" element={<LayoutWrapper currentPageName="FamilyDashboard"><FamilyDashboardPage /></LayoutWrapper>} />
-      <Route path="/DailyPlanner" element={<LayoutWrapper currentPageName="DailyPlanner"><DailyPlanner /></LayoutWrapper>} />
-      <Route path="/WhatsAppImport" element={<LayoutWrapper currentPageName="WhatsAppImport"><WhatsAppImport /></LayoutWrapper>} />
-      <Route path="/FamilyBudget" element={<LayoutWrapper currentPageName="FamilyBudget"><FamilyBudget /></LayoutWrapper>} />
-      <Route path="/VoiceErrands" element={<LayoutWrapper currentPageName="VoiceErrands"><VoiceErrands /></LayoutWrapper>} />
-      <Route path="/ItineraryAssistant" element={<LayoutWrapper currentPageName="ItineraryAssistant"><ItineraryAssistant /></LayoutWrapper>} />
-      <Route path="/CaptureHub" element={<LayoutWrapper currentPageName="CaptureHub"><CaptureHub /></LayoutWrapper>} />
-      <Route path="/TeamWorkspace" element={<LayoutWrapper currentPageName="TeamWorkspace"><TeamWorkspacePage /></LayoutWrapper>} />
-      <Route path="/MealPlanner" element={<LayoutWrapper currentPageName="MealPlanner"><MealPlannerPage /></LayoutWrapper>} />
-      <Route path="/TravelPackingAssistant" element={<LayoutWrapper currentPageName="TravelPackingAssistant"><TravelPackingAssistantPage /></LayoutWrapper>} />
-      <Route path="/HadithLearning" element={<LayoutWrapper currentPageName="HadithLearning"><HadithLearningPage /></LayoutWrapper>} />
-      <Route path="/FitnessGoalDashboard" element={<LayoutWrapper currentPageName="FitnessGoalDashboard"><FitnessGoalDashboard /></LayoutWrapper>} />
-      {/* Public legal & contact pages — no auth required, no layout wrapper */}
       <Route path="/PrivacyPolicy" element={<PrivacyPolicy />} />
       <Route path="/TermsOfService" element={<TermsOfService />} />
       <Route path="/Contact" element={<Contact />} />
+
+      <Route element={<AppLayoutShell />}>
+        <Route path="/dashboard" element={<MainPage />} />
+        {Object.entries(Pages)
+          .filter(([p]) => !NO_APP_LAYOUT.has(p))
+          .map(([p, Page]) => (
+            <Route key={p} path={`/${p}`} element={<Page />} />
+          ))}
+        <Route path="/Goals" element={<Goals />} />
+        <Route path="/Notifications" element={<Notifications />} />
+        <Route path="/ZakatCalculator" element={<IslamicEditionGate page><ZakatCalculator /></IslamicEditionGate>} />
+        <Route path="/HajjUmrahDashboard" element={<IslamicEditionGate page><HajjUmrahDashboard /></IslamicEditionGate>} />
+        <Route path="/Finance" element={<Finance />} />
+        <Route path="/MosqueCommunityCalendar" element={<MosqueCommunityCalendar />} />
+        <Route path="/ZakatDonation" element={<ZakatDonation />} />
+        <Route path="/MosqueMap" element={<MosqueMap />} />
+        <Route path="/FamilyHub" element={<FamilyHub />} />
+        <Route path="/Account" element={<Account />} />
+        <Route path="/ActivityFeed" element={<ActivityFeedPage />} />
+        <Route path="/VoiceJournal" element={<VoiceJournalPage />} />
+        <Route path="/AIGoalPlanner" element={<AIGoalPlannerPage />} />
+        <Route path="/NotificationSettings" element={<NotificationSettings />} />
+        <Route path="/ZakatDashboard" element={<ZakatDashboard />} />
+        <Route path="/FamilyDashboard" element={<FamilyDashboardPage />} />
+        <Route path="/DailyPlanner" element={<DailyPlanner />} />
+        <Route path="/WhatsAppImport" element={<WhatsAppImport />} />
+        <Route path="/FamilyBudget" element={<FamilyBudget />} />
+        <Route path="/VoiceErrands" element={<VoiceErrands />} />
+        <Route path="/ItineraryAssistant" element={<ItineraryAssistant />} />
+        <Route path="/CaptureHub" element={<CaptureHub />} />
+        <Route path="/TeamWorkspace" element={<TeamWorkspacePage />} />
+        <Route path="/MealPlanner" element={<MealPlannerPage />} />
+        <Route path="/TravelPackingAssistant" element={<TravelPackingAssistantPage />} />
+        <Route path="/HadithLearning" element={<HadithLearningPage />} />
+        <Route path="/FitnessGoalDashboard" element={<FitnessGoalDashboard />} />
+      </Route>
+
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

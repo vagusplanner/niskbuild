@@ -53,7 +53,7 @@ export default function PersonalPreferencesPanel({ settingsData: settingsDataPro
   const locationPromptHandledRef = useRef(false);
   // Edition switching lives once in Account → Preferences (Account.jsx).
   // This panel only reads islamic_mode to gate prayer-time prefs.
-  const { hasPaidIslamicAccess, islamicMode } = useIslamicEdition();
+  const { hasPaidIslamicAccess, islamicModeForNav: islamicMode } = useIslamicEdition();
 
   const { data: settingsQueryData = [] } = useQuery({
     queryKey: ['userSettings'],

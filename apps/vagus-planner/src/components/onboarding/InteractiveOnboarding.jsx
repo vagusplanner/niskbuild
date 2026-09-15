@@ -96,7 +96,7 @@ function resolveStep(raw, islamicMode) {
 }
 
 export default function InteractiveOnboarding({ isOpen, onClose, onComplete, showDontShowAgain = false }) {
-  const { islamicMode } = useIslamicEdition();
+  const { islamicModeForNav: islamicMode } = useIslamicEdition();
   const steps = useMemo(
     () =>
       BASE_STEPS.filter((s) => !s.islamicOnly || islamicMode).map((s) =>

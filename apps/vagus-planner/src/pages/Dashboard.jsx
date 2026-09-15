@@ -103,7 +103,11 @@ export default function DashboardPage() {
     retry: false,
     staleTime: 60000,
   });
-  const { isIslamicEdition, isLoading: islamicEditionLoading, islamicMode } = useIslamicEdition();
+  const {
+    isIslamicEdition,
+    isLoading: islamicEditionLoading,
+    islamicModeForNav: islamicMode,
+  } = useIslamicEdition();
 
   const { data: events = [] } = useQuery({
     queryKey: ['todayEvents'],

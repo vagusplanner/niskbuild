@@ -156,7 +156,11 @@ export default function Layout({ children, currentPageName }) {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
-  
+
+  // Halal panel must dismiss on any route/tab change (Layout no longer remounts per route).
+  useEffect(() => {
+    setShowHalalFinder(false);
+  }, [location.pathname]); 
   // Detect mobile device
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -290,7 +294,6 @@ export default function Layout({ children, currentPageName }) {
   const {
     isIslamicEdition = false,
     isLoading: islamicEditionLoading = false,
-    islamicMode = false,
     islamicModeForNav = false,
     userSettings = null,
   } = useIslamicEdition();
@@ -307,13 +310,15 @@ export default function Layout({ children, currentPageName }) {
     { name: t('nav.account'),  icon: Settings,      page: 'Account',       description: 'Settings & billing' },
   ]);
 
-  // Push notification engine — prayer times, Zakat reminders, Hadith
-  usePushNotifications({ islamicMode, userEmail: user?.email });
-  usePrayerTimeNotifications({ settings: userSettings ?? settings[0] ?? null, islamicMode });
+  // Push / prayer notifications follow stable nav edition (never remount-race live mode).
+  usePushNotifications({ islamicMode: islamicModeForNav, userEmail: user?.email });
+  usePrayerTimeNotifications({
+    settings: userSettings ?? settings[0] ?? null,
+    islamicMode: islamicModeForNav,
+  });
 
   // Build mobile tabs dynamically — always 5 slots.
   // Slot 3: Islam (islamic mode) or Travel (standard). Goals stays in primary nav + Tools.
-  // Use islamicModeForNav so Layout remounts on Calendar/etc don't briefly hide Islam.
   const showIslamTab = !islamicEditionLoading && islamicModeForNav;
   // Mobile: 5 main tabs only (no nested menus)
   const MOBILE_TAB_ITEMS = [
@@ -752,6 +757,8 @@ export default function Layout({ children, currentPageName }) {
                 key={item.page}
                   to={createPageUrl(item.page)}
                   onClick={(e) => {
+                    setShowHalalFinder(false);
+                    setMobileMenuOpen(false);
                     if (isActive) {
                       e.preventDefault();
                       const rootPath = createPageUrl(item.page);
@@ -903,13 +910,13 @@ export default function Layout({ children, currentPageName }) {
           <HelpCenter
             isOpen={showHelpCenter}
             onClose={() => setShowHelpCenter(false)}
-            islamicMode={!!islamicMode}
+            islamicMode={!!islamicModeForNav}
           />
         )}
         {showHalalFinder && <HalalRestaurantFinder isOpen={showHalalFinder} onClose={() => setShowHalalFinder(false)} />}
         <SuperAgentManager />
         <UnifiedFAB />
-        {islamicMode && <ArabicKeyboardHelper />}
+        {islamicModeForNav && <ArabicKeyboardHelper />}
       </React.Suspense>
     </div>
     </AISchedulingProvider>

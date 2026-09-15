@@ -24,7 +24,7 @@ function unwrapFn(res) {
 
 export default function AITripPlanner({ open, onClose }) {
   const available = requireVpAiFunctions('planTripWithAi');
-  const { islamicMode } = useIslamicEdition();
+  const { islamicModeForNav: islamicMode } = useIslamicEdition();
   const queryClient = useQueryClient();
   const [form, setForm] = useState({
     destination: '',

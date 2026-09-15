@@ -37,7 +37,7 @@ const DIETARY_PREFS = [
 ];
 
 export default function WelcomeQuestionnaire({ user, onComplete, onSkip }) {
-  const { islamicMode } = useIslamicEdition();
+  const { islamicModeForNav: islamicMode } = useIslamicEdition();
   const [step, setStep] = useState(1);
   const [showResults, setShowResults] = useState(false);
   const [formData, setFormData] = useState({

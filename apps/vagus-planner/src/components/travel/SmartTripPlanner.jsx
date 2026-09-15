@@ -222,7 +222,7 @@ function GmailBookingsPanel({ data, loading, onScan, onSaveToCalendar }) {
 
 export default function SmartTripPlanner() {
   const available = requireVpAiFunctions('planTripWithAi');
-  const { islamicMode } = useIslamicEdition();
+  const { islamicModeForNav: islamicMode } = useIslamicEdition();
   const [form, setForm] = useState({
     destination: '', origin: 'London, UK', start_date: '', end_date: '',
     trip_type: 'leisure', num_travelers: '1', halal_mode: false, budget: ''

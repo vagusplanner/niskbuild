@@ -137,7 +137,7 @@ export default function AIGoalPlanner({
   defaultTab = 'plan', // 'plan' | 'analyze' | 'tasks'
 } = {}) {
   const queryClient = useQueryClient();
-  const { islamicMode } = useIslamicEdition();
+  const { islamicModeForNav: islamicMode } = useIslamicEdition();
   const canGenerateTasks = requireVpAiFunctions('generateTasksFromGoal');
   const visiblePresets = GOAL_PRESETS.filter((p) => islamicMode || !p.islamicOnly);
   const isModal = variant === 'modal' || typeof isOpen === 'boolean';

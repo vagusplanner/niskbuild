@@ -20,7 +20,7 @@ import { useIslamicEdition } from '@/hooks/useIslamicEdition';
 const CURRENCIES = ['USD','GBP','EUR','AED','SAR','CAD','AUD','TRY','PKR'];
 
 export default function FinancePage() {
-  const { islamicMode } = useIslamicEdition();
+  const { islamicModeForNav: islamicMode } = useIslamicEdition();
   const [showForm, setShowForm] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [currency, setCurrency] = useState(() => localStorage.getItem('vagus_currency') || 'USD');

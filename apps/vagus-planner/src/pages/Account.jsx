@@ -38,7 +38,7 @@ import JournalReminderSettings from '@/components/settings/JournalReminderSettin
 import PersonalPreferencesPanel from '@/components/profile/PersonalPreferencesPanel';
 import AccountDeletionDialog from '@/components/profile/AccountDeletionDialog';
 import ConsentPreferencesPanel from '@/components/legal/ConsentPreferencesPanel';
-import { useIslamicEdition } from '@/hooks/useIslamicEdition';
+import { useIslamicEdition, persistIslamicEditionSticky } from '@/hooks/useIslamicEdition';
 import { useBillingStatus } from '@/hooks/useBillingStatus';
 
 const DEFAULT_SETTINGS = {
@@ -257,6 +257,11 @@ export default function Account() {
     } catch {
       // ignore
     }
+    // Seed sticky immediately so reload / remount cannot resurrect the prior edition.
+    persistIslamicEditionSticky({
+      paid: hasPaidIslamicAccess,
+      mode: edition === 'islamic' && hasPaidIslamicAccess,
+    });
     queryClient.invalidateQueries({ queryKey: ['userSettings'] });
     queryClient.invalidateQueries({ queryKey: ['islamicAccess'] });
     toast.success(
