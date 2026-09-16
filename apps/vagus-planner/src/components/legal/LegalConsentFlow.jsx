@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Shield, FileText, Cookie, Heart, Moon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -80,8 +79,13 @@ export default function LegalConsentFlow({ isOpen, onAccept, onDecline }) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onDecline?.()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] z-[120]">
-        <DialogHeader>
+      {/*
+        Flex column + native overflow-y on the middle pane.
+        Radix ScrollArea (overflow-hidden + h-full under max-height only) often
+        fails to scroll on iOS WKWebView — checkboxes/Accept stayed below the fold.
+      */}
+      <DialogContent className="max-w-2xl z-[120] flex flex-col gap-0 p-0 overflow-hidden max-h-[92dvh] sm:max-h-[90vh]">
+        <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-2 pr-12">
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Shield className="w-6 h-6 text-teal-600" />
             Welcome to Vagus Planner
@@ -91,7 +95,10 @@ export default function LegalConsentFlow({ isOpen, onAccept, onDecline }) {
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[50vh] pr-4">
+        <div
+          className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-6"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
           <div className="space-y-6 py-4">
             {/* Age + DOB */}
             <div className="flex items-start gap-3 p-4 bg-amber-50 rounded-lg border border-amber-200">
@@ -263,55 +270,57 @@ export default function LegalConsentFlow({ isOpen, onAccept, onDecline }) {
               </p>
             </div>
           </div>
-        </ScrollArea>
-
-        <div className="flex gap-3 pt-4 border-t">
-          <Button variant="outline" onClick={onDecline} className="flex-1" disabled={saving}>
-            Decline
-          </Button>
-          <Button
-            onClick={handleAccept}
-            disabled={!requiredOk || underMinimumAge || saving}
-            aria-disabled={!requiredOk || underMinimumAge || saving}
-            title={
-              !requiredOk
-                ? `Still needed: ${missingRequired.join(', ')}`
-                : underMinimumAge
-                  ? 'Under minimum age'
-                  : undefined
-            }
-            className={`flex-1 ${
-              !requiredOk || underMinimumAge
-                ? 'bg-slate-300 text-slate-500 cursor-not-allowed hover:bg-slate-300 opacity-70'
-                : 'bg-teal-600 hover:bg-teal-700'
-            }`}
-          >
-            {saving ? 'Saving…' : 'Accept & Continue'}
-          </Button>
         </div>
 
-        {underMinimumAge && (
-          <p className="text-xs text-center text-red-600" role="alert">
-            Based on the date of birth entered, you appear under the minimum age (draft: 13). You
-            cannot continue until this is resolved.
-          </p>
-        )}
+        <div className="flex-shrink-0 px-6 pb-6 pt-3 border-t bg-background space-y-3">
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={onDecline} className="flex-1" disabled={saving}>
+              Decline
+            </Button>
+            <Button
+              onClick={handleAccept}
+              disabled={!requiredOk || underMinimumAge || saving}
+              aria-disabled={!requiredOk || underMinimumAge || saving}
+              title={
+                !requiredOk
+                  ? `Still needed: ${missingRequired.join(', ')}`
+                  : underMinimumAge
+                    ? 'Under minimum age'
+                    : undefined
+              }
+              className={`flex-1 ${
+                !requiredOk || underMinimumAge
+                  ? 'bg-slate-300 text-slate-500 cursor-not-allowed hover:bg-slate-300 opacity-70'
+                  : 'bg-teal-600 hover:bg-teal-700'
+              }`}
+            >
+              {saving ? 'Saving…' : 'Accept & Continue'}
+            </Button>
+          </div>
 
-        {!requiredOk && !underMinimumAge && (
-          <p
-            className="text-xs text-center text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2"
-            role="status"
-          >
-            Accept is disabled until you complete:{' '}
-            <span className="font-semibold">{missingRequired.join(', ')}</span>.
-          </p>
-        )}
+          {underMinimumAge && (
+            <p className="text-xs text-center text-red-600" role="alert">
+              Based on the date of birth entered, you appear under the minimum age (draft: 13). You
+              cannot continue until this is resolved.
+            </p>
+          )}
 
-        {saveError && (
-          <p className="text-xs text-center text-red-700 bg-red-50 border border-red-200 rounded-md px-3 py-2" role="alert">
-            {saveError}
-          </p>
-        )}
+          {!requiredOk && !underMinimumAge && (
+            <p
+              className="text-xs text-center text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2"
+              role="status"
+            >
+              Accept is disabled until you complete:{' '}
+              <span className="font-semibold">{missingRequired.join(', ')}</span>.
+            </p>
+          )}
+
+          {saveError && (
+            <p className="text-xs text-center text-red-700 bg-red-50 border border-red-200 rounded-md px-3 py-2" role="alert">
+              {saveError}
+            </p>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );

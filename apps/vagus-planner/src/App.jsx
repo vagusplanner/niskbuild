@@ -9,7 +9,7 @@ import { pagesConfig } from './pages.config'
 import { BrowserRouter, HashRouter, Route, Routes, Navigate, useLocation, Outlet } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
-import { isStaticBundleContext } from '@/lib/static-bundle';
+import { usesHashRouter } from '@/lib/static-bundle';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Goals from './pages/Goals';
 import OnboardingGate from '@/components/onboarding/OnboardingGate';
@@ -141,7 +141,7 @@ const AuthenticatedApp = () => {
       return <UserNotRegisteredError />;
     }
     if (authError.type === 'auth_required') {
-      if (isStaticBundleContext()) {
+      if (usesHashRouter()) {
         return <Navigate to="/" replace />;
       }
       return <Navigate to={`/login?next=${encodeURIComponent(path)}`} replace />;
@@ -150,7 +150,7 @@ const AuthenticatedApp = () => {
 
   // Redirect unauthenticated users (builder studio preview skips auth)
   if (!isAuthenticated && !isBuilderPreview) {
-    if (isStaticBundleContext()) {
+    if (usesHashRouter()) {
       return <Navigate to="/" replace />;
     }
     return <Navigate to={`/login?next=${encodeURIComponent(path)}`} replace />;
@@ -210,7 +210,7 @@ const AuthenticatedApp = () => {
 
 
 function App() {
-  const Router = isStaticBundleContext() ? HashRouter : BrowserRouter;
+  const Router = usesHashRouter() ? HashRouter : BrowserRouter;
 
   return (
     <QueryClientProvider client={queryClientInstance}>

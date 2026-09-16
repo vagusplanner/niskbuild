@@ -260,7 +260,7 @@ export default function Layout({ children, currentPageName }) {
     Settings: ['/Settings']
   });
 
-  const { data: settingsData } = useQuery({
+  const { data: settingsData, isLoading: settingsLoading, isFetched: settingsFetched } = useQuery({
     queryKey: ['userSettings'],
     // Do not swallow errors as [] — that poisons shared cache used by useIslamicEdition.
     queryFn: () => base44.entities.UserSettings.list(),
@@ -331,13 +331,20 @@ export default function Layout({ children, currentPageName }) {
     { name: t('nav.account'),  icon: Settings,      page: 'Account' },
   ];
 
-  // Check legal consent on first visit (only once per user)
+  // Check legal consent once settings are known. Opening before the settings
+  // fetch finishes treated "no row yet" as "never accepted" and left the modal
+  // open even after completed consents arrived (existing-user sign-in trap).
   useEffect(() => {
     if (!user?.email) return;
     if (legalConsentDeclined) return;
 
     const mirror = readLocalConsentMirror(user.email);
-    if (mirror && hasCompletedLegalConsent(mirror)) return;
+    if (mirror && hasCompletedLegalConsent(mirror)) {
+      if (showLegalConsent) setShowLegalConsent(false);
+      return;
+    }
+
+    if (settingsLoading || !settingsFetched) return;
 
     const fromSettings = parseConsentsFromSettings(userSettings ?? settings[0]);
     if (hasCompletedLegalConsent(fromSettings)) {
@@ -350,6 +357,7 @@ export default function Layout({ children, currentPageName }) {
       } catch {
         // ignore
       }
+      if (showLegalConsent) setShowLegalConsent(false);
       return;
     }
 
@@ -357,7 +365,15 @@ export default function Layout({ children, currentPageName }) {
       const timer = setTimeout(() => setShowLegalConsent(true), 800);
       return () => clearTimeout(timer);
     }
-  }, [user?.email, userSettings, settings, showLegalConsent, legalConsentDeclined]);
+  }, [
+    user?.email,
+    userSettings,
+    settings,
+    settingsLoading,
+    settingsFetched,
+    showLegalConsent,
+    legalConsentDeclined,
+  ]);
 
   const isRootPage = ROOT_PAGES.includes(currentPageName);
   
