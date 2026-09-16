@@ -45,6 +45,7 @@ export default function AdminSupportPage() {
   const [loading, setLoading] = useState(true);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [filter, setFilter] = useState('all');
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'vp' | 'niskbuild'>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -184,9 +185,37 @@ export default function AdminSupportPage() {
           ))}
         </div>
 
+        <div className="flex gap-2 mb-4 flex-wrap items-center">
+          <span className="text-xs text-nisk-muted mr-1">Source:</span>
+          {(
+            [
+              { id: 'all', label: 'All' },
+              { id: 'vp', label: 'Vagus Planner' },
+              { id: 'niskbuild', label: 'NiskBuild' },
+            ] as const
+          ).map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => setSourceFilter(s.id)}
+              className={`px-3 py-1.5 rounded-lg text-xs ${
+                sourceFilter === s.id ? 'bg-[var(--primary)] text-white' : 'glass-panel text-nisk-muted'
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+
         <div className="grid lg:grid-cols-5 gap-6">
           <div className="lg:col-span-2 glass-panel rounded-xl max-h-[70vh] overflow-y-auto divide-y divide-[var(--border)]">
-            {tickets.map((t) => (
+            {tickets
+              .filter((t) => {
+                if (sourceFilter === 'vp') return t.source === 'vp_contact_form';
+                if (sourceFilter === 'niskbuild') return t.source !== 'vp_contact_form';
+                return true;
+              })
+              .map((t) => (
               <button
                 key={t.id}
                 type="button"
@@ -198,11 +227,16 @@ export default function AdminSupportPage() {
                 <p className="text-sm font-medium truncate">{t.subject}</p>
                 <p className="text-xs text-nisk-muted truncate">{t.email}</p>
                 <p className="text-[10px] text-nisk-muted mt-1">
-                  {statusLabel(t.status as SupportTicketStatus)} · {t.plan_tier || t.source}
+                  {statusLabel(t.status as SupportTicketStatus)} ·{' '}
+                  {t.source === 'vp_contact_form' ? 'VP' : t.plan_tier || t.source}
                 </p>
               </button>
             ))}
-            {tickets.length === 0 && (
+            {tickets.filter((t) => {
+              if (sourceFilter === 'vp') return t.source === 'vp_contact_form';
+              if (sourceFilter === 'niskbuild') return t.source !== 'vp_contact_form';
+              return true;
+            }).length === 0 && (
               <p className="p-4 text-sm text-nisk-muted">No tickets</p>
             )}
           </div>
@@ -219,6 +253,8 @@ export default function AdminSupportPage() {
                   <p className="text-xs text-nisk-muted mt-1">
                     {selectedTicket?.email || tickets.find((t) => t.id === selectedId)?.email} ·{' '}
                     {selectedTicket?.category || tickets.find((t) => t.id === selectedId)?.category}
+                    {(selectedTicket?.source || tickets.find((t) => t.id === selectedId)?.source) ===
+                      'vp_contact_form' && ' · Vagus Planner (vp_contact_form)'}
                   </p>
                   {selectedTicket?.created_at && (
                     <p className="text-xs mt-2 text-[var(--copper-melt)]">

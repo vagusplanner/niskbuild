@@ -51,7 +51,7 @@ const mainPageKey = mainPage ?? Object.keys(Pages)[0];
 const MainPage = mainPageKey ? Pages[mainPageKey] : <></>;
 
 /** Pages that must not mount the authenticated app chrome. */
-const NO_APP_LAYOUT = new Set(['Landing', 'PrivacyPolicy', 'TermsOfService']);
+const NO_APP_LAYOUT = new Set(['Landing', 'PrivacyPolicy', 'TermsOfService', 'Support', 'Contact']);
 
 /** Derive Layout currentPageName from the URL (stable across Outlet child swaps). */
 function pageNameFromPath(pathname) {
@@ -82,7 +82,12 @@ const AuthenticatedApp = () => {
   const searchParams = new URLSearchParams(location.search);
   const isBuilderPreview = searchParams.has('builder');
   const isLandingPath = path === '/' || path === '/Landing' || path === '';
-  const isPublicLegalPath = path === '/PrivacyPolicy' || path === '/TermsOfService' || path === '/Contact';
+  const isPublicLegalPath =
+    path === '/PrivacyPolicy' ||
+    path === '/TermsOfService' ||
+    path === '/Contact' ||
+    path === '/support' ||
+    path === '/Support';
   const isLoginPath = path === '/login';
   const isSignupPath = path === '/signup';
 
@@ -115,6 +120,8 @@ const AuthenticatedApp = () => {
         <Route path="/PrivacyPolicy" element={<PrivacyPolicy />} />
         <Route path="/TermsOfService" element={<TermsOfService />} />
         <Route path="/Contact" element={<Contact />} />
+        <Route path="/support" element={<Contact />} />
+        <Route path="/Support" element={<Navigate to="/support" replace />} />
       </Routes>
     );
   }
@@ -157,6 +164,8 @@ const AuthenticatedApp = () => {
       <Route path="/PrivacyPolicy" element={<PrivacyPolicy />} />
       <Route path="/TermsOfService" element={<TermsOfService />} />
       <Route path="/Contact" element={<Contact />} />
+      <Route path="/support" element={<Contact />} />
+      <Route path="/Support" element={<Navigate to="/support" replace />} />
 
       <Route element={<AppLayoutShell />}>
         <Route path="/dashboard" element={<MainPage />} />

@@ -24,6 +24,8 @@ export const sendContactForm: VpFunctionHandler = async ({ request, payload }) =
     subject: topic || 'Contact form',
     message,
     category: TOPIC_TO_CATEGORY[topic] ?? 'general',
+    product: 'vagus-planner',
+    source: 'vp_contact_form',
   });
 
   if (!ok) {

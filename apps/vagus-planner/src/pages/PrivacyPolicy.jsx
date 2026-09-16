@@ -219,7 +219,7 @@ export default function PrivacyPolicyPage() {
               </p>
               <p className="text-white/50 text-sm">
                 You can also use our{' '}
-                <Link to="/Contact" className="text-[#38bdf8] hover:underline">
+                <Link to="/support" className="text-[#38bdf8] hover:underline">
                   Contact page
                 </Link>
                 .

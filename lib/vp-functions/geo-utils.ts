@@ -75,20 +75,60 @@ export async function fetchAladhanTimings(lat: number, lng: number, date?: strin
   };
 }
 
-const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
+const OVERPASS_ENDPOINTS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://lz4.overpass-api.de/api/interpreter',
+];
 
-export async function overpassQuery(query: string) {
-  const res = await fetch(OVERPASS_URL, {
-    method: 'POST',
-    body: query,
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'User-Agent': 'NiskBuild-VP/1.0',
-    },
-  });
-  if (!res.ok) throw new Error('Overpass query failed');
-  const data = (await res.json()) as { elements?: Array<Record<string, unknown>> };
-  return data.elements ?? [];
+/**
+ * Query a public Overpass instance. These community endpoints are often rate-limited
+ * or slow; we try a short retry on a mirror, then throw so callers can degrade
+ * gracefully (findHalalRestaurants returns ok:true + degraded; allSettled callers
+ * keep partial results) instead of 500'ing the VP functions API.
+ */
+export async function overpassQuery(query: string): Promise<Array<Record<string, unknown>>> {
+  // Same body shape as production (raw QL + form content-type); Overpass accepts this.
+  const body = query;
+  let lastError: string | null = null;
+
+  for (let i = 0; i < OVERPASS_ENDPOINTS.length; i++) {
+    const url = OVERPASS_ENDPOINTS[i];
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 18_000);
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        body,
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'NiskBuild-VP/1.0 (halal-nearby; support@vagusplanner.com)',
+        },
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        lastError = `HTTP ${res.status}`;
+        // Brief backoff before mirror (Overpass 429 / 504 are common).
+        if (i < OVERPASS_ENDPOINTS.length - 1) {
+          await new Promise((r) => setTimeout(r, 400));
+        }
+        continue;
+      }
+      const data = (await res.json()) as { elements?: Array<Record<string, unknown>> };
+      return data.elements ?? [];
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : 'network error';
+      if (i < OVERPASS_ENDPOINTS.length - 1) {
+        await new Promise((r) => setTimeout(r, 400));
+      }
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  console.warn('[overpassQuery] all endpoints failed', { lastError });
+  // Throw so findHalalRestaurants can return a degraded ok:true payload (friendly UI).
+  // Callers that use Promise.allSettled (getHalalAndPrayerLocations) also handle this.
+  throw new Error(`Overpass temporarily unavailable (${lastError ?? 'unknown'})`);
 }
 
 export async function fetchMosquesNearby(lat: number, lng: number, radiusM = 5000, limit = 12) {

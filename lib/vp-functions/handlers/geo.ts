@@ -48,22 +48,36 @@ export const findHalalRestaurants: VpFunctionHandler = async ({ payload }) => {
 
   const query = typeof payload.query === 'string' ? payload.query.trim().toLowerCase() : '';
   const radiusKm = typeof payload.radius_km === 'number' ? payload.radius_km : 2;
-  const items = await fetchHalalNearby(coords.lat, coords.lng, radiusKm * 1000, 20);
 
-  const restaurants = items
-    .filter((r) => !query || r.name.toLowerCase().includes(query) || r.cuisine.toLowerCase().includes(query))
-    .map((r) => ({
-      name: r.name,
-      address: r.address,
-      cuisine: r.cuisine,
-      distance: formatDist(r.distKm),
-      rating: null,
-      open_now: undefined,
-      phone: r.tags?.phone,
-      website: r.tags?.website,
-    }));
+  try {
+    const items = await fetchHalalNearby(coords.lat, coords.lng, radiusKm * 1000, 20);
 
-  return { ok: true, data: { restaurants } };
+    const restaurants = items
+      .filter((r) => !query || r.name.toLowerCase().includes(query) || r.cuisine.toLowerCase().includes(query))
+      .map((r) => ({
+        name: r.name,
+        address: r.address,
+        cuisine: r.cuisine,
+        distance: formatDist(r.distKm),
+        rating: null,
+        open_now: undefined,
+        phone: r.tags?.phone,
+        website: r.tags?.website,
+      }));
+
+    return { ok: true, data: { restaurants } };
+  } catch (err) {
+    // Overpass is community infra — never 500 the client for a map lookup miss.
+    console.warn('[findHalalRestaurants] degraded', err instanceof Error ? err.message : err);
+    return {
+      ok: true,
+      data: {
+        restaurants: [],
+        degraded: true,
+        message: 'Map data is temporarily unavailable. Please try again in a moment.',
+      },
+    };
+  }
 };
 
 export const getHalalAndPrayerLocations: VpFunctionHandler = async ({ payload }) => {
@@ -75,13 +89,19 @@ export const getHalalAndPrayerLocations: VpFunctionHandler = async ({ payload })
   const radiusKm = typeof payload.radius_km === 'number' ? payload.radius_km : 2;
   const radiusM = radiusKm * 1000;
 
-  const [mosques, halal, quickFood, hydration, prayerTimes] = await Promise.all([
+  const settled = await Promise.allSettled([
     fetchMosquesNearby(coords.lat, coords.lng, Math.max(radiusM, 3000), 8),
     fetchHalalNearby(coords.lat, coords.lng, radiusM, 10),
     fetchQuickFoodNearby(coords.lat, coords.lng, radiusM, 8),
     fetchHydrationNearby(coords.lat, coords.lng, 1000, 6),
     fetchAladhanTimings(coords.lat, coords.lng),
   ]);
+
+  const mosques = settled[0].status === 'fulfilled' ? settled[0].value : [];
+  const halal = settled[1].status === 'fulfilled' ? settled[1].value : [];
+  const quickFood = settled[2].status === 'fulfilled' ? settled[2].value : [];
+  const hydration = settled[3].status === 'fulfilled' ? settled[3].value : [];
+  const prayerTimes = settled[4].status === 'fulfilled' ? settled[4].value : null;
 
   const prayer_facilities = mosques.map((m) => ({
     name: m.name,

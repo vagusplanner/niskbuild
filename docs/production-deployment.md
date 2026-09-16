@@ -32,7 +32,8 @@ Set these in **Vercel → Project → Settings → Environment Variables**. Use 
 
 | Variable | Scope | Description |
 |----------|-------|-------------|
-| `SUPPORT_EMAIL` | Production | Inbox for support ticket notifications (not used for admin auth) |
+| `SUPPORT_EMAIL` | Production | Inbox for NiskBuild support ticket notifications (not used for admin auth) |
+| `SUPPORT_EMAIL_VP` | Production (optional) | Inbox for Vagus Planner `/support` contact form. Default if unset: `support@vagusplanner.com` |
 
 Admin access is controlled by **`is_platform_owner()`** in Supabase — register your user in `firstparty.platform_owners` (see migrations). No admin email env vars are required for authentication.
 

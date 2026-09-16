@@ -2,16 +2,27 @@ import { NextRequest, NextResponse } from 'next/server';
 import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { createSupportTicket, notifyAdminNewTicket } from '@/lib/support-tickets';
+import {
+  createSupportTicket,
+  notifyAdminNewTicket,
+  type SupportProduct,
+} from '@/lib/support-tickets';
 
 const VALID_CATEGORIES = new Set(['general', 'billing', 'technical', 'sales', 'feature', 'bug']);
+
+function resolveProduct(body: Record<string, unknown>): SupportProduct {
+  if (body.product === 'vagus-planner' || body.source === 'vp_contact_form') {
+    return 'vagus-planner';
+  }
+  return 'niskbuild';
+}
 
 export async function POST(request: NextRequest) {
   const guard = await guardApiRequest(request, { requireAuth: false, rateLimit: 8 });
   if (!guard.ok) return guard.response;
 
   try {
-    const body = await request.json();
+    const body = (await request.json()) as Record<string, unknown>;
     const name = typeof body.name === 'string' ? body.name.trim() : '';
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
     const subject = typeof body.subject === 'string' ? body.subject.trim() : '';
@@ -20,6 +31,8 @@ export async function POST(request: NextRequest) {
       typeof body.category === 'string' && VALID_CATEGORIES.has(body.category)
         ? body.category
         : 'general';
+    const product = resolveProduct(body);
+    const source = product === 'vagus-planner' ? 'vp_contact_form' : 'contact_form';
 
     if (!name || name.length < 2) {
       return NextResponse.json({ error: 'Please enter your name' }, { status: 400 });
@@ -42,7 +55,7 @@ export async function POST(request: NextRequest) {
       subject,
       category,
       message,
-      source: 'contact_form',
+      source,
       planTier: null,
     });
 
@@ -57,17 +70,20 @@ export async function POST(request: NextRequest) {
       email,
       category,
       message,
+      product,
     });
 
     if (!notify.ok) {
       console.error('[support/contact] ticket saved but notification email failed', {
         ticketId: ticket.id,
+        product,
         error: notify.error,
       });
+      const fallback =
+        product === 'vagus-planner' ? 'support@vagusplanner.com' : 'hello@niskbuild.com';
       return NextResponse.json(
         {
-          error:
-            'Your message was saved, but we could not notify the team by email. Please try again or email hello@niskbuild.com.',
+          error: `Your message was saved, but we could not notify the team by email. Please try again or email ${fallback}.`,
           ticketId: ticket.id,
         },
         { status: 502 }

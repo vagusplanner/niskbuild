@@ -1,8 +1,10 @@
 import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { sendEmail } from '@/lib/send-email';
-import { getSupportInboxEmail } from '@/lib/admin-auth';
+import { resolveEmailFrom, sendEmail } from '@/lib/send-email';
+import { getSupportInboxEmail, getVpSupportInboxEmail } from '@/lib/admin-auth';
+
+export type SupportProduct = 'niskbuild' | 'vagus-planner';
 
 export type CreateTicketInput = {
   userId?: string | null;
@@ -56,11 +58,22 @@ export async function notifyAdminNewTicket(params: {
   category: string;
   message: string;
   planTier?: string | null;
+  /** Defaults to NiskBuild inbox + [NiskBuild] subject. */
+  product?: SupportProduct;
 }): Promise<{ ok: boolean; error?: string }> {
-  const inbox = getSupportInboxEmail();
+  const product: SupportProduct = params.product === 'vagus-planner' ? 'vagus-planner' : 'niskbuild';
+  const inbox = product === 'vagus-planner' ? getVpSupportInboxEmail() : getSupportInboxEmail();
+  const brand = product === 'vagus-planner' ? 'Vagus Planner' : 'NiskBuild';
+  const subjectPrefix = product === 'vagus-planner' ? '[Vagus Planner]' : '[NiskBuild]';
+  const from = resolveEmailFrom(product === 'vagus-planner' ? 'vagus-planner' : 'niskbuild');
+  const panelHint =
+    product === 'vagus-planner'
+      ? 'Reply from the NiskBuild admin support panel (filter source: vp_contact_form).'
+      : 'Reply from the NiskBuild admin support panel.';
+
   const html = `
     <div style="font-family:system-ui,sans-serif;max-width:560px;color:#111;">
-      <h2 style="margin:0 0 12px;">New support ticket</h2>
+      <h2 style="margin:0 0 12px;">New ${escapeHtml(brand)} support ticket</h2>
       <p><strong>Subject:</strong> ${escapeHtml(params.subject)}</p>
       <p><strong>From:</strong> ${escapeHtml(params.name)} &lt;${escapeHtml(params.email)}&gt;</p>
       <p><strong>Category:</strong> ${escapeHtml(params.category)}</p>
@@ -68,20 +81,22 @@ export async function notifyAdminNewTicket(params: {
       <p><strong>Ticket ID:</strong> ${escapeHtml(params.ticketId)}</p>
       <hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />
       <p style="white-space:pre-wrap;line-height:1.5;">${escapeHtml(params.message)}</p>
-      <p style="margin-top:20px;font-size:12px;color:#666;">Reply from the NiskBuild admin support panel.</p>
+      <p style="margin-top:20px;font-size:12px;color:#666;">${escapeHtml(panelHint)}</p>
     </div>
   `;
 
   const result = await sendEmail({
     to: inbox,
-    subject: `[NiskBuild] ${params.subject}`,
+    subject: `${subjectPrefix} ${params.subject}`,
     html,
     replyTo: params.email,
+    from,
   });
 
   if (!result.ok) {
     console.error('[notifyAdminNewTicket] email failed', {
       to: inbox,
+      product,
       ticketId: params.ticketId,
       error: result.error,
     });

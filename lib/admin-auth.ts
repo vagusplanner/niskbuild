@@ -11,6 +11,16 @@ export function getSupportInboxEmail(): string {
   return 'support@niskbuild.com';
 }
 
+/**
+ * Vagus Planner support inbox for VP contact-form notifications.
+ * Prefer SUPPORT_EMAIL_VP, else support@vagusplanner.com (aligned with EMAIL_FROM_VP).
+ */
+export function getVpSupportInboxEmail(): string {
+  const vp = process.env.SUPPORT_EMAIL_VP?.trim().toLowerCase();
+  if (vp) return vp;
+  return 'support@vagusplanner.com';
+}
+
 /** Platform-owner audit trail label for support actions (not used for auth). */
 export function getAdminEmail(actorEmail?: string | null): string {
   const fromEnv = process.env.ADMIN_EMAIL?.trim().toLowerCase();

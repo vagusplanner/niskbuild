@@ -79,7 +79,7 @@ export default function LegalPage() {
           </Link>
 
           {/* Support */}
-          <Link to={createPageUrl('Support')}>
+          <Link to="/support">
             <Card className="h-full hover:shadow-xl transition-all cursor-pointer bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200">
               <CardHeader>
                 <HelpCircle className="w-12 h-12 text-amber-600 mb-3" />

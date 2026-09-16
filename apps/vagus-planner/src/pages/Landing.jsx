@@ -766,9 +766,9 @@ function LandingFooter({ onSignIn }) {
             </div>
             <div className="space-y-2">
               <div className="text-white/30 text-[10px] uppercase tracking-widest font-semibold mb-1">Support</div>
-              <Link to="/Contact" className="block hover:text-white/80 transition-colors">Contact Us</Link>
-              <Link to="/Contact" className="block hover:text-white/80 transition-colors">Data Request</Link>
-              <Link to="/Contact" className="block hover:text-white/80 transition-colors">Report Issue</Link>
+              <Link to="/support" className="block hover:text-white/80 transition-colors">Contact Us</Link>
+              <Link to="/support" className="block hover:text-white/80 transition-colors">Data Request</Link>
+              <Link to="/support" className="block hover:text-white/80 transition-colors">Report Issue</Link>
             </div>
           </div>
         </div>
@@ -777,7 +777,7 @@ function LandingFooter({ onSignIn }) {
           <div className="flex gap-4 text-white/25 text-xs">
             <Link to="/PrivacyPolicy" className="hover:text-white/50 transition-colors">Privacy</Link>
             <Link to="/TermsOfService" className="hover:text-white/50 transition-colors">Terms</Link>
-            <Link to="/Contact" className="hover:text-white/50 transition-colors">Contact</Link>
+            <Link to="/support" className="hover:text-white/50 transition-colors">Contact</Link>
           </div>
         </div>
       </div>
@@ -803,7 +803,7 @@ export default function Landing() {
       );
       return;
     }
-    if (planName?.includes('Enterprise')) { navigate('/Contact'); return; }
+    if (planName?.includes('Enterprise')) { navigate('/support'); return; }
     if (isAuthenticated) navigate('/Billing'); else goToLogin('/Billing');
   };
   return (

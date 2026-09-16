@@ -487,7 +487,7 @@ export default function HelpCenter({ isOpen, onClose, islamicMode = false }) {
               </a>
             </p>
             <Link
-              to="/Contact"
+              to="/support"
               onClick={onClose}
               className="inline-flex items-center gap-1.5 text-sm font-medium text-teal-700 dark:text-teal-400 hover:underline"
             >

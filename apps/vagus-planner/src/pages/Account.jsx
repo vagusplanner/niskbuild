@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import ExternalCalendarManager from '@/components/integrations/ExternalCalendarManager';
@@ -359,7 +360,7 @@ export default function Account() {
                   </div>
                 </motion.button>
               ))}
-              <p className="sm:col-span-2 lg:col-span-3 text-center pt-1">
+              <p className="sm:col-span-2 lg:col-span-3 text-center pt-1 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
                 <button
                   type="button"
                   onClick={() => window.dispatchEvent(new CustomEvent('open_help_center'))}
@@ -367,6 +368,9 @@ export default function Account() {
                 >
                   Tips &amp; Help
                 </button>
+                <Link to="/support" className="text-sm font-medium text-[#1D6FB8] hover:underline">
+                  Contact Support
+                </Link>
               </p>
             </motion.div>
           ) : (

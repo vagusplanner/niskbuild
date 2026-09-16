@@ -19,6 +19,7 @@ export default function HalalRestaurantFinder({ isOpen, onClose }) {
   const [locationError, setLocationError] = useState(null);
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [cuisineFilter, setCuisineFilter] = useState('All');
   const [selected, setSelected] = useState(null);
@@ -51,13 +52,24 @@ export default function HalalRestaurantFinder({ isOpen, onClose }) {
     setLoading(true);
     setRestaurants([]);
     setSelected(null);
+    setFetchError(null);
     try {
       const res = await base44.functions.invoke('findHalalRestaurants', {
         lat: loc.lat,
         lng: loc.lng,
         query: query || ''
       });
-      setRestaurants(res.data?.restaurants || []);
+      const payload = res?.data ?? res;
+      setRestaurants(payload?.restaurants || []);
+      if (payload?.degraded) {
+        setFetchError(
+          payload.message ||
+            'Map data is temporarily unavailable. Please try again in a moment.'
+        );
+      }
+    } catch {
+      setRestaurants([]);
+      setFetchError('Map data is temporarily unavailable. Please try again in a moment.');
     } finally {
       setLoading(false);
     }
@@ -192,7 +204,23 @@ export default function HalalRestaurantFinder({ isOpen, onClose }) {
                 </div>
               )}
 
-              {!loading && filteredRestaurants.length === 0 && location && (
+              {!loading && fetchError && location && (
+                <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl text-xs text-amber-700 dark:text-amber-300 flex items-start gap-2">
+                  <RefreshCw className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  <div className="space-y-2">
+                    <span>{fetchError}</span>
+                    <button
+                      type="button"
+                      onClick={() => location && fetchRestaurants(location, searchQuery)}
+                      className="block font-medium underline underline-offset-2"
+                    >
+                      Try again
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {!loading && !fetchError && filteredRestaurants.length === 0 && location && (
                 <div className="flex flex-col items-center justify-center py-16 gap-3 text-slate-400">
                   <Utensils className="w-10 h-10 text-slate-300" />
                   <p className="text-sm text-center">No restaurants found. Try a different search or cuisine filter.</p>

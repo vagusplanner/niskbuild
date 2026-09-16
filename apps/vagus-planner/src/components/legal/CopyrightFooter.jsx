@@ -52,7 +52,7 @@ export default function CopyrightFooter() {
             </h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link to={createPageUrl('Support')} className="hover:text-teal-400 transition-colors">
+                <Link to="/support" className="hover:text-teal-400 transition-colors">
                   Contact Support
                 </Link>
               </li>
@@ -62,8 +62,8 @@ export default function CopyrightFooter() {
                 </a>
               </li>
               <li>
-                <Link to={createPageUrl('Support')} className="hover:text-teal-400 transition-colors">
-                  Help Center
+                <Link to="/support" className="hover:text-teal-400 transition-colors">
+                  Help &amp; Contact
                 </Link>
               </li>
             </ul>
