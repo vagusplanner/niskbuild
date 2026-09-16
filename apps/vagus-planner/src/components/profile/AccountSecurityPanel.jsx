@@ -1,19 +1,34 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Lock, LogOut, KeyRound, Info } from 'lucide-react';
 import TwoFactorAuth from '@/components/settings/TwoFactorAuth';
 import { useAuth } from '@/lib/AuthContext';
+import { toast } from 'sonner';
+import { requestVpPasswordReset } from '@/lib/vp-password-reset';
 
 /**
- * Security tab: password reset guidance, sign-out, and 2FA overview.
+ * Security tab: password reset email, sign-out, and 2FA overview.
  */
 export default function AccountSecurityPanel() {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
+  const [sendingReset, setSendingReset] = useState(false);
 
-  const handleChangePassword = () => {
-    // Sign out so the user can use Forgot Password on the login page.
-    void logout();
+  const handleChangePassword = async () => {
+    const email = user?.email;
+    if (!email) {
+      toast.error('No email on this account. Sign out and use Forgot password on the login page.');
+      return;
+    }
+    setSendingReset(true);
+    try {
+      await requestVpPasswordReset(email);
+      toast.success('Password reset email sent. Check your inbox for a Vagus Planner link.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not send reset email');
+    } finally {
+      setSendingReset(false);
+    }
   };
 
   const handleLogout = () => {
@@ -37,24 +52,33 @@ export default function AccountSecurityPanel() {
                 How to change your password
               </p>
               <p className="text-sm text-blue-700 dark:text-blue-300 mt-1 leading-relaxed">
-                Sign out, then click <strong>&quot;Forgot Password&quot;</strong> on the login page.
-                You&apos;ll receive a reset link by email within a few minutes.
+                Tap <strong>Send reset email</strong> below. Open the Vagus Planner link in the
+                email and choose a new password. You can also use{' '}
+                <strong>Forgot password?</strong> on the sign-in page.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-amber-100 dark:bg-amber-900/40 rounded-lg">
+          <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="p-2 bg-amber-100 dark:bg-amber-900/40 rounded-lg flex-shrink-0">
                 <KeyRound className="w-4 h-4 text-amber-600 dark:text-amber-400" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="font-medium text-sm">Reset Password</p>
-                <p className="text-xs text-slate-500">Sign out to access the password reset flow</p>
+                <p className="text-xs text-slate-500 truncate">
+                  Email a reset link to {user?.email || 'your account'}
+                </p>
               </div>
             </div>
-            <Button onClick={handleChangePassword} variant="outline" size="sm">
-              Sign Out
+            <Button
+              onClick={handleChangePassword}
+              variant="outline"
+              size="sm"
+              disabled={sendingReset}
+              className="flex-shrink-0"
+            >
+              {sendingReset ? 'Sending…' : 'Send reset email'}
             </Button>
           </div>
 

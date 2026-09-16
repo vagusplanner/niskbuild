@@ -1,6 +1,7 @@
 
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import ResetPassword from './pages/ResetPassword';
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -90,12 +91,16 @@ const AuthenticatedApp = () => {
     path === '/Support';
   const isLoginPath = path === '/login';
   const isSignupPath = path === '/signup';
+  const isResetPasswordPath =
+    path === '/reset-password' || path === '/ResetPassword';
 
-  if (isLoginPath || isSignupPath) {
+  if (isLoginPath || isSignupPath || isResetPasswordPath) {
     return (
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/ResetPassword" element={<ResetPassword />} />
       </Routes>
     );
   }

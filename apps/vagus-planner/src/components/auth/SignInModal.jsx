@@ -7,6 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { X, Eye, EyeOff, Lock, Mail, AlertCircle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
+import { requestVpPasswordReset } from '@/lib/vp-password-reset';
 
 export default function SignInModal({ isOpen, onClose, onSuccess }) {
   const [email, setEmail] = useState('');
@@ -168,8 +169,19 @@ export default function SignInModal({ isOpen, onClose, onSuccess }) {
                   <button
                     type="button"
                     className="text-sm text-teal-600 hover:text-teal-700 dark:text-teal-400 font-medium"
-                    onClick={() => {
-                      toast.info('Please contact support to reset your password');
+                    onClick={async () => {
+                      if (!email.trim()) {
+                        toast.error('Enter your email above, then tap Forgot password.');
+                        return;
+                      }
+                      try {
+                        await requestVpPasswordReset(email);
+                        toast.success('Password reset email sent. Check your inbox.');
+                      } catch (err) {
+                        toast.error(
+                          err instanceof Error ? err.message : 'Could not send reset email'
+                        );
+                      }
                     }}
                   >
                     Forgot password?

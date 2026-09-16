@@ -165,7 +165,18 @@ In **Supabase → Authentication → URL configuration**:
 | Setting | Value |
 |---------|-------|
 | Site URL | `https://www.niskbuild.com` (canonical — apex already redirects here) |
-| Redirect URLs | `https://www.niskbuild.com/auth/callback`, `https://www.niskbuild.com/**`, `https://niskbuild.com/auth/callback`, `https://niskbuild.com/**` |
+| Redirect URLs | `https://www.niskbuild.com/auth/callback`, `https://www.niskbuild.com/**`, `https://niskbuild.com/auth/callback`, `https://niskbuild.com/**`, **plus every Vagus Planner public origin used in email links** (see below) |
+
+**Vagus Planner password reset (required):** VP and NiskBuild share this Supabase Auth project. Site URL alone sends recovery emails to the NiskBuild homepage. VP always passes `redirectTo` to a VP reset page — those URLs **must** be allow-listed or Supabase silently falls back to Site URL:
+
+| Add to Redirect URLs |
+|----------------------|
+| `https://vagusplanner.com/reset-password` |
+| `https://vagusplanner.com/#/reset-password` |
+| `https://vagusplanner.com/**` |
+| Same patterns for `https://www.vagusplanner.com` and `https://vp.niskbuild.com` if you use those hosts |
+
+Optional build env for native/email links: `VITE_VP_PUBLIC_URL=https://vagusplanner.com` (never a `capacitor://` origin).
 
 Do **not** leave Site URL as `https://niskbuild.vercel.app` — that is the usual cause of post-login redirects to the Vercel alias.
 
