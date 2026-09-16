@@ -172,11 +172,10 @@ In **Supabase → Authentication → URL configuration**:
 | Add to Redirect URLs |
 |----------------------|
 | `https://vagusplanner.com/reset-password` |
-| `https://vagusplanner.com/#/reset-password` |
 | `https://vagusplanner.com/**` |
 | Same patterns for `https://www.vagusplanner.com` and `https://vp.niskbuild.com` if you use those hosts |
 
-Optional build env for native/email links: `VITE_VP_PUBLIC_URL=https://vagusplanner.com` (never a `capacitor://` origin).
+**Do not use hash email links** (`/#/reset-password`). The live website uses BrowserRouter; hash routes render the marketing Landing page. `requestVpPasswordReset()` always emits the path form above. Optional build env: `VITE_VP_PUBLIC_URL=https://vagusplanner.com`.
 
 Do **not** leave Site URL as `https://niskbuild.vercel.app` — that is the usual cause of post-login redirects to the Vercel alias.
 

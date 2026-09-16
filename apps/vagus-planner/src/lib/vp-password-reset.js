@@ -5,7 +5,6 @@
  */
 
 import { supabase } from '@/lib/base44-compat';
-import { usesHashRouter } from '@/lib/static-bundle';
 import { isNativeCapacitorApp } from '@/lib/vp-platform';
 
 const DEFAULT_VP_PUBLIC_ORIGIN = 'https://vagusplanner.com';
@@ -36,19 +35,14 @@ export function getVpPublicOrigin() {
 /**
  * Absolute URL Supabase should send the user to after clicking the email link.
  * Must be listed in Supabase Auth → Redirect URLs.
+ *
+ * Always use a PATH (not hash). Emails open in a normal browser against the live
+ * VP site, which uses BrowserRouter — `/#/reset-password` is ignored and shows
+ * the marketing Landing page. Capacitor still benefits: the link opens Safari
+ * to the web reset form.
  */
 export function getVpPasswordResetRedirectUrl() {
   const origin = getVpPublicOrigin();
-  // Capacitor / static bundles use HashRouter; public web VP may too when native.
-  // Prefer hash form so the SPA (not a missing server route) receives the link.
-  if (usesHashRouter() || isNativeCapacitorApp()) {
-    return `${origin}/#/reset-password`;
-  }
-  // When running in-browser on the VP host with BrowserRouter, path form is fine.
-  // Still use hash if the current app is already hash-routed.
-  if (typeof window !== 'undefined' && window.location.hash.startsWith('#/')) {
-    return `${origin}/#/reset-password`;
-  }
   return `${origin}/reset-password`;
 }
 
