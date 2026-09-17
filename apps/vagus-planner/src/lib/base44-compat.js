@@ -143,11 +143,19 @@ const CURRENT_USER_SCOPED_ENTITIES = new Set([
   'Reminder',
 ])
 
-async function scopeQueryToCurrentUser(query, entityName, criteria = {}) {
+/**
+ * Apply user_id scope to a PostgREST builder.
+ *
+ * MUST stay synchronous and must never be `async` while returning a builder:
+ * PostgREST builders are thenables, and `return query.eq(...)` from an async
+ * function causes JS to await/execute the request early — yielding `{ data, error }`
+ * instead of a chainable builder, so the next `.order()` throws
+ * "t.order is not a function".
+ */
+function scopeQueryToCurrentUser(query, entityName, criteria = {}, userId = null) {
   if (!CURRENT_USER_SCOPED_ENTITIES.has(entityName)) return query
   // Honor an explicit caller filter (admin/debug tools may pass user_id).
   if (criteria?.user_id != null || criteria?.userId != null) return query
-  const userId = await getCurrentUserId()
   if (!userId) return query
   return query.eq('user_id', userId)
 }
@@ -171,6 +179,17 @@ const ENTITY_COLUMN_ALIASES = {
     created_by: '__skip__',
     notes: '__skip__',
     recurring_yearly: '__skip__',
+  },
+  // Production vp_periods is a Base44-era stub: due_date exists, start_date/end_date/cycle_length do not.
+  // Global COLUMN_ALIASES also maps start_date→due_date; keep this explicit so sorts never 400.
+  Period: {
+    start_date: 'due_date',
+    end_date: '__skip__',
+    cycle_length: '__skip__',
+    period_length: '__skip__',
+    flow: '__skip__',
+    symptoms: '__skip__',
+    notes: '__skip__',
   },
   Expense: { created_by: '__skip__' },
   PrayerLog: { date: 'prayed_at' },
@@ -780,9 +799,89 @@ function mapPayloadToRow(entityName, payload, userId) {
     return row
   }
 
+  if (entityName === 'Period') {
+    return mapPeriodPayloadToRow(p, userId)
+  }
+
   const row = { ...p }
   if (userId && row.user_id == null) row.user_id = userId
   return row
+}
+
+/**
+ * Production vp_periods columns (live probe): id, user_id, due_date, created_at, name.
+ * UI uses start_date/end_date/cycle_length/flow/notes — pack extras into `name` JSON
+ * (same pattern as Holiday notes) until the periods migration adds real columns.
+ */
+function mapPeriodPayloadToRow(payload, userId) {
+  const p = payload ?? {}
+  const start = toDateOnlyString(p.start_date ?? p.due_date) ?? p.start_date ?? p.due_date
+  const end = toDateOnlyString(p.end_date) ?? p.end_date ?? null
+  const meta = {
+    _vp_period: 1,
+  }
+  if (end != null && String(end).trim() !== '') meta.end_date = end
+  if (p.cycle_length != null && p.cycle_length !== '') {
+    const n = Number(p.cycle_length)
+    if (Number.isFinite(n)) meta.cycle_length = Math.round(n)
+  }
+  if (p.period_length != null && p.period_length !== '') {
+    const n = Number(p.period_length)
+    if (Number.isFinite(n)) meta.period_length = Math.round(n)
+  }
+  if (p.flow != null && String(p.flow).trim() !== '') meta.flow = String(p.flow).trim()
+  if (p.notes != null && String(p.notes).trim() !== '') meta.notes = String(p.notes)
+  if (p.symptoms != null) meta.symptoms = p.symptoms
+
+  const row = {
+    name: JSON.stringify(meta),
+  }
+  if (userId) row.user_id = userId
+  if (start != null && String(start).trim() !== '') {
+    // Production stub column. Migration adds start_date; dual-write only after that
+    // exists so we don't generate a 400-then-retry on every create.
+    row.due_date = start
+  }
+  return row
+}
+
+function mapPeriodFromRow(row) {
+  if (!row) return row
+  let end_date = row.end_date ?? null
+  let cycle_length = row.cycle_length ?? null
+  let period_length = row.period_length ?? null
+  let flow = row.flow ?? null
+  let notes = row.notes ?? ''
+  let symptoms = row.symptoms ?? null
+
+  if (typeof row.name === 'string' && row.name.trim().startsWith('{')) {
+    try {
+      const parsed = JSON.parse(row.name)
+      if (parsed && typeof parsed === 'object' && parsed._vp_period) {
+        if (!end_date && parsed.end_date) end_date = parsed.end_date
+        if (cycle_length == null && parsed.cycle_length != null) cycle_length = parsed.cycle_length
+        if (period_length == null && parsed.period_length != null) period_length = parsed.period_length
+        if (!flow && parsed.flow) flow = parsed.flow
+        if ((!notes || notes === row.name) && parsed.notes) notes = parsed.notes
+        if (symptoms == null && parsed.symptoms != null) symptoms = parsed.symptoms
+      }
+    } catch {
+      /* plain name */
+    }
+  }
+
+  const start = toDateOnlyString(row.start_date ?? row.due_date) ?? row.start_date ?? row.due_date
+  return {
+    ...row,
+    start_date: start,
+    due_date: row.due_date ?? start,
+    end_date,
+    cycle_length: cycle_length ?? 28,
+    period_length,
+    flow,
+    notes,
+    symptoms,
+  }
 }
 
 function mapNotificationPreferencePayloadToRow(payload, existingRow, userId) {
@@ -945,6 +1044,10 @@ function mapRowFromDb(entityName, row) {
       external_calendar_type: row.external_calendar_type ?? null,
       is_all_day: row.is_all_day === true,
     }
+  }
+
+  if (entityName === 'Period') {
+    return mapPeriodFromRow(row)
   }
 
   if (entityName === 'Reflection') {
@@ -1359,7 +1462,8 @@ function resolveEntityKey(name) {
 async function buildListQuery(tableName, entityName, args) {
   const { filters, sortField, limit } = resolveListArgs(args)
   let query = tableFrom(tableName).select('*')
-  query = await scopeQueryToCurrentUser(query, entityName, filters)
+  const userId = await getCurrentUserId()
+  query = scopeQueryToCurrentUser(query, entityName, filters, userId)
   query = applyFilters(query, filters, entityName)
   query = applySort(query, sortField, entityName)
   if (typeof limit === 'number') {
@@ -1755,7 +1859,8 @@ export const base44 = {
         },
         filter: async (criteria = {}, sortField, limit) => {
           let query = tableFrom(tableName).select('*')
-          query = await scopeQueryToCurrentUser(query, entityName, criteria)
+          const userId = await getCurrentUserId()
+          query = scopeQueryToCurrentUser(query, entityName, criteria, userId)
           query = applyFilters(query, criteria, entityName)
           if (typeof sortField === 'string') {
             query = applySort(query, sortField, entityName)
@@ -1829,6 +1934,21 @@ export const base44 = {
           ) {
             const { type: _dropType, ...withoutType } = row
             ;({ data, error } = await tableFrom(tableName).insert(withoutType).select())
+          }
+          // Period: production stub only has due_date/name — strip migration columns and retry.
+          if (
+            error &&
+            entityName === 'Period' &&
+            /start_date|end_date|cycle_length|period_length|flow|notes|symptoms|schema cache|Could not find|does not exist/i.test(
+              error.message || ''
+            )
+          ) {
+            const fallback = {
+              name: row.name ?? JSON.stringify({ _vp_period: 1 }),
+              due_date: row.due_date ?? row.start_date,
+            }
+            if (row.user_id) fallback.user_id = row.user_id
+            ;({ data, error } = await tableFrom(tableName).insert(fallback).select())
           }
           if (error) throw error
           // Empty representation = insert didn't stick (RLS/select) — never treat as success.
@@ -1927,6 +2047,19 @@ export const base44 = {
           ) {
             const { type: _dropType, ...withoutType } = row
             ;({ data, error } = await tableFrom(tableName).update(withoutType).eq('id', safeId).select())
+          }
+          if (
+            error &&
+            entityName === 'Period' &&
+            /start_date|end_date|cycle_length|period_length|flow|notes|symptoms|schema cache|Could not find|does not exist/i.test(
+              error.message || ''
+            )
+          ) {
+            const fallback = {
+              name: row.name ?? JSON.stringify({ _vp_period: 1 }),
+              due_date: row.due_date ?? row.start_date,
+            }
+            ;({ data, error } = await tableFrom(tableName).update(fallback).eq('id', safeId).select())
           }
           if (error) throw error
           if (!data?.[0]) {

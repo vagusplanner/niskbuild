@@ -164,6 +164,8 @@ export async function sendNotification(config) {
         const notification = new Notification(title, {
           body: message,
           tag: type,
+          icon: '/logo/icon-192.png',
+          badge: '/logo/icon-192.png',
           silent: !sound,
           data
         });

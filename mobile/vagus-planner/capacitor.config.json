@@ -10,7 +10,11 @@
       "overlaysWebView": false
     },
     "PushNotifications": {
-      "presentationOptions": ["alert", "badge", "sound"]
+      "presentationOptions": [
+        "alert",
+        "badge",
+        "sound"
+      ]
     }
   }
 }

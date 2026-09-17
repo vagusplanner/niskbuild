@@ -1,10 +1,13 @@
 /**
  * Unified notification helpers — Capacitor LocalNotifications on native,
  * web Notification API in browser preview.
+ *
+ * NOTE: On iOS, LocalNotifications always use the app AppIcon — there is no
+ * separate notification icon API. The APP_ICON URL below is only for web /
+ * service-worker Notification API (icon + badge). Keep it aligned with AppIcon.
  */
 
-const APP_ICON =
-  'https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6965607bc386491646bad6e8/10b500d37_IMG_6630.png';
+const APP_ICON = '/logo/icon-192.png';
 
 let nativeChecked = false;
 let nativePlatform = false;

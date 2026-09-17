@@ -81,8 +81,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title || 'Vagus Planner', {
       body: data.body || '',
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
+      icon: '/logo/icon-192.png',
+      badge: '/logo/icon-192.png',
       data: data.url,
     })
   );

@@ -12,7 +12,7 @@ function fireBrowserPush(title, body, icon, tag) {
     try {
       new Notification(title, {
         body,
-        icon: icon || 'https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6965607bc386491646bad6e8/10b500d37_IMG_6630.png',
+        icon: icon || '/logo/icon-192.png',
         tag: tag || 'vagus-notif',
         silent: false
       });

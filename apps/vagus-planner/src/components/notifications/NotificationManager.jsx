@@ -56,8 +56,8 @@ export default function NotificationManager() {
         if (hasPermission && document.hidden && typeof window !== 'undefined' && 'Notification' in window) {
           new Notification(event.data.title, {
             body: event.data.message,
-            icon: '/favicon.ico',
-            badge: '/favicon.ico',
+            icon: '/logo/icon-192.png',
+            badge: '/logo/icon-192.png',
             tag: event.data.id
           });
         }
