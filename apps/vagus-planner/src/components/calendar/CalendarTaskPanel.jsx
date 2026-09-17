@@ -92,6 +92,7 @@ export default function CalendarTaskPanel({ selectedDate, onTaskClick, onAISched
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['activeTasks'] });
     }
   });
 
@@ -99,29 +100,44 @@ export default function CalendarTaskPanel({ selectedDate, onTaskClick, onAISched
     mutationFn: (id) => base44.entities.Task.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['activeTasks'] });
     }
   });
 
   const createTaskMutation = useMutation({
-    mutationFn: (data) => base44.entities.Task.create(data),
+    mutationFn: (data) => {
+      const title = String(data?.title || '').trim();
+      if (!title) throw new Error('Task title is required');
+      return base44.entities.Task.create({ ...data, title });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['activeTasks'] });
       setShowForm(false);
       setEditingTask(null);
       toast.success('Task created!');
     },
-    onError: () => toast.error('Failed to create task'),
+    onError: (err) => {
+      const detail = err?.message || err?.error_description || '';
+      console.error('Task create failed:', err);
+      toast.error(detail ? `Failed to create task: ${detail}` : 'Failed to create task');
+    },
   });
 
   const saveTaskMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Task.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['activeTasks'] });
       setShowForm(false);
       setEditingTask(null);
       toast.success('Task updated!');
     },
-    onError: () => toast.error('Failed to update task'),
+    onError: (err) => {
+      const detail = err?.message || err?.error_description || '';
+      console.error('Task update failed:', err);
+      toast.error(detail ? `Failed to update task: ${detail}` : 'Failed to update task');
+    },
   });
 
   const handleTaskSubmit = (data) => {

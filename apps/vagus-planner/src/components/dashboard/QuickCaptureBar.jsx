@@ -17,6 +17,8 @@ import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { aiFailureMessage } from '@/lib/ai-error-messages';
+import { localDateString, localDateTimeFromParts } from '@/lib/local-date';
+import { invalidateAfterEventChange, invalidateAfterTaskChange } from '@/lib/vp-query-keys';
 
 const EXAMPLES = [
   'Dentist Friday 3pm',
@@ -46,7 +48,7 @@ export default function QuickCaptureBar({ islamicMode = false }) {
       const res = await base44.integrations.Core.InvokeLLM({
         prompt: `Parse this user input into either a calendar event or a task.
 User input: "${text}"
-Current date: ${new Date().toISOString().split('T')[0]}
+Current date: ${localDateString()}
 
 Determine if this is:
 - An EVENT: has a specific date/time, meeting, appointment
@@ -85,9 +87,9 @@ Return JSON with:
   const createMutation = useMutation({
     mutationFn: async (r) => {
       if (r.type === 'event') {
-        const dateStr = r.date || new Date().toISOString().split('T')[0];
+        const dateStr = r.date || localDateString();
         const timeStr = r.time || '09:00';
-        const start = new Date(`${dateStr}T${timeStr}:00`);
+        const start = localDateTimeFromParts(dateStr, timeStr);
         const end = new Date(start.getTime() + 60 * 60 * 1000);
         return base44.entities.Event.create({
           title: r.title,
@@ -96,9 +98,11 @@ Return JSON with:
           category: 'personal',
         });
       } else {
+        const title = String(r.title || '').trim();
+        if (!title) throw new Error('Task title is required');
         return base44.entities.Task.create({
-          title: r.title,
-          due_date: r.date || null,
+          title,
+          due_date: r.date || localDateString(),
           priority: r.priority || 'medium',
           category: r.category || 'personal',
           status: 'todo',
@@ -106,11 +110,15 @@ Return JSON with:
       }
     },
     onSuccess: (_, r) => {
-      queryClient.invalidateQueries({ queryKey: ['todayEvents'] });
-      queryClient.invalidateQueries({ queryKey: ['activeTasks'] });
+      invalidateAfterEventChange(queryClient);
+      invalidateAfterTaskChange(queryClient);
       toast.success(r.type === 'event' ? `📅 Event added to Calendar` : `✅ Task created`);
       setText('');
       setResult(null);
+    },
+    onError: (err) => {
+      const detail = err?.message || '';
+      toast.error(detail ? `Could not save: ${detail}` : 'Could not save');
     },
   });
 

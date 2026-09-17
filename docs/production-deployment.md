@@ -208,35 +208,36 @@ Open **Supabase → SQL Editor** and run migrations **in order**. Each file is i
 2. `vp-user-settings-edition-migration.sql`
 3. `vp-billing-notifications-migration.sql`
 4. `vp-reflections-expenses-prayer-chats-migration.sql`
-5. `vp-rls-grants-fix-migration.sql`
-6. `vp-deployments-storage-migration.sql`
+5. `vp-expenses-type-column-migration.sql` — adds `type` on `vp_expenses` (expense/income/saving/zakat/sadaqa)
+6. `vp-rls-grants-fix-migration.sql`
+7. `vp-deployments-storage-migration.sql`
 
 #### NiskBuild platform (public schema — additive)
 
-7. `profiles-settings-migration.sql`
-8. `profile-preferences-migration.sql`
-9. `security-layers-migration.sql`
-10. `monetization-guards-migration.sql`
-11. `support-tickets-migration.sql`
-12. `retention-conversion-migration.sql`
-13. `visual-edit-migration.sql`
-14. `analytics-region-migration.sql`
-15. `public-analytics-telemetry-migration.sql`
-16. `project-versions-migration.sql`
-17. `project-seo-migration.sql`
-18. `project-integrations-migration.sql`
-19. `compiled-applications-migration.sql`
-20. `pwa-export-migration.sql`
-21. `blueprint-migration.sql`
-22. `google-places-migration.sql`
-23. `agent-conversations-migration.sql`
-24. `agent-escalations-migration.sql`
-25. `app-import-pipeline-migration.sql` — external app import registry (`firstparty.app_imports`)
-26. `niskbuild-platform-storage-migration.sql` — `imported-apps` + `project-exports` buckets, storage paths on import/export jobs
-27. `docs-hub-migration.sql` — in-app documentation tables (`doc_articles`, `doc_feedback`)
-28. `docs-hub-seed.sql` — documentation article content (run after #27)
-29. `retention-email-churn-migration.sql` — lifecycle email log, NPS, churn tracking (`last_build_at`)
-30. `admin-email-hub-migration.sql` — email send history columns, open/click tracking, `feature_usage`
+8. `profiles-settings-migration.sql`
+9. `profile-preferences-migration.sql`
+10. `security-layers-migration.sql`
+11. `monetization-guards-migration.sql`
+12. `support-tickets-migration.sql`
+13. `retention-conversion-migration.sql`
+14. `visual-edit-migration.sql`
+15. `analytics-region-migration.sql`
+16. `public-analytics-telemetry-migration.sql`
+17. `project-versions-migration.sql`
+18. `project-seo-migration.sql`
+19. `project-integrations-migration.sql`
+20. `compiled-applications-migration.sql`
+21. `pwa-export-migration.sql`
+22. `blueprint-migration.sql`
+23. `google-places-migration.sql`
+24. `agent-conversations-migration.sql`
+25. `agent-escalations-migration.sql`
+26. `app-import-pipeline-migration.sql` — external app import registry (`firstparty.app_imports`)
+27. `niskbuild-platform-storage-migration.sql` — `imported-apps` + `project-exports` buckets, storage paths on import/export jobs
+28. `docs-hub-migration.sql` — in-app documentation tables (`doc_articles`, `doc_feedback`)
+29. `docs-hub-seed.sql` — documentation article content (run after #28)
+30. `retention-email-churn-migration.sql` — lifecycle email log, NPS, churn tracking (`last_build_at`)
+31. `admin-email-hub-migration.sql` — email send history columns, open/click tracking, `feature_usage`
 
 > If a migration fails with “already exists”, it is safe to skip that statement — migrations are written to be idempotent where possible.
 

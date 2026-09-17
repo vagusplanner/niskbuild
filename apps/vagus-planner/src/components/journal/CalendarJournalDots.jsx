@@ -2,6 +2,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { localDateString } from '@/lib/local-date';
 
 const MOOD_COLORS = {
   joyful: '#22c55e', grateful: '#f59e0b', peaceful: '#38bdf8', hopeful: '#a78bfa',
@@ -11,8 +12,8 @@ const MOOD_COLORS = {
 
 // Returns a lookup map: { 'YYYY-MM-DD': {mood, hasEntry} }
 export function useJournalDots(currentDate) {
-  const monthStart = startOfMonth(currentDate).toISOString().split('T')[0];
-  const monthEnd = endOfMonth(currentDate).toISOString().split('T')[0];
+  const monthStart = localDateString(startOfMonth(currentDate));
+  const monthEnd = localDateString(endOfMonth(currentDate));
 
   const { data: entries = [] } = useQuery({
     queryKey: ['reflections-dots', monthStart],

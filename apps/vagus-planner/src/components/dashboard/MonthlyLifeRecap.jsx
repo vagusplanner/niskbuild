@@ -13,6 +13,7 @@ import { Sparkles, Loader2, TrendingUp, ChevronDown, ChevronUp } from 'lucide-re
 import { startOfMonth, endOfMonth, format, subMonths } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { aiFailureMessage } from '@/lib/ai-error-messages';
+import { vpQueryKeys } from '@/lib/vp-query-keys';
 
 export default function MonthlyLifeRecap({ islamicMode = false }) {
   const [expanded, setExpanded] = useState(false);
@@ -22,12 +23,33 @@ export default function MonthlyLifeRecap({ islamicMode = false }) {
   const prevMonth = subMonths(now, 1);
   const monthLabel = format(prevMonth, 'MMMM yyyy');
 
-  const { data: events = [] } = useQuery({ queryKey: ['todayEvents'], queryFn: () => base44.entities.Event.list('-start_date', 100), staleTime: 60000 });
-  const { data: tasks = [] } = useQuery({ queryKey: ['activeTasks'], queryFn: () => base44.entities.Task.list('-due_date', 100), staleTime: 60000 });
-  const { data: expenses = [] } = useQuery({ queryKey: ['expenses'], queryFn: () => base44.entities.Expense.list('-date', 200), staleTime: 60000 });
-  const { data: goals = [] } = useQuery({ queryKey: ['activeGoals'], queryFn: () => base44.entities.Goal.list(), staleTime: 60000 });
-  const { data: prayerLogs = [] } = useQuery({ queryKey: ['prayerLogsAll'], queryFn: () => base44.entities.PrayerLog.list('-date', 200), staleTime: 60000, enabled: islamicMode });
-
+  // Distinct keys from Dashboard (todayEvents / activeTasks / expenses) — different queryFns.
+  const { data: events = [] } = useQuery({
+    queryKey: vpQueryKeys.monthlyRecapEvents,
+    queryFn: () => base44.entities.Event.list('-start_date', 100),
+    staleTime: 60000,
+  });
+  const { data: tasks = [] } = useQuery({
+    queryKey: vpQueryKeys.monthlyRecapTasks,
+    queryFn: () => base44.entities.Task.list('-due_date', 100),
+    staleTime: 60000,
+  });
+  const { data: expenses = [] } = useQuery({
+    queryKey: vpQueryKeys.monthlyRecapExpenses,
+    queryFn: () => base44.entities.Expense.list('-date', 200),
+    staleTime: 60000,
+  });
+  const { data: goals = [] } = useQuery({
+    queryKey: vpQueryKeys.monthlyRecapGoals,
+    queryFn: () => base44.entities.Goal.list(),
+    staleTime: 60000,
+  });
+  const { data: prayerLogs = [] } = useQuery({
+    queryKey: ['prayerLogsAll'],
+    queryFn: () => base44.entities.PrayerLog.list('-date', 200),
+    staleTime: 60000,
+    enabled: islamicMode,
+  });
   const generateRecap = async () => {
     setLoading(true);
     try {

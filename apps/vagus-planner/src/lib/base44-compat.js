@@ -8,6 +8,8 @@ import { redirectToVpLogin, redirectToVpSignup } from './static-bundle'
 import { mapSupabaseUserToVpUser } from './vp-auth-user'
 import { isUnavailableAiFunction } from './vp-registered-functions'
 import { buildWhatsAppConnectURL } from './whatsapp'
+import { localDateString, toDateOnlyString as toLocalDateOnlyString } from './local-date'
+import { notifyVpEntityChange } from './vp-query-keys'
 
 function normalizeSupabaseProjectUrl(raw) {
   if (!raw || typeof raw !== 'string') return ''
@@ -195,6 +197,7 @@ const TASK_STATUS_MAP = {
   done: 'completed',
   cancelled: 'cancelled',
   not_started: 'pending',
+  blocked: 'pending',
 }
 
 function mapTaskPriority(value) {
@@ -265,8 +268,14 @@ function mapPayloadToRow(entityName, payload, userId) {
       if (notes) row.notes = notes
     }
     if (p.due_date != null && p.due_date !== '') {
-      const due = new Date(p.due_date)
-      if (!Number.isNaN(due.getTime())) row.due_date = due.toISOString()
+      const raw = String(p.due_date).trim()
+      // Date-only strings must not use `new Date('yyyy-MM-dd')` (UTC midnight → day shift).
+      if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+        row.due_date = `${raw}T12:00:00.000Z`
+      } else {
+        const due = new Date(raw)
+        if (!Number.isNaN(due.getTime())) row.due_date = due.toISOString()
+      }
     }
     if (p.due_time != null && String(p.due_time).trim()) {
       row.due_time = String(p.due_time).trim()
@@ -326,7 +335,14 @@ function mapPayloadToRow(entityName, payload, userId) {
     if (p.category != null) row.category = p.category
     const desc = p.description ?? p.notes ?? p.title
     if (desc != null) row.description = desc
-    if (p.date != null) row.date = p.date
+    if (p.date != null) {
+      const raw = String(p.date).trim()
+      // Date-only → noon UTC so the calendar day is stable across timezones.
+      row.date = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? `${raw}T12:00:00.000Z` : p.date
+    }
+    const typeRaw = p.type != null ? String(p.type).trim().toLowerCase() : ''
+    const allowedTypes = new Set(['expense', 'income', 'saving', 'zakat', 'sadaqa'])
+    row.type = allowedTypes.has(typeRaw) ? typeRaw : 'expense'
     return row
   }
 
@@ -375,7 +391,7 @@ function mapPayloadToRow(entityName, payload, userId) {
     if (start != null && String(start).trim() !== '') {
       row.date = String(start).split('T')[0]
     } else if (userId) {
-      row.date = new Date().toISOString().split('T')[0]
+      row.date = localDateString()
     }
     if (userId) row.status = status
     if (destination) row.destination = destination
@@ -863,13 +879,25 @@ function mapUserSettingsFromRow(row) {
 }
 
 function toDateOnlyString(value) {
-  if (value == null || value === '') return null
-  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value.trim())) {
-    return value.trim()
+  return toLocalDateOnlyString(value)
+}
+
+function mapExpenseFromRow(row) {
+  if (!row) return row
+  const allowed = new Set(['expense', 'income', 'saving', 'zakat', 'sadaqa'])
+  const raw = row.type != null ? String(row.type).trim().toLowerCase() : ''
+  let type = allowed.has(raw) ? raw : null
+  if (!type) {
+    const cat = String(row.category || '').toLowerCase()
+    if (['salary', 'freelance', 'investment', 'gift'].includes(cat)) type = 'income'
+    else if (['emergency', 'goal'].includes(cat)) type = 'saving'
+    else type = 'expense'
   }
-  const d = new Date(value)
-  if (Number.isNaN(d.getTime())) return null
-  return d.toISOString().slice(0, 10)
+  return {
+    ...row,
+    type,
+    date: toDateOnlyString(row.date) ?? row.date,
+  }
 }
 
 function mapReflectionFromRow(row) {
@@ -921,6 +949,10 @@ function mapRowFromDb(entityName, row) {
 
   if (entityName === 'Reflection') {
     return mapReflectionFromRow(row)
+  }
+
+  if (entityName === 'Expense') {
+    return mapExpenseFromRow(row)
   }
 
   if (entityName === 'Task') {
@@ -1750,7 +1782,9 @@ export const base44 = {
             entityName === 'EventLock' ||
             entityName === 'SyncState'
           ) {
-            return insertOrUpdateRow(tableName, entityName, payload)
+            const result = await insertOrUpdateRow(tableName, entityName, payload)
+            notifyVpEntityChange(entityName, 'create')
+            return result
           }
           const userId = await getCurrentUserId()
           let row
@@ -1787,6 +1821,15 @@ export const base44 = {
               ;({ data, error } = await tableFrom(tableName).insert(minimal).select())
             }
           }
+          // Expense.type may be missing until migration — retry without type, keep save alive.
+          if (
+            error &&
+            entityName === 'Expense' &&
+            /type|schema cache|Could not find|does not exist/i.test(error.message || '')
+          ) {
+            const { type: _dropType, ...withoutType } = row
+            ;({ data, error } = await tableFrom(tableName).insert(withoutType).select())
+          }
           if (error) throw error
           // Empty representation = insert didn't stick (RLS/select) — never treat as success.
           if (!data?.[0]) {
@@ -1794,7 +1837,9 @@ export const base44 = {
               `${entityName} create returned no row — save was not confirmed. Check permissions and try again.`
             )
           }
-          return mapRowFromDb(entityName, data[0])
+          const mapped = mapRowFromDb(entityName, data[0])
+          notifyVpEntityChange(entityName, 'create')
+          return mapped
         },
         bulkCreate: async (payloads) => {
           if (!Array.isArray(payloads) || payloads.length === 0) return []
@@ -1807,7 +1852,9 @@ export const base44 = {
           })
           const { data, error } = await tableFrom(tableName).insert(rows).select()
           if (error) throw error
-          return (data ?? []).map((row) => mapRowFromDb(entityName, row))
+          const mapped = (data ?? []).map((row) => mapRowFromDb(entityName, row))
+          if (mapped.length) notifyVpEntityChange(entityName, 'bulkCreate')
+          return mapped
         },
         update: async (id, payload) => {
           const safeId = requireUsableId(entityName, id, 'update')
@@ -1873,18 +1920,29 @@ export const base44 = {
             if (row.flight_details != null) fallback.flight_details = row.flight_details
             ;({ data, error } = await tableFrom(tableName).update(fallback).eq('id', safeId).select())
           }
+          if (
+            error &&
+            entityName === 'Expense' &&
+            /type|schema cache|Could not find|does not exist/i.test(error.message || '')
+          ) {
+            const { type: _dropType, ...withoutType } = row
+            ;({ data, error } = await tableFrom(tableName).update(withoutType).eq('id', safeId).select())
+          }
           if (error) throw error
           if (!data?.[0]) {
             throw new Error(
               `${entityName} update returned no row — save was not confirmed. Check permissions and try again.`
             )
           }
-          return mapRowFromDb(entityName, data[0])
+          const mapped = mapRowFromDb(entityName, data[0])
+          notifyVpEntityChange(entityName, 'update')
+          return mapped
         },
         delete: async (id) => {
           const safeId = requireUsableId(entityName, id, 'delete')
           const { error } = await tableFrom(tableName).delete().eq('id', safeId)
           if (error) throw error
+          notifyVpEntityChange(entityName, 'delete')
           return { success: true }
         },
         subscribe: (callback) => subscribeEntity(tableName, entityName, callback),

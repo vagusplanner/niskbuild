@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { toast } from 'sonner';
 import RecurringTaskForm from './RecurringTaskForm';
 import AITaskDependencyAnalyzer from './AITaskDependencyAnalyzer';
 import AIRecurringTaskHelper from './AIRecurringTaskHelper';
@@ -24,7 +25,6 @@ import PrayerAwareTaskScheduler from './PrayerAwareTaskScheduler';
 import { cn } from '@/lib/utils';
 import { MOBILE_OVERLAY_Z } from '@/lib/mobile-layout';
 import { base44 } from '@/api/base44Client';
-import { toast } from 'sonner';
 
 function openNativeDateOrTimePicker(event) {
   const input = event.currentTarget;
@@ -97,12 +97,16 @@ export default function TaskForm({ isOpen, onClose, onSubmit, task = null, showA
   const handleSubmit = (e) => {
     e.preventDefault();
     if (typeof onSubmit !== 'function') {
-      if (import.meta.env.DEV) {
-        console.error('TaskForm: missing onSubmit handler');
-      }
+      console.error('TaskForm: missing onSubmit handler');
+      toast.error('Cannot save task — form is not wired correctly. Try again from Calendar → Tasks.');
       return;
     }
-    onSubmit(formData);
+    const title = String(formData.title || '').trim();
+    if (!title) {
+      toast.error('Please enter a task title');
+      return;
+    }
+    onSubmit({ ...formData, title });
   };
 
   const addTag = () => {

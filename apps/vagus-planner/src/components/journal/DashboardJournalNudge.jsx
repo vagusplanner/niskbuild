@@ -7,6 +7,8 @@ import { BookOpen, ChevronRight, Sparkles, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import JournalEditor from './JournalEditor';
+import { localDateString } from '@/lib/local-date';
+import { vpQueryKeys } from '@/lib/vp-query-keys';
 
 const MOOD_EMOJI = {
   joyful: '😄', grateful: '🙏', peaceful: '😌', hopeful: '🌟', anxious: '😰',
@@ -16,17 +18,16 @@ const MOOD_EMOJI = {
 export default function DashboardJournalNudge() {
   const qc = useQueryClient();
   const [showEditor, setShowEditor] = useState(false);
+  const today = localDateString();
   const [dismissed, setDismissed] = useState(() => {
     try {
-      const key = `journal_nudge_dismissed_${new Date().toISOString().split('T')[0]}`;
+      const key = `journal_nudge_dismissed_${today}`;
       return !!localStorage.getItem(key);
     } catch { return false; }
   });
 
-  const today = new Date().toISOString().split('T')[0];
-
   const { data: entries = [] } = useQuery({
-    queryKey: ['reflections'],
+    queryKey: vpQueryKeys.reflections,
     queryFn: () => base44.entities.Reflection.list('-date', 10),
     staleTime: 60_000,
   });
@@ -42,7 +43,7 @@ export default function DashboardJournalNudge() {
   };
 
   const onSaved = () => {
-    qc.invalidateQueries(['reflections']);
+    qc.invalidateQueries({ queryKey: vpQueryKeys.reflections });
     setShowEditor(false);
   };
 

@@ -8,8 +8,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { TrendingDown, TrendingUp, PiggyBank, Plus, ChevronRight } from 'lucide-react';
 import ExpenseForm from './ExpenseForm';
-import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { format } from 'date-fns';
 import { motion } from 'framer-motion';
+import { localMonthBounds } from '@/lib/local-date';
+import { vpQueryKeys } from '@/lib/vp-query-keys';
 
 const CAT_COLORS = {
   food: '#f97316', transport: '#3b82f6', shopping: '#8b5cf6', bills: '#ef4444',
@@ -22,11 +24,10 @@ export default function SpendingWidget() {
   const [showAdd, setShowAdd] = useState(false);
   const queryClient = useQueryClient();
   const now = new Date();
-  const monthStart = startOfMonth(now).toISOString().split('T')[0];
-  const monthEnd = endOfMonth(now).toISOString().split('T')[0];
+  const { startDateStr: monthStart, endDateStr: monthEnd } = localMonthBounds(now);
 
   const { data: expenses = [] } = useQuery({
-    queryKey: ['expenses', monthStart],
+    queryKey: [...vpQueryKeys.expenses, monthStart],
     queryFn: () => base44.entities.Expense.filter({ date: { $gte: monthStart, $lte: monthEnd } }, '-date', 200),
     staleTime: 30000,
   });
@@ -50,7 +51,7 @@ export default function SpendingWidget() {
 
   const onAddSave = () => {
     setShowAdd(false);
-    queryClient.invalidateQueries({ queryKey: ['expenses'] });
+    queryClient.invalidateQueries({ queryKey: vpQueryKeys.expenses });
   };
 
   return (

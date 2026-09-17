@@ -22,6 +22,8 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { aiFailureMessage } from '@/lib/ai-error-messages';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { localDateTimeFromParts } from '@/lib/local-date';
+import { invalidateAfterEventChange } from '@/lib/vp-query-keys';
 import InviteParser from './InviteParser';
 import debounce from 'lodash/debounce';
 import { checkPrayerConflict } from './PrayerTimes';
@@ -133,7 +135,7 @@ export default function EventForm({ isOpen, onClose, onSave, event, selectedDate
       toast.error(detail ? `Failed to save event: ${detail}` : 'Failed to save event');
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['events'] });
+      invalidateAfterEventChange(queryClient);
     },
     onSuccess: (saved) => {
       // Parent must NOT re-create/re-update — same false-success / double-save bug as HolidayForm.
@@ -232,23 +234,26 @@ export default function EventForm({ isOpen, onClose, onSave, event, selectedDate
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    // Construct start_date and end_date from form fields
-    const startDate = new Date(formData.date);
-    if (formData.start_time && !formData.is_all_day) {
-      const [hours, minutes] = formData.start_time.split(':');
-      startDate.setHours(parseInt(hours), parseInt(minutes), 0);
-    } else {
-      startDate.setHours(0, 0, 0);
-    }
+    // Construct start_date and end_date from form fields using LOCAL calendar
+    // midnight — never `new Date('yyyy-MM-dd')` (UTC midnight → previous day in UTC+).
+    const startDate = localDateTimeFromParts(
+      formData.date,
+      formData.is_all_day ? null : formData.start_time,
+      { hours: 0, minutes: 0, seconds: 0 }
+    );
 
-    const endDate = new Date(formData.date);
+    let endDate;
     if (formData.end_time && !formData.is_all_day) {
-      const [hours, minutes] = formData.end_time.split(':');
-      endDate.setHours(parseInt(hours), parseInt(minutes), 0);
+      endDate = localDateTimeFromParts(formData.date, formData.end_time);
     } else if (formData.is_all_day) {
-      endDate.setHours(23, 59, 59);
+      endDate = localDateTimeFromParts(formData.date, null, {
+        hours: 23,
+        minutes: 59,
+        seconds: 59,
+      });
     } else {
-      endDate.setHours(startDate.getHours() + 1, startDate.getMinutes(), 0);
+      endDate = new Date(startDate.getTime());
+      endDate.setHours(startDate.getHours() + 1, startDate.getMinutes(), 0, 0);
     }
 
     const eventData = {

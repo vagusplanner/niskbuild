@@ -380,16 +380,37 @@ export default function DailyPlanner() {
 
   // ── Add ───────────────────────────────────────────────────────────────────
   const handleAddItem = async ({ title, time, duration, category, priority, recurrence, date }) => {
-    const id = `local-${Date.now()}`;
-    setLocalItems(prev => [...prev, { id, title, time, duration, category, priority, recurrence, _type: 'task', is_done: false }]);
+    const trimmed = String(title || '').trim();
+    if (!trimmed) {
+      toast.error('Please enter a title');
+      return;
+    }
+    const tempId = `local-${Date.now()}`;
+    setLocalItems(prev => [...prev, {
+      id: tempId, title: trimmed, time, duration, category, priority, recurrence,
+      _type: 'task', is_done: false,
+    }]);
     try {
-      await base44.entities.Task.create({
-        title, due_date: date, due_time: time, category, priority,
-        status: 'not_started', planner_date: date, recurrence,
+      const saved = await base44.entities.Task.create({
+        title: trimmed,
+        due_date: date,
+        due_time: time,
+        category,
+        priority,
+        status: 'todo',
+        estimated_minutes: duration ? Number(duration) : undefined,
       });
-      qc.invalidateQueries(['dailyTasks', date]);
-    } catch { /* ignore */ }
-    toast.success('Added to today\'s plan!');
+      setLocalItems(prev => prev.filter(i => i.id !== tempId));
+      qc.invalidateQueries({ queryKey: ['dailyTasks', date] });
+      qc.invalidateQueries({ queryKey: ['tasks'] });
+      qc.invalidateQueries({ queryKey: ['activeTasks'] });
+      toast.success(saved?.id ? 'Added to today\'s plan!' : 'Task saved');
+    } catch (err) {
+      setLocalItems(prev => prev.filter(i => i.id !== tempId));
+      const detail = err?.message || '';
+      console.error('DailyPlanner Task.create failed:', err);
+      toast.error(detail ? `Could not save task: ${detail}` : 'Could not save task');
+    }
   };
 
   // ── Toggle ────────────────────────────────────────────────────────────────

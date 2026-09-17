@@ -5,8 +5,9 @@ import { motion } from 'framer-motion';
 import { Heart, TrendingUp, Sparkles, Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { localMonthBounds } from '@/lib/local-date';
 
 export default function RamadanFinanceLink() {
   const [aiSuggestion, setAiSuggestion] = useState(null);
@@ -15,8 +16,7 @@ export default function RamadanFinanceLink() {
   const queryClient = useQueryClient();
 
   const now = new Date();
-  const monthStart = startOfMonth(now).toISOString().split('T')[0];
-  const monthEnd = endOfMonth(now).toISOString().split('T')[0];
+  const { startDateStr: monthStart, endDateStr: monthEnd } = localMonthBounds(now);
 
   const { data: expenses = [] } = useQuery({
     queryKey: ['expenses', monthStart],

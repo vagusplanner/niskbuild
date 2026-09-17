@@ -9,6 +9,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import JournalEditor from './JournalEditor';
+import { localDateString, toDateOnlyString } from '@/lib/local-date';
+import { vpQueryKeys } from '@/lib/vp-query-keys';
 
 const MOOD_EMOJI = {
   joyful: '😄', grateful: '🙏', peaceful: '😌', hopeful: '🌟', anxious: '😰',
@@ -16,13 +18,7 @@ const MOOD_EMOJI = {
 };
 
 function toDateKey(value) {
-  if (value == null || value === '') return null;
-  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value.trim())) {
-    return value.trim();
-  }
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toISOString().slice(0, 10);
+  return toDateOnlyString(value);
 }
 
 function formatEntryDate(value) {
@@ -39,7 +35,7 @@ function JournalStreak({ entries }) {
   let streak = 0;
   const d = new Date();
   while (streak < 3650) {
-    const ds = d.toISOString().split('T')[0];
+    const ds = localDateString(d);
     if (!entries.some(e => toDateKey(e.date) === ds)) break;
     streak++;
     d.setDate(d.getDate() - 1);
@@ -57,17 +53,17 @@ export default function JournalWellnessPanel() {
   const [showEditor, setShowEditor] = useState(false);
 
   const { data: entries = [], isLoading } = useQuery({
-    queryKey: ['reflections'],
+    queryKey: vpQueryKeys.reflections,
     queryFn: () => base44.entities.Reflection.list('-date', 30),
     staleTime: 60_000,
   });
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = localDateString();
   const todayEntry = entries.find(e => toDateKey(e.date) === today);
   const recent = entries.slice(0, 4);
 
   const onSaved = () => {
-    qc.invalidateQueries(['reflections']);
+    qc.invalidateQueries({ queryKey: vpQueryKeys.reflections });
     setShowEditor(false);
   };
 

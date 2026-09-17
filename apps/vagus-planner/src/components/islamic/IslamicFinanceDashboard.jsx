@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { CheckCircle2, XCircle, AlertCircle, TrendingUp, Heart } from 'lucide-react';
-import { startOfMonth, endOfMonth } from 'date-fns';
+import { localMonthBounds } from '@/lib/local-date';
 
 // Islamic finance categorization
 const HALAL_CATEGORIES = ['food', 'transport', 'health', 'education', 'fitness', 'charity', 'salary', 'freelance', 'gift'];
@@ -22,8 +22,7 @@ const STATUS_LABELS = { halal: 'Halal ✓', review: 'Review ⚠️', haram: 'Avo
 
 export default function IslamicFinanceDashboard() {
   const now = new Date();
-  const monthStart = startOfMonth(now).toISOString().split('T')[0];
-  const monthEnd = endOfMonth(now).toISOString().split('T')[0];
+  const { startDateStr: monthStart, endDateStr: monthEnd } = localMonthBounds(now);
 
   const { data: expenses = [] } = useQuery({
     queryKey: ['expenses', monthStart],

@@ -1,5 +1,5 @@
 import { QueryClient } from '@tanstack/react-query';
-
+import { installVpQueryInvalidation } from '@/lib/vp-query-keys';
 
 export const queryClientInstance = new QueryClient({
 	defaultOptions: {
@@ -9,3 +9,5 @@ export const queryClientInstance = new QueryClient({
 		},
 	},
 });
+
+installVpQueryInvalidation(queryClientInstance);

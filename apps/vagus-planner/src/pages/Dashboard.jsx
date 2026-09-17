@@ -25,6 +25,8 @@ import TravelAwareAlert from '@/components/calendar/TravelAwareAlert';
 import TravelModeActivator from '@/components/travel/TravelModeActivator';
 import { toHijri } from '@/components/utils/hijriUtils';
 import { isIosNativeApp } from '@/lib/vp-platform';
+import { localDateString, localDayBoundsIso } from '@/lib/local-date';
+import { vpQueryKeys } from '@/lib/vp-query-keys';
 
 function getTimeGreeting(t) {
   const h = new Date().getHours();
@@ -110,10 +112,12 @@ export default function DashboardPage() {
   } = useIslamicEdition();
 
   const { data: events = [] } = useQuery({
-    queryKey: ['todayEvents'],
+    queryKey: vpQueryKeys.todayEvents,
     queryFn: async () => {
-      const today = new Date().toISOString().split('T')[0];
-      const all = await base44.entities.Event.filter({ start_date: { $gte: `${today}T00:00:00Z`, $lte: `${today}T23:59:59Z` } });
+      const { startIso, endIso } = localDayBoundsIso();
+      const all = await base44.entities.Event.filter({
+        start_date: { $gte: startIso, $lte: endIso },
+      });
       // Deduplicate by title (prayer events can get created multiple times)
       const seen = new Set();
       return all.filter(e => {
@@ -128,7 +132,7 @@ export default function DashboardPage() {
   });
 
   const { data: tasks = [] } = useQuery({
-    queryKey: ['activeTasks'],
+    queryKey: vpQueryKeys.activeTasks,
     queryFn: () => base44.entities.Task.filter({ status: { $in: ['todo', 'in_progress'] } }, '-priority', 5),
     retry: false,
     staleTime: 30000,
@@ -137,7 +141,7 @@ export default function DashboardPage() {
   const { data: prayerLogs = [] } = useQuery({
     queryKey: ['todayPrayers'],
     queryFn: async () => {
-      const today = new Date().toISOString().split('T')[0];
+      const today = localDateString();
       return base44.entities.PrayerLog.filter({ date: today });
     },
     retry: false,
