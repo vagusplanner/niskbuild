@@ -45,12 +45,24 @@ export const PRAYER_DISPLAY = [
 
 // ── Cache ─────────────────────────────────────────────────────────────────────
 const _cache = {};
+let _lastFetchSource = 'api'; // 'api' | 'fallback'
+
+export function getLastPrayerTimesSource() {
+  return _lastFetchSource;
+}
+
+/** Clear in-memory prayer timings cache (e.g. Retry). */
+export function clearPrayerTimesCache() {
+  Object.keys(_cache).forEach((k) => delete _cache[k]);
+}
 
 function cacheKey(date, lat, lng, methodNum, asrMethod, offsets) {
   const d = date.toISOString().split('T')[0];
   const off = Object.values(offsets || {}).join(',');
   return `${d}|${lat.toFixed(4)}|${lng.toFixed(4)}|${methodNum}|${asrMethod}|${off}`;
 }
+
+const FETCH_TIMEOUT_MS = 8000;
 
 // ── Fallback approximate times ────────────────────────────────────────────────
 function fallbackTimes(date) {
@@ -90,34 +102,64 @@ export async function fetchPrayerTimes(date, lat, lng, method = 'MWL', asrMethod
   const methodNum = methodObj.num;
   const key = cacheKey(date, lat, lng, methodNum, asrMethod, offsets);
 
-  if (_cache[key]) return _cache[key];
+  if (_cache[key]) {
+    _lastFetchSource = 'api';
+    return _cache[key];
+  }
 
   try {
     const ts = Math.floor(date.getTime() / 1000);
     const url = `https://api.aladhan.com/v1/timings/${ts}?latitude=${lat}&longitude=${lng}&method=${methodNum}&school=${asrMethod}`;
-    const res = await fetch(url);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    let res;
+    try {
+      res = await fetch(url, { signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
     if (!res.ok) throw new Error('API error');
     const json = await res.json();
     const t = json.data.timings;
     const raw = { Fajr: t.Fajr, Dhuhr: t.Dhuhr, Asr: t.Asr, Maghrib: t.Maghrib, Isha: t.Isha };
     const result = applyOffsets(raw, offsets);
     _cache[key] = result;
+    _lastFetchSource = 'api';
     return result;
   } catch {
+    _lastFetchSource = 'fallback';
     return applyOffsets(fallbackTimes(date), offsets);
   }
 }
 
 // ── Next prayer helper ────────────────────────────────────────────────────────
+/** @returns {{ name: string, key: string, minutes: number, time: string|null }} */
 export function getNextPrayer(times) {
   const now = new Date();
   const cur = now.getHours() * 60 + now.getMinutes();
   for (const p of PRAYER_DISPLAY) {
-    if (!times[p.key]) continue;
-    const [h, m] = times[p.key].split(':').map(Number);
-    if (h * 60 + m > cur) return p.key;
+    if (!times?.[p.key]) continue;
+    const [h, m] = String(times[p.key]).split(':').map(Number);
+    if (!Number.isFinite(h) || !Number.isFinite(m)) continue;
+    const prayerMins = h * 60 + m;
+    if (prayerMins > cur) {
+      return {
+        name: p.key,
+        key: p.key,
+        minutes: prayerMins - cur,
+        time: times[p.key],
+      };
+    }
   }
-  return 'Fajr';
+  const fajrTime = times?.Fajr || null;
+  const [h, m] = String(fajrTime || '05:00').split(':').map(Number);
+  const fajrMins = (Number.isFinite(h) ? h : 5) * 60 + (Number.isFinite(m) ? m : 0);
+  return {
+    name: 'Fajr',
+    key: 'Fajr',
+    minutes: (1440 - cur) + fajrMins,
+    time: fajrTime,
+  };
 }
 
 export function minutesUntil(time) {

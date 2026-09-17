@@ -415,7 +415,7 @@ export default function BillingPage() {
           <p className="text-sm text-slate-600 dark:text-slate-300">
             Billing and product email alerts are managed under{' '}
             <Link
-              to="/Account#preferences"
+              to="/Account?section=preferences"
               className="font-semibold text-[#1D6FB8] hover:underline"
             >
               Account → Preferences

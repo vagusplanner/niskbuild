@@ -343,11 +343,17 @@ export default function FertilityTracker() {
               </div>
               <Switch
                 checked={notificationSettings.enabled}
-                onCheckedChange={(checked) => 
+                onCheckedChange={(checked) =>
                   setNotificationSettings(prev => ({ ...prev, enabled: checked }))
                 }
               />
             </div>
+
+            {!notificationSettings.enabled && (
+              <p className="text-xs text-slate-500 bg-slate-50 dark:bg-slate-800/60 rounded-lg px-3 py-2 border border-slate-100 dark:border-slate-700">
+                Enable to set reminder days and time
+              </p>
+            )}
 
             {notificationSettings.enabled && (
               <>
@@ -358,10 +364,10 @@ export default function FertilityTracker() {
                     min="1"
                     max="7"
                     value={notificationSettings.daysBeforeOvulation}
-                    onChange={(e) => 
-                      setNotificationSettings(prev => ({ 
-                        ...prev, 
-                        daysBeforeOvulation: parseInt(e.target.value) || 2 
+                    onChange={(e) =>
+                      setNotificationSettings(prev => ({
+                        ...prev,
+                        daysBeforeOvulation: parseInt(e.target.value) || 2
                       }))
                     }
                   />
@@ -375,10 +381,10 @@ export default function FertilityTracker() {
                   <Input
                     type="time"
                     value={notificationSettings.timeOfDay}
-                    onChange={(e) => 
-                      setNotificationSettings(prev => ({ 
-                        ...prev, 
-                        timeOfDay: e.target.value 
+                    onChange={(e) =>
+                      setNotificationSettings(prev => ({
+                        ...prev,
+                        timeOfDay: e.target.value
                       }))
                     }
                   />

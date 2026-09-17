@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 export default function MemberExclusivePage() {
   const navigate = useNavigate();
   useEffect(() => {
-    navigate('/Account#billing', { replace: true });
+    navigate('/Account?section=billing', { replace: true });
   }, [navigate]);
   return null;
 }

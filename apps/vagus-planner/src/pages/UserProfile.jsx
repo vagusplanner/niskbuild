@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 export default function UserProfilePage() {
   const navigate = useNavigate();
   useEffect(() => {
-    navigate('/Account#personal', { replace: true });
+    navigate('/Account?section=personal', { replace: true });
   }, [navigate]);
   return null;
 }

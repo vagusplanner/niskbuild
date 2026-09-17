@@ -79,13 +79,22 @@ export default function AdvancedPrayerTimes({ settings: propSettings }) {
       
       const times = await fetchPrayerTimes(new Date(), lat, lng, method, asrMethod, offsets);
       setPrayerTimes(times);
-      setNextPrayer(engineGetNextPrayer(times));
+      const next = engineGetNextPrayer(times);
+      setNextPrayer(next);
+      setTimeUntilNext(next.minutes);
     };
     
     load();
     
     const interval = setInterval(() => {
-      if (prayerTimes) setNextPrayer(engineGetNextPrayer(prayerTimes));
+      setPrayerTimes((current) => {
+        if (current) {
+          const next = engineGetNextPrayer(current);
+          setNextPrayer(next);
+          setTimeUntilNext(next.minutes);
+        }
+        return current;
+      });
     }, 60000);
     
     return () => clearInterval(interval);

@@ -576,7 +576,8 @@ function Islam() {
             {activeSection && section ? (
               /* ── Section detail view ── */
               <motion.div key={`section-${activeSection}`}
-                initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }}
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
                 className="space-y-4">
                 {/* Back button — always visible */}
                 <button onClick={() => setActiveSection(null)}
@@ -597,7 +598,8 @@ function Islam() {
             ) : (
               /* ── Overview ── */
               <motion.div key="overview"
-                initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 24 }}
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
                 className="space-y-5 sm:space-y-6">
 
                 {/* Header banner */}

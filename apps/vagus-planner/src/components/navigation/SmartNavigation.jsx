@@ -13,15 +13,15 @@ export const NAVIGATION_MAP = {
   'wellness': '/Wellness',
   'account': '/Account',
 
-  // Consolidated Deep Links (Account ownership tabs)
-  'profile': '/Account#personal',
-  'personal': '/Account#personal',
-  'security': '/Account#security',
-  'settings': '/Account#preferences',
-  'preferences': '/Account#preferences',
-  'billing': '/Account#billing',
-  'notifications': '/Account#preferences',
-  'privacy': '/Account#privacy',
+  // Consolidated Deep Links (Account ownership tabs — query, not hash; HashRouter-safe)
+  'profile': '/Account?section=personal',
+  'personal': '/Account?section=personal',
+  'security': '/Account?section=security',
+  'settings': '/Account?section=preferences',
+  'preferences': '/Account?section=preferences',
+  'billing': '/Account?section=billing',
+  'notifications': '/Account?section=preferences',
+  'privacy': '/Account?section=privacy',
 
   // Islamic Edition Features (in Islam page)
   'prayer': '/Islam?section=prayer',
@@ -43,7 +43,7 @@ export const QUICK_ACTIONS = [
   { label: 'New Goal', icon: 'Target', link: '/Goals', shortcut: 'G' },
   { label: 'New Task', icon: 'CheckSquare', link: '/Calendar?tab=tasks', shortcut: 'T' },
   { label: 'Wellness', icon: 'Heart', link: '/Wellness', shortcut: 'W' },
-  { label: 'Settings', icon: 'Settings', link: '/Account#preferences', shortcut: 'S' },
+  { label: 'Settings', icon: 'Settings', link: '/Account?section=preferences', shortcut: 'S' },
 ];
 
 /**

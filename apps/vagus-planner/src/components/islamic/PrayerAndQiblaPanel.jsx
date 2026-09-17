@@ -14,7 +14,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { fetchPrayerTimes, getNextPrayer as engineGetNextPrayer } from './prayerEngine';
+import { fetchPrayerTimes, getNextPrayer as engineGetNextPrayer, getLastPrayerTimesSource, clearPrayerTimesCache } from './prayerEngine';
 
 // ── Shared constants ──────────────────────────────────────────────────────────
 const KAABA_LAT = 21.4225;
@@ -62,6 +62,9 @@ function PrayerTimesTab({ settings, adjustments }) {
   const [prayerTimes, setPrayerTimes] = useState(null);
   const [nextPrayer, setNextPrayer]   = useState(null);
   const [countdown, setCountdown]     = useState(null);
+  const [loadError, setLoadError]     = useState(null);
+  const [degraded, setDegraded]       = useState(false);
+  const [reloadToken, setReloadToken] = useState(0);
 
   const getAdjusted = (name, time) => {
     if (!time) return '--:--';
@@ -75,20 +78,38 @@ function PrayerTimesTab({ settings, adjustments }) {
   };
 
   useEffect(() => {
+    let cancelled = false;
     const load = async () => {
-      const lat = settings?.latitude || 51.5074;
-      const lng = settings?.longitude || -0.1278;
-      const method = settings?.prayer_method || 'MWL';
-      const times = await fetchPrayerTimes(new Date(), lat, lng, method, '0', settings?.prayer_time_offsets || {});
-      setPrayerTimes(times);
-      setNextPrayer(engineGetNextPrayer(times));
+      setLoadError(null);
+      setPrayerTimes(null);
+      try {
+        const lat = settings?.latitude || 51.5074;
+        const lng = settings?.longitude || -0.1278;
+        const method = settings?.prayer_method || 'MWL';
+        const times = await fetchPrayerTimes(new Date(), lat, lng, method, '0', settings?.prayer_time_offsets || {});
+        if (cancelled) return;
+        if (!times?.Fajr) throw new Error('Could not load prayer times');
+        setPrayerTimes(times);
+        setNextPrayer(engineGetNextPrayer(times));
+        setDegraded(getLastPrayerTimesSource() === 'fallback');
+      } catch (err) {
+        if (cancelled) return;
+        setLoadError(err?.message || 'Could not load prayer times');
+        setDegraded(false);
+      }
     };
     load();
     const iv = setInterval(() => {
-      if (prayerTimes) setNextPrayer(engineGetNextPrayer(prayerTimes));
+      setPrayerTimes((current) => {
+        if (current) setNextPrayer(engineGetNextPrayer(current));
+        return current;
+      });
     }, 60000);
-    return () => clearInterval(iv);
-  }, [settings, adjustments]);
+    return () => {
+      cancelled = true;
+      clearInterval(iv);
+    };
+  }, [settings, adjustments, reloadToken]);
 
   useEffect(() => {
     if (!prayerTimes || !nextPrayer) return;
@@ -97,6 +118,10 @@ function PrayerTimesTab({ settings, adjustments }) {
       const nowMins = now.getHours() * 60 + now.getMinutes();
       const pTime = getAdjusted(nextPrayer.name, prayerTimes[nextPrayer.name]);
       const [h, m] = pTime.split(':').map(Number);
+      if (!Number.isFinite(h) || !Number.isFinite(m)) {
+        setCountdown(null);
+        return;
+      }
       let diff = h * 60 + m - nowMins;
       if (diff < 0) diff += 1440;
       setCountdown(diff);
@@ -104,7 +129,23 @@ function PrayerTimesTab({ settings, adjustments }) {
     tick();
     const iv = setInterval(tick, 30000);
     return () => clearInterval(iv);
-  }, [nextPrayer, prayerTimes]);
+  }, [nextPrayer, prayerTimes, adjustments]);
+
+  const retry = () => {
+    clearPrayerTimesCache();
+    setReloadToken((n) => n + 1);
+  };
+
+  if (loadError && !prayerTimes) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-10 px-4 text-center">
+        <p className="text-sm text-amber-800 dark:text-amber-200">{loadError}</p>
+        <Button size="sm" variant="outline" onClick={retry} className="border-amber-300 text-amber-800">
+          <RotateCw className="w-3.5 h-3.5 mr-1.5" /> Retry
+        </Button>
+      </div>
+    );
+  }
 
   if (!prayerTimes) return (
     <div className="flex justify-center py-10"><Loader2 className="w-8 h-8 animate-spin text-amber-500" /></div>
@@ -114,6 +155,17 @@ function PrayerTimesTab({ settings, adjustments }) {
 
   return (
     <div className="p-4 space-y-4">
+      {degraded && (
+        <div className="flex items-start justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 px-3 py-2">
+          <p className="text-xs text-amber-800 dark:text-amber-200 text-left">
+            Showing approximate times — prayer service timed out or was unreachable.
+          </p>
+          <Button size="sm" variant="ghost" onClick={retry} className="h-7 px-2 text-amber-800 shrink-0">
+            <RotateCw className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+      )}
+
       {/* Next prayer hero — amber/orange gradient matching original Prayer Times Widget style */}
       {nextData && (
         <div className={`bg-gradient-to-r ${nextData.color} rounded-2xl p-4 text-white shadow-md`}>
@@ -150,8 +202,8 @@ function PrayerTimesTab({ settings, adjustments }) {
           return (
             <motion.div
               key={prayer.name}
-              initial={{ opacity: 0, x: -16 }}
-              animate={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               transition={{ delay: i * 0.04 }}
               className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
                 isNext

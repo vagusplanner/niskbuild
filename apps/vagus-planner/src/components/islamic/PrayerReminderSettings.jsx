@@ -181,7 +181,7 @@ export default function PrayerReminderSettings() {
             const cfg = getConfig(prayer.key);
             const time = prayerTimes?.[prayer.key];
             const mins = time ? minutesUntil(time) : null;
-            const isNext = prayer.key === nextPrayer;
+            const isNext = prayer.key === nextPrayer?.name || prayer.key === nextPrayer;
             const isSnoozed = snoozeActive[prayer.key] && snoozeActive[prayer.key] > Date.now();
 
             return (

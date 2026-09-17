@@ -1,11 +1,11 @@
 /**
  * Legacy /Profile — redirects to consolidated Account ownership tabs.
- * Old ?tab= values map to Account hashes (personal / preferences / billing / privacy).
+ * Old ?tab= / bare-hash values map to Account ?section= (HashRouter-safe).
  */
 import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-const TAB_TO_HASH = {
+const TAB_TO_SECTION = {
   settings: 'preferences',
   preferences: 'preferences',
   billing: 'billing',
@@ -26,10 +26,14 @@ export default function ProfilePage() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tab = (params.get('tab') || '').toLowerCase();
-    const hashFromQuery = TAB_TO_HASH[tab];
+    const fromQuery = TAB_TO_SECTION[tab];
+    // Bare legacy hash only (not HashRouter paths like #/Account)
     const rawHash = (location.hash || '').replace(/^#/, '').toLowerCase();
-    const hash = hashFromQuery || TAB_TO_HASH[rawHash] || (rawHash || null);
-    const target = hash ? `/Account#${hash}` : '/Account';
+    const bareHash =
+      rawHash && !rawHash.startsWith('/') ? rawHash.split('?')[0] : '';
+    const fromHash = TAB_TO_SECTION[bareHash];
+    const section = fromQuery || fromHash || null;
+    const target = section ? `/Account?section=${section}` : '/Account';
     navigate(target, { replace: true });
   }, [navigate, location.search, location.hash]);
 

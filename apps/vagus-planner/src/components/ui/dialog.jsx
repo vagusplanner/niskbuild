@@ -2,13 +2,13 @@
 
 import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
-import { Drawer as DrawerPrimitive } from "vaul"
 import { X } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { isNativeCapacitorApp } from "@/lib/vp-platform"
 
 // Hook to detect mobile
 function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState(() => 
+  const [isMobile, setIsMobile] = React.useState(() =>
     typeof window !== 'undefined' ? window.innerWidth < 768 : false
   );
   React.useEffect(() => {
@@ -39,24 +39,24 @@ const DialogOverlay = React.forwardRef(({ className, ...props }, ref) => (
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
 // ─── Responsive DialogContent ─────────────────────────────────────────────────
-// On mobile (< 768px): renders as a Vaul bottom drawer
-// On desktop: renders as the standard centered dialog
+// On mobile (< 768px): bottom sheet with real padding + safe-area (usable on Cap)
+// On desktop: standard centered dialog
 const DialogContent = React.forwardRef(({ className, children, ...props }, ref) => {
   const isMobile = useIsMobile();
+  const isNative = typeof window !== 'undefined' && isNativeCapacitorApp();
 
   if (isMobile) {
-    // Extract open/onOpenChange from props if passed via Dialog.Root — we need to
-    // forward them. Since DialogContent lives inside Dialog.Root, Radix manages
-    // open state. We use a Drawer.Root that mirrors it via a small bridge.
     return (
       <DialogPortal>
         <DialogOverlay />
         <DialogPrimitive.Content
           ref={ref}
           className={cn(
-            // Mobile: slide-up sheet from bottom
-            "fixed inset-x-0 bottom-0 z-[101] flex flex-col rounded-t-2xl border bg-background shadow-xl",
-            "max-h-[92dvh] overflow-auto",
+            // Mobile: slide-up sheet from bottom — padded, full-width, not a thin strip
+            "fixed inset-x-0 bottom-0 z-[101] flex w-full flex-col rounded-t-2xl border bg-background text-foreground shadow-xl",
+            "max-h-[min(92dvh,100%)] min-h-[min(42dvh,420px)] overflow-y-auto overscroll-contain",
+            "px-4 pt-2 pb-[max(1.25rem,env(safe-area-inset-bottom))] gap-3",
+            isNative && "min-h-[min(48dvh,520px)] bg-white dark:bg-slate-900",
             "data-[state=open]:animate-in data-[state=closed]:animate-out",
             "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
             "duration-300",
@@ -65,9 +65,9 @@ const DialogContent = React.forwardRef(({ className, children, ...props }, ref) 
           {...props}
         >
           {/* Drag handle */}
-          <div className="mx-auto mt-3 mb-1 h-1.5 w-12 rounded-full bg-muted flex-shrink-0" />
+          <div className="mx-auto mt-1 mb-1 h-1.5 w-12 rounded-full bg-muted flex-shrink-0" />
           {children}
-          <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground z-10 no-select min-w-[44px] min-h-[44px] flex items-center justify-center">
+          <DialogPrimitive.Close className="absolute right-3 top-3 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground z-10 no-select min-w-[44px] min-h-[44px] flex items-center justify-center">
             <X className="h-4 w-4" />
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>
@@ -106,7 +106,7 @@ const DialogContent = React.forwardRef(({ className, children, ...props }, ref) 
 DialogContent.displayName = "DialogContent"
 
 const DialogHeader = ({ className, ...props }) => (
-  <div className={cn("flex flex-col space-y-1.5 text-center sm:text-left", className)} {...props} />
+  <div className={cn("flex flex-col space-y-1.5 text-center sm:text-left pr-10", className)} {...props} />
 )
 DialogHeader.displayName = "DialogHeader"
 

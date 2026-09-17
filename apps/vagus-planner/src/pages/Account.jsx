@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import ExternalCalendarManager from '@/components/integrations/ExternalCalendarManager';
@@ -112,7 +112,7 @@ const SECTIONS = [
   },
 ];
 
-const HASH_ALIASES = {
+const SECTION_ALIASES = {
   personal: 'personal',
   profile: 'personal',
   security: 'security',
@@ -125,41 +125,41 @@ const HASH_ALIASES = {
   danger: 'privacy',
 };
 
-function sectionFromHash() {
+function resolveSectionParam(raw) {
+  if (!raw) return null;
+  return SECTION_ALIASES[String(raw).toLowerCase()] || null;
+}
+
+/** Legacy bare hashes (#preferences) conflict with HashRouter (#/Account). */
+function legacyBareHashSection() {
   if (typeof window === 'undefined') return null;
   const raw = (window.location.hash || '').replace(/^#/, '').toLowerCase();
-  if (!raw) return null;
-  return HASH_ALIASES[raw] || null;
+  // Ignore real HashRouter paths like /Account or /Account?section=…
+  if (!raw || raw.startsWith('/')) return null;
+  return resolveSectionParam(raw.split('?')[0]);
 }
 
 export default function Account() {
   const navigate = useNavigate();
-  const [activeSection, setActiveSection] = useState(() => sectionFromHash());
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeSection = resolveSectionParam(searchParams.get('section'));
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const queryClient = useQueryClient();
 
+  // One-shot migrate BrowserRouter-era #preferences → ?section=preferences
   useEffect(() => {
-    const applyHash = () => {
-      const section = sectionFromHash();
-      if (section) setActiveSection(section);
-    };
-    applyHash();
-    window.addEventListener('hashchange', applyHash);
-    return () => window.removeEventListener('hashchange', applyHash);
-  }, []);
+    if (searchParams.get('section')) return;
+    const legacy = legacyBareHashSection();
+    if (!legacy) return;
+    setSearchParams({ section: legacy }, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const openSection = (id) => {
-    setActiveSection(id);
-    if (typeof window !== 'undefined') {
-      window.history.replaceState(null, '', `#${id}`);
-    }
+    setSearchParams({ section: id }, { replace: true });
   };
 
   const closeSection = () => {
-    setActiveSection(null);
-    if (typeof window !== 'undefined') {
-      window.history.replaceState(null, '', window.location.pathname + window.location.search);
-    }
+    setSearchParams({}, { replace: true });
   };
 
   const { data: user } = useQuery({
