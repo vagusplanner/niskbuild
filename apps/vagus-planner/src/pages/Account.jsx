@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import ExternalCalendarManager from '@/components/integrations/ExternalCalendarManager';
@@ -133,6 +133,7 @@ function sectionFromHash() {
 }
 
 export default function Account() {
+  const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState(() => sectionFromHash());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const queryClient = useQueryClient();
@@ -246,7 +247,7 @@ export default function Account() {
         return;
       }
       toast.error('Islamic Edition requires an active Islamic plan. Upgrade in Billing.');
-      window.location.href = '/Billing';
+      navigate('/Billing');
       return;
     }
     const saved = await saveEdition(edition);
@@ -584,7 +585,7 @@ export default function Account() {
                     onUpgrade={
                       canUseStripePurchases()
                         ? () => {
-                            window.location.href = '/Billing';
+                            navigate('/Billing');
                           }
                         : undefined
                     }

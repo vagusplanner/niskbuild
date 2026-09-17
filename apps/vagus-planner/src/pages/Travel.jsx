@@ -82,11 +82,11 @@ export default function TravelPage() {
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
 
   const { data: holidays = [] } = useQuery({
-    queryKey: ['holidays', user?.email],
-    queryFn: () => user?.email
-      ? base44.entities.Holiday.filter({ created_by: user.email }, '-start_date', 200)
-      : Promise.resolve([]),
-    enabled: !!user?.email,
+    queryKey: ['holidays'],
+    // Scope is applied via user_id in base44-compat; created_by is __skip__ on
+    // production vp_holidays and must not be used as a filter (silently dropped).
+    queryFn: () => base44.entities.Holiday.list('-start_date', 200),
+    enabled: !!user,
   });
 
   const createHolidayMutation = useMutation({

@@ -259,37 +259,86 @@ Generate 4–8 suggested_events for the period and 2–3 alternatives.`,
   };
 };
 
-/** Quick scheduling suggestions (AIScheduleSuggestions). */
+/** Quick scheduling suggestions (AITaskScheduler / AIScheduleSuggestions). */
 export const aiSchedulingSuggestions: VpFunctionHandler = async ({ user, payload }) => {
   const gate = await gateFeature(user, 'ai_requests');
   if (!gate.ok) return gate.result;
 
+  const tasks = Array.isArray(payload.tasks) ? payload.tasks : [];
+  const events = Array.isArray(payload.events) ? payload.events : [];
+  const currentDate =
+    typeof payload.current_date === 'string'
+      ? payload.current_date
+      : new Date().toISOString();
+
   const rangeStart =
     typeof payload.date_range_start === 'string'
       ? payload.date_range_start
-      : new Date().toISOString();
+      : currentDate;
   const rangeEnd =
     typeof payload.date_range_end === 'string'
       ? payload.date_range_end
       : new Date(Date.now() + 7 * 86400000).toISOString();
 
-  const result = await groqJson<{ success?: boolean; suggestions?: unknown[] }>(
-    'You suggest practical calendar time blocks based on productivity patterns.',
-    `Suggest 3–5 scheduling ideas between ${rangeStart} and ${rangeEnd}.
+  const pendingTasks = tasks
+    .filter((t) => t && typeof t === 'object' && (t as { status?: string }).status !== 'completed')
+    .slice(0, 20)
+    .map((t) => {
+      const task = t as {
+        id?: string;
+        title?: string;
+        priority?: string;
+        due_date?: string;
+        category?: string;
+        description?: string;
+      };
+      return {
+        id: task.id,
+        title: task.title,
+        priority: task.priority,
+        due_date: task.due_date,
+        category: task.category,
+        description: task.description,
+      };
+    });
+
+  const result = await groqJson<{
+    success?: boolean;
+    summary?: string;
+    suggestions?: unknown[];
+  }>(
+    'You are a task scheduling assistant for Vagus Planner. Suggest concrete actions for the user\'s pending tasks.',
+    `Today/current: ${currentDate}. Suggest scheduling between ${rangeStart} and ${rangeEnd}.
+
+Pending tasks (use these exact ids/titles):
+${JSON.stringify(pendingTasks)}
+
+Existing events (avoid conflicts):
+${JSON.stringify(
+  events.slice(0, 15).map((e) => {
+    const ev = e as { title?: string; start_date?: string };
+    return { title: ev.title, start_date: ev.start_date };
+  })
+)}
 
 Return JSON:
 {
   "success": true,
+  "summary": "1-2 sentence overview",
   "suggestions": [
     {
-      "title": "string",
-      "time_slot": "e.g. Tue 2–3pm",
-      "activity_type": "Work|Personal|Health|Focus|Social",
-      "priority": "high|medium|low",
-      "reasoning": "short explanation"
+      "action": "schedule_event|update_priority|set_deadline",
+      "task": { "id": "exact task id from input", "title": "exact title", "description": "", "category": "work" },
+      "reasoning": "short explanation",
+      "recommended_date": "YYYY-MM-DD",
+      "recommended_time": "HH:MM",
+      "recommended_priority": "urgent|high|medium|low",
+      "estimated_duration": 60
     }
   ]
-}`,
+}
+
+Return 3–5 suggestions. Every suggestion MUST reference a real task id from the pending list.`,
     'vp-aiSchedulingSuggestions',
     gate.plan
   );
@@ -302,6 +351,7 @@ Return JSON:
     ok: true,
     data: {
       success: true,
+      summary: typeof result.summary === 'string' ? result.summary : '',
       suggestions: Array.isArray(result.suggestions) ? result.suggestions : [],
     },
   };

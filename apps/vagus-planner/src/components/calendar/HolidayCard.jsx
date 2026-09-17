@@ -25,8 +25,17 @@ const statusStyles = {
 export default function HolidayCard({ holiday, onEdit, onDelete, onShare, onSelectTrip, index = 0 }) {
   const [showFeedback, setShowFeedback] = useState(false);
   const status = statusStyles[holiday.status] || statusStyles.planned;
-  const duration = differenceInDays(new Date(holiday.end_date), new Date(holiday.start_date)) + 1;
-  const daysUntil = differenceInDays(new Date(holiday.start_date), new Date());
+  const start = holiday.start_date || holiday.holiday_date || holiday.date
+    ? new Date(holiday.start_date || holiday.holiday_date || holiday.date)
+    : null;
+  const end = holiday.end_date
+    ? new Date(holiday.end_date)
+    : start;
+  const startValid = start && !Number.isNaN(start.getTime());
+  const endValid = end && !Number.isNaN(end.getTime());
+  const duration =
+    startValid && endValid ? differenceInDays(end, start) + 1 : null;
+  const daysUntil = startValid ? differenceInDays(start, new Date()) : null;
 
   const { data: shares = [] } = useQuery({
     queryKey: ['holiday-shares', holiday.id],
@@ -85,9 +94,13 @@ export default function HolidayCard({ holiday, onEdit, onDelete, onShare, onSele
             <div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-slate-600">
               <span className="flex items-center gap-1">
                 <Calendar className="w-4 h-4" />
-                {format(new Date(holiday.start_date), 'MMM d')} - {format(new Date(holiday.end_date), 'MMM d, yyyy')}
+                {startValid
+                  ? `${format(start, 'MMM d')}${endValid ? ` - ${format(end, 'MMM d, yyyy')}` : ''}`
+                  : 'Dates TBD'}
               </span>
-              <span className="font-medium text-amber-700">{duration} days</span>
+              {duration != null && (
+                <span className="font-medium text-amber-700">{duration} days</span>
+              )}
             </div>
 
             {(holiday.budget || holiday.accommodation) && (
@@ -124,7 +137,7 @@ export default function HolidayCard({ holiday, onEdit, onDelete, onShare, onSele
                   Safety Map
                 </Button>
               )}
-              {daysUntil > 0 && holiday.status !== 'completed' && holiday.status !== 'cancelled' && (
+              {daysUntil != null && daysUntil > 0 && holiday.status !== 'completed' && holiday.status !== 'cancelled' && (
                 <div className="inline-flex items-center gap-2 px-3 py-1 bg-white rounded-full text-sm">
                   <span className="text-slate-500">Starts in</span>
                   <span className="font-semibold text-amber-600">{daysUntil} days</span>

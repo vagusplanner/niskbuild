@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,7 @@ import {
   Gift, Trophy, Mic, Camera, Map, Sparkles, FileText
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { canUseStripePurchases } from '@/lib/vp-platform';
+import { canUseStripePurchases, isIosNativeApp, isNativeCapacitorApp } from '@/lib/vp-platform';
 
 const LOGO = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6965607bc386491646bad6e8/10b500d37_IMG_6630.png";
 
@@ -789,9 +789,28 @@ function LandingFooter({ onSignIn }) {
 export default function Landing() {
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
+  const nativeShell = isNativeCapacitorApp() || isIosNativeApp();
+
   useEffect(() => {
-    base44.auth.isAuthenticated().then(setIsAuthenticated).catch(() => {});
+    base44.auth.isAuthenticated()
+      .then((v) => setIsAuthenticated(!!v))
+      .catch(() => setIsAuthenticated(false))
+      .finally(() => setAuthReady(true));
   }, []);
+
+  // Belt-and-suspenders: never paint marketing UI inside the native shell.
+  if (nativeShell) {
+    if (!authReady) {
+      return (
+        <div className="fixed inset-0 flex items-center justify-center bg-[#060f1e]">
+          <div className="w-8 h-8 border-4 border-[#E8B84B]/30 border-t-[#E8B84B] rounded-full animate-spin" />
+        </div>
+      );
+    }
+    return <Navigate to={isAuthenticated ? '/Dashboard' : '/login'} replace />;
+  }
+
   const goToLogin = (next = '/dashboard') => base44.auth.redirectToLogin(next);
   const goToSignup = (next = '/dashboard') => base44.auth.redirectToSignup(next);
   const handleSignIn = () => isAuthenticated ? navigate('/dashboard') : goToLogin('/dashboard');

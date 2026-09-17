@@ -14,7 +14,8 @@ import React, { useState, useEffect } from 'react';
             import { Link, useNavigate, useLocation } from 'react-router-dom';
       import { useQueryClient } from '@tanstack/react-query';
             import { createPageUrl } from './utils';
-            import { isStaticBundleContext } from '@/lib/static-bundle';
+            import { isStaticBundleContext, usesHashRouter } from '@/lib/static-bundle';
+            import { isIosNativeApp, isNativeCapacitorApp } from '@/lib/vp-platform';
             import { motion, AnimatePresence } from 'framer-motion';
             import '@/components/i18n/i18n';
       import LanguageSwitcher from '@/components/i18n/LanguageSwitcher';
@@ -471,7 +472,7 @@ export default function Layout({ children, currentPageName }) {
       return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
 
-  // ── Auth protection: redirect unauthenticated users to the marketing landing page.
+  // ── Auth protection: redirect unauthenticated users.
   // Public pages (Landing, legal, contact) are rendered outside this Layout entirely
   // via App.jsx early-return logic, so this guard only fires for authenticated routes.
   useEffect(() => {
@@ -479,21 +480,19 @@ export default function Layout({ children, currentPageName }) {
     const publicPaths = ['/', '/Landing', '/PrivacyPolicy', '/TermsOfService', '/Contact', '/support', '/Support', '/login', '/signup'];
     if (publicPaths.includes(routerPath) || currentPageName === 'Landing') return;
 
+    const goUnauthenticated = () => {
+      // Native / Capacitor: never route to marketing Landing.
+      if (isNativeCapacitorApp() || isIosNativeApp() || isStaticBundleContext() || usesHashRouter()) {
+        navigate('/login');
+        return;
+      }
+      window.location.href = '/';
+    };
+
     base44.auth.isAuthenticated().then(isAuth => {
-      if (!isAuth) {
-        // Never use window.location.href = '/' on static bundles — that leaves the deploy host.
-        if (isStaticBundleContext()) {
-          navigate('/');
-        } else {
-          window.location.href = '/';
-        }
-      }
+      if (!isAuth) goUnauthenticated();
     }).catch(() => {
-      if (isStaticBundleContext()) {
-        navigate('/');
-      } else {
-        window.location.href = '/';
-      }
+      goUnauthenticated();
     });
   }, [currentPageName, location.pathname, navigate]);
 
@@ -820,10 +819,10 @@ export default function Layout({ children, currentPageName }) {
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
                 key={currentPageName}
-                initial={{ opacity: 0, x: isMobile ? 24 : 0, y: isMobile ? 0 : 8 }}
-                animate={{ opacity: 1, x: 0, y: 0 }}
-                exit={{ opacity: 0, x: isMobile ? -24 : 0, y: isMobile ? 0 : -8 }}
-                transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
                 className="px-3 sm:px-4 py-4 lg:p-6 pb-8 lg:pb-6 w-full max-w-full box-border"
               >
                 <Breadcrumbs />
@@ -901,6 +900,11 @@ export default function Layout({ children, currentPageName }) {
                 variant="outline"
                 className="flex-1"
                 onClick={() => {
+                  // Native: leave → login, never marketing Landing.
+                  if (isNativeCapacitorApp() || isIosNativeApp()) {
+                    navigate('/login');
+                    return;
+                  }
                   navigate('/');
                 }}
               >

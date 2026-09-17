@@ -11,6 +11,7 @@ import { BrowserRouter, HashRouter, Route, Routes, Navigate, useLocation, Outlet
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { usesHashRouter } from '@/lib/static-bundle';
+import { isIosNativeApp, isNativeCapacitorApp } from '@/lib/vp-platform';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Goals from './pages/Goals';
 import OnboardingGate from '@/components/onboarding/OnboardingGate';
@@ -93,6 +94,7 @@ const AuthenticatedApp = () => {
   const isSignupPath = path === '/signup';
   const isResetPasswordPath =
     path === '/reset-password' || path === '/ResetPassword';
+  const nativeShell = isNativeCapacitorApp() || isIosNativeApp();
 
   if (isLoginPath || isSignupPath || isResetPasswordPath) {
     return (
@@ -107,6 +109,21 @@ const AuthenticatedApp = () => {
 
   if (isLandingPath && isBuilderPreview) {
     return <Navigate to={`/Dashboard${location.search}`} replace />;
+  }
+
+  // Native app: never show marketing Landing — splash → login/signup → Dashboard.
+  if (isLandingPath && nativeShell) {
+    if (isLoadingPublicSettings || isLoadingAuth) {
+      return (
+        <div className="fixed inset-0 flex items-center justify-center bg-[#060f1e]">
+          <div className="w-8 h-8 border-4 border-[#E8B84B]/30 border-t-[#E8B84B] rounded-full animate-spin"></div>
+        </div>
+      );
+    }
+    if (isAuthenticated) {
+      return <Navigate to="/Dashboard" replace />;
+    }
+    return <Navigate to="/login" replace />;
   }
 
   // Always render landing page without any auth check — Landing itself handles the redirect for logged-in users
@@ -146,26 +163,24 @@ const AuthenticatedApp = () => {
       return <UserNotRegisteredError />;
     }
     if (authError.type === 'auth_required') {
-      if (usesHashRouter()) {
-        return <Navigate to="/" replace />;
-      }
+      // Native / HashRouter: never dump users on marketing Landing.
       return <Navigate to={`/login?next=${encodeURIComponent(path)}`} replace />;
     }
   }
 
   // Redirect unauthenticated users (builder studio preview skips auth)
   if (!isAuthenticated && !isBuilderPreview) {
-    if (usesHashRouter()) {
-      return <Navigate to="/" replace />;
-    }
     return <Navigate to={`/login?next=${encodeURIComponent(path)}`} replace />;
   }
 
   // Protected app — one Layout instance for all chrome routes (Outlet children swap).
   return (
     <Routes>
-      <Route path="/" element={<Landing />} />
-      <Route path="/Landing" element={<Landing />} />
+      {/* Native: `/` already redirected above; keep Landing routes for web only. */}
+      {!nativeShell && <Route path="/" element={<Landing />} />}
+      {!nativeShell && <Route path="/Landing" element={<Landing />} />}
+      {nativeShell && <Route path="/" element={<Navigate to="/Dashboard" replace />} />}
+      {nativeShell && <Route path="/Landing" element={<Navigate to="/Dashboard" replace />} />}
       <Route path="/PrivacyPolicy" element={<PrivacyPolicy />} />
       <Route path="/TermsOfService" element={<TermsOfService />} />
       <Route path="/Contact" element={<Contact />} />

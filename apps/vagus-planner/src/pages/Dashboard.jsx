@@ -133,7 +133,13 @@ export default function DashboardPage() {
 
   const { data: tasks = [] } = useQuery({
     queryKey: vpQueryKeys.activeTasks,
-    queryFn: () => base44.entities.Task.filter({ status: { $in: ['todo', 'in_progress'] } }, '-priority', 5),
+    // Include pending (DB) and todo (legacy/UI) — mapper normalizes both ways.
+    queryFn: () =>
+      base44.entities.Task.filter(
+        { status: { $in: ['todo', 'pending', 'in_progress'] } },
+        '-updated_date',
+        10
+      ),
     retry: false,
     staleTime: 30000,
   });

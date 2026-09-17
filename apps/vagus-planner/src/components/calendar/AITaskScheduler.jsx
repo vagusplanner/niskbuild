@@ -44,18 +44,52 @@ export default function AITaskScheduler({ isOpen, onClose, tasks = [], events = 
     setLoading(true);
     try {
       const uncompletedTasks = tasks.filter(t => t.status !== 'completed');
-      
-      // Call AI backend function for smart scheduling
+      if (uncompletedTasks.length === 0) {
+        setSuggestions({
+          summary: 'No pending tasks to schedule. Add a task first, then try again.',
+          suggestions: [],
+        });
+        return;
+      }
+
       const { data } = await base44.functions.invoke('aiSchedulingSuggestions', {
         tasks: uncompletedTasks,
         events: events,
         current_date: new Date().toISOString()
       });
 
-      setSuggestions(data);
+      // Normalize: API returns { summary, suggestions }; older shapes used top-level arrays.
+      const payload = data?.suggestions ? data : { suggestions: Array.isArray(data) ? data : [] };
+      const list = Array.isArray(payload.suggestions) ? payload.suggestions : [];
+      // Attach task objects by id when the model only returned an id/title.
+      const hydrated = list.map((s) => {
+        if (s?.task?.id || s?.task?.title) return s;
+        const match =
+          uncompletedTasks.find((t) => t.id === s?.task_id) ||
+          uncompletedTasks.find((t) => t.title && t.title === s?.title);
+        if (!match) return s;
+        return {
+          ...s,
+          action: s.action || 'schedule_event',
+          task: match,
+          reasoning: s.reasoning || s.title || '',
+          recommended_date: s.recommended_date,
+          recommended_time: s.recommended_time || s.time_slot,
+          recommended_priority: s.recommended_priority || s.priority || match.priority,
+        };
+      });
+
+      setSuggestions({
+        summary: payload.summary || data?.summary || '',
+        suggestions: hydrated,
+      });
     } catch (error) {
       console.error('AI scheduling error:', error);
-      toast.error('Failed to generate suggestions');
+      const message = error?.message ?? String(error);
+      toast.error(message.includes('VP_AI_UNAVAILABLE')
+        ? 'AI Task Scheduler is not available yet'
+        : message || 'Failed to generate suggestions');
+      setSuggestions(null);
     } finally {
       setLoading(false);
     }
@@ -145,25 +179,31 @@ export default function AITaskScheduler({ isOpen, onClose, tasks = [], events = 
             )}
 
             <div className="space-y-3">
+              {suggestions.suggestions?.length === 0 && (
+                <p className="text-sm text-slate-500 text-center py-6">
+                  No scheduling suggestions returned. Try again with more pending tasks.
+                </p>
+              )}
               {suggestions.suggestions?.map((suggestion, idx) => {
-                if (!suggestion.task) return null;
+                const taskTitle = suggestion.task?.title || suggestion.title;
+                if (!taskTitle) return null;
                 
                 return (
                 <motion.div
                   key={idx}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: idx * 0.1 }}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.05 }}
                 >
                   <Card className="p-4 hover:shadow-md transition-shadow">
                     <div className="flex items-start gap-3">
                       <div className="p-2 rounded-lg bg-violet-100 dark:bg-violet-900">
-                        {priorityIcons[suggestion.recommended_priority || 'medium']}
+                        {priorityIcons[suggestion.recommended_priority || suggestion.priority || 'medium']}
                       </div>
                       
                       <div className="flex-1">
                         <h4 className="font-semibold text-slate-800 dark:text-slate-100 mb-1">
-                          {suggestion.task?.title || 'Untitled Task'}
+                          {taskTitle}
                         </h4>
                         <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
                           {suggestion.reasoning || 'No details available'}
@@ -176,15 +216,15 @@ export default function AITaskScheduler({ isOpen, onClose, tasks = [], events = 
                               {format(new Date(suggestion.recommended_date), 'MMM d')}
                             </Badge>
                           )}
-                          {suggestion.recommended_time && (
+                          {(suggestion.recommended_time || suggestion.time_slot) && (
                             <Badge variant="outline" className="flex items-center gap-1">
                               <Clock className="w-3 h-3" />
-                              {suggestion.recommended_time}
+                              {suggestion.recommended_time || suggestion.time_slot}
                             </Badge>
                           )}
-                          {suggestion.recommended_priority && (
+                          {(suggestion.recommended_priority || suggestion.priority) && (
                             <Badge variant="outline" className="capitalize">
-                              {suggestion.recommended_priority} priority
+                              {suggestion.recommended_priority || suggestion.priority} priority
                             </Badge>
                           )}
                           {suggestion.estimated_duration && (
@@ -198,6 +238,7 @@ export default function AITaskScheduler({ isOpen, onClose, tasks = [], events = 
                       <Button
                         size="sm"
                         onClick={() => applySuggestion(suggestion)}
+                        disabled={!suggestion.task?.id}
                         className="bg-violet-600 hover:bg-violet-700"
                       >
                         Apply
@@ -206,7 +247,7 @@ export default function AITaskScheduler({ isOpen, onClose, tasks = [], events = 
                     </div>
                   </Card>
                 </motion.div>
-              );
+                );
               })}
             </div>
 

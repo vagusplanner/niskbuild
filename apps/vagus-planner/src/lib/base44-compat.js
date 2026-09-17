@@ -838,10 +838,16 @@ function mapPeriodPayloadToRow(payload, userId) {
   }
   if (userId) row.user_id = userId
   if (start != null && String(start).trim() !== '') {
-    // Production stub column. Migration adds start_date; dual-write only after that
-    // exists so we don't generate a 400-then-retry on every create.
     row.due_date = start
+    // Prefer real start_date when migration is applied; create/update fallback strips it.
+    row.start_date = start
   }
+  if (end != null && String(end).trim() !== '') row.end_date = end
+  if (meta.cycle_length != null) row.cycle_length = meta.cycle_length
+  if (meta.period_length != null) row.period_length = meta.period_length
+  if (meta.flow != null) row.flow = meta.flow
+  if (meta.notes != null) row.notes = meta.notes
+  if (meta.symptoms != null) row.symptoms = meta.symptoms
   return row
 }
 
@@ -1401,7 +1407,19 @@ function applyFilters(query, criteria, entityName) {
           values = [...new Set(values.map(mapGoalStatusValue))]
         }
         if (entityName === 'Task' && key === 'status') {
-          values = [...new Set(values.map(mapTaskStatusFilterValue))]
+          // UI uses "todo"; DB stores "pending". Include both so legacy rows and
+          // freshly mapped rows match Dashboard's activeTasks filter.
+          values = [
+            ...new Set(
+              values.flatMap((v) => {
+                const mapped = mapTaskStatusFilterValue(v)
+                if (mapped === 'pending' || v === 'todo' || v === 'pending') {
+                  return ['pending', 'todo']
+                }
+                return [mapped]
+              })
+            ),
+          ]
         }
         next = next.in(col, values)
       }
