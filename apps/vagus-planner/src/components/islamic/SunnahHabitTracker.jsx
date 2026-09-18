@@ -1,10 +1,11 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Moon, Sun, Star, Heart } from 'lucide-react';
+import { Star, Heart } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { localDateString } from '@/lib/local-date';
 
 const SUNNAH_HABITS = [
   { id: 'monday_fast', name: 'Monday Fasting', icon: '🌙', frequency: 'weekly', day: 1 },
@@ -32,24 +33,28 @@ export default function SunnahHabitTracker() {
 
   const toggleHabitMutation = useMutation({
     mutationFn: async ({ habitId, date }) => {
-      const existing = completions.find(c => 
+      const existing = completions.find(c =>
         c.habit_id === habitId && c.completion_date === date
       );
 
       if (existing) {
         await base44.entities.HabitCompletion.delete(existing.id);
       } else {
+        // Do not send `count` — not a vp_habit_completions column (400s).
+        // completion_date is aliased to completed_at and remapped on read.
         await base44.entities.HabitCompletion.create({
           habit_id: habitId,
           completion_date: date,
-          count: 1
         });
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['habitCompletions'] });
       toast.success('Progress updated!');
-    }
+    },
+    onError: (err) => {
+      toast.error(err?.message || 'Could not update habit');
+    },
   });
 
   const createSunnahHabitMutation = useMutation({
@@ -59,10 +64,10 @@ export default function SunnahHabitTracker() {
     }
   });
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = localDateString();
 
   const isCompletedToday = (habitId) => {
-    return completions.some(c => 
+    return completions.some(c =>
       c.habit_id === habitId && c.completion_date === today
     );
   };

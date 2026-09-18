@@ -803,6 +803,10 @@ function mapPayloadToRow(entityName, payload, userId) {
     return mapPeriodPayloadToRow(p, userId)
   }
 
+  if (entityName === 'HabitCompletion') {
+    return mapHabitCompletionPayloadToRow(p, userId)
+  }
+
   const row = { ...p }
   if (userId && row.user_id == null) row.user_id = userId
   return row
@@ -887,6 +891,43 @@ function mapPeriodFromRow(row) {
     flow,
     notes,
     symptoms,
+  }
+}
+
+/**
+ * vp_habit_completions: habit_id, completed_at (timestamptz), notes — no `count`.
+ * UI uses completion_date (yyyy-MM-dd) for same-day checks.
+ */
+function mapHabitCompletionPayloadToRow(payload, userId) {
+  const p = payload ?? {}
+  const row = {}
+  if (userId) row.user_id = userId
+  if (isUsableId(p.habit_id)) row.habit_id = String(p.habit_id).trim()
+  const day =
+    toDateOnlyString(p.completion_date ?? p.completed_at) ??
+    toDateOnlyString(p.date) ??
+    localDateString()
+  // Store noon UTC-ish via local midnight ISO so the date-only prefix is stable on read.
+  row.completed_at = `${day}T12:00:00.000Z`
+  if (p.notes != null && String(p.notes).trim() !== '') {
+    row.notes = String(p.notes)
+  }
+  // Explicitly omit invalid UI fields (e.g. count) — not on vp_habit_completions.
+  return row
+}
+
+function mapHabitCompletionFromRow(row) {
+  if (!row) return row
+  const completion_date =
+    toDateOnlyString(row.completed_at ?? row.completion_date) ??
+    row.completion_date ??
+    null
+  return {
+    ...row,
+    completion_date,
+    completed_at: row.completed_at ?? completion_date,
+    habit_id: row.habit_id ?? null,
+    created_date: row.created_at ?? row.created_date,
   }
 }
 
@@ -1054,6 +1095,10 @@ function mapRowFromDb(entityName, row) {
 
   if (entityName === 'Period') {
     return mapPeriodFromRow(row)
+  }
+
+  if (entityName === 'HabitCompletion') {
+    return mapHabitCompletionFromRow(row)
   }
 
   if (entityName === 'Reflection') {

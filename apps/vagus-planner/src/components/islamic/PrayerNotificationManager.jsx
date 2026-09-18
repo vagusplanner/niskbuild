@@ -5,7 +5,7 @@
  * - Native local notifications on Capacitor; web Notification API in browser
  * - Persists enabled/disabled preferences per prayer in localStorage
  */
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -89,7 +89,29 @@ export default function PrayerNotificationManager() {
     queryFn: () => base44.entities.UserSettings.list(),
   });
   const settings = settingsList[0];
-  const coords = resolveSettingsCoords(settings);
+  // Stabilize coords: resolveSettingsCoords() returns a new object every call —
+  // putting that object in useCallback deps caused an infinite load→setState→render loop
+  // that froze the entire app when the Notifications tab mounted.
+  const resolvedCoords = resolveSettingsCoords(settings);
+  const lat = resolvedCoords?.lat ?? null;
+  const lng = resolvedCoords?.lng ?? null;
+  const coords = useMemo(
+    () => (lat != null && lng != null ? { lat, lng } : null),
+    [lat, lng],
+  );
+  const prayerMethod = settings?.prayer_method || 'MWL';
+  const asrMethod = settings?.asr_method || '0';
+  // Stabilize offsets the same way — `|| {}` would be a new object every render.
+  const prayerOffsetsKey = JSON.stringify(
+    settings?.prayer_offsets || settings?.prayer_time_offsets || {},
+  );
+  const prayerOffsets = useMemo(() => {
+    try {
+      return JSON.parse(prayerOffsetsKey);
+    } catch {
+      return {};
+    }
+  }, [prayerOffsetsKey]);
 
   const loadPrayerTimes = useCallback(async () => {
     if (!coords) {
@@ -104,9 +126,9 @@ export default function PrayerNotificationManager() {
         new Date(),
         coords.lat,
         coords.lng,
-        settings?.prayer_method || 'MWL',
-        settings?.asr_method || '0',
-        settings?.prayer_offsets || {},
+        prayerMethod,
+        asrMethod,
+        prayerOffsets,
       );
       setPrayers({
         Fajr: times.Fajr,
@@ -122,7 +144,7 @@ export default function PrayerNotificationManager() {
     } finally {
       setTimesLoading(false);
     }
-  }, [coords, settings?.prayer_method, settings?.asr_method, settings?.prayer_offsets]);
+  }, [coords, prayerMethod, asrMethod, prayerOffsets]);
 
   useEffect(() => {
     void loadPrayerTimes();
@@ -370,7 +392,6 @@ export default function PrayerNotificationManager() {
                             permission !== 'granted' && 'opacity-70'
                           )}
                           aria-label={`Toggle ${prayer} notifications`}
-                        >
                         >
                           <span className={cn(
                             'absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform',
