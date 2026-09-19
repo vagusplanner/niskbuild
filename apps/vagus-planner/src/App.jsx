@@ -86,7 +86,9 @@ const AuthenticatedApp = () => {
   const isLandingPath = path === '/' || path === '/Landing' || path === '';
   const isPublicLegalPath =
     path === '/PrivacyPolicy' ||
+    path === '/privacy' ||
     path === '/TermsOfService' ||
+    path === '/terms' ||
     path === '/Contact' ||
     path === '/support' ||
     path === '/Support';
@@ -139,7 +141,9 @@ const AuthenticatedApp = () => {
   if (isPublicLegalPath) {
     return (
       <Routes>
+        <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/PrivacyPolicy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsOfService />} />
         <Route path="/TermsOfService" element={<TermsOfService />} />
         <Route path="/Contact" element={<Contact />} />
         <Route path="/support" element={<Contact />} />
@@ -181,7 +185,9 @@ const AuthenticatedApp = () => {
       {!nativeShell && <Route path="/Landing" element={<Landing />} />}
       {nativeShell && <Route path="/" element={<Navigate to="/Dashboard" replace />} />}
       {nativeShell && <Route path="/Landing" element={<Navigate to="/Dashboard" replace />} />}
+      <Route path="/privacy" element={<PrivacyPolicy />} />
       <Route path="/PrivacyPolicy" element={<PrivacyPolicy />} />
+      <Route path="/terms" element={<TermsOfService />} />
       <Route path="/TermsOfService" element={<TermsOfService />} />
       <Route path="/Contact" element={<Contact />} />
       <Route path="/support" element={<Contact />} />

@@ -47,7 +47,7 @@ export default function AppStoreReadyChecklist() {
       icon: Shield,
       items: [
         {
-          label: 'Public Privacy Policy URL (https://niskbuild.com/vagus-planner/privacy)',
+          label: 'Public Privacy Policy URL (https://vagusplanner.com/privacy)',
           status: true,
         },
         { label: 'In-app Privacy Policy + Terms routes', status: true },
@@ -159,7 +159,7 @@ export default function AppStoreReadyChecklist() {
             <li>
               2. Set App Store Connect Privacy Policy URL to{' '}
               <code className="text-xs bg-white/70 px-1 rounded">
-                https://niskbuild.com/vagus-planner/privacy
+                https://vagusplanner.com/privacy
               </code>
             </li>
             <li>3. Confirm Push capability + APNs key in Apple Developer (entitlement alone is not enough)</li>

@@ -477,7 +477,7 @@ export default function Layout({ children, currentPageName }) {
   // via App.jsx early-return logic, so this guard only fires for authenticated routes.
   useEffect(() => {
     const routerPath = location.pathname;
-    const publicPaths = ['/', '/Landing', '/PrivacyPolicy', '/TermsOfService', '/Contact', '/support', '/Support', '/login', '/signup'];
+    const publicPaths = ['/', '/Landing', '/privacy', '/PrivacyPolicy', '/terms', '/TermsOfService', '/Contact', '/support', '/Support', '/login', '/signup'];
     if (publicPaths.includes(routerPath) || currentPageName === 'Landing') return;
 
     const goUnauthenticated = () => {

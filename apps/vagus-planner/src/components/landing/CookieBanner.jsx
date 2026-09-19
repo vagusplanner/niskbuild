@@ -50,7 +50,7 @@ export default function CookieBanner() {
 
             <p className="text-white/60 text-xs leading-relaxed mb-3">
               We use essential cookies for authentication and optional analytics cookies to understand how you use the app.
-              {' '}<Link to="/PrivacyPolicy" className="text-[#38bdf8] hover:underline">Privacy Policy</Link>
+              {' '}<Link to="/privacy" className="text-[#38bdf8] hover:underline">Privacy Policy</Link>
             </p>
 
             <AnimatePresence>

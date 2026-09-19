@@ -176,7 +176,7 @@ export default function ContactPage() {
 
                 {error && <p className="text-rose-400 text-sm">{error}</p>}
 
-                <p className="text-white/30 text-xs">Your email is used only to reply to your message. We will never share it or add you to any mailing list without consent. See our <Link to="/PrivacyPolicy" className="text-[#38bdf8] hover:underline">Privacy Policy</Link>.</p>
+                <p className="text-white/30 text-xs">Your email is used only to reply to your message. We will never share it or add you to any mailing list without consent. See our <Link to="/privacy" className="text-[#38bdf8] hover:underline">Privacy Policy</Link>.</p>
 
                 <Button type="submit" disabled={loading}
                   className="w-full bg-gradient-to-r from-[#E8B84B] to-[#f0c060] text-[#071224] font-bold h-12 hover:opacity-90">
@@ -192,7 +192,7 @@ export default function ContactPage() {
         </div>
 
         <div className="text-center mt-8 text-white/30 text-xs">
-          © 2026 Vagus Planner · <Link to="/PrivacyPolicy" className="hover:text-white/60 transition-colors">Privacy Policy</Link> · <Link to="/TermsOfService" className="hover:text-white/60 transition-colors">Terms</Link>
+          © 2026 Vagus Planner · <Link to="/privacy" className="hover:text-white/60 transition-colors">Privacy Policy</Link> · <Link to="/terms" className="hover:text-white/60 transition-colors">Terms</Link>
         </div>
       </div>
     </div>

@@ -760,9 +760,9 @@ function LandingFooter({ onSignIn }) {
             </div>
             <div className="space-y-2">
               <div className="text-white/30 text-[10px] uppercase tracking-widest font-semibold mb-1">Legal</div>
-              <Link to="/PrivacyPolicy" className="block hover:text-white/80 transition-colors">Privacy Policy</Link>
+              <Link to="/privacy" className="block hover:text-white/80 transition-colors">Privacy Policy</Link>
               <Link to="/TermsOfService" className="block hover:text-white/80 transition-colors">Terms of Service</Link>
-              <Link to="/PrivacyPolicy" className="block hover:text-white/80 transition-colors">Cookie Policy</Link>
+              <Link to="/privacy" className="block hover:text-white/80 transition-colors">Cookie Policy</Link>
             </div>
             <div className="space-y-2">
               <div className="text-white/30 text-[10px] uppercase tracking-widest font-semibold mb-1">Support</div>
@@ -775,7 +775,7 @@ function LandingFooter({ onSignIn }) {
         <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="text-white/30 text-xs font-medium">© 2026 Vagus Planner. All rights reserved.</div>
           <div className="flex gap-4 text-white/25 text-xs">
-            <Link to="/PrivacyPolicy" className="hover:text-white/50 transition-colors">Privacy</Link>
+            <Link to="/privacy" className="hover:text-white/50 transition-colors">Privacy</Link>
             <Link to="/TermsOfService" className="hover:text-white/50 transition-colors">Terms</Link>
             <Link to="/support" className="hover:text-white/50 transition-colors">Contact</Link>
           </div>

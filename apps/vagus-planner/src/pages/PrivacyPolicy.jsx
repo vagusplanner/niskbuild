@@ -7,7 +7,7 @@ const LOGO =
   'https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6965607bc386491646bad6e8/10b500d37_IMG_6630.png';
 const LAST_UPDATED = 'September 19, 2026';
 const SUPPORT_EMAIL = 'support@vagusplanner.com';
-const PUBLIC_PRIVACY_URL = 'https://niskbuild.com/vagus-planner/privacy';
+const PUBLIC_PRIVACY_URL = 'https://vagusplanner.com/privacy';
 
 /**
  * In-app Privacy Policy — must stay consistent with /vagus-planner/privacy

@@ -10,10 +10,12 @@ export const metadata: Metadata = {
 
 const LAST_UPDATED = 'September 19, 2026';
 const SUPPORT_EMAIL = 'support@vagusplanner.com';
+const CANONICAL_PRIVACY_URL = 'https://vagusplanner.com/privacy';
 
 /**
- * Public App Store / web Privacy Policy (canonical URL).
- * Keep in sync with apps/vagus-planner/src/pages/PrivacyPolicy.jsx
+ * Public Privacy Policy mirror on niskbuild.com.
+ * Canonical App Store URL: https://vagusplanner.com/privacy (VP Vite SPA).
+ * Keep content in sync with apps/vagus-planner/src/pages/PrivacyPolicy.jsx
  */
 export default function VagusPlannerPublicPrivacyPage() {
   return (
@@ -23,6 +25,17 @@ export default function VagusPlannerPublicPrivacyPage() {
           <p className="text-xs uppercase tracking-wider text-[#E8B84B]">Vagus Planner</p>
           <h1 className="text-3xl font-bold text-white">Vagus Planner Privacy Policy</h1>
           <p className="text-sm text-white/50">Last updated: {LAST_UPDATED}</p>
+          <p className="text-sm text-white/45">
+            Canonical URL (App Store Connect):{' '}
+            <a
+              href={CANONICAL_PRIVACY_URL}
+              className="text-[#38bdf8] hover:underline"
+              target="_blank"
+              rel="noreferrer"
+            >
+              {CANONICAL_PRIVACY_URL}
+            </a>
+          </p>
           <p className="text-sm leading-relaxed text-white/70">
             This Privacy Policy explains how Vagus Planner (&quot;VP,&quot; &quot;we,&quot; &quot;us&quot;) collects, uses,
             stores, and protects your personal data when you use our mobile application and website

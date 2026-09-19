@@ -186,7 +186,7 @@ export default function Signup() {
             Terms of Service
           </Link>{' '}
           and{' '}
-          <Link to="/PrivacyPolicy" className="text-[#1a7ab8] hover:text-[#1a4a6e]">
+          <Link to="/privacy" className="text-[#1a7ab8] hover:text-[#1a4a6e]">
             Privacy Policy
           </Link>
           .
