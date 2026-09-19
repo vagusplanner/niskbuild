@@ -1,11 +1,13 @@
 import 'server-only';
 
+import { captureApiException } from '@/lib/api-error';
 import { getGroqClient } from '@/lib/groq-client';
 import {
   GROQ_JSON_ONLY_INSTRUCTION,
   SHIFT_GROQ_MODEL,
+  logGroqParseFailure,
   parseGroqJsonContent,
-  withGroqTimeout,
+  withGroqCall,
 } from '@/lib/shift-ai/groq-json';
 
 export type BuddyGameId = 'phonics' | 'reading' | 'counting';
@@ -54,6 +56,11 @@ function gameLabel(gameId: BuddyGameId): string {
   return BUDDY_GAMES.find((g) => g.id === gameId)?.label ?? gameId;
 }
 
+/**
+ * Groq `response_format: json_object` fails on these preschool prompts for
+ * openai/gpt-oss-* (`json_validate_failed` with empty failed_generation).
+ * Freeform + parseGroqJsonContent works; keep JSON-only instruction instead.
+ */
 export async function generateVoiceBuddyRound(
   gameId: BuddyGameId,
   friendName: string
@@ -79,26 +86,30 @@ JSON shape:
 }`;
 
   try {
-    const completion = await withGroqTimeout(
-      groq.chat.completions.create({
-        model: SHIFT_GROQ_MODEL,
-        messages: [
-          {
-            role: 'system',
-            content:
-              'You create short, playful learning games for preschool and early primary children. Keep every field brief and cheerful.',
-          },
-          { role: 'user', content: prompt },
-        ],
-        temperature: 0.8,
-        max_tokens: 220,
-        response_format: { type: 'json_object' },
-      })
+    const completion = await withGroqCall(
+      () =>
+        groq.chat.completions.create({
+          model: SHIFT_GROQ_MODEL,
+          messages: [
+            {
+              role: 'system',
+              content:
+                'You create short, playful learning games for preschool and early primary children. Keep every field brief and cheerful. Always reply with valid JSON only.',
+            },
+            { role: 'user', content: prompt },
+          ],
+          temperature: 0.8,
+          max_tokens: 300,
+        }),
+      { label: 'voice-buddy-round' }
     );
 
     const raw = completion.choices[0]?.message?.content ?? '';
     const parsed = parseGroqJsonContent(raw, 'Could not parse Voice Buddy round');
-    if (!parsed.ok) return { ok: false, error: parsed.error };
+    if (!parsed.ok) {
+      logGroqParseFailure('voice-buddy-round', raw, 'JSON parse failed');
+      return { ok: false, error: parsed.error };
+    }
 
     const data = parsed.json as Record<string, unknown>;
     const round: BuddyRound = {
@@ -109,12 +120,14 @@ JSON shape:
     };
 
     if (!round.prompt || !round.expected) {
+      logGroqParseFailure('voice-buddy-round', raw, 'missing prompt/expected');
       return { ok: false, error: 'Voice Buddy could not create a round' };
     }
 
     return { ok: true, round };
   } catch (error) {
     console.error('Voice Buddy round error:', error);
+    captureApiException(error);
     return { ok: false, error: 'Voice Buddy is temporarily unavailable' };
   }
 }
@@ -145,26 +158,30 @@ JSON shape:
 }`;
 
   try {
-    const completion = await withGroqTimeout(
-      groq.chat.completions.create({
-        model: SHIFT_GROQ_MODEL,
-        messages: [
-          {
-            role: 'system',
-            content:
-              'You gently evaluate young children’s spoken answers. Reply with one short, encouraging sentence.',
-          },
-          { role: 'user', content: userPrompt },
-        ],
-        temperature: 0.5,
-        max_tokens: 120,
-        response_format: { type: 'json_object' },
-      })
+    const completion = await withGroqCall(
+      () =>
+        groq.chat.completions.create({
+          model: SHIFT_GROQ_MODEL,
+          messages: [
+            {
+              role: 'system',
+              content:
+                'You gently evaluate young children’s spoken answers. Always reply with valid JSON only. Keep the spoken message short and encouraging.',
+            },
+            { role: 'user', content: userPrompt },
+          ],
+          temperature: 0.5,
+          max_tokens: 160,
+        }),
+      { label: 'voice-buddy-evaluate' }
     );
 
     const raw = completion.choices[0]?.message?.content ?? '';
     const parsed = parseGroqJsonContent(raw, 'Could not parse Voice Buddy evaluation');
-    if (!parsed.ok) return { ok: false, error: parsed.error };
+    if (!parsed.ok) {
+      logGroqParseFailure('voice-buddy-evaluate', raw, 'JSON parse failed');
+      return { ok: false, error: parsed.error };
+    }
 
     const data = parsed.json as Record<string, unknown>;
     const evaluation: BuddyEvaluation = {
@@ -175,6 +192,7 @@ JSON shape:
     return { ok: true, evaluation };
   } catch (error) {
     console.error('Voice Buddy evaluate error:', error);
+    captureApiException(error);
     return { ok: false, error: 'Voice Buddy is temporarily unavailable' };
   }
 }
