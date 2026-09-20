@@ -82,9 +82,9 @@ export default async function ShiftAiParentConsentPage({
     : copy.introWithoutYear.replaceAll('{name}', request.childFirstName);
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-indigo-50 to-white px-6 py-16">
+    <main className="min-h-screen bg-[var(--sa-navy-50)] px-6 py-16">
       <div className="mx-auto max-w-lg rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <p className="text-sm font-semibold uppercase tracking-wider text-indigo-600">{copy.kicker}</p>
+        <p className="text-sm font-semibold uppercase tracking-wider text-[var(--sa-primary)]">{copy.kicker}</p>
         <h1 className="mt-2 text-2xl font-bold text-slate-900">{copy.title}</h1>
 
         <p className="mt-4 rounded-lg border border-amber-500/30 bg-amber-50 px-3 py-2 text-sm leading-relaxed text-amber-950">
@@ -100,7 +100,7 @@ export default async function ShiftAiParentConsentPage({
           <form action={approveParentConsent.bind(null, token, query.lang)} className="flex-1">
             <button
               type="submit"
-              className="w-full rounded-lg bg-indigo-600 py-3 text-sm font-semibold text-white hover:bg-indigo-700"
+              className="w-full rounded-lg bg-[var(--sa-primary)] py-3 text-sm font-semibold text-white hover:bg-[var(--sa-primary-hover)]"
             >
               {copy.approve}
             </button>
@@ -119,7 +119,7 @@ export default async function ShiftAiParentConsentPage({
           {copy.alreadyAccount}{' '}
           <Link
             href={withLangQuery('/builder/shift-ai/signup', query.lang)}
-            className="text-indigo-600 hover:underline"
+            className="text-[var(--sa-primary)] hover:underline"
           >
             {copy.signupLink}
           </Link>

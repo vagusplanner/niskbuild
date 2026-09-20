@@ -1,8 +1,9 @@
 'use client';
 
+import Image from 'next/image';
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { GraduationCap, Menu, X } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import ShiftAiSidebar from '@/app/builder/shift-ai/ShiftAiSidebar';
 import type { ShiftStudyLanguage } from '@/lib/shift-ai/constants';
 
@@ -59,10 +60,19 @@ export default function ShiftAiShell({
               <Menu className="h-5 w-5" />
             </button>
             <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--sa-navy-800)]">
-                <GraduationCap className="h-4 w-4 text-white" />
-              </div>
-              <span className="text-sm font-bold text-[var(--sa-navy-800)]">{tBrand('name')}</span>
+              <Image
+                src="/brand/supereduc8/icon.svg"
+                alt=""
+                width={28}
+                height={28}
+                className="h-7 w-7 rounded-[22%] object-contain"
+                unoptimized
+              />
+              <span className="text-sm font-bold" aria-hidden>
+                <span style={{ color: 'var(--sa-coral-hover)' }}>Super</span>
+                <span style={{ color: 'var(--sa-wordmark)' }}>Educ8</span>
+              </span>
+              <span className="sr-only">{tBrand('name')}</span>
             </div>
           </div>
         </div>

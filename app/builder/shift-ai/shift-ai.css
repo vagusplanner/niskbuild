@@ -25,13 +25,19 @@
   --sa-accent: var(--sa-coral);
   --sa-sidebar: #0f458f;
 
-  /* Navy / structural tokens (kept for depth + sidebar chrome) */
+  /* Navy / structural tokens (aligned to SuperEduc8 blue scale) */
   --sa-navy-50: #eef4fc;
   --sa-navy-100: #d6e5f8;
+  --sa-navy-200: #b8d0f0;
   --sa-navy-400: #4d8fd9;
+  --sa-navy-600: #2b7de8;
   --sa-navy-700: #1253a8;
   --sa-navy-800: #0f458f;
   --sa-navy-900: #0a2f63;
+
+  /* Page chrome for parent/mentor standalone shells */
+  --sa-page-gradient: linear-gradient(180deg, #eef4fc 0%, #f7fafc 42%, #ffffff 100%);
+  --sa-chart-primary: #2b7de8;
 
   --sa-radius: 0.75rem;
   --sa-gradient-primary: linear-gradient(135deg, #2b7de8 0%, #1253a8 100%);

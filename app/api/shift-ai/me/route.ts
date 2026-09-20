@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { getFavouriteSubjects, needsSubjectOnboarding } from '@/lib/shift-ai/onboarding';
+import { resolveShiftPlanAccess } from '@/lib/shift-ai/plan-access';
 import { getShiftStudentForRequest } from '@/lib/shift-ai/student-auth';
 import {
   shiftAiApiCorsPreflightResponse,
@@ -21,6 +22,7 @@ export async function GET(request: NextRequest) {
   const favouriteSubjects = getFavouriteSubjects(student);
   const needsOnboarding = needsSubjectOnboarding(student);
   const isActive = student.is_active !== false;
+  const planAccess = await resolveShiftPlanAccess(auth.userId);
 
   return shiftAiApiJson(request, {
     userId: auth.userId,
@@ -36,5 +38,6 @@ export async function GET(request: NextRequest) {
       isActive,
       needsOnboarding,
     },
+    planAccess,
   });
 }

@@ -2,12 +2,12 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import Image from 'next/image';
 import {
   CalendarDays,
   Gamepad2,
   Layers,
   Target,
-  Zap,
 } from 'lucide-react';
 import type { ObserverSnapshot } from '@/lib/shift-ai/observer-shared';
 
@@ -23,10 +23,10 @@ function StatCard({
   icon: string;
 }) {
   return (
-    <div className="rounded-2xl border border-blue-200 bg-white p-4 text-center">
+    <div className="rounded-2xl border border-[var(--sa-border)] bg-white p-4 text-center">
       <p className="mb-1 text-2xl">{icon}</p>
       <p className="text-2xl font-bold text-[var(--sa-navy-900)]">{value}</p>
-      <p className="text-xs text-neutral-500">{label}</p>
+      <p className="text-xs text-[var(--sa-muted)]">{label}</p>
     </div>
   );
 }
@@ -43,35 +43,42 @@ export default function ShiftAiParentDashboardClient({ snapshot }: { snapshot: O
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#050d1a] to-[#0a1628] px-4 py-8">
+    <div className="min-h-screen px-4 py-8" style={{ background: 'var(--sa-page-gradient)' }}>
       <div className="mx-auto max-w-4xl space-y-5">
-        <div className="flex flex-wrap items-start justify-between gap-4 rounded-2xl bg-white p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4 rounded-2xl border border-[var(--sa-border)] bg-white p-6">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700">
-              <Zap className="h-6 w-6 text-white" />
-            </div>
+            <Image
+              src="/brand/supereduc8/icon.svg"
+              alt=""
+              width={48}
+              height={48}
+              className="h-12 w-12 rounded-2xl object-contain"
+              unoptimized
+            />
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+              <p className="text-xs font-medium uppercase tracking-wide text-[var(--sa-muted)]">
                 {t('kicker')}
               </p>
               <h1 className="text-xl font-bold text-[var(--sa-navy-900)]">
                 {t('progressTitle', { name: student.fullName })}
               </h1>
-              <p className="text-sm text-neutral-500">
+              <p className="text-sm text-[var(--sa-muted)]">
                 {student.yearGroup} · {student.keyStage}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="flex gap-1 rounded-xl bg-white/10 p-1">
+        <div className="flex gap-1 rounded-xl border border-[var(--sa-border)] bg-white p-1">
           {tabs.map((item) => (
             <button
               key={item.id}
               type="button"
               onClick={() => setTab(item.id)}
               className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium capitalize transition-all ${
-                tab === item.id ? 'bg-white text-[var(--sa-navy-800)] shadow-sm' : 'text-white/60 hover:text-white'
+                tab === item.id
+                  ? 'bg-[var(--sa-primary)] text-white shadow-sm'
+                  : 'text-[var(--sa-muted)] hover:text-[var(--sa-navy-800)]'
               }`}
             >
               {item.label}
@@ -205,7 +212,7 @@ export default function ShiftAiParentDashboardClient({ snapshot }: { snapshot: O
           </div>
         ) : null}
 
-        <p className="pb-4 text-center text-xs text-white/20">{t('footer')}</p>
+        <p className="pb-4 text-center text-xs text-[var(--sa-muted)]">{t('footer')}</p>
       </div>
     </div>
   );

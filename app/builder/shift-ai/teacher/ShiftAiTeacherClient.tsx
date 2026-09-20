@@ -44,7 +44,7 @@ function NarrativePanel({ studentId }: { studentId: string }) {
         <button
           type="button"
           onClick={() => setExpanded((e) => !e)}
-          className="flex items-center gap-2 text-xs font-semibold text-indigo-700"
+          className="flex items-center gap-2 text-xs font-semibold text-[var(--sa-primary-deep)]"
         >
           {t('narrative')}
           {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
@@ -67,7 +67,7 @@ function NarrativePanel({ studentId }: { studentId: string }) {
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
 
       {expanded && result ? (
-        <div className="space-y-2 rounded-xl border border-indigo-100 bg-indigo-50 p-3">
+        <div className="space-y-2 rounded-xl border border-[var(--sa-navy-100)] bg-[var(--sa-navy-50)] p-3">
           <p className="text-sm leading-relaxed text-[var(--sa-navy-900)]">{result.narrative}</p>
           <div className="grid gap-2 sm:grid-cols-2">
             {result.key_strengths.length > 0 ? (

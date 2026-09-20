@@ -15,7 +15,7 @@ export default async function ShiftAiParentTokenPage({ params }: ParentTokenPage
 
   if (!studentId) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#050d1a] to-[#0a1628] px-4">
+      <main className="flex min-h-screen items-center justify-center bg-[var(--sa-navy-50)] px-4">
         <div className="max-w-sm rounded-2xl bg-white p-10 text-center">
           <p className="mb-4 text-4xl">🔒</p>
           <h2 className="mb-2 text-lg font-bold text-[var(--sa-navy-900)]">{copy.linkNotFound}</h2>

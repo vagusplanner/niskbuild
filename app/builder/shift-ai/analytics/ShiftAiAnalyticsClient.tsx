@@ -215,7 +215,7 @@ export default function ShiftAiAnalyticsClient({
               <XAxis dataKey="name" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
               <Tooltip />
-              <Bar dataKey="activity" fill="#1e3a5f" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="activity" fill="#2b7de8" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -258,7 +258,7 @@ export default function ShiftAiAnalyticsClient({
                   type="monotone"
                   dataKey="total"
                   name={t('legendCreated')}
-                  stroke="#1e3a5f"
+                  stroke="#2b7de8"
                   strokeWidth={2}
                   dot={false}
                 />

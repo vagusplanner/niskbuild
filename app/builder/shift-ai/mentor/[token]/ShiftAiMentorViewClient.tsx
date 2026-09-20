@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { GraduationCap, Loader2, Plus, Target, Trophy } from 'lucide-react';
+import Image from 'next/image';
+import { Loader2, Plus, Target, Trophy } from 'lucide-react';
 import type { MentorChallenge, ObserverSnapshot } from '@/lib/shift-ai/observer-shared';
 
 type Tab = 'overview' | 'challenges';
@@ -72,35 +73,42 @@ export default function ShiftAiMentorViewClient({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#050d1a] to-[#0a1628] px-4 py-8">
+    <div className="min-h-screen px-4 py-8" style={{ background: 'var(--sa-page-gradient)' }}>
       <div className="mx-auto max-w-4xl space-y-5">
-        <div className="rounded-2xl bg-white p-6">
+        <div className="rounded-2xl border border-[var(--sa-border)] bg-white p-6">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-700">
-              <GraduationCap className="h-6 w-6 text-white" />
-            </div>
+            <Image
+              src="/brand/supereduc8/icon.svg"
+              alt=""
+              width={48}
+              height={48}
+              className="h-12 w-12 rounded-2xl object-contain"
+              unoptimized
+            />
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+              <p className="text-xs font-medium uppercase tracking-wide text-[var(--sa-muted)]">
                 {t('kicker')}
               </p>
               <h1 className="text-xl font-bold text-[var(--sa-navy-900)]">
                 {t('progressTitle', { name: student.fullName })}
               </h1>
-              <p className="text-sm text-neutral-500">
+              <p className="text-sm text-[var(--sa-muted)]">
                 {student.yearGroup} · {student.keyStage}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="flex gap-1 rounded-xl bg-white/10 p-1">
+        <div className="flex gap-1 rounded-xl border border-[var(--sa-border)] bg-white p-1">
           {(['overview', 'challenges'] as Tab[]).map((item) => (
             <button
               key={item}
               type="button"
               onClick={() => setTab(item)}
               className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium capitalize transition-all ${
-                tab === item ? 'bg-white text-[var(--sa-navy-800)] shadow-sm' : 'text-white/60 hover:text-white'
+                tab === item
+                  ? 'bg-[var(--sa-primary)] text-white shadow-sm'
+                  : 'text-[var(--sa-muted)] hover:text-[var(--sa-navy-800)]'
               }`}
             >
               {item === 'overview' ? t('tabOverview') : t('tabChallenges')}
@@ -189,7 +197,7 @@ export default function ShiftAiMentorViewClient({
                 type="button"
                 onClick={() => void assignChallenge()}
                 disabled={saving || !title.trim()}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-700 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-60"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--sa-primary)] px-4 py-2.5 text-sm font-medium text-white hover:bg-[var(--sa-primary-hover)] disabled:opacity-60"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                 {t('assign')}

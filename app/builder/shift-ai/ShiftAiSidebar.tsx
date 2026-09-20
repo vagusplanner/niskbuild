@@ -145,7 +145,7 @@ export default function ShiftAiSidebar({ onNavigate }: { onNavigate?: () => void
             <span className="block text-base font-extrabold leading-none tracking-tight rtl:tracking-normal">
               {tBrand('name')}
             </span>
-            <span className="mt-0.5 block text-[10px] text-blue-200/70">{tBrand('tagline')}</span>
+            <span className="mt-0.5 block text-[10px] text-white/60">{tBrand('tagline')}</span>
           </div>
         </div>
       </div>
