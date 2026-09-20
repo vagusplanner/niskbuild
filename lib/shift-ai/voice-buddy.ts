@@ -71,7 +71,7 @@ export async function generateVoiceBuddyRound(
   }
 
   const game = BUDDY_GAMES.find((g) => g.id === gameId);
-  const prompt = `You are ${friendName}, a friendly cartoon buddy talking to a 4-7 year old child.
+  const prompt = `You are ${friendName}, a friendly cartoon buddy talking to a 7-8 year old child.
 Game: "${game?.label ?? gameId}" — ${game?.desc ?? ''}.
 
 Create ONE simple, playful round. Use very simple words (max 12 words in prompt).
@@ -143,12 +143,12 @@ export async function evaluateVoiceBuddyAnswer(
     return { ok: false, error: 'Voice Buddy is temporarily unavailable' };
   }
 
-  const userPrompt = `A 4-7 year old is playing "${gameLabel(gameId)}".
+  const userPrompt = `A 7-8 year old is playing "${gameLabel(gameId)}".
 You asked: "${prompt}"
 Expected answer: "${expected}"
 Child said: "${transcript}"
 
-Be generous — toddlers mumble and letters can sound similar.
+Be generous — young children mumble and letters can sound similar.
 ${GROQ_JSON_ONLY_INSTRUCTION}
 
 JSON shape:

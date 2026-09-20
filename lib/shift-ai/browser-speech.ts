@@ -27,7 +27,7 @@ export const MIC_READY_DELAY_MS = 500;
 export const IOS_VOICE_FALLBACK_HINT =
   'Voice input can be unreliable on iPhone. You can also type your answer below.';
 
-/** Warmer, slower delivery for ages 4–7. */
+/** Warmer, slower delivery for younger learners (ages 7–8 family / Voice Buddy path). */
 export const VOICE_BUDDY_SPEAK_OPTIONS: SpeakOptions = {
   rate: 0.85,
   pitch: 1.35,

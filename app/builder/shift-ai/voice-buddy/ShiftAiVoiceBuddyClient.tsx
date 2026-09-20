@@ -332,7 +332,7 @@ export default function ShiftAiVoiceBuddyClient({
         </div>
 
         <p className="text-center text-xs text-[var(--sa-muted)]">
-          Ages 4–7 · your voice stays on your device — only text is sent to help you learn
+          Ages 7–8 · your voice stays on your device — only text is sent to help you learn
         </p>
       </div>
     );
