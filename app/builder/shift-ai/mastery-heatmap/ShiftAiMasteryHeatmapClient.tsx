@@ -5,12 +5,13 @@ import { useTranslations } from 'next-intl';
 import type { HeatmapDay } from '@/lib/shift-ai/analytics-shared';
 import { SA } from '@/lib/shift-ai/theme';
 
+/* Coral scale — streak / activity energy (not Voice Buddy pink/purple) */
 const INTENSITY = [
-  'bg-[var(--sa-navy-100)]',
-  'bg-[var(--sa-navy-200)]',
-  'bg-[var(--sa-navy-400)]',
-  'bg-[var(--sa-navy-600)]',
-  'bg-[var(--sa-navy-800)]',
+  'sa-heat-0',
+  'sa-heat-1',
+  'sa-heat-2',
+  'sa-heat-3',
+  'sa-heat-4',
 ];
 
 function intensityClass(count: number, max: number): string {
@@ -77,7 +78,7 @@ export default function ShiftAiMasteryHeatmapClient({
           { label: t('weeksShown'), value: weeks.length },
         ].map((stat) => (
           <div key={stat.label} className={`${SA.cardPadded} text-center`}>
-            <p className="text-2xl font-extrabold text-[var(--sa-navy-700)]">{stat.value}</p>
+            <p className={`text-2xl font-extrabold ${SA.statAccent}`}>{stat.value}</p>
             <p className={`text-xs ${SA.muted}`}>{stat.label}</p>
           </div>
         ))}

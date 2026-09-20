@@ -231,13 +231,13 @@ export default function ShiftAiArcadeClient({
               {t('questionProgress', { current: currentIndex + 1, total: questions.length })}
             </span>
             {streak >= 2 ? (
-              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
+              <span className={SA.badgeAccent}>
                 🔥 {t('streak', { count: streak })}
               </span>
             ) : null}
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-lg font-extrabold text-[var(--sa-navy-800)]">
+            <span className={`text-lg font-extrabold ${SA.statAccent}`}>
               {t('points', { score })}
             </span>
             <div className="flex items-center gap-1.5 rounded-full bg-[var(--sa-secondary)] px-3 py-1.5">
@@ -378,7 +378,7 @@ export default function ShiftAiArcadeClient({
   return (
     <div className={SA.contentNarrow}>
       <div className="mb-8 text-center">
-        <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-[var(--sa-navy-800)] shadow-lg">
+        <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-[var(--sa-navy-800)] shadow-lg ring-4 ring-[var(--sa-coral)]/35">
           <Gamepad2 className="h-10 w-10 text-white" />
         </div>
         <h1 className={`text-3xl font-extrabold ${SA.text}`}>{t('title')}</h1>

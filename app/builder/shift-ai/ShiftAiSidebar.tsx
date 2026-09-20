@@ -129,9 +129,9 @@ export default function ShiftAiSidebar({ onNavigate }: { onNavigate?: () => void
 
   return (
     <aside className="sa-sidebar flex h-full w-60 flex-shrink-0 flex-col text-white">
-      <div className="flex-shrink-0 border-b border-white/10 px-4 py-4">
+      <div className="sa-sidebar-brand flex-shrink-0 border-b border-white/10 px-4 py-4">
         <div className="flex items-center gap-2.5">
-          <div className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white/15">
+          <div className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white/15 ring-2 ring-[var(--sa-coral)]/40">
             <Image
               src="/brand/supereduc8/icon.svg"
               alt=""
@@ -153,7 +153,7 @@ export default function ShiftAiSidebar({ onNavigate }: { onNavigate?: () => void
       <nav className="flex-1 space-y-4 overflow-y-auto px-2 py-3">
         {NAV_GROUPS.map((group) => (
           <div key={group.groupKey}>
-            <p className="mb-1 px-3 text-[10px] font-bold uppercase tracking-widest text-white/30 rtl:normal-case rtl:tracking-normal">
+            <p className="sa-sidebar-group-label mb-1 px-3 text-[10px] font-bold uppercase tracking-widest text-white/30 rtl:normal-case rtl:tracking-normal">
               {t(`groups.${group.groupKey}`)}
             </p>
             <div className="space-y-0.5">
@@ -172,7 +172,7 @@ export default function ShiftAiSidebar({ onNavigate }: { onNavigate?: () => void
                     <span className="w-5 text-center text-base leading-none">{item.emoji}</span>
                     <span className="truncate">{t(`items.${item.itemKey}`)}</span>
                     {active ? (
-                      <ChevronRight className="ms-auto h-3.5 w-3.5 flex-shrink-0 opacity-60 rtl:-scale-x-100" />
+                      <ChevronRight className="sa-sidebar-chevron ms-auto h-3.5 w-3.5 flex-shrink-0 rtl:-scale-x-100" />
                     ) : null}
                   </Link>
                 );

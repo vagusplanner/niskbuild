@@ -3,18 +3,20 @@
 /* SuperEduc8 design system — scoped under .shift-ai-app (internal class name retained) */
 
 .shift-ai-app {
-  /* Primary blue gradient: #2B7DE8 → #1253A8 */
+  /* Structural blue: nav chrome, surfaces, secondary actions */
   --sa-primary: #2b7de8;
   --sa-primary-fg: #ffffff;
   --sa-primary-hover: #1253a8;
   --sa-primary-deep: #1253a8;
   --sa-wordmark: #0f458f;
 
-  /* Coral accent (badges / achievements / CTAs) */
+  /* Coral accent — CTAs, active states, progress, achievement energy */
   --sa-coral: #ff824d;
   --sa-coral-hover: #e05a25;
   --sa-coral-fg: #ffffff;
   --sa-coral-soft: #fff1ea;
+  --sa-coral-mid: #ff9a6e;
+  --sa-coral-deep: #c94a1a;
 
   --sa-bg: hsl(214, 55%, 97%);
   --sa-fg: hsl(214, 55%, 10%);
@@ -38,9 +40,12 @@
   /* Page chrome for parent/mentor standalone shells */
   --sa-page-gradient: linear-gradient(180deg, #eef4fc 0%, #f7fafc 42%, #ffffff 100%);
   --sa-chart-primary: #2b7de8;
+  --sa-chart-accent: #ff824d;
 
   --sa-radius: 0.75rem;
+  /* Blue = brand structure; coral = primary action energy */
   --sa-gradient-primary: linear-gradient(135deg, #2b7de8 0%, #1253a8 100%);
+  --sa-gradient-coral: linear-gradient(135deg, #ff9a6e 0%, #ff824d 48%, #e05a25 100%);
 
   font-family: 'Inter', system-ui, sans-serif;
   background: var(--sa-bg);
@@ -66,10 +71,44 @@
 .sa-sidebar {
   background: var(--sa-sidebar);
   color: #fff;
+  border-inline-end: 3px solid var(--sa-coral);
+}
+
+.sa-sidebar-brand {
+  position: relative;
+}
+
+.sa-sidebar-brand::after {
+  content: '';
+  position: absolute;
+  inset-inline: 1rem;
+  bottom: 0;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--sa-coral) 35%,
+    var(--sa-coral-mid) 65%,
+    transparent 100%
+  );
+  opacity: 0.85;
+}
+
+.sa-sidebar-group-label::before {
+  content: '';
+  display: inline-block;
+  width: 0.35rem;
+  height: 0.35rem;
+  margin-inline-end: 0.4rem;
+  border-radius: 999px;
+  background: var(--sa-coral);
+  vertical-align: middle;
+  opacity: 0.7;
 }
 
 .sa-sidebar-item {
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
   color: rgba(255, 255, 255, 0.65);
 }
 
@@ -79,8 +118,18 @@
 }
 
 .sa-sidebar-item-active {
-  background: rgba(255, 255, 255, 0.15);
+  background: color-mix(in srgb, var(--sa-coral) 22%, rgba(255, 255, 255, 0.08));
   color: #fff;
+  box-shadow: inset 3px 0 0 0 var(--sa-coral);
+}
+
+.shift-ai-app[dir='rtl'] .sa-sidebar-item-active {
+  box-shadow: inset -3px 0 0 0 var(--sa-coral);
+}
+
+.sa-sidebar-item-active .sa-sidebar-chevron {
+  color: var(--sa-coral-mid);
+  opacity: 1;
 }
 
 /* Typography & surfaces */
@@ -105,6 +154,7 @@
 .sa-tip {
   background: var(--sa-navy-50);
   border: 1px solid var(--sa-navy-100);
+  border-inline-start: 3px solid var(--sa-coral);
   color: var(--sa-fg);
 }
 
@@ -138,18 +188,20 @@
 .sa-select:focus,
 .sa-textarea:focus {
   outline: none;
-  border-color: var(--sa-primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sa-primary) 22%, transparent);
+  border-color: var(--sa-coral);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sa-coral) 22%, transparent);
 }
 
+/* Primary CTA = coral (achievement energy). Blue reserved for brand/structure. */
 .sa-btn-primary {
-  background: var(--sa-gradient-primary);
-  color: #fff;
+  background: var(--sa-gradient-coral);
+  color: var(--sa-coral-fg);
   font-weight: 600;
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--sa-coral-deep) 25%, transparent);
 }
 
 .sa-btn-primary:hover:not(:disabled) {
-  background: var(--sa-primary-hover);
+  background: var(--sa-coral-hover);
 }
 
 .sa-btn-primary:disabled {
@@ -166,6 +218,17 @@
   background: var(--sa-coral-hover);
 }
 
+/* Structural / brand-blue action when coral primary isn't appropriate */
+.sa-btn-brand {
+  background: var(--sa-gradient-primary);
+  color: #fff;
+  font-weight: 600;
+}
+
+.sa-btn-brand:hover:not(:disabled) {
+  background: var(--sa-primary-hover);
+}
+
 .sa-btn-secondary {
   background: var(--sa-card);
   border: 1px solid var(--sa-border);
@@ -173,7 +236,8 @@
 }
 
 .sa-btn-secondary:hover:not(:disabled) {
-  border-color: var(--sa-navy-400);
+  border-color: color-mix(in srgb, var(--sa-coral) 45%, var(--sa-border));
+  color: var(--sa-coral-hover);
 }
 
 /* Tabs */
@@ -187,9 +251,58 @@
 }
 
 .sa-tab-active {
-  color: var(--sa-wordmark);
-  border-bottom: 2px solid var(--sa-primary);
+  color: var(--sa-coral-hover);
+  border-bottom: 2px solid var(--sa-coral);
   font-weight: 600;
+}
+
+/* Progress / achievement fills */
+.sa-progress-track {
+  background: var(--sa-secondary);
+  overflow: hidden;
+  border-radius: 999px;
+}
+
+.sa-progress-fill {
+  background: var(--sa-gradient-coral);
+  height: 100%;
+  border-radius: 999px;
+}
+
+.sa-stat-accent {
+  color: var(--sa-coral-hover);
+}
+
+.sa-pill-active {
+  background: var(--sa-coral);
+  color: var(--sa-coral-fg);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--sa-coral-deep) 30%, transparent);
+}
+
+.sa-dot-new {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--sa-coral);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sa-coral) 28%, transparent);
+}
+
+/* Study-streak heatmap intensity (coral achievement scale) */
+.sa-heat-0 {
+  background: var(--sa-coral-soft);
+}
+.sa-heat-1 {
+  background: color-mix(in srgb, var(--sa-coral) 35%, white);
+}
+.sa-heat-2 {
+  background: color-mix(in srgb, var(--sa-coral) 55%, white);
+}
+.sa-heat-3 {
+  background: var(--sa-coral);
+}
+.sa-heat-4 {
+  background: var(--sa-coral-hover);
 }
 
 /* Chat bubbles */
@@ -237,8 +350,8 @@
 }
 
 .sa-auth-choice:hover {
-  border-color: var(--sa-primary);
-  box-shadow: 0 4px 14px rgba(43, 125, 232, 0.12);
+  border-color: var(--sa-coral);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--sa-coral) 18%, transparent);
 }
 
 .sa-link {
@@ -246,8 +359,13 @@
 }
 
 .sa-link:hover {
-  color: var(--sa-wordmark);
+  color: var(--sa-coral-hover);
   text-decoration: underline;
+}
+
+.sa-mobile-topbar {
+  border-bottom: 1px solid var(--sa-border);
+  box-shadow: inset 0 -2px 0 0 color-mix(in srgb, var(--sa-coral) 55%, transparent);
 }
 
 .sa-error {

@@ -146,13 +146,13 @@ export default function ShiftAiMasteryClient({
             <h2 className={`flex items-center gap-2 font-bold ${SA.text}`}>
               <TrendingUp className="h-4 w-4" /> {t('overallProgress')}
             </h2>
-            <span className={`text-2xl font-extrabold ${SA.text}`}>
+            <span className={`text-2xl font-extrabold ${SA.statAccent}`}>
               {overallProgress.masteredPercent}%
             </span>
           </div>
-          <div className="mb-4 h-3 overflow-hidden rounded-full bg-[var(--sa-secondary)]">
+          <div className="sa-progress-track mb-4 h-3">
             <div
-              className="h-full rounded-full bg-[var(--sa-navy-800)] transition-all"
+              className="sa-progress-fill transition-all"
               style={{ width: `${overallProgress.masteredPercent}%` }}
             />
           </div>
@@ -215,13 +215,13 @@ export default function ShiftAiMasteryClient({
                     total: selectedGroup.topics.length,
                   })}
                 </p>
-                <p className={`text-sm font-bold text-[var(--sa-navy-800)]`}>
+                <p className={`text-sm font-bold ${SA.statAccent}`}>
                   {selectedGroup.masteredPercent}%
                 </p>
               </div>
-              <div className="mb-4 h-2.5 overflow-hidden rounded-full bg-[var(--sa-secondary)]">
+              <div className="sa-progress-track mb-4 h-2.5">
                 <div
-                  className="h-full rounded-full bg-emerald-500 transition-all"
+                  className="sa-progress-fill transition-all"
                   style={{ width: `${selectedGroup.masteredPercent}%` }}
                 />
               </div>
@@ -301,13 +301,13 @@ export default function ShiftAiMasteryClient({
               >
                 <div className="mb-2 flex items-center justify-between">
                   <p className={`font-bold ${SA.text}`}>{group.subject}</p>
-                  <span className={`text-sm font-bold text-[var(--sa-navy-800)]`}>
+                  <span className={`text-sm font-bold ${SA.statAccent}`}>
                     {group.masteredPercent}%
                   </span>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-[var(--sa-secondary)]">
+                <div className="sa-progress-track h-2">
                   <div
-                    className="h-full rounded-full bg-emerald-500"
+                    className="sa-progress-fill"
                     style={{ width: `${group.masteredPercent}%` }}
                   />
                 </div>

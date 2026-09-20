@@ -77,7 +77,7 @@ export default function ShiftAiParentDashboardClient({ snapshot }: { snapshot: O
               onClick={() => setTab(item.id)}
               className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium capitalize transition-all ${
                 tab === item.id
-                  ? 'bg-[var(--sa-primary)] text-white shadow-sm'
+                  ? 'sa-pill-active'
                   : 'text-[var(--sa-muted)] hover:text-[var(--sa-navy-800)]'
               }`}
             >
@@ -147,9 +147,9 @@ export default function ShiftAiParentDashboardClient({ snapshot }: { snapshot: O
                         })}
                       </span>
                     </div>
-                    <div className="h-2.5 overflow-hidden rounded-full bg-neutral-100">
+                    <div className="sa-progress-track h-2.5">
                       <div
-                        className="h-full rounded-full bg-[var(--sa-navy-700)]"
+                        className="sa-progress-fill"
                         style={{ width: `${group.masteredPercent}%` }}
                       />
                     </div>

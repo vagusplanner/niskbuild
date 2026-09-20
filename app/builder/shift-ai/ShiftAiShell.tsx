@@ -49,7 +49,7 @@ export default function ShiftAiShell({
       ) : null}
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <div className="flex flex-shrink-0 items-center justify-between border-b border-[var(--sa-border)] bg-white px-4 py-3 md:hidden">
+        <div className="sa-mobile-topbar flex flex-shrink-0 items-center justify-between bg-white px-4 py-3 md:hidden">
           <div className="flex items-center gap-3">
             <button
               type="button"

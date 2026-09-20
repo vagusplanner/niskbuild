@@ -200,7 +200,7 @@ export default function ShiftAiAnalyticsClient({
           { label: t('statChat'), value: snapshot.totals.chatMessages },
         ].map((stat) => (
           <div key={stat.label} className={`${SA.cardPadded} text-center`}>
-            <p className="text-2xl font-extrabold text-[var(--sa-navy-700)]">{stat.value}</p>
+            <p className={`text-2xl font-extrabold ${SA.statAccent}`}>{stat.value}</p>
             <p className={`text-xs ${SA.muted}`}>{stat.label}</p>
           </div>
         ))}
@@ -215,7 +215,7 @@ export default function ShiftAiAnalyticsClient({
               <XAxis dataKey="name" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
               <Tooltip />
-              <Bar dataKey="activity" fill="#2b7de8" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="activity" fill="var(--sa-chart-accent)" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

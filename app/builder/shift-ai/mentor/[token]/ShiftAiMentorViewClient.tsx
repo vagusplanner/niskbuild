@@ -107,7 +107,7 @@ export default function ShiftAiMentorViewClient({
               onClick={() => setTab(item)}
               className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium capitalize transition-all ${
                 tab === item
-                  ? 'bg-[var(--sa-primary)] text-white shadow-sm'
+                  ? 'sa-pill-active'
                   : 'text-[var(--sa-muted)] hover:text-[var(--sa-navy-800)]'
               }`}
             >
