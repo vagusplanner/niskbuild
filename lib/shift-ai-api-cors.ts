@@ -29,12 +29,17 @@ export function isAllowedShiftAiApiOrigin(origin: string): boolean {
   if (host.endsWith('.vercel.app')) return true;
 
   if (host === 'niskbuild.com' || host.endsWith('.niskbuild.com')) return true;
-  // Placeholder production SPA host (set when Shift AI ships its own domain)
+  // SuperEduc8 primary product host (same Vercel deployment as NiskBuild)
+  if (host === 'supereduc8.com' || host.endsWith('.supereduc8.com')) {
+    return true;
+  }
+  // Legacy placeholders (kept until DNS fully retired)
   if (host === 'shift.niskbuild.com' || host === 'shiftai.app' || host.endsWith('.shiftai.app')) {
     return true;
   }
 
   for (const envKey of [
+    'NEXT_PUBLIC_SUPEREDUC8_URL',
     'NEXT_PUBLIC_SHIFT_AI_URL',
     'NEXT_PUBLIC_APP_URL',
   ] as const) {

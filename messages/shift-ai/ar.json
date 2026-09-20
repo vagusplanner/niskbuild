@@ -1,6 +1,6 @@
 {
   "brand": {
-    "name": "Shift Learning",
+    "name": "SuperEduc8",
     "tagline": "قوِّ دراستك"
   },
   "sidebar": {
@@ -40,7 +40,7 @@
     "closeMenuOverlay": "إغلاق طبقة القائمة"
   },
   "dashboard": {
-    "metaTitle": "لوحة التحكم · Shift AI",
+    "metaTitle": "لوحة التحكم · SuperEduc8",
     "greetingMorning": "صباح الخير يا {name}! 👋",
     "greetingAfternoon": "طاب مساؤك يا {name}! 👋",
     "greetingEvening": "مساء الخير يا {name}! 👋",
@@ -75,7 +75,7 @@
     "noSubjects": "أضف المواد المفضّلة أثناء الإعداد لتظهر هنا."
   },
   "planner": {
-    "metaTitle": "المخطّط · Shift AI",
+    "metaTitle": "المخطّط · SuperEduc8",
     "title": "المخطّط",
     "subtitle": "حصص وواجبات واختبارات ومراجعة",
     "add": "إضافة",
@@ -105,7 +105,7 @@
     }
   },
   "settings": {
-    "metaTitle": "الإعدادات · Shift AI",
+    "metaTitle": "الإعدادات · SuperEduc8",
     "title": "الإعدادات",
     "saved": "تم حفظ الإعدادات.",
     "curriculumYear": "المنهج والسنة الدراسية",
@@ -150,7 +150,7 @@
     }
   },
   "tutor": {
-    "metaTitle": "المعلّم المساعد · Shift AI",
+    "metaTitle": "المعلّم المساعد · SuperEduc8",
     "title": "المعلّم المساعد",
     "subtitle": "معلّمك الذكي الشخصي لكل المواد",
     "subjectLabel": "سياق المادة (اختياري)",
@@ -161,7 +161,7 @@
     "sendError": "تعذّر إرسال الرسالة"
   },
   "flashcards": {
-    "metaTitle": "البطاقات الذكية · Shift AI",
+    "metaTitle": "البطاقات الذكية · SuperEduc8",
     "title": "البطاقات الذكية",
     "subtitleLocked": "أطقم ومراجعات لمادة {subject} · {count} بطاقات في كل توليد · تكرار متباعد SM-2",
     "subtitle": "أنشئ أطقمًا من أي موضوع أو ملاحظات · {count} بطاقات في كل توليد · تكرار متباعد SM-2",
@@ -242,7 +242,7 @@
     "subjectNotes": "ملاحظات المادة"
   },
   "homework": {
-    "metaTitle": "صوّر الواجب · Shift AI",
+    "metaTitle": "صوّر الواجب · SuperEduc8",
     "title": "صوّر الواجب",
     "subtitle": "صوّر أي مسألة أو ورقة واجب — يرشدك الذكاء الاصطناعي في التفكير خطوة بخطوة، بما يناسب {yearGroup}.",
     "subject": "المادة",
@@ -271,7 +271,7 @@
     }
   },
   "curriculumPacks": {
-    "metaTitle": "حزم المنهج · Shift AI",
+    "metaTitle": "حزم المنهج · SuperEduc8",
     "title": "حزم المنهج",
     "subtitle": "حزم مراجعة متوافقة مع الامتحان لـ {yearGroup} ({curriculum}).",
     "secondarySchool": "المرحلة الثانوية",
@@ -304,7 +304,7 @@
   "voiceBuddy": {},
   "voiceTutor": {},
   "essayMarker": {
-    "metaTitle": "مصحّح المقال · Shift AI",
+    "metaTitle": "مصحّح المقال · SuperEduc8",
     "title": "مصحّح المقال",
     "subtitle": "احصل على ملاحظات بأسلوب المصحّح على مقالك — مكتوباً أو مصوّراً — بما يتوافق مع منهج {curriculum} ({yearGroup}).",
     "subject": "المادة",
@@ -362,7 +362,7 @@
     }
   },
   "essayWorkshop": {
-    "metaTitle": "ورشة المقال · Shift AI",
+    "metaTitle": "ورشة المقال · SuperEduc8",
     "title": "ورشة المقال",
     "subtitle": "خطّط واكتب ونقّح مقالك بتوجيه مشجّع أثناء العمل — منهج {curriculum}.",
     "steps": {
@@ -413,7 +413,7 @@
     }
   },
   "contentGenerator": {
-    "metaTitle": "مولّد المحتوى · Shift AI",
+    "metaTitle": "مولّد المحتوى · SuperEduc8",
     "title": "مولّد المحتوى",
     "subtitle": "أنشئ ملخصات مراجعة أو أسئلة تدريبية أو ملاحظات لأي موضوع — بما يناسب {yearGroup} ({curriculum}).",
     "subtitlePractice": "أسئلة تدريبية بأسلوب الامتحان بالذكاء الاصطناعي — وليست بنكاً لأوراق سابقة.",
@@ -460,7 +460,7 @@
     }
   },
   "mastery": {
-    "metaTitle": "خريطة الإتقان · Shift AI",
+    "metaTitle": "خريطة الإتقان · SuperEduc8",
     "title": "خريطة الإتقان",
     "subtitle": "تتبّع تقدّمك في كل موضوع — مرمّز بالألوان حسب مستوى الإتقان",
     "overallProgress": "التقدّم الإجمالي",
@@ -489,7 +489,7 @@
     }
   },
   "specTracker": {
-    "metaTitle": "متتبع المنهج · Shift AI",
+    "metaTitle": "متتبع المنهج · SuperEduc8",
     "title": "متتبع المنهج",
     "subtitle": "تتبّع نقاط مواصفات المنهج — علّم كل نقطة كمغطاة أو تحتاج مراجعة.",
     "subject": "المادة",
@@ -513,7 +513,7 @@
     }
   },
   "analytics": {
-    "metaTitle": "التحليلات · Shift AI",
+    "metaTitle": "التحليلات · SuperEduc8",
     "title": "التحليلات",
     "subtitle": "نشاط دراسي حقيقي من المخطط والاختبارات والبطاقات وتحديثات الإتقان.",
     "filters": "عوامل التصفية",
@@ -547,7 +547,7 @@
     "legendCreated": "أُنشئ",
     "noPlannerActivity": "لا نشاط في المخطط خلال هذه الفترة.",
     "heatmap": {
-      "metaTitle": "سلسلة الدراسة · Shift AI",
+      "metaTitle": "سلسلة الدراسة · SuperEduc8",
       "title": "سلسلة الدراسة",
       "subtitle": "تقويم النشاط — إكمال المخطط ولعب الأركيد ومراجعات البطاقات ومحادثة المعلّم.",
       "totalActivities": "إجمالي الأنشطة",
@@ -560,7 +560,7 @@
     }
   },
   "gradePredictor": {
-    "metaTitle": "متنبئ الدرجات · Shift AI",
+    "metaTitle": "متنبئ الدرجات · SuperEduc8",
     "title": "متنبئ الدرجات",
     "subtitle": "درجات متوقعة بناءً على بيانات دراستك الحقيقية — الإتقان والاختبارات والبطاقات والمخطط.",
     "honesty": "تعتمد التوقعات على إشارات حقيقية من حسابك. لا تقييم مخفي — كل رقم أدناه يأتي من خريطة الإتقان وأركيد الاختبارات والبطاقات والمخطط.",
@@ -587,8 +587,8 @@
     }
   },
   "groups": {
-    "metaTitle": "مجموعات الدراسة · Shift AI",
-    "detailMetaTitle": "مجموعة دراسة · Shift AI",
+    "metaTitle": "مجموعات الدراسة · SuperEduc8",
+    "detailMetaTitle": "مجموعة دراسة · SuperEduc8",
     "title": "مجموعات الدراسة",
     "subtitle": "تعاون مع زملائك — شارك الملاحظات والبطاقات ونتائج الأركيد.",
     "tabMy": "مجموعاتي",
@@ -633,7 +633,7 @@
     "gamesPlayed": "{count, plural, one {لعبة واحدة} two {لعبتان} few {# ألعاب} many {# لعبة} other {# لعبة}}"
   },
   "arcade": {
-    "metaTitle": "أركيد الاختبارات · Shift AI",
+    "metaTitle": "أركيد الاختبارات · SuperEduc8",
     "title": "أركيد الاختبارات ⚡",
     "subtitleLocked": "اختبار ذكاء اصطناعي خاطف لمدة 60 ثانية في {subject} — اجمع مكافآت السلسلة وتفوّق على أفضل نتيجتك",
     "subtitle": "اختبار ذكاء اصطناعي خاطف لمدة 60 ثانية — اجمع مكافآت السلسلة وتفوّق على أفضل نتيجتك",
@@ -677,9 +677,9 @@
     }
   },
   "studio": {
-    "metaTitle": "استوديو Shift AI · NiskBuild",
-    "title": "استوديو Shift AI",
-    "description": "مركز مالك المنصة لـ Shift AI — التطبيق الحي والمحتوى والتحليلات وأدوات المعلّم",
+    "metaTitle": "استوديو SuperEduc8 · NiskBuild",
+    "title": "استوديو SuperEduc8",
+    "description": "مركز مالك المنصة لـ SuperEduc8 — التطبيق الحي والمحتوى والتحليلات وأدوات المعلّم",
     "statSurfaces": "الأسطح",
     "statPhase": "المرحلة",
     "statPhaseHint": "هيكل تنقّل فقط — لا تحرير بالذكاء الاصطناعي بعد",
@@ -690,10 +690,10 @@
     "statCodeHint": "تغييرات الواجهة تُنشر مع نشر NiskBuild الرئيسي",
     "allApps": "كل التطبيقات",
     "quickAccess": "وصول سريع",
-    "quickAccessHint": "نقاط دخول موحّدة لأسطح إدارة ومنتج Shift AI.",
+    "quickAccessHint": "نقاط دخول موحّدة لأسطح إدارة ومنتج SuperEduc8.",
     "open": "فتح",
     "liveTitle": "افتح التطبيق الحي",
-    "liveDesc": "منتج Shift AI للطلاب — لوحة التحكم والدروس والواجبات والبطاقات والمزيد.",
+    "liveDesc": "منتج SuperEduc8 للطلاب — لوحة التحكم والدروس والواجبات والبطاقات والمزيد.",
     "packsTitle": "حزم المنهج",
     "packsDesc": "أنشئ وعدّل وانشر محتوى المنهج لمجموعات السنوات في المملكة المتحدة وفرنسا والولايات المتحدة والسعودية.",
     "analyticsTitle": "التحليلات",
@@ -703,7 +703,7 @@
     "phase2Note": "المرحلة 2 ستضيف تحرير واجهة بمساعدة الذكاء الاصطناعي. تغييرات المحتوى تُنشر عبر حزم المنهج دون إعادة نشر الشفرة."
   },
   "onboarding": {
-    "metaTitle": "الإعداد · Shift AI",
+    "metaTitle": "الإعداد · SuperEduc8",
     "chooseSubjects": "اختر موادك",
     "setupProfile": "أعدّ ملفك",
     "completeSubtitle": "اختر حتى ثلاث مواد مفضّلة لنخصّص المعلّمين ولوحة التحكم.",
@@ -714,7 +714,7 @@
     "subject2Optional": "المادة المفضّلة 2 (اختياري)",
     "subject3Optional": "المادة المفضّلة 3 (اختياري)",
     "saving": "جارٍ الحفظ…",
-    "continue": "المتابعة إلى Shift AI",
+    "continue": "المتابعة إلى SuperEduc8",
     "saveFailed": "تعذّر حفظ ملفك",
     "genericError": "حدث خطأ ما",
     "ageRanges": {
@@ -728,8 +728,8 @@
     }
   },
   "auth": {
-    "metaTitle": "إنشاء حساب · Shift AI",
-    "brand": "Shift Learning",
+    "metaTitle": "إنشاء حساب · SuperEduc8",
+    "brand": "SuperEduc8",
     "title": "ابدأ التعلم بذكاء",
     "subtitle": "دعم دراسي بالذكاء الاصطناعي للأعمار 7–17. اختر كيف تريد أن تبدأ.",
     "selfTitle": "عمري 13 عاماً أو أكثر — أنشئ حسابي بنفسي",
@@ -739,7 +739,7 @@
     "familyTitle": "أُعدّ لطفل صغير بعمر 4–7 سنوات",
     "familyHint": "وضع العائلة / رفيق الصوت — ولي الأمر يدير كل شيء.",
     "back": "العودة إلى أنواع الحساب",
-    "createHeading": "أنشئ حساب Shift AI",
+    "createHeading": "أنشئ حساب SuperEduc8",
     "email": "بريدك الإلكتروني",
     "password": "كلمة المرور (6 أحرف على الأقل)",
     "yourName": "اسمك",
@@ -758,12 +758,12 @@
     "sendingConsent": "جارٍ إرسال بريد الموافقة…",
     "sendConsent": "إرسال طلب الموافقة لولي الأمر",
     "consentEmailed": "أرسلنا لولي الأمر رابط موافقة. يبقى الحساب غير نشط حتى يوافق.",
-    "createProfileFailed": "تعذّر إنشاء ملف Shift AI",
+    "createProfileFailed": "تعذّر إنشاء ملف SuperEduc8",
     "supervisedFailed": "تعذّر بدء التسجيل بإشراف",
     "signupFailed": "فشل إنشاء الحساب"
   },
   "subject": {
-    "metaTitle": "المادة · Shift AI",
+    "metaTitle": "المادة · SuperEduc8",
     "tabNotes": "الملاحظات",
     "tabAi": "المعلّم الذكي",
     "tabVideos": "الفيديوهات",
@@ -787,26 +787,26 @@
     "sendError": "تعذّر إرسال الرسالة"
   },
   "parentConsent": {
-    "metaTitle": "موافقة ولي الأمر · Shift AI",
-    "invalidMetaTitle": "رابط الموافقة غير صالح · Shift AI",
+    "metaTitle": "موافقة ولي الأمر · SuperEduc8",
+    "invalidMetaTitle": "رابط الموافقة غير صالح · SuperEduc8",
     "invalid": "رابط الموافقة هذا غير صالح أو سبق استخدامه",
     "legalReviewBanner": "[TRANSLATION NEEDS LEGAL REVIEW] صياغة موافقة ولي الأمر هذه مسودة مؤقتة دقيقة تقنياً. النص العربي ترجمة مقترحة فقط ويجب أن يؤكدها مستشار قانوني قبل اعتبارها سجلاً موافقة نافذاً.",
-    "kicker": "Shift AI",
+    "kicker": "SuperEduc8",
     "title": "موافقة ولي الأمر",
-    "introWithYear": "[TRANSLATION NEEDS LEGAL REVIEW] يرغب {name} ({year}) في استخدام Shift AI — رفيق دراسي بالذكاء الاصطناعي يتكيّف مع مناهج المدارس في المملكة المتحدة وفرنسا والولايات المتحدة والسعودية.",
-    "introWithoutYear": "[TRANSLATION NEEDS LEGAL REVIEW] يرغب {name} في استخدام Shift AI — رفيق دراسي بالذكاء الاصطناعي يتكيّف مع مناهج المدارس في المملكة المتحدة وفرنسا والولايات المتحدة والسعودية.",
-    "privacyBody": "[TRANSLATION NEEDS LEGAL REVIEW] يساعد Shift AI في الواجبات والمراجعة والتحضير للامتحانات. نجمع فئة عمرية تقريبية وتقدّم الدراسة لتخصيص التعلّم — وليس موقعاً دقيقاً، ولا نخزّن نصوص المحادثات الخام (نفس نهج الخصوصية المستخدم في تحليلات NiskBuild).",
+    "introWithYear": "[TRANSLATION NEEDS LEGAL REVIEW] يرغب {name} ({year}) في استخدام SuperEduc8 — رفيق دراسي بالذكاء الاصطناعي يتكيّف مع مناهج المدارس في المملكة المتحدة وفرنسا والولايات المتحدة والسعودية.",
+    "introWithoutYear": "[TRANSLATION NEEDS LEGAL REVIEW] يرغب {name} في استخدام SuperEduc8 — رفيق دراسي بالذكاء الاصطناعي يتكيّف مع مناهج المدارس في المملكة المتحدة وفرنسا والولايات المتحدة والسعودية.",
+    "privacyBody": "[TRANSLATION NEEDS LEGAL REVIEW] يساعد SuperEduc8 في الواجبات والمراجعة والتحضير للامتحانات. نجمع فئة عمرية تقريبية وتقدّم الدراسة لتخصيص التعلّم — وليس موقعاً دقيقاً، ولا نخزّن نصوص المحادثات الخام (نفس نهج الخصوصية المستخدم في تحليلات NiskBuild).",
     "approve": "أوافق — فعّل حساب طفلي",
     "decline": "رفض",
     "alreadyAccount": "لديك حساب بالفعل؟",
-    "signupLink": "التسجيل في Shift AI",
+    "signupLink": "التسجيل في SuperEduc8",
     "approved": "شكراً — حساب طفلك أصبح نشطاً الآن.",
     "approvedHint": "أرسلنا إليك تفاصيل الدخول ورابط لوحة ولي الأمر.",
     "declined": "رُفضت الموافقة. لم يُنشأ أي حساب.",
     "activateError": "تعذّر تفعيل الحساب. يُرجى المحاولة مرة أخرى أو التواصل مع الدعم."
   },
   "teacher": {
-    "metaTitle": "Shift AI · المعلّم",
+    "metaTitle": "SuperEduc8 · المعلّم",
     "title": "لوحة المعلّم",
     "subtitle": "نظرة عامة على نشاط الطلاب في مدرستك",
     "lockedTitle": "لوحة المعلّم",
@@ -830,7 +830,7 @@
     "emDash": "—"
   },
   "parentView": {
-    "metaTitle": "Shift AI · عرض ولي الأمر",
+    "metaTitle": "SuperEduc8 · عرض ولي الأمر",
     "kicker": "لوحة ولي الأمر",
     "progressTitle": "تقدّم {name}",
     "linkNotFound": "الرابط غير موجود",
@@ -860,10 +860,10 @@
     "reviewsLine": "🔄 {count} مراجعة بطاقة في آخر 7 أيام",
     "sessionsLine": "🎮 {count} جلسة أركيد أخيرة",
     "bestArcadeLine": "🏆 أفضل نتيجة أركيد: {score}",
-    "footer": "Shift Learning · عرض ولي أمر آمن · رسائل المحادثة لا تُشارك أبداً"
+    "footer": "SuperEduc8 · عرض ولي أمر آمن · رسائل المحادثة لا تُشارك أبداً"
   },
   "mentorView": {
-    "metaTitle": "Shift AI · عرض المرشد",
+    "metaTitle": "SuperEduc8 · عرض المرشد",
     "kicker": "لوحة المرشد",
     "progressTitle": "تقدّم {name}",
     "linkNotFound": "الرابط غير موجود",
@@ -884,7 +884,7 @@
     "assign": "تعيين التحدي",
     "assignFailed": "تعذّر تعيين التحدي",
     "noChallenges": "لا تحديات معيّنة بعد.",
-    "footer": "Shift Learning · عرض مرشد آمن",
+    "footer": "SuperEduc8 · عرض مرشد آمن",
     "status": {
       "active": "نشط",
       "completed": "مكتمل"

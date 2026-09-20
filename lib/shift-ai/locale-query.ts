@@ -30,18 +30,22 @@ export function withLangQuery(path: string, lang: string | null | undefined): st
   return `${url.pathname}${url.search}`;
 }
 
-/** Consent email links only add `lang` when Arabic so English stays the default URL. */
+/**
+ * Public SuperEduc8 paths for email / absolute links.
+ * On supereduc8.com these rewrite to /builder/shift-ai/* (internal routes unchanged).
+ * Consent email links only add `lang` when Arabic so English stays the default URL.
+ */
 export function parentalConsentPath(token: string, lang: ShiftStudyLanguage): string {
-  const path = `/builder/shift-ai/parent/consent/${encodeURIComponent(token)}`;
+  const path = `/parent/consent/${encodeURIComponent(token)}`;
   return lang === 'ar' ? `${path}?lang=ar` : path;
 }
 
 export function parentDashboardPath(token: string, lang: ShiftStudyLanguage): string {
-  const path = `/builder/shift-ai/parent/${encodeURIComponent(token)}`;
+  const path = `/parent/${encodeURIComponent(token)}`;
   return lang === 'ar' ? `${path}?lang=ar` : path;
 }
 
 export function mentorDashboardPath(token: string, lang: ShiftStudyLanguage): string {
-  const path = `/builder/shift-ai/mentor/${encodeURIComponent(token)}`;
+  const path = `/mentor/${encodeURIComponent(token)}`;
   return lang === 'ar' ? `${path}?lang=ar` : path;
 }

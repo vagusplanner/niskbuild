@@ -8,10 +8,19 @@ import './shift-ai.css';
 
 export const metadata: Metadata = {
   title: {
-    default: 'Shift Learning',
-    template: '%s · Shift Learning',
+    default: 'SuperEduc8',
+    template: '%s · SuperEduc8',
   },
+  description: 'SuperEduc8 — AI study companion for students.',
   robots: 'noindex',
+  icons: {
+    icon: [
+      { url: '/brand/supereduc8/favicon.ico', sizes: 'any' },
+      { url: '/brand/supereduc8/icon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/brand/supereduc8/icon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: [{ url: '/brand/supereduc8/apple-touch-icon.png', sizes: '180x180' }],
+  },
 };
 
 const notoSansArabic = Noto_Sans_Arabic({

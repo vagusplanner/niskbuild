@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 764 200" width="764" height="200">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2B7DE8"/>
+      <stop offset="100%" stop-color="#1253A8"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="200" height="200" rx="45.0" ry="45.0" fill="url(#bg)"/>
+  <circle cx="100.0" cy="77.5" r="30.0" fill="none" stroke="#FFFFFF" stroke-width="14.4"/>
+  <circle cx="100.0" cy="138.0" r="40.0" fill="none" stroke="#FFFFFF" stroke-width="14.4"/>
+  <polygon points="152.6,59.3 142.7,58.6 136.7,66.6 137.4,56.7 129.4,50.7 139.3,51.4 145.3,43.4 144.6,53.3" fill="#FF824D"/>
+  <polygon points="163.2,80.1 159.8,77.8 155.9,79.2 158.2,75.8 156.8,71.9 160.2,74.2 164.1,72.8 161.8,76.2" fill="#FF824D"/>
+  <text x="226" y="130.8" font-family="Arial, Helvetica, sans-serif" font-weight="bold" font-size="88">
+    <tspan fill="#E05A25">Super</tspan><tspan fill="#0F458F">Educ8</tspan>
+  </text>
+</svg>

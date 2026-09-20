@@ -33,7 +33,7 @@ export default async function ShiftAiVoiceBuddyPage() {
 
 export async function generateMetadata() {
   return {
-    title: 'Voice Buddy · Shift AI',
+    title: 'Voice Buddy · SuperEduc8',
     robots: 'noindex',
   };
 }

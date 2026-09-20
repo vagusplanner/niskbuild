@@ -6,6 +6,7 @@ import { shiftAiCatalog } from '@/lib/shift-ai/i18n';
 import { needsSubjectOnboarding } from '@/lib/shift-ai/onboarding';
 import { getRequestStudyLanguage } from '@/lib/shift-ai/study-language';
 import { getSafeSession } from '@/lib/supabaseSession.server';
+import { getSuperEduc8Origin } from '@/lib/supereduc8-host';
 
 export default async function ShiftAiSettingsPage() {
   const session = await getSafeSession();
@@ -32,8 +33,7 @@ export default async function ShiftAiSettingsPage() {
     redirect('/builder/shift-ai/onboarding');
   }
 
-  const appOrigin =
-    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'https://app.niskbuild.com';
+  const appOrigin = getSuperEduc8Origin();
 
   return (
     <ShiftAiSettingsClient profile={profile} initialTokens={tokens} appOrigin={appOrigin} />

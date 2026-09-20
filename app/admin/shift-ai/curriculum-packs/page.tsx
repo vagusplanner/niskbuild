@@ -7,5 +7,5 @@ export default async function AdminCurriculumPacksPage() {
 }
 
 export async function generateMetadata() {
-  return { title: 'Curriculum Packs · Shift AI Admin' };
+  return { title: 'Curriculum Packs · SuperEduc8 Admin' };
 }

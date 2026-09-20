@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -10,7 +11,6 @@ import {
   Camera,
   ChevronRight,
   Gamepad2,
-  GraduationCap,
   Home,
   Layers,
   LogOut,
@@ -25,79 +25,50 @@ import {
   Users,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth';
+import { shiftAiAppPath, shiftAiPublicPathname } from '@/lib/supereduc8-host';
 
 const NAV_GROUPS = [
   {
     groupKey: 'home',
     items: [
-      { href: '/builder/shift-ai/dashboard', icon: Home, itemKey: 'dashboard', emoji: '🏠' },
-      { href: '/builder/shift-ai/planner', icon: CalendarDays, itemKey: 'planner', emoji: '📅' },
-      { href: '/builder/shift-ai/settings', icon: Settings, itemKey: 'settings', emoji: '⚙️' },
+      { subpath: '/dashboard', icon: Home, itemKey: 'dashboard', emoji: '🏠' },
+      { subpath: '/planner', icon: CalendarDays, itemKey: 'planner', emoji: '📅' },
+      { subpath: '/settings', icon: Settings, itemKey: 'settings', emoji: '⚙️' },
     ],
   },
   {
     groupKey: 'study',
     items: [
-      {
-        href: '/builder/shift-ai/assistant',
-        icon: MessageCircle,
-        itemKey: 'tutor',
-        emoji: '🤖',
-      },
-      {
-        href: '/builder/shift-ai/flashcards',
-        icon: Layers,
-        itemKey: 'flashcards',
-        emoji: '🃏',
-      },
+      { subpath: '/assistant', icon: MessageCircle, itemKey: 'tutor', emoji: '🤖' },
+      { subpath: '/flashcards', icon: Layers, itemKey: 'flashcards', emoji: '🃏' },
     ],
   },
   {
     groupKey: 'studyTools',
     items: [
+      { subpath: '/homework', icon: Camera, itemKey: 'homework', emoji: '📸' },
       {
-        href: '/builder/shift-ai/homework',
-        icon: Camera,
-        itemKey: 'homework',
-        emoji: '📸',
-      },
-      {
-        href: '/builder/shift-ai/curriculum-packs',
+        subpath: '/curriculum-packs',
         icon: BookOpen,
         itemKey: 'curriculumPacks',
         emoji: '📚',
       },
-      {
-        href: '/builder/shift-ai/voice-buddy',
-        icon: Mic,
-        itemKey: 'voiceBuddy',
-        emoji: '🐥',
-      },
-      {
-        href: '/builder/shift-ai/voice-tutor',
-        icon: Mic,
-        itemKey: 'voiceTutor',
-        emoji: '🎙️',
-      },
+      { subpath: '/voice-buddy', icon: Mic, itemKey: 'voiceBuddy', emoji: '🐥' },
+      { subpath: '/voice-tutor', icon: Mic, itemKey: 'voiceTutor', emoji: '🎙️' },
     ],
   },
   {
     groupKey: 'writingTools',
     items: [
+      { subpath: '/essay-marker', icon: PenLine, itemKey: 'essayMarker', emoji: '✍️' },
       {
-        href: '/builder/shift-ai/essay-marker',
-        icon: PenLine,
-        itemKey: 'essayMarker',
-        emoji: '✍️',
-      },
-      {
-        href: '/builder/shift-ai/essay-workshop',
+        subpath: '/essay-workshop',
         icon: PenLine,
         itemKey: 'essayWorkshop',
         emoji: '📝',
       },
       {
-        href: '/builder/shift-ai/content-generator',
+        subpath: '/content-generator',
         icon: Sparkles,
         itemKey: 'contentGenerator',
         emoji: '✨',
@@ -107,31 +78,16 @@ const NAV_GROUPS = [
   {
     groupKey: 'track',
     items: [
-      {
-        href: '/builder/shift-ai/mastery',
-        icon: Map,
-        itemKey: 'mastery',
-        emoji: '🗺️',
-      },
-      {
-        href: '/builder/shift-ai/spec-tracker',
-        icon: Target,
-        itemKey: 'specTracker',
-        emoji: '📋',
-      },
+      { subpath: '/mastery', icon: Map, itemKey: 'mastery', emoji: '🗺️' },
+      { subpath: '/spec-tracker', icon: Target, itemKey: 'specTracker', emoji: '📋' },
     ],
   },
   {
     groupKey: 'insights',
     items: [
+      { subpath: '/analytics', icon: BarChart3, itemKey: 'analytics', emoji: '📊' },
       {
-        href: '/builder/shift-ai/analytics',
-        icon: BarChart3,
-        itemKey: 'analytics',
-        emoji: '📊',
-      },
-      {
-        href: '/builder/shift-ai/grade-predictor',
+        subpath: '/grade-predictor',
         icon: TrendingUp,
         itemKey: 'gradePredictor',
         emoji: '🎯',
@@ -140,33 +96,25 @@ const NAV_GROUPS = [
   },
   {
     groupKey: 'collaborate',
-    items: [
-      {
-        href: '/builder/shift-ai/groups',
-        icon: Users,
-        itemKey: 'groups',
-        emoji: '👥',
-      },
-    ],
+    items: [{ subpath: '/groups', icon: Users, itemKey: 'groups', emoji: '👥' }],
   },
   {
     groupKey: 'practise',
-    items: [
-      {
-        href: '/builder/shift-ai/arcade',
-        icon: Gamepad2,
-        itemKey: 'arcade',
-        emoji: '🎮',
-      },
-    ],
+    items: [{ subpath: '/arcade', icon: Gamepad2, itemKey: 'arcade', emoji: '🎮' }],
   },
 ] as const;
 
-function isActive(pathname: string, href: string): boolean {
-  if (href.endsWith('/dashboard')) {
-    return pathname === '/builder/shift-ai' || pathname === href;
+function isActive(pathname: string, href: string, subpath: string): boolean {
+  const publicPath = shiftAiPublicPathname(pathname);
+  if (subpath === '/dashboard') {
+    return publicPath === '/' || publicPath === '/dashboard' || pathname === href;
   }
-  return pathname === href || pathname.startsWith(`${href}/`);
+  return (
+    publicPath === subpath ||
+    publicPath.startsWith(`${subpath}/`) ||
+    pathname === href ||
+    pathname.startsWith(`${href}/`)
+  );
 }
 
 export default function ShiftAiSidebar({ onNavigate }: { onNavigate?: () => void }) {
@@ -176,15 +124,22 @@ export default function ShiftAiSidebar({ onNavigate }: { onNavigate?: () => void
 
   const handleSignOut = async () => {
     await signOut();
-    window.location.href = '/login?next=/builder/shift-ai/dashboard';
+    window.location.href = `/login?next=${encodeURIComponent(shiftAiAppPath('/dashboard'))}`;
   };
 
   return (
     <aside className="sa-sidebar flex h-full w-60 flex-shrink-0 flex-col text-white">
       <div className="flex-shrink-0 border-b border-white/10 px-4 py-4">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15">
-            <GraduationCap className="h-5 w-5 text-white" />
+          <div className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white/15">
+            <Image
+              src="/brand/supereduc8/icon.svg"
+              alt=""
+              width={28}
+              height={28}
+              className="h-7 w-7 object-contain"
+              unoptimized
+            />
           </div>
           <div>
             <span className="block text-base font-extrabold leading-none tracking-tight rtl:tracking-normal">
@@ -203,11 +158,12 @@ export default function ShiftAiSidebar({ onNavigate }: { onNavigate?: () => void
             </p>
             <div className="space-y-0.5">
               {group.items.map((item) => {
-                const active = isActive(pathname, item.href);
+                const href = shiftAiAppPath(item.subpath);
+                const active = isActive(pathname, href, item.subpath);
                 return (
                   <Link
-                    key={item.href}
-                    href={item.href}
+                    key={item.subpath}
+                    href={href}
                     onClick={onNavigate}
                     className={`sa-sidebar-item flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-start text-sm font-medium ${
                       active ? 'sa-sidebar-item-active shadow-sm' : ''

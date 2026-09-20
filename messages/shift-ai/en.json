@@ -1,6 +1,6 @@
 {
   "brand": {
-    "name": "Shift Learning",
+    "name": "SuperEduc8",
     "tagline": "Power Your Study"
   },
   "sidebar": {
@@ -40,7 +40,7 @@
     "closeMenuOverlay": "Close menu overlay"
   },
   "dashboard": {
-    "metaTitle": "Dashboard · Shift AI",
+    "metaTitle": "Dashboard · SuperEduc8",
     "greetingMorning": "Good morning, {name}! 👋",
     "greetingAfternoon": "Good afternoon, {name}! 👋",
     "greetingEvening": "Good evening, {name}! 👋",
@@ -75,7 +75,7 @@
     "noSubjects": "Add favourite subjects during onboarding to see them here."
   },
   "planner": {
-    "metaTitle": "Planner · Shift AI",
+    "metaTitle": "Planner · SuperEduc8",
     "title": "Planner",
     "subtitle": "Classes, homework, tests & revision",
     "add": "Add",
@@ -105,7 +105,7 @@
     }
   },
   "settings": {
-    "metaTitle": "Settings · Shift AI",
+    "metaTitle": "Settings · SuperEduc8",
     "title": "Settings",
     "saved": "Settings saved.",
     "curriculumYear": "Curriculum & year group",
@@ -150,7 +150,7 @@
     }
   },
   "tutor": {
-    "metaTitle": "Teaching Assistant · Shift AI",
+    "metaTitle": "Teaching Assistant · SuperEduc8",
     "title": "Teaching Assistant",
     "subtitle": "Your personal AI tutor for every subject",
     "subjectLabel": "Subject context (optional)",
@@ -161,7 +161,7 @@
     "sendError": "Could not send message"
   },
   "flashcards": {
-    "metaTitle": "Smart Flashcards · Shift AI",
+    "metaTitle": "Smart Flashcards · SuperEduc8",
     "title": "Smart Flashcards",
     "subtitleLocked": "Decks and reviews for {subject} · {count} cards per generation · SM-2 spaced repetition",
     "subtitle": "Build decks from any topic or notes · {count} cards per generation · SM-2 spaced repetition",
@@ -242,7 +242,7 @@
     "subjectNotes": "Subject notes"
   },
   "homework": {
-    "metaTitle": "Snap Homework · Shift AI",
+    "metaTitle": "Snap Homework · SuperEduc8",
     "title": "Snap Homework",
     "subtitle": "Photograph any homework problem or worksheet — AI guides you through the reasoning step by step, tailored for {yearGroup}.",
     "subject": "Subject",
@@ -271,7 +271,7 @@
     }
   },
   "curriculumPacks": {
-    "metaTitle": "Curriculum Packs · Shift AI",
+    "metaTitle": "Curriculum Packs · SuperEduc8",
     "title": "Curriculum Packs",
     "subtitle": "Exam-aligned revision packs for {yearGroup} ({curriculum}).",
     "secondarySchool": "secondary school",
@@ -304,7 +304,7 @@
   "voiceBuddy": {},
   "voiceTutor": {},
   "essayMarker": {
-    "metaTitle": "Essay Marker · Shift AI",
+    "metaTitle": "Essay Marker · SuperEduc8",
     "title": "Essay Marker",
     "subtitle": "Get examiner-style feedback on your essay — typed or photographed — aligned to your {curriculum} curriculum ({yearGroup}).",
     "subject": "Subject",
@@ -362,7 +362,7 @@
     }
   },
   "essayWorkshop": {
-    "metaTitle": "Essay Workshop · Shift AI",
+    "metaTitle": "Essay Workshop · SuperEduc8",
     "title": "Essay Workshop",
     "subtitle": "Plan, draft, and refine your essay with encouraging in-progress coaching — {curriculum} curriculum.",
     "steps": {
@@ -413,7 +413,7 @@
     }
   },
   "contentGenerator": {
-    "metaTitle": "Content Generator · Shift AI",
+    "metaTitle": "Content Generator · SuperEduc8",
     "title": "Content Generator",
     "subtitle": "Generate revision summaries, practice questions, or notes for any topic — tailored for {yearGroup} ({curriculum}).",
     "subtitlePractice": "AI-generated exam-style practice questions — not a past-paper bank.",
@@ -460,7 +460,7 @@
     }
   },
   "mastery": {
-    "metaTitle": "Mastery Map · Shift AI",
+    "metaTitle": "Mastery Map · SuperEduc8",
     "title": "Mastery Map",
     "subtitle": "Track your progress across every topic — colour-coded by mastery level",
     "overallProgress": "Overall progress",
@@ -489,7 +489,7 @@
     }
   },
   "specTracker": {
-    "metaTitle": "Spec Tracker · Shift AI",
+    "metaTitle": "Spec Tracker · SuperEduc8",
     "title": "Spec Tracker",
     "subtitle": "Track curriculum specification points — mark each as covered or needs review.",
     "subject": "Subject",
@@ -513,7 +513,7 @@
     }
   },
   "analytics": {
-    "metaTitle": "Analytics · Shift AI",
+    "metaTitle": "Analytics · SuperEduc8",
     "title": "Analytics",
     "subtitle": "Real study activity from your planner, quizzes, flashcards, and mastery updates.",
     "filters": "Filters",
@@ -547,7 +547,7 @@
     "legendCreated": "Created",
     "noPlannerActivity": "No planner activity in this period.",
     "heatmap": {
-      "metaTitle": "Study Streak · Shift AI",
+      "metaTitle": "Study Streak · SuperEduc8",
       "title": "Study streak",
       "subtitle": "Activity calendar — planner completions, arcade plays, flashcard reviews, and tutor chat.",
       "totalActivities": "Total activities",
@@ -560,7 +560,7 @@
     }
   },
   "gradePredictor": {
-    "metaTitle": "Grade Predictor · Shift AI",
+    "metaTitle": "Grade Predictor · SuperEduc8",
     "title": "Grade Predictor",
     "subtitle": "Predicted grades based on your real study data — mastery, quizzes, flashcards, and planner completion.",
     "honesty": "Predictions use actual signals from your account. No hidden scoring — every number shown below comes from your Mastery Map, Quiz Arcade, Flashcards, and Planner.",
@@ -587,8 +587,8 @@
     }
   },
   "groups": {
-    "metaTitle": "Study Groups · Shift AI",
-    "detailMetaTitle": "Study Group · Shift AI",
+    "metaTitle": "Study Groups · SuperEduc8",
+    "detailMetaTitle": "Study Group · SuperEduc8",
     "title": "Study Groups",
     "subtitle": "Collaborate with classmates — share notes, flashcards, and arcade scores.",
     "tabMy": "My Groups",
@@ -633,7 +633,7 @@
     "gamesPlayed": "{count, plural, one {# game played} other {# games played}}"
   },
   "arcade": {
-    "metaTitle": "Quiz Arcade · Shift AI",
+    "metaTitle": "Quiz Arcade · SuperEduc8",
     "title": "Quiz Arcade ⚡",
     "subtitleLocked": "60-second AI quiz blitz for {subject} — earn streak bonuses and beat your best score",
     "subtitle": "60-second AI quiz blitz — earn streak bonuses and beat your best score",
@@ -677,9 +677,9 @@
     }
   },
   "studio": {
-    "metaTitle": "Shift AI Studio · NiskBuild",
-    "title": "Shift AI Studio",
-    "description": "Platform-owner hub for Shift AI — live app, content, analytics, and teacher tools",
+    "metaTitle": "SuperEduc8 Studio · NiskBuild",
+    "title": "SuperEduc8 Studio",
+    "description": "Platform-owner hub for SuperEduc8 — live app, content, analytics, and teacher tools",
     "statSurfaces": "Surfaces",
     "statPhase": "Phase",
     "statPhaseHint": "Navigation shell only — no AI code editing yet",
@@ -690,10 +690,10 @@
     "statCodeHint": "UI changes ship with main NiskBuild deploy",
     "allApps": "All apps",
     "quickAccess": "Quick access",
-    "quickAccessHint": "Consolidated entry points for Shift AI admin and product surfaces.",
+    "quickAccessHint": "Consolidated entry points for SuperEduc8 admin and product surfaces.",
     "open": "Open",
     "liveTitle": "Open live app",
-    "liveDesc": "Student-facing Shift AI product — dashboard, tutoring, homework, flashcards, and more.",
+    "liveDesc": "Student-facing SuperEduc8 product — dashboard, tutoring, homework, flashcards, and more.",
     "packsTitle": "Curriculum packs",
     "packsDesc": "Create, edit, and publish curriculum content for UK, France, US, and Saudi year groups.",
     "analyticsTitle": "Analytics",
@@ -703,7 +703,7 @@
     "phase2Note": "Phase 2 will add AI-assisted UI editing. Content changes publish via Curriculum packs without a code redeploy."
   },
   "onboarding": {
-    "metaTitle": "Onboarding · Shift AI",
+    "metaTitle": "Onboarding · SuperEduc8",
     "chooseSubjects": "Choose your subjects",
     "setupProfile": "Set up your profile",
     "completeSubtitle": "Pick up to three favourite subjects so we can personalise your tutors and dashboard.",
@@ -714,7 +714,7 @@
     "subject2Optional": "Favourite subject 2 (optional)",
     "subject3Optional": "Favourite subject 3 (optional)",
     "saving": "Saving…",
-    "continue": "Continue to Shift AI",
+    "continue": "Continue to SuperEduc8",
     "saveFailed": "Could not save your profile",
     "genericError": "Something went wrong",
     "ageRanges": {
@@ -728,8 +728,8 @@
     }
   },
   "auth": {
-    "metaTitle": "Sign up · Shift AI",
-    "brand": "Shift Learning",
+    "metaTitle": "Sign up · SuperEduc8",
+    "brand": "SuperEduc8",
     "title": "Start learning smarter",
     "subtitle": "AI study support for ages 7–17. Choose how you want to get started.",
     "selfTitle": "I am 13 or older — create my own account",
@@ -739,7 +739,7 @@
     "familyTitle": "I am setting up for a young child aged 4–7",
     "familyHint": "Family / Voice Buddy mode — parent manages everything.",
     "back": "Back to account types",
-    "createHeading": "Create your Shift AI account",
+    "createHeading": "Create your SuperEduc8 account",
     "email": "Your email",
     "password": "Password (min 6 characters)",
     "yourName": "Your name",
@@ -758,12 +758,12 @@
     "sendingConsent": "Sending consent email…",
     "sendConsent": "Send consent request to parent",
     "consentEmailed": "We emailed the parent a consent link. The account stays inactive until they approve.",
-    "createProfileFailed": "Could not create your Shift AI profile",
+    "createProfileFailed": "Could not create your SuperEduc8 profile",
     "supervisedFailed": "Could not start supervised sign-up",
     "signupFailed": "Sign-up failed"
   },
   "subject": {
-    "metaTitle": "Subject · Shift AI",
+    "metaTitle": "Subject · SuperEduc8",
     "tabNotes": "Notes",
     "tabAi": "AI Tutor",
     "tabVideos": "Videos",
@@ -787,26 +787,26 @@
     "sendError": "Could not send message"
   },
   "parentConsent": {
-    "metaTitle": "Parental consent · Shift AI",
-    "invalidMetaTitle": "Consent link invalid · Shift AI",
+    "metaTitle": "Parental consent · SuperEduc8",
+    "invalidMetaTitle": "Consent link invalid · SuperEduc8",
     "invalid": "This consent link is invalid or has already been used",
     "legalReviewBanner": "[TRANSLATION NEEDS LEGAL REVIEW] This parental-consent wording is an interim technically-accurate draft. Arabic, when shown, is a proposed translation only and must be confirmed by counsel before it is treated as a valid consent record.",
-    "kicker": "Shift AI",
+    "kicker": "SuperEduc8",
     "title": "Parental consent",
-    "introWithYear": "{name} ({year}) would like to use Shift AI — an AI study companion that adapts to UK, French, US, and Saudi school curricula.",
-    "introWithoutYear": "{name} would like to use Shift AI — an AI study companion that adapts to UK, French, US, and Saudi school curricula.",
-    "privacyBody": "Shift AI helps with homework, revision, and exam preparation. We collect a coarse age band and study progress to personalise learning — not precise location, and we do not store raw chat transcripts (the same privacy approach as NiskBuild analytics).",
+    "introWithYear": "{name} ({year}) would like to use SuperEduc8 — an AI study companion that adapts to UK, French, US, and Saudi school curricula.",
+    "introWithoutYear": "{name} would like to use SuperEduc8 — an AI study companion that adapts to UK, French, US, and Saudi school curricula.",
+    "privacyBody": "SuperEduc8 helps with homework, revision, and exam preparation. We collect a coarse age band and study progress to personalise learning — not precise location, and we do not store raw chat transcripts (the same privacy approach as NiskBuild analytics).",
     "approve": "I consent — activate my child's account",
     "decline": "Decline",
     "alreadyAccount": "Already have an account?",
-    "signupLink": "Shift AI sign up",
+    "signupLink": "SuperEduc8 sign up",
     "approved": "Thank you — your child's account is now active.",
     "approvedHint": "We emailed you login details and your parent dashboard link.",
     "declined": "Consent declined. No account was created.",
     "activateError": "We could not activate the account. Please try again or contact support."
   },
   "teacher": {
-    "metaTitle": "Shift AI · Teacher",
+    "metaTitle": "SuperEduc8 · Teacher",
     "title": "Teacher Dashboard",
     "subtitle": "Overview of student activity in your school",
     "lockedTitle": "Teacher Dashboard",
@@ -830,7 +830,7 @@
     "emDash": "—"
   },
   "parentView": {
-    "metaTitle": "Shift AI · Parent view",
+    "metaTitle": "SuperEduc8 · Parent view",
     "kicker": "Parent Dashboard",
     "progressTitle": "{name}'s Progress",
     "linkNotFound": "Link Not Found",
@@ -860,10 +860,10 @@
     "reviewsLine": "🔄 {count} card reviews in the last 7 days",
     "sessionsLine": "🎮 {count} recent arcade session(s)",
     "bestArcadeLine": "🏆 Best arcade score: {score}",
-    "footer": "Shift Learning · Secure parent view · Chat messages are never shared"
+    "footer": "SuperEduc8 · Secure parent view · Chat messages are never shared"
   },
   "mentorView": {
-    "metaTitle": "Shift AI · Mentor view",
+    "metaTitle": "SuperEduc8 · Mentor view",
     "kicker": "Mentor Dashboard",
     "progressTitle": "{name}'s Progress",
     "linkNotFound": "Link Not Found",
@@ -884,7 +884,7 @@
     "assign": "Assign challenge",
     "assignFailed": "Could not assign challenge",
     "noChallenges": "No challenges assigned yet.",
-    "footer": "Shift Learning · Secure mentor view",
+    "footer": "SuperEduc8 · Secure mentor view",
     "status": {
       "active": "Active",
       "completed": "Completed"

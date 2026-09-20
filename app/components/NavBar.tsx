@@ -29,7 +29,7 @@ const PLATFORM_ADMIN_NAV: NavItem[] = [
     href: '/admin/apps',
     label: 'Apps',
     icon: '📱',
-    description: 'Vagus Planner, Shift AI, and app registry',
+    description: 'Vagus Planner, SuperEduc8, and app registry',
   },
   {
     href: '/admin/marketplace',

@@ -15,7 +15,7 @@ export default function DashboardPage() {
         <header className="sa-shell-header">
           <div>
             <p className="sa-auth-kicker" style={{ margin: 0 }}>
-              Shift Learning
+              SuperEduc8
             </p>
             <h1 style={{ margin: '0.35rem 0 0', fontSize: '1.85rem' }}>
               Welcome, {firstName(student?.fullName)}

@@ -12,6 +12,7 @@ import {
   isPaidPath,
   isPhoneVerifyExemptPath,
   isPlatformOwnerPath,
+  isShiftAiUnauthenticatedPath,
   isStaticPublicAsset,
   isVpDeployBundlePath,
 } from '@/lib/access';
@@ -20,10 +21,22 @@ import {
   resolveTenantByHostname,
   shouldSkipTenantRouting,
 } from '@/lib/tenant-routing';
+import {
+  isSuperEduc8Host,
+  isSuperEduc8PassthroughPath,
+  mapSuperEduc8PathToInternal,
+  shiftAiPublicPathname,
+  SHIFT_AI_INTERNAL_PREFIX,
+} from '@/lib/supereduc8-host';
 
 function requestWithShiftAiLangHeader(request: NextRequest): NextRequest {
   const lang = parseLangQueryParam(request.nextUrl.searchParams.get('lang'));
-  if (!lang || !isUnauthenticatedLocaleOverridePath(request.nextUrl.pathname)) {
+  const pathForLocale = isSuperEduc8Host(
+    (request.headers.get('host') || '').split(':')[0].toLowerCase()
+  )
+    ? mapSuperEduc8PathToInternal(request.nextUrl.pathname)
+    : request.nextUrl.pathname;
+  if (!lang || !isUnauthenticatedLocaleOverridePath(pathForLocale)) {
     return request;
   }
   const headers = new Headers(request.headers);
@@ -40,6 +53,7 @@ export async function proxy(request: NextRequest) {
     process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, '') ||
     'https://www.niskbuild.com'
   );
+  const superEduc8Host = isSuperEduc8Host(hostname);
 
   // Never 308 API/webhooks off the production Vercel alias — Resend/Stripe POST
   // clients often do not re-POST after redirects (endpoint gets disabled).
@@ -62,6 +76,16 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url, 308);
   }
 
+  // SuperEduc8 apex → www (same pattern as NiskBuild; keep /api on apex).
+  if (hostname === 'supereduc8.com' && !isApiOrAsset) {
+    const url = new URL(
+      pathname + request.nextUrl.search,
+      process.env.NEXT_PUBLIC_SUPEREDUC8_URL?.trim().replace(/\/$/, '') ||
+        'https://www.supereduc8.com'
+    );
+    return NextResponse.redirect(url, 308);
+  }
+
   // preview.niskbuild.com/abc123 → /preview/abc123
   // /vp-deploy/... must not be rewritten (bundle assets live on preview host).
   if (
@@ -78,8 +102,10 @@ export async function proxy(request: NextRequest) {
   // Custom-domain PWA manifest → branded dynamic manifest (before auth).
   // Matcher must include site.webmanifest so this rewrite can run; base
   // platform keeps the static public/site.webmanifest via next() below.
+  // SuperEduc8 is a first-party product host — not a tenant custom domain.
   if (
     !isBasePlatform(hostname) &&
+    !superEduc8Host &&
     (pathname === '/site.webmanifest' ||
       pathname === '/manifest.webmanifest' ||
       pathname === '/tenant-manifest')
@@ -93,7 +119,8 @@ export async function proxy(request: NextRequest) {
   }
 
   // Multi-tenant: white-label subdomain or custom domain → compiled app runtime
-  if (!isBasePlatform(hostname) && !shouldSkipTenantRouting(pathname)) {
+  // Skip for SuperEduc8 — same deployment, host-based product rewrite below.
+  if (!isBasePlatform(hostname) && !superEduc8Host && !shouldSkipTenantRouting(pathname)) {
     const tenant = await resolveTenantByHostname(host);
 
     if (tenant) {
@@ -118,6 +145,68 @@ export async function proxy(request: NextRequest) {
   // Always allow API routes, static assets, and public VP deploy bundles (no auth).
   if (isApiOrAsset) {
     return NextResponse.next();
+  }
+
+  // ── SuperEduc8 host: clean public URLs → /builder/shift-ai/* ─────────────
+  // Same Vercel project as NiskBuild; no separate deployment required.
+  if (superEduc8Host) {
+    // Pages/clients that still emit internal hrefs get normalized to clean URLs.
+    if (
+      pathname === SHIFT_AI_INTERNAL_PREFIX ||
+      pathname.startsWith(`${SHIFT_AI_INTERNAL_PREFIX}/`)
+    ) {
+      const clean = shiftAiPublicPathname(pathname);
+      const url = request.nextUrl.clone();
+      url.pathname = clean === '/' ? '/' : clean;
+      return NextResponse.redirect(url, 308);
+    }
+
+    if (isSuperEduc8PassthroughPath(pathname)) {
+      // Shared auth/API/static — fall through to normal NiskBuild auth below.
+    } else {
+      const internalPath = mapSuperEduc8PathToInternal(pathname);
+      const { supabase, supabaseResponse, user } = await updateSession(request);
+
+      if (isAuthExemptPath(internalPath) || isShiftAiUnauthenticatedPath(internalPath)) {
+        const url = request.nextUrl.clone();
+        url.pathname = internalPath;
+        return NextResponse.rewrite(url, { headers: supabaseResponse.headers });
+      }
+
+      if (!user) {
+        const url = request.nextUrl.clone();
+        url.pathname = '/login';
+        url.searchParams.set('next', pathname === '/' ? '/dashboard' : pathname);
+        return NextResponse.redirect(url);
+      }
+
+      // Platform owners skip phone / tier gates (same as NiskBuild).
+      const { data: isOwner } = await supabase.rpc('is_platform_owner').single();
+      if (isOwner) {
+        const url = request.nextUrl.clone();
+        url.pathname = internalPath;
+        return NextResponse.rewrite(url, { headers: supabaseResponse.headers });
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('subscription_tier, subscription_status, phone_verified')
+        .eq('id', user.id)
+        .single();
+
+      const tier = profile?.subscription_tier ?? 'free';
+      const paid = hasPaidTier(tier) && profile?.subscription_status === 'active';
+
+      if (!paid && !profile?.phone_verified && !isPhoneVerifyExemptPath(internalPath)) {
+        const url = request.nextUrl.clone();
+        url.pathname = '/verify-phone';
+        return NextResponse.redirect(url);
+      }
+
+      const url = request.nextUrl.clone();
+      url.pathname = internalPath;
+      return NextResponse.rewrite(url, { headers: supabaseResponse.headers });
+    }
   }
 
   const { supabase, supabaseResponse, user } = await updateSession(request);

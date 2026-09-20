@@ -1,6 +1,6 @@
 {
   "appId": "com.niskbuild.shiftai",
-  "appName": "Shift Learning",
+  "appName": "SuperEduc8",
   "webDir": "dist",
   "server": {
     "androidScheme": "https"

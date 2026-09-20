@@ -37,7 +37,7 @@ export default async function ShiftAiVoiceTutorPage() {
 
 export async function generateMetadata() {
   return {
-    title: 'Voice Tutor · Shift AI',
+    title: 'Voice Tutor · SuperEduc8',
     robots: 'noindex',
   };
 }

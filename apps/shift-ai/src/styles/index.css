@@ -1,21 +1,28 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root {
-  --sa-bg: hsl(214, 60%, 97%);
-  --sa-fg: hsl(214, 60%, 8%);
-  --sa-card: #ffffff;
-  --sa-muted: hsl(214, 20%, 46%);
-  --sa-border: hsl(214, 30%, 88%);
-  --sa-primary: hsl(214, 80%, 25%);
+  --sa-primary: #2b7de8;
   --sa-primary-fg: #ffffff;
-  --sa-primary-hover: hsl(214, 80%, 20%);
-  --sa-navy-800: #0f2a56;
-  --sa-navy-900: #071733;
+  --sa-primary-hover: #1253a8;
+  --sa-primary-deep: #1253a8;
+  --sa-wordmark: #0f458f;
+  --sa-coral: #ff824d;
+  --sa-coral-hover: #e05a25;
+  --sa-coral-fg: #ffffff;
+  --sa-coral-soft: #fff1ea;
+  --sa-bg: hsl(214, 55%, 97%);
+  --sa-fg: hsl(214, 55%, 10%);
+  --sa-card: #ffffff;
+  --sa-muted: hsl(214, 18%, 46%);
+  --sa-border: hsl(214, 28%, 88%);
+  --sa-navy-800: #0f458f;
+  --sa-navy-900: #0a2f63;
   --sa-error-bg: #fef2f2;
   --sa-error-fg: #b91c1c;
   --sa-success-bg: #ecfdf5;
   --sa-success-fg: #047857;
   --sa-radius: 0.75rem;
+  --sa-gradient-primary: linear-gradient(135deg, #2b7de8 0%, #1253a8 100%);
 }
 
 * {
@@ -94,7 +101,7 @@ body {
   border: none;
   border-radius: var(--sa-radius);
   padding: 0.7rem 1rem;
-  background: var(--sa-primary);
+  background: var(--sa-gradient-primary);
   color: var(--sa-primary-fg);
   font: inherit;
   font-weight: 600;

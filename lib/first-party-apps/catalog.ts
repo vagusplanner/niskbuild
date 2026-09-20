@@ -28,7 +28,7 @@ export type FirstPartyApp = {
   openHref: string;
   /**
    * Builder / studio editing surface when one exists.
-   * Omit when the product has no AI studio (e.g. Shift AI today).
+   * Omit when the product has no AI studio (e.g. SuperEduc8 today).
    */
   editHref?: string;
   editLabel?: string;
@@ -70,7 +70,7 @@ export const FIRST_PARTY_APPS: FirstPartyApp[] = [
   },
   {
     id: 'shift-ai',
-    name: 'Shift AI',
+    name: 'SuperEduc8',
     shortDescription:
       'Education product for students, parents, and teachers — tutoring, homework, curriculum packs, and classroom tools.',
     status: 'live',

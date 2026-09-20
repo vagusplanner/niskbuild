@@ -110,7 +110,7 @@ export default function AdminCurriculumPacksClient() {
   return (
     <Layout>
       <AdminPlatformShell
-        title="Shift AI · Curriculum packs"
+        title="SuperEduc8 · Curriculum packs"
         description="Author shared revision packs for students by subject, curriculum, and year group"
         stats={[
           { label: 'Total packs', value: packs.length },

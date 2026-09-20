@@ -1,26 +1,40 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-/* Shift AI design system — scoped under .shift-ai-app, separate from NiskBuild globals */
+/* SuperEduc8 design system — scoped under .shift-ai-app (internal class name retained) */
 
 .shift-ai-app {
-  --sa-bg: hsl(214, 60%, 97%);
-  --sa-fg: hsl(214, 60%, 8%);
-  --sa-card: #ffffff;
-  --sa-muted: hsl(214, 20%, 46%);
-  --sa-border: hsl(214, 30%, 88%);
-  --sa-primary: hsl(214, 80%, 25%);
+  /* Primary blue gradient: #2B7DE8 → #1253A8 */
+  --sa-primary: #2b7de8;
   --sa-primary-fg: #ffffff;
-  --sa-primary-hover: hsl(214, 80%, 20%);
-  --sa-secondary: hsl(214, 40%, 90%);
-  --sa-accent: hsl(214, 60%, 35%);
-  --sa-sidebar: hsl(214, 80%, 18%);
-  --sa-navy-50: #eef3fb;
-  --sa-navy-100: #d5e3f4;
-  --sa-navy-400: #4d84c8;
-  --sa-navy-700: #163d78;
-  --sa-navy-800: #0f2a56;
-  --sa-navy-900: #071733;
+  --sa-primary-hover: #1253a8;
+  --sa-primary-deep: #1253a8;
+  --sa-wordmark: #0f458f;
+
+  /* Coral accent (badges / achievements / CTAs) */
+  --sa-coral: #ff824d;
+  --sa-coral-hover: #e05a25;
+  --sa-coral-fg: #ffffff;
+  --sa-coral-soft: #fff1ea;
+
+  --sa-bg: hsl(214, 55%, 97%);
+  --sa-fg: hsl(214, 55%, 10%);
+  --sa-card: #ffffff;
+  --sa-muted: hsl(214, 18%, 46%);
+  --sa-border: hsl(214, 28%, 88%);
+  --sa-secondary: hsl(214, 45%, 92%);
+  --sa-accent: var(--sa-coral);
+  --sa-sidebar: #0f458f;
+
+  /* Navy / structural tokens (kept for depth + sidebar chrome) */
+  --sa-navy-50: #eef4fc;
+  --sa-navy-100: #d6e5f8;
+  --sa-navy-400: #4d8fd9;
+  --sa-navy-700: #1253a8;
+  --sa-navy-800: #0f458f;
+  --sa-navy-900: #0a2f63;
+
   --sa-radius: 0.75rem;
+  --sa-gradient-primary: linear-gradient(135deg, #2b7de8 0%, #1253a8 100%);
 
   font-family: 'Inter', system-ui, sans-serif;
   background: var(--sa-bg);
@@ -28,7 +42,7 @@
 }
 
 /* Arabic UI: Noto Sans Arabic for chrome/body, Amiri as serif companion.
-   Scoped to Shift AI shell dir=rtl — does not change Inter for LTR. */
+   Scoped to SuperEduc8 shell dir=rtl — does not change Inter for LTR. */
 .shift-ai-app[dir='rtl'] {
   font-family: var(--font-sa-arabic-sans), 'Noto Sans Arabic', 'Amiri', sans-serif;
   letter-spacing: 0;
@@ -78,8 +92,8 @@
 }
 
 .sa-card-hover:hover {
-  border-color: hsl(214, 60%, 70%);
-  box-shadow: 0 4px 14px rgba(15, 42, 86, 0.08);
+  border-color: hsl(214, 55%, 70%);
+  box-shadow: 0 4px 14px rgba(15, 69, 143, 0.08);
 }
 
 .sa-tip {
@@ -89,9 +103,15 @@
 }
 
 .sa-badge {
-  border: 1px solid hsl(214, 40%, 75%);
-  background: var(--sa-navy-50);
-  color: var(--sa-navy-800);
+  border: 1px solid color-mix(in srgb, var(--sa-coral) 35%, white);
+  background: var(--sa-coral-soft);
+  color: var(--sa-coral-hover);
+}
+
+.sa-badge-accent {
+  border: none;
+  background: var(--sa-coral);
+  color: var(--sa-coral-fg);
 }
 
 /* Forms */
@@ -112,22 +132,32 @@
 .sa-select:focus,
 .sa-textarea:focus {
   outline: none;
-  border-color: var(--sa-navy-400);
-  box-shadow: 0 0 0 3px hsl(214 80% 35% / 0.15);
+  border-color: var(--sa-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sa-primary) 22%, transparent);
 }
 
 .sa-btn-primary {
-  background: var(--sa-navy-800);
+  background: var(--sa-gradient-primary);
   color: #fff;
   font-weight: 600;
 }
 
 .sa-btn-primary:hover:not(:disabled) {
-  background: var(--sa-navy-700);
+  background: var(--sa-primary-hover);
 }
 
 .sa-btn-primary:disabled {
   opacity: 0.6;
+}
+
+.sa-btn-accent {
+  background: var(--sa-coral);
+  color: var(--sa-coral-fg);
+  font-weight: 600;
+}
+
+.sa-btn-accent:hover:not(:disabled) {
+  background: var(--sa-coral-hover);
 }
 
 .sa-btn-secondary {
@@ -151,14 +181,14 @@
 }
 
 .sa-tab-active {
-  color: var(--sa-navy-800);
-  border-bottom: 2px solid var(--sa-navy-800);
+  color: var(--sa-wordmark);
+  border-bottom: 2px solid var(--sa-primary);
   font-weight: 600;
 }
 
 /* Chat bubbles */
 .sa-user-bubble {
-  background: var(--sa-navy-800);
+  background: var(--sa-gradient-primary);
   color: #fff;
 }
 
@@ -170,7 +200,7 @@
 
 .sa-avatar {
   background: var(--sa-navy-100);
-  color: var(--sa-navy-800);
+  color: var(--sa-wordmark);
 }
 
 /* Auth / standalone pages */
@@ -180,7 +210,7 @@
 }
 
 .sa-auth-kicker {
-  color: var(--sa-navy-700);
+  color: var(--sa-wordmark);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -190,7 +220,7 @@
   background: var(--sa-card);
   border: 1px solid var(--sa-border);
   border-radius: 1rem;
-  box-shadow: 0 8px 30px rgba(15, 42, 86, 0.06);
+  box-shadow: 0 8px 30px rgba(15, 69, 143, 0.06);
 }
 
 .sa-auth-choice {
@@ -201,8 +231,8 @@
 }
 
 .sa-auth-choice:hover {
-  border-color: var(--sa-navy-400);
-  box-shadow: 0 4px 14px rgba(15, 42, 86, 0.08);
+  border-color: var(--sa-primary);
+  box-shadow: 0 4px 14px rgba(43, 125, 232, 0.12);
 }
 
 .sa-link {
@@ -210,7 +240,7 @@
 }
 
 .sa-link:hover {
-  color: var(--sa-navy-800);
+  color: var(--sa-wordmark);
   text-decoration: underline;
 }
 

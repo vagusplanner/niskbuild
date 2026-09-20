@@ -29,7 +29,7 @@ export default function LoginPage() {
     <RedirectIfAuthed>
       <div className="sa-auth-page shift-ai-app">
         <div className="sa-auth-card">
-          <p className="sa-auth-kicker">Shift Learning</p>
+          <p className="sa-auth-kicker">SuperEduc8</p>
           <h1 style={{ margin: '0.5rem 0 0.25rem', fontSize: '1.75rem' }}>Welcome back</h1>
           <p className="sa-muted" style={{ marginTop: 0, marginBottom: '1.25rem' }}>
             Sign in to continue studying.
