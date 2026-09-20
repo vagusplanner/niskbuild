@@ -41,17 +41,20 @@ export function isSuperEduc8PassthroughPath(pathname: string): boolean {
   if (pathname.startsWith('/_next')) return true;
   if (pathname.startsWith('/auth')) return true;
   if (pathname.startsWith('/monitoring')) return true;
+  // Marketing root — SuperEduc8 landing (host-aware app/page.tsx).
+  if (pathname === '/' || pathname === '') return true;
   if (pathname === '/login' || pathname.startsWith('/login/')) return true;
   if (pathname === '/reset-password' || pathname.startsWith('/reset-password/')) return true;
   if (pathname === '/verify-phone' || pathname.startsWith('/verify-phone/')) return true;
-  // Shared legal pages — host-aware content in app/privacy (and future terms).
+  // Shared legal pages — privacy is host-aware; terms currently NiskBuild until SE8 terms exist.
   if (pathname === '/privacy' || pathname.startsWith('/privacy/')) return true;
+  if (pathname === '/terms' || pathname.startsWith('/terms/')) return true;
   return false;
 }
 
 /**
  * Browser path on SuperEduc8 → internal Shift route.
- * `/` and empty → `/builder/shift-ai` (index redirects to dashboard).
+ * Note: `/` is a passthrough marketing landing (not rewritten here).
  */
 export function mapSuperEduc8PathToInternal(pathname: string): string {
   const normalized = pathname.replace(/\/+$/, '') || '/';
