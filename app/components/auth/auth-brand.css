@@ -1,0 +1,87 @@
+/* SuperEduc8-branded shared auth chrome (login / reset / verify-phone).
+   Scoped overrides — does not affect NiskBuild pages. */
+
+.supereduc8-auth {
+  --bg-base: #eef4fc;
+  --background: #eef4fc;
+  --background-gradient: linear-gradient(180deg, #eef4fc 0%, #f7fafc 42%, #ffffff 100%);
+  --foreground: #0a2f63;
+  --primary: #2b7de8;
+  --primary-hover: #1253a8;
+  --secondary: #d6e5f8;
+  --secondary-hover: #c5daf5;
+  --accent-cyan: #2b7de8;
+  --accent-cyan-hover: #1253a8;
+  --brand-gradient: linear-gradient(135deg, #2b7de8 0%, #1253a8 100%);
+  --build-gradient: linear-gradient(135deg, #2b7de8 0%, #1253a8 100%);
+  --nisk-color: #0f458f;
+  --tagline-color: #1253a8;
+  --success: #047857;
+  --error: #b91c1c;
+  --border: #d6e5f8;
+  --card-bg: #ffffff;
+  --surface: #ffffff;
+  --surface-elevated: #ffffff;
+  --glass-bg: #ffffff;
+  --nav-bg: rgba(255, 255, 255, 0.92);
+  --overlay: rgba(15, 69, 143, 0.35);
+  --muted: #5b6f8c;
+  --placeholder: #8a9bb3;
+  --selection-bg: rgba(43, 125, 232, 0.22);
+  --selection-fg: #0a2f63;
+  --copper-primary: #2b7de8;
+  --copper-dark: #1253a8;
+  --copper-light: #4d8fd9;
+  --copper-melt: #0f458f;
+  --copper-glow: rgba(43, 125, 232, 0.18);
+
+  background: var(--background-gradient);
+  color: var(--foreground);
+}
+
+.supereduc8-auth-header {
+  display: flex;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+}
+
+.supereduc8-auth .bg-nisk-card {
+  background: #ffffff;
+  border-color: var(--border);
+  color: var(--foreground);
+  box-shadow: 0 8px 30px rgba(15, 69, 143, 0.08);
+}
+
+.supereduc8-auth .text-nisk-muted {
+  color: var(--muted);
+}
+
+.supereduc8-auth .border-nisk {
+  border-color: var(--border);
+}
+
+.supereduc8-auth .btn-primary {
+  background: var(--brand-gradient);
+  color: #ffffff !important;
+  border: 1px solid #1253a8;
+  box-shadow: 0 4px 16px var(--copper-glow);
+}
+
+.supereduc8-auth .btn-primary:hover:not(:disabled) {
+  opacity: 0.95;
+  box-shadow: 0 6px 20px rgba(18, 83, 168, 0.28);
+}
+
+.supereduc8-auth .glass-input {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  color: var(--foreground);
+}
+
+.supereduc8-auth .glass-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(43, 125, 232, 0.18);
+}

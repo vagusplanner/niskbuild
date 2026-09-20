@@ -9,6 +9,8 @@ import { getAuthRedirectOrigin } from '@/lib/canonical-url';
 interface EmailAuthFormProps {
   nextPath?: string;
   onSuccess?: () => void;
+  /** Product name used in age-gate / legal copy. Defaults to NiskBuild. */
+  productName?: string;
 }
 
 function PasswordInput({
@@ -70,7 +72,11 @@ function navigateAfterAuth(nextPath: string) {
   }
 }
 
-export default function EmailAuthForm({ nextPath = '/pricing', onSuccess }: EmailAuthFormProps) {
+export default function EmailAuthForm({
+  nextPath = '/pricing',
+  onSuccess,
+  productName = 'NiskBuild',
+}: EmailAuthFormProps) {
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -107,7 +113,7 @@ export default function EmailAuthForm({ nextPath = '/pricing', onSuccess }: Emai
         }
         if (!meetsMinimumAge(dateOfBirth)) {
           throw new Error(
-            `[LEGAL REVIEW NEEDED] You must be at least ${NISK_MINIMUM_AGE} years old to use NiskBuild.`
+            `[LEGAL REVIEW NEEDED] You must be at least ${NISK_MINIMUM_AGE} years old to use ${productName}.`
           );
         }
 
