@@ -795,7 +795,7 @@
     "title": "Parental consent",
     "introWithYear": "{name} ({year}) would like to use SuperEduc8 — an AI study companion that adapts to UK, French, US, and Saudi school curricula.",
     "introWithoutYear": "{name} would like to use SuperEduc8 — an AI study companion that adapts to UK, French, US, and Saudi school curricula.",
-    "privacyBody": "SuperEduc8 helps with homework, revision, and exam preparation. We collect a coarse age band and study progress to personalise learning — not precise location, and we do not store raw chat transcripts (the same privacy approach as NiskBuild analytics).",
+    "privacyBody": "SuperEduc8 helps with homework, revision, and exam preparation. We collect a coarse age band and study progress to personalise learning — not precise location. We keep a record of your child's conversations with the AI tutor to support learning continuity and help ensure safe, appropriate use of the platform. Full conversation text is available on the student's account; parent and teacher dashboards currently show progress summaries (activity, mastery, and similar) rather than the full chat text.",
     "approve": "I consent — activate my child's account",
     "decline": "Decline",
     "alreadyAccount": "Already have an account?",
@@ -860,7 +860,7 @@
     "reviewsLine": "🔄 {count} card reviews in the last 7 days",
     "sessionsLine": "🎮 {count} recent arcade session(s)",
     "bestArcadeLine": "🏆 Best arcade score: {score}",
-    "footer": "SuperEduc8 · Secure parent view · Chat messages are never shared"
+    "footer": "SuperEduc8 · Secure parent view · Shows progress summaries; full AI tutor chat text is not shown here"
   },
   "mentorView": {
     "metaTitle": "SuperEduc8 · Mentor view",

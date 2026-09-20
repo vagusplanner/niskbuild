@@ -40,7 +40,7 @@ export async function sendParentalConsentRequestEmail(options: {
       </a>
     </p>
     <p style="font-size:14px;color:#555">This link expires in <strong>72 hours</strong>. If you did not expect this email, you can ignore it — no account will be created without your approval.</p>
-    <p style="font-size:12px;color:#888;margin-top:32px">SuperEduc8 · Privacy-first learning. We collect coarse age bands and study progress only — never precise location or raw chat transcripts.</p>
+    <p style="font-size:12px;color:#888;margin-top:32px">SuperEduc8 · We collect coarse age bands and study progress — never precise location. AI tutor conversations are stored to support learning continuity and platform safety. Full chat text is on the student's account; the parent dashboard shows progress summaries, not full transcripts.</p>
   `);
 
   const result = await sendEmail({ to: options.parentEmail, subject, html });
@@ -74,7 +74,7 @@ export async function sendParentWelcomeAfterConsentEmail(options: {
         Open parent dashboard
       </a>
     </p>
-    <p style="font-size:12px;color:#888;margin-top:32px">SuperEduc8 · Privacy-first learning</p>
+    <p style="font-size:12px;color:#888;margin-top:32px">SuperEduc8 · AI tutor conversations are stored for learning continuity and safety. Your parent dashboard shows progress summaries rather than full chat text.</p>
   `);
 
   const result = await sendEmail({ to: options.parentEmail, subject, html });
