@@ -55,6 +55,24 @@ export async function proxy(request: NextRequest) {
   );
   const superEduc8Host = isSuperEduc8Host(hostname);
 
+  // Shared deployment: public/favicon.ico is NiskBuild's. On SuperEduc8 hosts,
+  // rewrite default icon paths to the SuperEduc8 brand assets so browsers that
+  // request /favicon.ico directly (or via Next file-convention leftovers) do
+  // not show the NiskBuild copper mark.
+  if (superEduc8Host) {
+    const seIconRewrites: Record<string, string> = {
+      '/favicon.ico': '/brand/supereduc8/favicon.ico',
+      '/apple-touch-icon.png': '/brand/supereduc8/apple-touch-icon.png',
+      '/apple-touch-icon': '/brand/supereduc8/apple-touch-icon.png',
+    };
+    const iconTarget = seIconRewrites[pathname];
+    if (iconTarget) {
+      const url = request.nextUrl.clone();
+      url.pathname = iconTarget;
+      return NextResponse.rewrite(url);
+    }
+  }
+
   // Never 308 API/webhooks off the production Vercel alias — Resend/Stripe POST
   // clients often do not re-POST after redirects (endpoint gets disabled).
   const isApiOrAsset =
