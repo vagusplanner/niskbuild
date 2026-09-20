@@ -27,6 +27,16 @@ export const SHIFT_AGE_RANGES = [
 
 export type ShiftAgeRange = (typeof SHIFT_AGE_RANGES)[number];
 
+/** Age bands that require parental consent (supervised/family) — not self-serve. */
+export const SHIFT_UNDER_13_AGE_RANGES = ['7_8', '9_10', '11_12'] as const;
+export type ShiftUnder13AgeRange = (typeof SHIFT_UNDER_13_AGE_RANGES)[number];
+
+export const SHIFT_SELF_SERVE_AGE_RANGES = ['13', '14_15', '16', '17'] as const;
+export type ShiftSelfServeAgeRange = (typeof SHIFT_SELF_SERVE_AGE_RANGES)[number];
+
+export const SHIFT_UNDER_13_SELF_SIGNUP_ERROR =
+  'Students under 13 cannot create a self-serve account. Use the supervised or family signup path so a parent or guardian can give consent first.';
+
 export const SHIFT_AGE_RANGE_LABELS: Record<ShiftAgeRange, string> = {
   '7_8': 'Ages 7–8',
   '9_10': 'Ages 9–10',
@@ -46,6 +56,14 @@ export function isShiftCurriculum(value: string): value is ShiftCurriculum {
 
 export function isShiftAgeRange(value: string): value is ShiftAgeRange {
   return (SHIFT_AGE_RANGES as readonly string[]).includes(value);
+}
+
+export function isUnder13AgeRange(value: string): value is ShiftUnder13AgeRange {
+  return (SHIFT_UNDER_13_AGE_RANGES as readonly string[]).includes(value);
+}
+
+export function isSelfServeAgeRange(value: string): value is ShiftSelfServeAgeRange {
+  return (SHIFT_SELF_SERVE_AGE_RANGES as readonly string[]).includes(value);
 }
 
 export function normalizeEmail(value: string): string {

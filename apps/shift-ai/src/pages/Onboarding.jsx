@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthContext'
 import { shiftAiFetch } from '@/lib/api'
-import { SHIFT_AGE_RANGES, SHIFT_CURRICULA } from '@/lib/onboarding'
+import { SHIFT_SELF_SERVE_AGE_RANGES, SHIFT_CURRICULA } from '@/lib/onboarding'
 
 export default function OnboardingPage() {
   const { session, student, needsOnboarding, profileLoading, refreshProfile, profileError } =
@@ -125,13 +125,13 @@ export default function OnboardingPage() {
                 />
               </div>
               <div>
-                <label className="sa-field-label">Age range</label>
+                <label className="sa-field-label">Age range (13+)</label>
                 <select
                   className="sa-select"
                   value={ageRange}
                   onChange={(e) => setAgeRange(e.target.value)}
                 >
-                  {SHIFT_AGE_RANGES.map((a) => (
+                  {SHIFT_SELF_SERVE_AGE_RANGES.map((a) => (
                     <option key={a.value} value={a.value}>
                       {a.label}
                     </option>

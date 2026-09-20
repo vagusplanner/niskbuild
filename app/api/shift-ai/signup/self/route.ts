@@ -3,7 +3,9 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import {
   isShiftAgeRange,
   isShiftCurriculum,
+  isSelfServeAgeRange,
   defaultStudyLanguageForCurriculum,
+  SHIFT_UNDER_13_SELF_SIGNUP_ERROR,
 } from '@/lib/shift-ai/constants';
 import { resolveRequestUser } from '@/lib/shift-ai/student-auth';
 import { deriveKeyStage } from '@/lib/shift-ai/year-group';
@@ -58,6 +60,15 @@ export async function POST(request: NextRequest) {
 
   if (!isShiftAgeRange(ageRange)) {
     return shiftAiApiJson(request, { error: 'Invalid age range' }, { status: 400 });
+  }
+
+  // Child-safety: under-13 must use supervised/family + parental consent — never self-serve.
+  if (!isSelfServeAgeRange(ageRange)) {
+    return shiftAiApiJson(
+      request,
+      { error: SHIFT_UNDER_13_SELF_SIGNUP_ERROR },
+      { status: 403 }
+    );
   }
 
   const admin = createAdminClient();

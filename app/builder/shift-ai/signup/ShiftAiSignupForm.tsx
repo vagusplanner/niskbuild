@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl';
 import { ChevronLeft } from 'lucide-react';
 import { signUpWithEmail } from '@/lib/auth';
 import {
-  SHIFT_AGE_RANGES,
+  SHIFT_SELF_SERVE_AGE_RANGES,
   SHIFT_CURRICULA,
   type ShiftAgeRange,
   type ShiftCurriculum,
@@ -201,13 +201,11 @@ export default function ShiftAiSignupForm() {
             onChange={(e) => setAgeRange(e.target.value as ShiftAgeRange)}
             required
           >
-            {SHIFT_AGE_RANGES.filter((r) => r !== '7_8' && r !== '9_10' && r !== '11_12').map(
-              (r) => (
-                <option key={r} value={r}>
-                  {tAge(r)}
-                </option>
-              )
-            )}
+            {SHIFT_SELF_SERVE_AGE_RANGES.map((r) => (
+              <option key={r} value={r}>
+                {tAge(r)}
+              </option>
+            ))}
           </select>
           <input
             className={SA.input}

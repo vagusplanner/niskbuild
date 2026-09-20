@@ -3,7 +3,9 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import {
   isShiftAgeRange,
   isShiftCurriculum,
+  isSelfServeAgeRange,
   defaultStudyLanguageForCurriculum,
+  SHIFT_UNDER_13_SELF_SIGNUP_ERROR,
 } from '@/lib/shift-ai/constants';
 import { getFavouriteSubjects, parseFavouriteSubjects } from '@/lib/shift-ai/onboarding';
 import { resolveRequestUser } from '@/lib/shift-ai/student-auth';
@@ -95,6 +97,15 @@ export async function POST(request: NextRequest) {
     }
 
     return shiftAiApiJson(request, { ok: true });
+  }
+
+  // New self-serve profile insert — same under-13 gate as /signup/self.
+  if (!isSelfServeAgeRange(ageRange)) {
+    return shiftAiApiJson(
+      request,
+      { error: SHIFT_UNDER_13_SELF_SIGNUP_ERROR },
+      { status: 403 }
+    );
   }
 
   const { error } = await admin.schema('firstparty').from('shift_students').insert({

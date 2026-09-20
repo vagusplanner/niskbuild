@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthContext'
 import { RedirectIfAuthed } from '@/auth/guards'
 import { shiftAiFetch } from '@/lib/api'
-import { SHIFT_AGE_RANGES, SHIFT_CURRICULA } from '@/lib/onboarding'
+import { SHIFT_SELF_SERVE_AGE_RANGES, SHIFT_CURRICULA } from '@/lib/onboarding'
 
 export default function SignupPage() {
   const { signUp, refreshProfile } = useAuth()
@@ -57,7 +57,8 @@ export default function SignupPage() {
           <p className="sa-auth-kicker">SuperEduc8</p>
           <h1 style={{ margin: '0.5rem 0 0.25rem', fontSize: '1.75rem' }}>Create account</h1>
           <p className="sa-muted" style={{ marginTop: 0, marginBottom: '1.25rem' }}>
-            Self-serve signup for Phase 1. Supervised/family flows stay on the web app for now.
+            Self-serve signup for ages 13+. Under-13 accounts need a parent or guardian — use the
+            supervised or family signup on the SuperEduc8 website.
           </p>
 
           <form className="sa-stack" onSubmit={onSubmit}>
@@ -117,13 +118,13 @@ export default function SignupPage() {
               />
             </div>
             <div>
-              <label className="sa-field-label">Age range</label>
+              <label className="sa-field-label">Age range (13+)</label>
               <select
                 className="sa-select"
                 value={ageRange}
                 onChange={(e) => setAgeRange(e.target.value)}
               >
-                {SHIFT_AGE_RANGES.map((a) => (
+                {SHIFT_SELF_SERVE_AGE_RANGES.map((a) => (
                   <option key={a.value} value={a.value}>
                     {a.label}
                   </option>

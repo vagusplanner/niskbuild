@@ -15,6 +15,11 @@ export const SHIFT_AGE_RANGES = [
   { value: '17', label: 'Age 17' },
 ]
 
+/** Self-serve Cap SPA signup — under-13 must use web supervised/family consent. */
+export const SHIFT_SELF_SERVE_AGE_RANGES = SHIFT_AGE_RANGES.filter(
+  (a) => a.value !== '7_8' && a.value !== '9_10' && a.value !== '11_12'
+)
+
 export function parseFavouriteSubjects(raw) {
   if (!Array.isArray(raw)) return []
   return raw
