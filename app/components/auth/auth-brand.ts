@@ -47,6 +47,8 @@ export const AUTH_BRAND_COPY: Record<AuthProductBrand, AuthBrandCopy> = {
     backHref: null,
     backLabel: null,
     termsHref: '/terms',
+    // Host-aware: on supereduc8.com /privacy serves the SuperEduc8 children's policy
+    // (not NiskBuild's adult policy). See app/privacy/page.tsx.
     privacyHref: '/privacy',
     defaultNext: '/dashboard',
     postVerifyPath: '/dashboard',

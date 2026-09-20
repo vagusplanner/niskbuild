@@ -27,6 +27,11 @@ export function getSuperEduc8Origin(): string {
   return SUPEREDUC8_DEFAULT_ORIGIN;
 }
 
+/** Canonical SuperEduc8 privacy policy URL (host-aware /privacy page). */
+export function getSuperEduc8PrivacyUrl(): string {
+  return `${getSuperEduc8Origin()}/privacy`;
+}
+
 /**
  * Paths that stay un-prefixed on SuperEduc8 (shared NiskBuild auth + platform).
  * Everything else maps under /builder/shift-ai.
@@ -39,6 +44,8 @@ export function isSuperEduc8PassthroughPath(pathname: string): boolean {
   if (pathname === '/login' || pathname.startsWith('/login/')) return true;
   if (pathname === '/reset-password' || pathname.startsWith('/reset-password/')) return true;
   if (pathname === '/verify-phone' || pathname.startsWith('/verify-phone/')) return true;
+  // Shared legal pages — host-aware content in app/privacy (and future terms).
+  if (pathname === '/privacy' || pathname.startsWith('/privacy/')) return true;
   return false;
 }
 
