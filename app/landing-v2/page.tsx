@@ -41,7 +41,7 @@ const HOW_STEPS = [
   {
     n: '3',
     title: 'Make it yours',
-    body: 'Add pages, tweak the design, iterate with more prompts. Every version is saved, so you can always go back.',
+    body: 'Add pages, tweak, iterate. Your recent versions are saved so you can always roll back.',
   },
   {
     n: '4',
@@ -377,8 +377,8 @@ export default function LandingV2Page() {
             Start free. Upgrade when you&apos;re ready.
           </h2>
           <p className="text-nisk-muted text-center mb-12 max-w-xl mx-auto text-sm md:text-base">
-            Every plan includes the full builder. Higher tiers add exports, marketplace access, and
-            room to grow.
+            Start building free, no card required. Every tier gets the AI builder and live preview —
+            higher tiers unlock clean code exports, marketplace access, and room to scale.
           </p>
 
           <div className="grid md:grid-cols-3 gap-4 md:gap-5">
@@ -422,6 +422,67 @@ export default function LandingV2Page() {
           </div>
 
           <p className="text-center mt-8">
+            <Link
+              href="/pricing/compare"
+              className="text-[var(--copper-melt)] hover:text-[var(--copper-light)] font-medium text-sm underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copper-primary)] rounded"
+            >
+              See the full plan comparison →
+            </Link>
+          </p>
+        </div>
+      </section>
+
+      {/* 5b. AGENCIES & PLATFORMS */}
+      <section id="agencies" className="py-20 px-4 bg-nisk-surface scroll-mt-28">
+        <div className="max-w-5xl mx-auto">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--copper-melt)] mb-3 text-center">
+            For agencies &amp; platforms
+          </p>
+          <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-5 text-center text-[var(--nisk-color)] max-w-3xl mx-auto">
+            Build a business on top of NiskBuild
+          </h2>
+          <p className="text-nisk-muted text-center mb-12 max-w-3xl mx-auto text-sm md:text-base leading-relaxed">
+            Running an agency, or want to offer AI app-building under your own brand? White-Label
+            gives you custom domains and your own branding on every project you ship for clients.
+            Scale and Team Enterprise add the infrastructure, collaboration tools, and support for
+            growing teams. For organizations that need dedicated infrastructure and custom terms,
+            Sovereign is built for you.
+          </p>
+
+          <div className="grid md:grid-cols-3 gap-4 md:gap-5 mb-10">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] p-5 md:p-6 flex flex-col">
+              <h3 className="text-lg font-semibold text-[var(--nisk-color)] mb-1">White-Label</h3>
+              <p className="mb-3">
+                <span className="text-2xl font-bold text-[var(--nisk-color)]">$1,199</span>
+                <span className="text-nisk-muted text-sm">/month</span>
+              </p>
+              <p className="text-sm text-nisk-muted leading-relaxed flex-1">
+                Your brand, your domains, powered by NiskBuild underneath.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] p-5 md:p-6 flex flex-col">
+              <h3 className="text-lg font-semibold text-[var(--nisk-color)] mb-1">Team Enterprise</h3>
+              <p className="mb-3">
+                <span className="text-2xl font-bold text-[var(--nisk-color)]">$1,999</span>
+                <span className="text-nisk-muted text-sm">/month</span>
+              </p>
+              <p className="text-sm text-nisk-muted leading-relaxed flex-1">
+                Built for growing teams who need more seats, more support, and more control.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] p-5 md:p-6 flex flex-col">
+              <h3 className="text-lg font-semibold text-[var(--nisk-color)] mb-1">Sovereign</h3>
+              <p className="mb-3">
+                <span className="text-2xl font-bold text-[var(--nisk-color)]">Custom</span>
+              </p>
+              <p className="text-sm text-nisk-muted leading-relaxed flex-1">
+                Dedicated infrastructure and custom terms for organizations with specific
+                requirements. Contact us to talk through your needs.
+              </p>
+            </div>
+          </div>
+
+          <p className="text-center">
             <Link
               href="/pricing/compare"
               className="text-[var(--copper-melt)] hover:text-[var(--copper-light)] font-medium text-sm underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--copper-primary)] rounded"
