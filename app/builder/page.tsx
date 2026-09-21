@@ -1767,7 +1767,17 @@ function BuilderContent() {
       <AgeGateModal open={showAgeGate} onComplete={handleAgeGateComplete} />
       <DemographicOnboarding open={showDemographic} onComplete={handleDemographicComplete} />
       <WelcomeAssistant open={showWelcome} onComplete={handleWelcomeComplete} userName={userName} />
-      <HelpAssistant mode="user" projectId={activeProjectId} />
+      <HelpAssistant
+        mode="user"
+        projectId={activeProjectId}
+        builderSurface={{
+          projectSettingsOpen,
+          projectSettingsTab,
+          inspectorOpen,
+          inspectorTab,
+          visualEditMode,
+        }}
+      />
       <MobileExportModal
         open={showMobileExport}
         projectTitle={prompt.substring(0, 50) || 'Untitled Project'}

@@ -9,6 +9,8 @@ import {
   type AgentMessage,
   type PreferredProvider,
 } from '@/lib/ai-agent';
+import { retrieveNiskKnowledge } from '@/lib/nisk-retrieval';
+import type { BuilderSurfaceContext } from '@/lib/nisk-context';
 
 async function fetchAdminStats(): Promise<string> {
   try {
@@ -35,6 +37,26 @@ async function fetchAdminStats(): Promise<string> {
 function parsePreferredProvider(value: unknown): PreferredProvider {
   if (value === 'ollama' || value === 'groq' || value === 'auto') return value;
   return 'auto';
+}
+
+function parseBuilderSurface(value: unknown): BuilderSurfaceContext | null {
+  if (!value || typeof value !== 'object') return null;
+  const v = value as Record<string, unknown>;
+  return {
+    projectSettingsOpen: v.projectSettingsOpen === true,
+    projectSettingsTab:
+      typeof v.projectSettingsTab === 'string' ? v.projectSettingsTab : null,
+    inspectorOpen: v.inspectorOpen === true,
+    inspectorTab: typeof v.inspectorTab === 'string' ? v.inspectorTab : null,
+    visualEditMode: v.visualEditMode === true,
+  };
+}
+
+function parsePathname(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  if (!trimmed.startsWith('/') || trimmed.length > 200) return undefined;
+  return trimmed;
 }
 
 export async function GET(request: NextRequest) {
@@ -91,6 +113,8 @@ export async function POST(request: NextRequest) {
     const projectId = typeof body.projectId === 'string' ? body.projectId : null;
     const mode = body.mode === 'admin' ? 'admin' : 'user';
     const preferredProvider = parsePreferredProvider(body.preferredProvider);
+    const pathname = parsePathname(body.pathname);
+    const builderSurface = parseBuilderSurface(body.builderSurface);
     const history: AgentMessage[] = Array.isArray(body.conversationHistory)
       ? body.conversationHistory
           .filter(
@@ -144,6 +168,18 @@ export async function POST(request: NextRequest) {
 
     const adminStats = mode === 'admin' ? await fetchAdminStats() : undefined;
 
+    let retrievedKnowledge = '';
+    let citations: { type: string; href: string; title: string }[] = [];
+    if (mode === 'user') {
+      try {
+        const retrieved = await retrieveNiskKnowledge(message, userTier);
+        retrievedKnowledge = retrieved.contextBlock;
+        citations = retrieved.citations;
+      } catch {
+        // Retrieval failure should not block the chat reply
+      }
+    }
+
     const result = await runHelpAgent(
       message,
       {
@@ -153,6 +189,9 @@ export async function POST(request: NextRequest) {
         mode,
         adminStats,
         preferredProvider,
+        pathname,
+        builderSurface,
+        retrievedKnowledge,
       },
       history
     );
@@ -176,6 +215,7 @@ export async function POST(request: NextRequest) {
       response: result.response,
       provider: result.provider,
       promptType: result.promptType,
+      citations,
     });
   } catch (error) {
     captureApiException(error);

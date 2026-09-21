@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { getSafeSession } from '@/lib/supabaseSession';
 import {
   DEFAULT_AGENT_SETTINGS,
@@ -10,6 +11,7 @@ import {
   saveAgentSettings,
   type AgentSettings,
 } from '@/lib/agent-settings';
+import type { BuilderSurfaceContext } from '@/lib/nisk-context';
 
 export type HelpAssistantMode = 'user' | 'admin';
 
@@ -20,6 +22,7 @@ interface ChatMessage {
   timestamp: Date;
   provider?: string;
   promptType?: string;
+  citations?: { type: string; href: string; title: string }[];
 }
 
 interface AgentAnalytics {
@@ -31,18 +34,22 @@ interface AgentAnalytics {
   last7Days: number;
 }
 
+export type HelpAssistantBuilderSurface = BuilderSurfaceContext;
+
 interface HelpAssistantProps {
   mode?: HelpAssistantMode;
   projectId?: string | null;
   bottomOffset?: number;
+  /** Live builder UI surface for contextual answers (optional). */
+  builderSurface?: HelpAssistantBuilderSurface | null;
 }
 
 const STARTERS_USER = [
-  'How do I build a todo app?',
-  'Import a Google Business listing into the builder',
-  'Buffer social publishing (Coming soon)',
-  'Download logos from the Brand kit',
-  'How do I export my code to GitHub or ZIP?',
+  'Where did SEO and Integrations go?',
+  'How do I save and deploy from the Builder?',
+  'What’s the difference between Tips and Docs?',
+  'Import a Google Business listing',
+  'How do I export ZIP or PWA?',
   'What can Agency vs Pro do?',
 ];
 
@@ -60,7 +67,7 @@ function welcomeMessage(isAdmin: boolean): ChatMessage {
     role: 'assistant',
     content: isAdmin
       ? "Admin Copilot ready. I use Groq for ops questions — ask about users, tickets, Stripe, or migrations."
-      : "Hi! I'm your NiskBuild AI assistant. I can help with plans, the builder, exports, and troubleshooting. What can I help you with?",
+      : "Hi, I'm Nisk — I know NiskBuild inside and out. Ask me anything about building your project, or just say what you're trying to do.",
     timestamp: new Date(),
   };
 }
@@ -96,9 +103,11 @@ export default function HelpAssistant({
   mode = 'user',
   projectId = null,
   bottomOffset = 0,
+  builderSurface = null,
 }: HelpAssistantProps) {
   const isAdmin = mode === 'admin';
   const starters = isAdmin ? STARTERS_ADMIN : STARTERS_USER;
+  const pathname = usePathname() || '/';
 
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
@@ -114,6 +123,8 @@ export default function HelpAssistant({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const sendRef = useRef<(text: string) => void>(() => {});
+  const builderSurfaceRef = useRef(builderSurface);
+  builderSurfaceRef.current = builderSurface;
 
   useEffect(() => {
     setSettings(loadAgentSettings());
@@ -183,6 +194,8 @@ export default function HelpAssistant({
             message: trimmed,
             mode,
             projectId,
+            pathname,
+            builderSurface: builderSurfaceRef.current,
             preferredProvider: settings.preferredProvider,
             conversationHistory: historyForApi.map((m) => ({
               role: m.role,
@@ -203,6 +216,7 @@ export default function HelpAssistant({
             timestamp: new Date(),
             provider: data.provider,
             promptType: data.promptType,
+            citations: Array.isArray(data.citations) ? data.citations : undefined,
           },
         ]);
         loadAnalytics();
@@ -220,7 +234,7 @@ export default function HelpAssistant({
         setLoading(false);
       }
     },
-    [loading, messages, mode, projectId, settings.preferredProvider, loadAnalytics]
+    [loading, messages, mode, projectId, pathname, settings.preferredProvider, loadAnalytics]
   );
 
   sendRef.current = sendMessage;
@@ -361,21 +375,19 @@ export default function HelpAssistant({
         style={{ bottom }}
       >
         {open && (
-          <div
-            className="w-[min(100vw-2rem,420px)] h-[min(72vh,600px)] flex flex-col rounded-2xl border border-nisk bg-nisk-card shadow-2xl overflow-hidden pointer-events-auto"
-          >
-            <div
-              className={`shrink-0 px-4 py-3 flex items-center gap-2 border-b border-nisk bg-gradient-brand`}
-            >
-              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold text-white shrink-0">
-                AI
+          <div className="w-[min(100vw-2rem,420px)] h-[min(72vh,600px)] flex flex-col rounded-2xl border border-nisk bg-nisk-card shadow-2xl overflow-hidden pointer-events-auto">
+            <div className="shrink-0 px-4 py-3 flex items-center gap-2 border-b border-nisk bg-gradient-brand">
+              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold text-white shrink-0 border border-white/30">
+                {isAdmin ? 'AI' : 'N'}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-white truncate">
-                  {isAdmin ? 'Admin Copilot' : 'NiskBuild AI'}
+                  {isAdmin ? 'Admin Copilot' : 'Nisk'}
                 </p>
                 <p className="text-[10px] text-white/80 truncate">
-                  {messages.length} messages · {providerLabel}
+                  {isAdmin
+                    ? `${messages.length} messages · ${providerLabel}`
+                    : `Your NiskBuild guide · ${providerLabel}`}
                 </p>
               </div>
               <button
@@ -453,7 +465,10 @@ export default function HelpAssistant({
               </div>
             )}
 
-            <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3 bg-[var(--background)]">
+            <div
+              ref={scrollRef}
+              className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3 bg-[var(--background)]"
+            >
               {messages.map((m) => (
                 <div
                   key={m.id}
@@ -467,6 +482,19 @@ export default function HelpAssistant({
                     }`}
                   >
                     {m.content}
+                    {m.role === 'assistant' && m.citations && m.citations.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-nisk/60 flex flex-wrap gap-1.5">
+                        {m.citations.slice(0, 4).map((c) => (
+                          <Link
+                            key={`${c.href}-${c.title}`}
+                            href={c.href}
+                            className="text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--surface-elevated)] text-[var(--copper-melt)] hover:underline"
+                          >
+                            {c.type === 'tips' ? 'Tip' : 'Doc'}: {c.title}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
                     {m.role === 'assistant' && (m.provider || m.promptType) && (
                       <div className="flex flex-wrap gap-1.5 mt-1.5">
                         {m.provider && (
@@ -480,7 +508,10 @@ export default function HelpAssistant({
                           </span>
                         )}
                         <span className="text-[9px] text-nisk-muted">
-                          {m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {m.timestamp.toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
                         </span>
                       </div>
                     )}
@@ -527,7 +558,11 @@ export default function HelpAssistant({
                   }}
                   rows={2}
                   placeholder={
-                    isListening ? 'Listening…' : isAdmin ? 'Ask about ops…' : 'Ask me anything…'
+                    isListening
+                      ? 'Listening…'
+                      : isAdmin
+                        ? 'Ask about ops…'
+                        : 'Ask Nisk anything…'
                   }
                   disabled={loading || isListening}
                   className={`flex-1 resize-none rounded-xl border px-3 py-2 text-sm bg-[var(--surface-elevated)] text-[var(--foreground)] placeholder:text-nisk-muted focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 ${
@@ -583,8 +618,12 @@ export default function HelpAssistant({
                     Support
                   </Link>
                   {' · '}
-                  <Link href="/landing-v2#contact" className="text-[var(--primary)] hover:underline">
-                    Contact
+                  <Link href="/tips" className="text-[var(--primary)] hover:underline">
+                    Tips
+                  </Link>
+                  {' · '}
+                  <Link href="/docs" className="text-[var(--primary)] hover:underline">
+                    Docs
                   </Link>
                 </p>
               )}
@@ -595,11 +634,11 @@ export default function HelpAssistant({
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className={`pointer-events-auto w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-white font-semibold transition-transform hover:scale-105 bg-gradient-to-br from-[var(--primary)] to-[var(--secondary)]`}
-          aria-label={open ? 'Close AI assistant' : 'Open AI assistant'}
-          title={isAdmin ? 'Admin Copilot' : 'NiskBuild AI'}
+          className="pointer-events-auto w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-white font-bold transition-transform hover:scale-105 bg-gradient-to-br from-[var(--primary)] to-[var(--secondary)]"
+          aria-label={open ? 'Close Nisk' : 'Open Nisk'}
+          title={isAdmin ? 'Admin Copilot' : 'Nisk — NiskBuild guide'}
         >
-          {open ? '✕' : '💬'}
+          {open ? '✕' : isAdmin ? '💬' : 'N'}
         </button>
       </div>
     </>

@@ -243,8 +243,8 @@ export const TIPS: TipCard[] = [
     section: 'ai-helpers',
     title: 'Help chat ≠ code generation',
     when: 'You’re unsure which “AI” button to use.',
-    why: 'HelpAssistant answers product questions. Builder Generate writes and updates your app. Mixing them up wastes credits and time.',
-    how: 'Stuck on “how do I export?” → ? / Tips / Support. Want a new screen or feature → Builder prompt → Generate.',
+    why: 'Nisk (the in-app guide) answers product questions. Builder Generate writes and updates your app. Mixing them up wastes credits and time.',
+    how: 'Stuck on “how do I export?” → Nisk / Tips / Support. Want a new screen or feature → Builder prompt → Generate.',
     href: '/docs',
     hrefLabel: 'Docs home',
     featured: true,
@@ -252,10 +252,10 @@ export const TIPS: TipCard[] = [
   {
     id: 'ai-help-assistant',
     section: 'ai-helpers',
-    title: 'Ask HelpAssistant for product how-tos',
+    title: 'Ask Nisk for product how-tos',
     when: 'You need an answer about NiskBuild itself (plans, export, settings).',
-    why: 'It’s trained on platform guidance — not for inventing your app’s UI.',
-    how: 'Open help from the header or Support, ask a concrete question, then follow any linked docs it cites.',
+    why: 'Nisk is trained on platform guidance — not for inventing your app’s UI.',
+    how: 'Open the N floating chat (or Support), ask a concrete question, then follow any linked docs or tips it cites.',
     href: '/dashboard/support',
     hrefLabel: 'Support',
   },
@@ -295,4 +295,52 @@ export function getTipOfDay(date = new Date()): TipCard {
 
 export function tipsBySection(section: TipSection): TipCard[] {
   return TIPS.filter((t) => t.section === section);
+}
+
+const TIP_STOP = new Set([
+  'a',
+  'an',
+  'the',
+  'to',
+  'for',
+  'of',
+  'in',
+  'on',
+  'and',
+  'or',
+  'is',
+  'are',
+  'how',
+  'do',
+  'i',
+  'my',
+  'me',
+  'can',
+  'what',
+  'where',
+  'when',
+  'with',
+  'from',
+]);
+
+/** Keyword search over curated tips (title / when / why / how). */
+export function searchTips(query: string, limit = 4): TipCard[] {
+  const tokens = query
+    .toLowerCase()
+    .split(/[^a-z0-9+/]+/)
+    .filter((t) => t.length > 1 && !TIP_STOP.has(t));
+  if (tokens.length === 0) return [];
+
+  const scored = TIPS.map((tip) => {
+    const hay = `${tip.title} ${tip.when} ${tip.why} ${tip.how} ${tip.section}`.toLowerCase();
+    let score = 0;
+    for (const t of tokens) {
+      if (hay.includes(t)) score += tip.title.toLowerCase().includes(t) ? 3 : 1;
+    }
+    return { tip, score };
+  })
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  return scored.slice(0, limit).map((x) => x.tip);
 }

@@ -1,6 +1,8 @@
 import 'server-only';
 
 import { GROQ_CODE_MODEL, getGroqClient } from '@/lib/groq-client';
+import { describeBuilderSurface } from '@/lib/nisk-retrieval';
+import type { BuilderSurfaceContext } from '@/lib/nisk-context';
 
 export type AgentPromptType = 'simple' | 'complex';
 export type AgentMode = 'user' | 'admin';
@@ -19,6 +21,11 @@ export interface AgentContext {
   mode?: AgentMode;
   adminStats?: string;
   preferredProvider?: PreferredProvider;
+  /** Current Next.js pathname, e.g. /builder */
+  pathname?: string;
+  builderSurface?: BuilderSurfaceContext | null;
+  /** Pre-fetched docs/tips excerpts from retrieveNiskKnowledge */
+  retrievedKnowledge?: string;
 }
 
 const COMPLEX_KEYWORDS = [
@@ -60,34 +67,49 @@ export function classifyAgentPrompt(message: string): AgentPromptType {
 function buildUserSystemPrompt(ctx: AgentContext, promptType: AgentPromptType): string {
   const tier = ctx.userTier || 'sandbox';
   const project = ctx.projectName || 'No active project';
+  const path = ctx.pathname || 'unknown';
+  const surface = describeBuilderSurface(ctx.builderSurface);
 
-  const base = `You are NiskBuild Help — a friendly in-app assistant for the NiskBuild website builder platform.
-User plan: ${tier}. Active project: ${project}.
+  const base = `You are Nisk — a named in-app guide for NiskBuild. You know the product inside and out and talk like a smart colleague, not a scripted support bot or a corporate FAQ.
 
-Platform facts (accurate as of 2026):
-- Sandbox ($0): 1 project, local preview, local Ollama optional, no cloud credits, watermarked/locked export
-- Basic ($69/mo): 5 projects, clean ZIP + PWA export, 150 cloud credits, no BYOC, no Google Places
-- Pro Worker ($129/mo): BYOC, Google Places AI, Phaser games, 600 credits, support tickets
-- Agency+ ($299+): preview links, team features, higher credits
-- Billing: /pricing · Settings: /dashboard/settings · Human support: /dashboard/support (Pro+ tickets) or /landing-v2#contact (Basic/Sandbox form)
-- Builder shortcuts: ⌘+Enter generate, ⌘+S save, ⌘+B inspector, F fullscreen
-- Reload packs on pricing page; annual billing saves 2 months
+Tone:
+- Knowledgeable and genuinely helpful. Concise by default (users are often mid-task); go deeper when they ask.
+- Encouraging without being saccharine. If someone is stuck, acknowledge it's a fair question — don't be falsely cheerful about confusion.
+- Never invent features. If unsure, say so and point to /docs, /tips, or human support.
+
+User context:
+- Plan: ${tier}
+- Active project: ${project}
+- Current page: ${path}${surface ? `\n- Builder UI: ${surface}` : ''}
+
+Current product IA (accurate — prefer this over older memories):
+- Builder canvas header: Save and Deploy are primary buttons; Menu ▾ is grouped into View / Edit / Project & share.
+- Inspector (Code toggle, ⌘/Ctrl+B, or Menu → Show inspector): Code (file tree + editor) and Styles (when Visual edit has a selected element) only.
+- Project Settings (gear / "Project" in the canvas header): SEO, Integrations, Blueprint (read-only), AI/Ollama, Credits/ROI — these used to live in the inspector and moved here.
+- Shortcuts: ⌘/Ctrl+S save · ⌘/Ctrl+B inspector · F fullscreen · ⌘/Ctrl+Enter generate (when focused in the prompt).
+- Help & docs: ? in the header or account menu opens the searchable docs panel (same corpus as /docs). Tips: /tips. Support: /dashboard/support (Pro+ tickets) or contact on pricing/landing for lower tiers.
+- Plans (high level): Sandbox free trial → Basic ($69) ZIP/PWA → Pro Worker ($129) Places/BYOC/games → Agency+ ($299+) native export & teams. Details: /pricing and /docs/plans-explained when available.
 
 Rules:
-- Be concise and actionable. Prefer bullet steps for how-to questions.
-- Never invent features. If unsure, suggest human support or docs.
-- Do not generate full application code — guide the user to use the builder Generate button instead.
+- Prefer short bullet steps for how-tos.
+- When retrieved knowledge is provided below, ground answers in it and cite the Source links (e.g. /docs/… or /tips).
+- If the user is already on the relevant UI (see Builder UI above), say so — don't send them on a navigation scavenger hunt.
+- Do not generate full application code — guide them to Builder → Generate instead.
 - For billing disputes or account deletion, direct to support.`;
+
+  const knowledge = ctx.retrievedKnowledge?.trim()
+    ? `\n\n${ctx.retrievedKnowledge.trim()}`
+    : '';
 
   if (promptType === 'complex') {
     return `${base}
 
-You may give detailed technical guidance (React, Tailwind, Next.js, debugging tips) but keep answers under 250 words unless code snippet is essential.`;
+You may give detailed technical guidance (React, Tailwind, Next.js, debugging tips) but keep answers under 250 words unless a short code snippet is essential.${knowledge}`;
   }
 
   return `${base}
 
-Keep answers under 120 words. Focus on navigation, plans, FAQ, and quick how-to.`;
+Keep answers under 120 words unless retrieved docs need a bit more. Focus on navigation, plans, and quick how-to.${knowledge}`;
 }
 
 function buildAdminSystemPrompt(ctx: AgentContext): string {
@@ -173,6 +195,7 @@ function promptTypeMaxTokens(
   const system = messages.find((m) => m.role === 'system')?.content || '';
   if (system.includes('Admin Copilot')) return 700;
   if (system.includes('detailed technical')) return 600;
+  if (system.includes('Retrieved product knowledge')) return 550;
   return 350;
 }
 
