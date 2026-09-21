@@ -456,7 +456,8 @@ pre, code {
 }
 
 .builder-workspace {
-  display: flex;
+  /* display: controlled by Tailwind `hidden md:flex` — do not set display here or
+     it overrides `hidden` on mobile and stacks desktop+mobile builder UIs. */
   flex-direction: row;
   height: 100%;
   width: 100%;
@@ -607,5 +608,11 @@ pre, code {
 
   .builder-inspector-toggle {
     display: none;
+  }
+
+  /* Keep Generate/actions visible: dock stays in-viewport; textarea cannot eat the screen */
+  .builder-prompt-dock textarea {
+    min-height: 72px !important;
+    max-height: min(28vh, 160px);
   }
 }

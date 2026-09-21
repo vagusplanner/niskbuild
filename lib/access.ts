@@ -105,6 +105,10 @@ export const PAID_TIERS = [
 export function isPublicPath(pathname: string) {
   const normalized = pathname.replace(/\/+$/, '') || '/';
   const publicPaths = PUBLIC_PATHS as readonly string[];
+  // /pricing and marketing children (/pricing/compare) must stay pre-signup public
+  if (normalized === '/pricing' || normalized.startsWith('/pricing/')) {
+    return true;
+  }
   return (
     publicPaths.includes(pathname) ||
     publicPaths.includes(normalized) ||

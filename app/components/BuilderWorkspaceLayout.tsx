@@ -896,6 +896,53 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
     />
   );
 
+  // Fresh element trees for mobile vs desktop — never reuse one React element in two
+  // CSS-toggled parents (that previously stacked both UIs when .builder-workspace
+  // forced display:flex over Tailwind `hidden`).
+  const mobileChatPanel = (
+    <ChatPanelContent
+      userId={userId}
+      savedProjectsCount={savedProjectsCount}
+      projectLimit={projectLimit}
+      isSandboxAtLimit={isSandboxAtLimit}
+      onNewProject={onNewProject}
+      recentProjects={recentProjects}
+      onLoadRecentProject={onLoadRecentProject}
+      onOpenAllProjects={onOpenAllProjects}
+      cloudCreditsRemaining={cloudCreditsRemaining}
+      cloudCreditsAllowance={cloudCreditsAllowance}
+      subscriptionTier={subscriptionTier}
+      subscriptionStatus={subscriptionStatus}
+      prompt={prompt}
+      onPromptChange={onPromptChange}
+      onGenerate={onGenerate}
+      isGenerating={isGenerating}
+      statusMessage={statusMessage}
+      activityLog={activityLog}
+      streamingCode={streamingCode}
+      streamingNarration={streamingNarration}
+      streamingSteps={streamingSteps}
+      planMode={planMode}
+      onPlanModeChange={onPlanModeChange}
+      promptSuggestions={promptSuggestions}
+      editingPageLabel={editingPageLabel}
+      promptHeightPx={Math.min(promptHeightPx, 120)}
+      onPromptHeightChange={setPromptHeightPx}
+      canImportGooglePlaces={canImportGooglePlaces}
+      canUseCompetitorIntel={canUseCompetitorIntel}
+      canUseSocialProof={canUseSocialProof}
+      importedBusinessName={importedBusinessName}
+      onGooglePlacesImport={onGooglePlacesImport}
+      onBuildFromFigmaScreenshot={onBuildFromFigmaScreenshot}
+      activeProjectId={activeProjectId}
+      useLocalOllama={useLocalOllama}
+      onUseLocalOllamaChange={onUseLocalOllamaChange}
+      onOllamaUpgrade={onOllamaUpgrade}
+      onRestoreZip={props.onRestoreZip}
+      googlePlacesRef={googlePlacesRef}
+    />
+  );
+
   const visualToolbar = (
     <VisualEditorToolbar
       editMode={visualEditMode}
@@ -1042,7 +1089,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
 
         {mobileTab === 'chat' && (
           <aside className="builder-chat-panel w-full flex-1 min-h-0 border-r-0 flex flex-col">
-            {chatPanel}
+            {mobileChatPanel}
           </aside>
         )}
 
