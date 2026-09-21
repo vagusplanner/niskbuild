@@ -33,6 +33,44 @@ type BuilderActionsMenuProps = {
   onRunExportAudit?: () => void;
 };
 
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="px-4 py-1.5 text-[10px] uppercase tracking-wider text-nisk-muted">{children}</p>
+  );
+}
+
+function MenuItem({
+  children,
+  onClick,
+  disabled,
+  active,
+  tone = 'default',
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  active?: boolean;
+  tone?: 'default' | 'accent';
+}) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={onClick}
+      disabled={disabled}
+      className={`w-full text-left px-4 py-2 text-sm hover:bg-[var(--surface-elevated)] disabled:opacity-40 ${
+        active
+          ? 'text-[var(--copper-melt)]'
+          : tone === 'accent'
+            ? 'text-[var(--copper-melt)]'
+            : 'text-gray-200'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function BuilderActionsMenu({
   canAct,
   isExporting,
@@ -101,154 +139,150 @@ export default function BuilderActionsMenu({
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full mt-1 w-52 rounded-xl border border-nisk bg-nisk-card shadow-2xl z-50 py-1 overflow-hidden"
+          className="absolute right-0 top-full mt-1 w-56 rounded-xl border border-nisk bg-nisk-card shadow-2xl z-50 py-1 overflow-hidden max-h-[min(70vh,520px)] overflow-y-auto"
         >
+          <SectionLabel>View</SectionLabel>
           {onOpenInspector && (
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => { onOpenInspector(); close(); }}
-              className={`w-full text-left px-4 py-2 text-sm hover:bg-[var(--surface-elevated)] ${
-                inspectorOpen ? 'text-[var(--copper-melt)]' : 'text-gray-200'
-              }`}
+            <MenuItem
+              active={inspectorOpen}
+              onClick={() => {
+                onOpenInspector();
+                close();
+              }}
             >
               {inspectorOpen ? 'Hide inspector' : 'Show inspector'}
-            </button>
-          )}
-          {onOpenHistory && (
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => { onOpenHistory(); close(); }}
-              className={`w-full text-left px-4 py-2 text-sm hover:bg-[var(--surface-elevated)] ${
-                versionHistoryOpen ? 'text-[var(--copper-melt)]' : 'text-gray-200'
-              }`}
-            >
-              Version history
-            </button>
+            </MenuItem>
           )}
           {onToggleFullscreen && (
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => { onToggleFullscreen(); close(); }}
-              className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-[var(--surface-elevated)]"
+            <MenuItem
+              onClick={() => {
+                onToggleFullscreen();
+                close();
+              }}
             >
               Fullscreen preview
-            </button>
+            </MenuItem>
           )}
           {onPreviewDeviceChange && (
             <>
-              <div className="border-t border-nisk my-1" />
-              <p className="px-4 py-1 text-[10px] uppercase tracking-wider text-nisk-muted">Preview size</p>
+              <p className="px-4 pt-1 pb-0.5 text-[10px] text-nisk-muted">Preview size</p>
               {PREVIEW_DEVICE_OPTIONS.map(({ id, label, Icon }) => (
-                <button
+                <MenuItem
                   key={id}
-                  type="button"
-                  role="menuitem"
-                  onClick={() => { onPreviewDeviceChange(id); close(); }}
-                  className={`w-full text-left px-4 py-2 text-sm hover:bg-[var(--surface-elevated)] ${
-                    previewDevice === id ? 'text-[var(--copper-melt)]' : 'text-gray-200'
-                  }`}
+                  active={previewDevice === id}
+                  onClick={() => {
+                    onPreviewDeviceChange(id);
+                    close();
+                  }}
                 >
                   <span className="flex items-center gap-2">
                     <Icon className="w-4 h-4 shrink-0" strokeWidth={1.75} aria-hidden />
                     {label}
                   </span>
-                </button>
+                </MenuItem>
               ))}
             </>
           )}
-          {(onOpenInspector || onOpenHistory || onToggleFullscreen) && (
-            <div className="border-t border-nisk my-1" />
+
+          <div className="border-t border-nisk my-1" />
+          <SectionLabel>Edit</SectionLabel>
+          <MenuItem
+            disabled={!canVisualEdit}
+            onClick={() => {
+              onToggleVisualEdit();
+              close();
+            }}
+          >
+            {visualEditMode ? 'Exit visual edit' : 'Visual edit'}
+          </MenuItem>
+          <MenuItem
+            disabled={visualEditMode}
+            onClick={() => {
+              onToggleInspect();
+              close();
+            }}
+          >
+            {inspectMode ? 'Exit target mode' : 'Target element'}
+          </MenuItem>
+          {onOpenHistory && (
+            <MenuItem
+              active={versionHistoryOpen}
+              onClick={() => {
+                onOpenHistory();
+                close();
+              }}
+            >
+              Version history
+            </MenuItem>
           )}
+
+          <div className="border-t border-nisk my-1" />
+          <SectionLabel>Project &amp; share</SectionLabel>
+          <MenuItem
+            disabled={!canAct}
+            onClick={() => {
+              onSave();
+              close();
+            }}
+          >
+            Save project
+          </MenuItem>
+          <MenuItem
+            disabled={!canAct || isExporting}
+            onClick={() => {
+              onExportZip();
+              close();
+            }}
+          >
+            {isExporting ? 'Exporting…' : 'Export ZIP'}
+          </MenuItem>
+          <MenuItem
+            disabled={!canAct || mobileExporting || !canPwa}
+            onClick={() => {
+              onMobileExport();
+              close();
+            }}
+          >
+            Export mobile app
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              fileRef.current?.click();
+            }}
+          >
+            Import ZIP
+          </MenuItem>
           {onRunExportAudit && (
-            <button
-              type="button"
-              role="menuitem"
+            <MenuItem
               onClick={() => {
                 onRunExportAudit();
                 close();
               }}
-              className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-[var(--surface-elevated)]"
             >
               Export audit
-            </button>
+            </MenuItem>
           )}
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => { onToggleVisualEdit(); close(); }}
-            disabled={!canVisualEdit}
-            className="w-full text-left px-4 py-2 text-sm hover:bg-[var(--surface-elevated)] disabled:opacity-40 text-gray-200"
-          >
-            {visualEditMode ? 'Exit visual edit' : 'Visual edit'}
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => { onToggleInspect(); close(); }}
-            disabled={visualEditMode}
-            className="w-full text-left px-4 py-2 text-sm hover:bg-[var(--surface-elevated)] disabled:opacity-40 text-gray-200"
-          >
-            {inspectMode ? 'Exit target mode' : 'Target element'}
-          </button>
-          <div className="border-t border-nisk my-1" />
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => { onSave(); close(); }}
-            disabled={!canAct}
-            className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-[var(--surface-elevated)] disabled:opacity-40"
-          >
-            Save project
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => { onExportZip(); close(); }}
-            disabled={!canAct || isExporting}
-            className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-[var(--surface-elevated)] disabled:opacity-40"
-          >
-            {isExporting ? 'Exporting…' : 'Export ZIP'}
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => { onMobileExport(); close(); }}
-            disabled={!canAct || mobileExporting}
-            className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-[var(--surface-elevated)] disabled:opacity-40"
-          >
-            Export mobile app
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => { fileRef.current?.click(); }}
-            className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-[var(--surface-elevated)]"
-          >
-            Import ZIP
-          </button>
-          <div className="border-t border-nisk my-1" />
           {canShareSocial && onOpenSocialPublisher && (
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => { onOpenSocialPublisher(); close(); }}
-              className="w-full text-left px-4 py-2 text-sm text-[var(--copper-melt)] hover:bg-[var(--surface-elevated)]"
+            <MenuItem
+              tone="accent"
+              onClick={() => {
+                onOpenSocialPublisher();
+                close();
+              }}
             >
               Share to Social
-            </button>
+            </MenuItem>
           )}
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => { onDeployLive(); close(); }}
+          <MenuItem
+            tone="accent"
             disabled={!canAct}
-            className="w-full text-left px-4 py-2 text-sm text-[var(--copper-melt)] hover:bg-[var(--surface-elevated)] disabled:opacity-40"
+            onClick={() => {
+              onDeployLive();
+              close();
+            }}
           >
             Deploy live preview
-          </button>
+          </MenuItem>
         </div>
       )}
     </div>

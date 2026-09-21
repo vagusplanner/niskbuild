@@ -57,6 +57,7 @@ import SocialPublisherPanel from '@/app/components/SocialPublisherPanel';
 import { type PreviewDevice, previewFrameClassForDevice } from '@/app/components/PreviewDeviceSwitcher';
 import VersionHistoryPanel from '@/app/components/VersionHistoryPanel';
 import { type InspectorTab } from '@/app/components/BuilderInspectorPanel';
+import { type ProjectSettingsTab } from '@/app/components/BuilderProjectSettingsDrawer';
 import PlanPanel from '@/app/components/PlanPanel';
 import MobileExportModal from '@/app/components/MobileExportModal';
 import { DEFAULT_SEO_SETTINGS, type ProjectSeoSettings } from '@/lib/seo-types';
@@ -159,6 +160,8 @@ function BuilderContent() {
   const [activeEditorTab, setActiveEditorTab] = useState<'chat' | 'preview' | 'inspector'>('preview');
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>('code');
+  const [projectSettingsOpen, setProjectSettingsOpen] = useState(false);
+  const [projectSettingsTab, setProjectSettingsTab] = useState<ProjectSettingsTab>('seo');
   const [blueprintData, setBlueprintData] = useState<ComponentBlueprint | null>(null);
   const [statusMessage, setStatusMessage] = useState('');
   const [activityLog, setActivityLog] = useState<string[]>([]);
@@ -1515,8 +1518,8 @@ function BuilderContent() {
         seoScore: data.seoScore ?? prev.seoScore,
       }));
       setSeoMessage('✨ SEO fields updated from AI');
-      setInspectorTab('seo');
-      setInspectorOpen(true);
+      setProjectSettingsTab('seo');
+      setProjectSettingsOpen(true);
     } catch {
       setSeoMessage('AI SEO generation failed');
     } finally {
@@ -1532,8 +1535,8 @@ function BuilderContent() {
     }
     setStatusMessage(message);
     setTimeout(() => setStatusMessage(''), 8000);
-    setInspectorTab('integrations');
-    setInspectorOpen(true);
+    setProjectSettingsTab('integrations');
+    setProjectSettingsOpen(true);
   };
 
   const filteredProjects = useMemo(() => {
@@ -1918,6 +1921,10 @@ function BuilderContent() {
           onInspectorOpenChange={setInspectorOpen}
           inspectorTab={inspectorTab}
           onInspectorTabChange={setInspectorTab}
+          projectSettingsOpen={projectSettingsOpen}
+          onProjectSettingsOpenChange={setProjectSettingsOpen}
+          projectSettingsTab={projectSettingsTab}
+          onProjectSettingsTabChange={setProjectSettingsTab}
           projectFiles={projectFiles}
           activeFile={activeFile}
           onSelectFile={handleSelectFile}

@@ -6,6 +6,9 @@ import InspectPicker, { type InspectTarget } from '@/app/components/InspectPicke
 import ProjectLimitBadge from '@/app/components/ProjectLimitBadge';
 import BuilderActionsMenu from '@/app/components/BuilderActionsMenu';
 import BuilderInspectorPanel, { type InspectorTab } from '@/app/components/BuilderInspectorPanel';
+import BuilderProjectSettingsDrawer, {
+  type ProjectSettingsTab,
+} from '@/app/components/BuilderProjectSettingsDrawer';
 import VisualEditorToolbar from '@/app/components/VisualEditorToolbar';
 import GooglePlacesImport, {
   type GooglePlacesImportHandle,
@@ -113,6 +116,10 @@ export type BuilderWorkspaceLayoutProps = {
   onInspectorOpenChange: (open: boolean) => void;
   inspectorTab: InspectorTab;
   onInspectorTabChange: (tab: InspectorTab) => void;
+  projectSettingsOpen: boolean;
+  onProjectSettingsOpenChange: (open: boolean) => void;
+  projectSettingsTab: ProjectSettingsTab;
+  onProjectSettingsTabChange: (tab: ProjectSettingsTab) => void;
   projectFiles: ProjectFile[];
   activeFile: string;
   onSelectFile: (path: string) => void;
@@ -219,6 +226,7 @@ function CanvasHeader({
   canShareSocial = false,
   onOpenSocialPublisher,
   onRunExportAudit,
+  onOpenProjectSettings,
   projectFiles = [],
   activeFile = '',
   onSelectFile,
@@ -252,6 +260,7 @@ function CanvasHeader({
   canShareSocial?: boolean;
   onOpenSocialPublisher?: () => void;
   onRunExportAudit?: () => void;
+  onOpenProjectSettings?: () => void;
   projectFiles?: ProjectFile[];
   activeFile?: string;
   onSelectFile?: (path: string) => void;
@@ -303,24 +312,37 @@ function CanvasHeader({
         )}
       </div>
       <div className="flex items-center gap-1.5 shrink-0">
-        {onRunExportAudit && (
+        {onOpenProjectSettings && (
           <button
             type="button"
-            onClick={onRunExportAudit}
-            className="btn-secondary px-2.5 py-1.5 text-xs rounded-lg hidden sm:inline-flex"
+            onClick={onOpenProjectSettings}
+            className="btn-secondary px-2.5 py-1.5 text-xs rounded-lg inline-flex items-center gap-1"
+            title="Project settings — SEO, integrations, blueprint, AI"
           >
-            Export audit
+            <span aria-hidden>⚙️</span>
+            <span className="hidden sm:inline">Project</span>
           </button>
         )}
-        {canShareSocial && onOpenSocialPublisher && (
-          <button
-            type="button"
-            onClick={onOpenSocialPublisher}
-            className="btn-secondary px-2.5 py-1.5 text-xs rounded-lg hidden sm:inline-flex"
-          >
-            Share to Social
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={!canAct}
+          className="btn-primary px-2.5 py-1.5 text-xs rounded-lg disabled:opacity-50"
+        >
+          Save
+        </button>
+        <button
+          type="button"
+          onClick={onDeployLive}
+          disabled={!canAct}
+          className="btn-secondary px-2.5 py-1.5 text-xs rounded-lg hidden sm:inline-flex disabled:opacity-50"
+          title="Deploy live preview"
+        >
+          Deploy
+        </button>
+        <span className="text-[10px] text-nisk-muted tabular-nums hidden md:inline">
+          {cloudCreditsRemaining} cr
+        </span>
         <BuilderActionsMenu
           canAct={canAct}
           isExporting={isExporting}
@@ -750,6 +772,10 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
     onInspectorOpenChange,
     inspectorTab,
     onInspectorTabChange,
+    projectSettingsOpen,
+    onProjectSettingsOpenChange,
+    projectSettingsTab,
+    onProjectSettingsTabChange,
     projectFiles,
     activeFile,
     onSelectFile,
@@ -786,25 +812,12 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
     canAddPage = true,
   } = props;
 
-  const seoInspectorProps = {
-    seoSettings,
-    onSeoChange,
-    subscriptionStatus,
-    activeProjectId,
-    onSaveSeo,
-    onGenerateSeo,
-    seoSaving,
-    seoGenerating,
-    seoMessage,
-  };
-
-  const integrationInspectorProps = {
-    generatedCode,
-    onIntegrationAdded,
-    onIntegrationStatus,
-  };
-
   const showStylesTab = visualEditMode && !!selectedVisualElement;
+
+  const openProjectSettings = (tab: ProjectSettingsTab = 'seo') => {
+    onProjectSettingsTabChange(tab);
+    onProjectSettingsOpenChange(true);
+  };
 
   const previewFullscreenRef = useRef<HTMLDivElement>(null);
   const mobilePreviewFullscreenRef = useRef<HTMLDivElement>(null);
@@ -948,13 +961,6 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
       activeFile={activeFile}
       onSelectFile={onSelectFile}
       codeEditor={codeEditor}
-      blueprintData={blueprintData}
-      subscriptionTier={subscriptionTier}
-      useLocalOllama={useLocalOllama}
-      onUseLocalOllamaChange={onUseLocalOllamaChange}
-      onOllamaUpgrade={onOllamaUpgrade}
-      userId={userId}
-      canUseLocalOllama={canUseLocal}
       showStylesTab={showStylesTab}
       selectedVisualElement={selectedVisualElement}
       stylePanel={stylePanel}
@@ -962,8 +968,34 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
       visualMobilePreview={visualMobilePreview}
       showMobileStyleControls={canVisualEditFull}
       visualEditApplying={visualEditApplying}
-      {...seoInspectorProps}
-      {...integrationInspectorProps}
+    />
+  );
+
+  const projectSettingsDrawer = (
+    <BuilderProjectSettingsDrawer
+      open={projectSettingsOpen}
+      tab={projectSettingsTab}
+      onTabChange={onProjectSettingsTabChange}
+      onClose={() => onProjectSettingsOpenChange(false)}
+      blueprintData={blueprintData}
+      subscriptionTier={subscriptionTier}
+      subscriptionStatus={subscriptionStatus}
+      useLocalOllama={useLocalOllama}
+      onUseLocalOllamaChange={onUseLocalOllamaChange}
+      onOllamaUpgrade={onOllamaUpgrade}
+      userId={userId}
+      canUseLocalOllama={canUseLocal}
+      seoSettings={seoSettings}
+      onSeoChange={onSeoChange}
+      activeProjectId={activeProjectId}
+      onSaveSeo={onSaveSeo}
+      onGenerateSeo={onGenerateSeo}
+      seoSaving={seoSaving}
+      seoGenerating={seoGenerating}
+      seoMessage={seoMessage}
+      generatedCode={generatedCode}
+      onIntegrationAdded={onIntegrationAdded}
+      onIntegrationStatus={onIntegrationStatus}
     />
   );
 
@@ -1051,6 +1083,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
               canShareSocial={canShareSocial}
               onOpenSocialPublisher={onOpenSocialPublisher}
               onRunExportAudit={onRunExportAudit}
+              onOpenProjectSettings={() => openProjectSettings('seo')}
               projectFiles={projectFiles}
               activeFile={activeFile}
               onSelectFile={onSelectFile}
@@ -1095,13 +1128,6 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
               activeFile={activeFile}
               onSelectFile={onSelectFile}
               codeEditor={codeEditor}
-              blueprintData={blueprintData}
-              subscriptionTier={subscriptionTier}
-              useLocalOllama={useLocalOllama}
-              onUseLocalOllamaChange={onUseLocalOllamaChange}
-              onOllamaUpgrade={onOllamaUpgrade}
-              userId={userId}
-              canUseLocalOllama={canUseLocal}
               showStylesTab={showStylesTab}
               selectedVisualElement={selectedVisualElement}
               stylePanel={stylePanel}
@@ -1109,8 +1135,6 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
               visualMobilePreview={visualMobilePreview}
               showMobileStyleControls={canVisualEditFull}
               visualEditApplying={visualEditApplying}
-              {...seoInspectorProps}
-              {...integrationInspectorProps}
             />
           </div>
         )}
@@ -1179,6 +1203,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
             canShareSocial={canShareSocial}
             onOpenSocialPublisher={onOpenSocialPublisher}
             onRunExportAudit={onRunExportAudit}
+            onOpenProjectSettings={() => openProjectSettings('seo')}
             projectFiles={projectFiles}
             activeFile={activeFile}
             onSelectFile={onSelectFile}
@@ -1225,37 +1250,14 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
             </button>
             {inspectorOpen && (
               <div className="builder-inspector-overlay hidden md:flex">
-                <BuilderInspectorPanel
-                  open
-                  tab={inspectorTab}
-                  onTabChange={onInspectorTabChange}
-                  onClose={() => onInspectorOpenChange(false)}
-                  projectFiles={projectFiles}
-                  activeFile={activeFile}
-                  onSelectFile={onSelectFile}
-                  codeEditor={codeEditor}
-                  blueprintData={blueprintData}
-                  subscriptionTier={subscriptionTier}
-                  useLocalOllama={useLocalOllama}
-                  onUseLocalOllamaChange={onUseLocalOllamaChange}
-                  onOllamaUpgrade={onOllamaUpgrade}
-                  userId={userId}
-                  canUseLocalOllama={canUseLocal}
-                  showStylesTab={showStylesTab}
-                  selectedVisualElement={selectedVisualElement}
-                  stylePanel={stylePanel}
-                  onStyleChange={onStyleChange}
-                  visualMobilePreview={visualMobilePreview}
-                  showMobileStyleControls={canVisualEditFull}
-                  visualEditApplying={visualEditApplying}
-                  {...seoInspectorProps}
-                  {...integrationInspectorProps}
-                />
+                {inspector}
               </div>
             )}
           </div>
         </main>
       </div>
+
+      {projectSettingsDrawer}
     </div>
   );
 }

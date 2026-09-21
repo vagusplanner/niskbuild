@@ -130,6 +130,7 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
   const [platformOwnerBypass, setPlatformOwnerBypass] = useState(false);
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [profileFullName, setProfileFullName] = useState('');
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState('');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [churnCount, setChurnCount] = useState(0);
@@ -156,6 +157,9 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
             const name =
               typeof d?.profile?.full_name === 'string' ? d.profile.full_name.trim() : '';
             if (name) setProfileFullName(name);
+            const av =
+              typeof d?.profile?.avatar_url === 'string' ? d.profile.avatar_url.trim() : '';
+            if (av) setProfileAvatarUrl(av);
           })
           .catch(() => {});
       }
@@ -403,6 +407,7 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
             <UserAccountMenu
               user={user}
               fullName={profileFullName}
+              avatarUrl={profileAvatarUrl}
               subscriptionTier={subscriptionTier}
               subscriptionStatus={subscriptionStatus}
               restricted={navRestricted}
