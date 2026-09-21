@@ -8,7 +8,10 @@ export type AccountGateProfile = {
   phone_verified?: boolean | null;
 };
 
-/** Matches middleware: paid subscribers skip phone verify; free users need phone_verified. */
+/**
+ * Matches middleware: paid subscribers skip phone verify; free users need phone_verified.
+ * Pass `bypass=true` for platform owners (same flag as feature/billing gates).
+ */
 export function hasFullNavAccess(
   profile: AccountGateProfile,
   bypass?: boolean
@@ -41,6 +44,7 @@ export const VERIFY_FIRST_OVERFLOW_NAV: NavItem[] = OVERFLOW_NAV.filter((item) =
   VERIFY_FIRST_HREFS.has(item.href)
 );
 
+/** Always pass platform-owner bypass (or precomputed fullNavAccess) as the second arg. */
 export function overflowNavForAccount(
   profile: AccountGateProfile,
   bypass?: boolean

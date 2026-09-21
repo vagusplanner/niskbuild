@@ -127,7 +127,9 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
   const [subscriptionTier, setSubscriptionTier] = useState('free');
   const [subscriptionStatus, setSubscriptionStatus] = useState('inactive');
   const [fullNavAccess, setFullNavAccess] = useState<boolean | null>(null);
+  const [platformOwnerBypass, setPlatformOwnerBypass] = useState(false);
   const [phoneVerified, setPhoneVerified] = useState(false);
+  const [profileFullName, setProfileFullName] = useState('');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [churnCount, setChurnCount] = useState(0);
@@ -144,7 +146,16 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
             if (d?.tier) setSubscriptionTier(d.tier);
             if (d?.status) setSubscriptionStatus(d.status);
             setPhoneVerified(d?.phoneVerified === true);
+            setPlatformOwnerBypass(d?.platformOwnerBypass === true);
             setFullNavAccess(d?.fullNavAccess === true);
+          })
+          .catch(() => {});
+        fetch('/api/settings/profile', { credentials: 'include' })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((d) => {
+            const name =
+              typeof d?.profile?.full_name === 'string' ? d.profile.full_name.trim() : '';
+            if (name) setProfileFullName(name);
           })
           .catch(() => {});
       }
@@ -163,6 +174,13 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
       .catch(() => {});
   }, [isPlatformOwnerNav, user]);
 
+  /**
+   * Full nav when the subscription API says so (includes server platform-owner bypass),
+   * or when the client platform-owner check already succeeded (same source as Admin menu).
+   */
+  const effectiveFullNav =
+    fullNavAccess === true || platformOwnerBypass || isPlatformOwnerNav;
+
   const nav = useMemo(() => {
     if (variant === 'marketing') {
       return MARKETING_NAV.map((item) => ({
@@ -176,21 +194,24 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
       return GUEST_NAV;
     }
 
-    if (fullNavAccess !== true) {
+    if (!effectiveFullNav) {
       return [];
     }
 
     return [...PRIMARY_NAV];
-  }, [variant, user, fullNavAccess]);
+  }, [variant, user, effectiveFullNav]);
 
-  const navRestricted = !!user && fullNavAccess !== true;
-  const homeHref = user ? (fullNavAccess ? '/dashboard' : '/pricing') : '/landing-v2';
+  const navRestricted = !!user && !effectiveFullNav;
+  const homeHref = user ? (effectiveFullNav ? '/dashboard' : '/pricing') : '/landing-v2';
   const overflowNav = user
-    ? overflowNavForAccount({
-        subscription_tier: subscriptionTier,
-        subscription_status: subscriptionStatus,
-        phone_verified: phoneVerified,
-      })
+    ? overflowNavForAccount(
+        {
+          subscription_tier: subscriptionTier,
+          subscription_status: subscriptionStatus,
+          phone_verified: phoneVerified,
+        },
+        effectiveFullNav
+      )
     : [];
 
   const isNavActive = (href: string) => {
@@ -218,6 +239,16 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
       : base;
   };
 
+  /** Mobile drawer: full-width stacked rows — never reuse desktop tab borders (they wrap as overlapping chips). */
+  const mobileLinkClass = (href: string) => {
+    const active = mounted && isNavActive(href);
+    return `block w-full rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors ${
+      active
+        ? 'bg-[var(--copper-primary)]/15 text-[var(--copper-melt)]'
+        : 'text-nisk-muted hover:bg-[var(--surface)] hover:text-[var(--copper-melt)]'
+    }`;
+  };
+
   const isBuilder = variant === 'builder';
 
   return (
@@ -238,7 +269,10 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
         )}
 
         {!isBuilder && (
-          <nav className="hidden md:flex items-center gap-1" aria-label="Main navigation">
+          <nav
+            className="hidden lg:flex items-center gap-1 flex-nowrap"
+            aria-label="Main navigation"
+          >
             {nav.map((item) => (
               <Link key={item.href} href={item.href} className={linkClass(item.href)}>
                 {item.label}
@@ -368,6 +402,7 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
           {user ? (
             <UserAccountMenu
               user={user}
+              fullName={profileFullName}
               subscriptionTier={subscriptionTier}
               subscriptionStatus={subscriptionStatus}
               restricted={navRestricted}
@@ -383,9 +418,10 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
           )}
           <button
             type="button"
-            className="md:hidden p-2 text-nisk-muted hover:text-[var(--foreground)]"
+            className="lg:hidden p-2 text-nisk-muted hover:text-[var(--foreground)]"
             onClick={() => setMobileOpen((v) => !v)}
             aria-label="Menu"
+            aria-expanded={mobileOpen}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -395,7 +431,7 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
       </div>
 
       {mobileOpen && (
-        <div className="md:hidden border-t border-[var(--border)] glass-nav px-4 py-3 space-y-1">
+        <div className="lg:hidden border-t border-[var(--border)] glass-nav px-4 py-3 flex flex-col gap-0.5">
           {navRestricted && user && variant !== 'marketing' && (
             <p className="px-3 py-2 mb-2 text-xs text-nisk-muted border-b border-[var(--border)]">
               Verify your phone or complete checkout to unlock the full app.
@@ -405,7 +441,7 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
             <Link
               key={item.href}
               href={item.href}
-              className={linkClass(item.href)}
+              className={mobileLinkClass(item.href)}
               onClick={() => setMobileOpen(false)}
             >
               {item.label}
@@ -413,12 +449,12 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
           ))}
           {user && variant !== 'marketing' && (
             <>
-              <p className="px-3 pt-2 text-[10px] uppercase tracking-wider text-nisk-muted">More</p>
+              <p className="px-3 pt-3 pb-1 text-[10px] uppercase tracking-wider text-nisk-muted">More</p>
               {overflowNav.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={linkClass(item.href)}
+                  className={mobileLinkClass(item.href)}
                   onClick={() => setMobileOpen(false)}
                 >
                   {item.icon} {item.label}
@@ -428,7 +464,7 @@ export default function NavBar({ variant = 'app' }: NavBarProps) {
           )}
           {isPlatformOwnerNav && variant !== 'marketing' && (
             <>
-              <p className="px-3 pt-2 text-[10px] uppercase tracking-wider text-nisk-muted">Admin</p>
+              <p className="px-3 pt-3 pb-1 text-[10px] uppercase tracking-wider text-nisk-muted">Admin</p>
               {PLATFORM_ADMIN_NAV.map((item) => (
                 <Link
                   key={item.href}

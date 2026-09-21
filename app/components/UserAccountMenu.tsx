@@ -6,6 +6,8 @@ import { signOut } from '@/lib/auth';
 
 interface UserAccountMenuProps {
   user: { email?: string };
+  /** Prefer profiles.full_name when available; email local-part is fallback only. */
+  fullName?: string;
   subscriptionTier?: string;
   subscriptionStatus?: string;
   restricted?: boolean;
@@ -16,16 +18,47 @@ function tierLabel(tier: string, status: string) {
   return `${tier.replace(/_/g, ' ')} · active`;
 }
 
+function resolveDisplayName(fullName: string | undefined, email: string | undefined): string {
+  const trimmed = fullName?.trim();
+  if (trimmed) return trimmed;
+  const local = email?.split('@')[0]?.trim();
+  if (local) return local;
+  return 'Account';
+}
+
 export default function UserAccountMenu({
   user,
+  fullName = '',
   subscriptionTier = 'free',
   subscriptionStatus = 'inactive',
   restricted = false,
 }: UserAccountMenuProps) {
   const [open, setOpen] = useState(false);
+  const [resolvedFullName, setResolvedFullName] = useState(fullName);
   const ref = useRef<HTMLDivElement>(null);
-  const initial = (user.email?.[0] || 'U').toUpperCase();
-  const displayName = user.email?.split('@')[0] ?? 'Account';
+
+  useEffect(() => {
+    setResolvedFullName(fullName);
+  }, [fullName]);
+
+  useEffect(() => {
+    if (fullName.trim()) return;
+    let cancelled = false;
+    fetch('/api/settings/profile', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        const name =
+          typeof d?.profile?.full_name === 'string' ? d.profile.full_name.trim() : '';
+        if (!cancelled && name) setResolvedFullName(name);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [fullName]);
+
+  const displayName = resolveDisplayName(resolvedFullName, user.email);
+  const initial = displayName.charAt(0).toUpperCase() || 'U';
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
