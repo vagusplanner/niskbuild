@@ -1,21 +1,73 @@
-import type { BlueprintNode, ComponentBlueprint } from './blueprint-schema';
+import type { BlueprintNode, ComponentBlueprint, ComponentType } from './blueprint-schema';
 
-function propString(properties: Record<string, unknown>, key: string, fallback: string): string {
+function propString(
+  properties: Record<string, unknown> | null | undefined,
+  key: string,
+  fallback: string
+): string {
+  if (!properties || typeof properties !== 'object') return fallback;
   const value = properties[key];
   return typeof value === 'string' ? value : fallback;
 }
 
-function propStringArray(properties: Record<string, unknown>, key: string, fallback: string[]): string[] {
+function propStringArray(
+  properties: Record<string, unknown> | null | undefined,
+  key: string,
+  fallback: string[]
+): string[] {
+  if (!properties || typeof properties !== 'object') return fallback;
   const value = properties[key];
   if (!Array.isArray(value)) return fallback;
   return value.filter((item): item is string => typeof item === 'string');
 }
 
+/** LLM blueprints sometimes omit `properties` or use short aliases (e.g. "Metric"). */
+const COMPONENT_ALIASES: Record<string, ComponentType> = {
+  Metric: 'DataMetricCard',
+  DataMetric: 'DataMetricCard',
+  MetricCard: 'DataMetricCard',
+  KPI: 'DataMetricCard',
+  KpiCard: 'DataMetricCard',
+  Sidebar: 'NavigationSidebar',
+  Nav: 'NavigationSidebar',
+  Table: 'DataTable',
+  Form: 'FormBuilder',
+  Chart: 'ChartContainer',
+  Auth: 'AuthForm',
+  Login: 'AuthForm',
+  Payment: 'PaymentButton',
+  AIAgent: 'AIAgentWidget',
+  Chat: 'AIAgentWidget',
+};
+
+function normalizeNode(node: BlueprintNode): BlueprintNode {
+  const rawComponent = String(node?.component ?? 'WorkspaceContainer');
+  const component =
+    COMPONENT_ALIASES[rawComponent] ??
+    (rawComponent as ComponentType);
+  const properties =
+    node?.properties && typeof node.properties === 'object' && !Array.isArray(node.properties)
+      ? node.properties
+      : {};
+  const children = Array.isArray(node?.children)
+    ? node.children.map((child) => normalizeNode(child))
+    : undefined;
+  return {
+    id: typeof node?.id === 'string' && node.id ? node.id : 'node',
+    component,
+    properties,
+    children,
+  };
+}
+
 export function compileToWebApp(blueprint: ComponentBlueprint): string {
   const { meta, canvasTree } = blueprint;
-  const isDark = meta.theme === 'dark';
+  const isDark = meta?.theme === 'dark';
+  const pageTitle =
+    typeof meta?.title === 'string' && meta.title.trim() ? meta.title.trim() : 'NiskBuild App';
 
-  const renderComponent = (node: BlueprintNode, depth: number = 0): string => {
+  const renderComponent = (rawNode: BlueprintNode, depth: number = 0): string => {
+    const node = normalizeNode(rawNode);
     const bg = isDark ? 'gray-900' : 'gray-50';
     const surface = isDark ? 'gray-800' : 'white';
     const surfaceAlt = isDark ? 'gray-700' : 'gray-100';
@@ -85,14 +137,17 @@ export function compileToWebApp(blueprint: ComponentBlueprint): string {
     return opening;
   };
 
-  const content = renderComponent(canvasTree.root);
+  const root = canvasTree?.root;
+  const content = root
+    ? renderComponent(root)
+    : `<div className="p-8 text-center text-gray-500">Empty blueprint</div>`;
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${meta.title} - NiskBuild</title>
+  <title>${pageTitle} - NiskBuild</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
@@ -135,6 +190,11 @@ export function generateCapacitorConfig(blueprint: ComponentBlueprint): object {
 }
 
 export function compileToGame(blueprint: ComponentBlueprint): string {
+  const gameTitle =
+    typeof blueprint.meta?.title === 'string' && blueprint.meta.title.trim()
+      ? blueprint.meta.title.trim().replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+      : 'NiskBuild Game';
+
   return `import Phaser from 'phaser';
 
 class MainScene extends Phaser.Scene {
@@ -147,7 +207,7 @@ class MainScene extends Phaser.Scene {
   }
 
   create() {
-    this.add.text(400, 300, '${blueprint.meta.title}', {
+    this.add.text(400, 300, '${gameTitle}', {
       fontSize: '32px',
       fill: '#fff',
       fontFamily: 'Arial',

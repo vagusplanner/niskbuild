@@ -50,7 +50,11 @@ Schema:
   "targetPlatform": "web | ios | android | pwa | game"
 }
 
-Return null for any field you are unsure about.`;
+Return null for any field you are unsure about.
+
+CRITICAL: Every node in canvasTree MUST include a "properties" object (use {} if empty).
+DataMetricCard properties should include "title" and "value" strings when possible.
+Never omit the properties key on any node.`
 
 export async function generateBlueprint(
   prompt: string,

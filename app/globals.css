@@ -407,6 +407,11 @@ pre, code {
 
 /* Builder — forged iron shell */
 [data-builder-shell] {
+  /* Prefer dynamic viewport so mobile Chrome URL/tool bars don't cover the prompt dock */
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100vh;
+  max-height: 100dvh;
   --background: #1a1612;
   --background-gradient: linear-gradient(145deg, #12100e 0%, #1c1916 45%, #2c241c 100%);
   --card-bg: rgba(44, 36, 28, 0.95);
@@ -614,5 +619,9 @@ pre, code {
   .builder-prompt-dock textarea {
     min-height: 72px !important;
     max-height: min(28vh, 160px);
+  }
+
+  [data-builder-shell] .builder-prompt-dock {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
   }
 }

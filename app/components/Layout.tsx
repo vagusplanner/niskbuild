@@ -21,7 +21,10 @@ export default function Layout({
 
   if (variant === 'builder') {
     return (
-      <div data-builder-shell className="h-screen overflow-hidden bg-[var(--background)] flex flex-col">
+      <div
+        data-builder-shell
+        className="h-screen h-dvh max-h-[100dvh] overflow-hidden bg-[var(--background)] flex flex-col"
+      >
         <NavBar variant="builder" />
         <div className="flex-1 min-h-0 min-w-0 flex flex-col">{children}</div>
       </div>
