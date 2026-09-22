@@ -8,7 +8,7 @@
     "dev:shift-ai": "npm run dev --prefix apps/shift-ai -- --port 5176 --host",
     "build:shift-ai": "npm run build --prefix apps/shift-ai",
     "dev:all": "npm run dev & npm run dev:vp",
-    "build": "next build",
+    "build": "next build --webpack",
     "generate:logo-pdf": "node scripts/generate-logo-pdf.mjs",
     "export:brand-logos": "node scripts/export-brand-logos.mjs",
     "generate:brand-kit": "node scripts/generate-brand-kit.mjs",

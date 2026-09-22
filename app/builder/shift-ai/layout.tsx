@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { Amiri, Noto_Sans_Arabic } from 'next/font/google';
 import ShiftAiIntlProvider from '@/app/builder/shift-ai/ShiftAiIntlProvider';
 import ShiftAiLayoutGate from '@/app/builder/shift-ai/ShiftAiLayoutGate';
 import { getShiftAiMessages, shiftAiTextDirection } from '@/lib/shift-ai/i18n';
@@ -23,19 +22,17 @@ export const metadata: Metadata = {
   },
 };
 
-const notoSansArabic = Noto_Sans_Arabic({
-  subsets: ['arabic'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-sa-arabic-sans',
-  display: 'swap',
-});
-
-const amiri = Amiri({
-  subsets: ['arabic', 'latin'],
-  weight: ['400', '700'],
-  variable: '--font-sa-arabic-serif',
-  display: 'swap',
-});
+/**
+ * Arabic fonts via Google Fonts CSS (not next/font/google).
+ *
+ * next/font + Turbopack fails intermittently for large multi-unicode-range
+ * families like Noto Sans Arabic with:
+ *   Module not found: Can't resolve '@vercel/turbopack-next/internal/font/google/font'
+ * That blocked production deploys. CDN stylesheet avoids Turbopack's font
+ * virtual-module path entirely while keeping the same typefaces.
+ */
+const ARABIC_FONTS_HREF =
+  'https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap';
 
 export default async function ShiftAiLayout({ children }: { children: React.ReactNode }) {
   const locale = await getRequestStudyLanguage();
@@ -43,12 +40,17 @@ export default async function ShiftAiLayout({ children }: { children: React.Reac
   const dir = shiftAiTextDirection(locale);
 
   return (
-    <div className={`${notoSansArabic.variable} ${amiri.variable}`}>
-      <ShiftAiIntlProvider locale={locale} messages={messages}>
-        <ShiftAiLayoutGate dir={dir} locale={locale}>
-          {children}
-        </ShiftAiLayoutGate>
-      </ShiftAiIntlProvider>
-    </div>
+    <>
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      <link rel="stylesheet" href={ARABIC_FONTS_HREF} />
+      <div className="sa-arabic-font-scope">
+        <ShiftAiIntlProvider locale={locale} messages={messages}>
+          <ShiftAiLayoutGate dir={dir} locale={locale}>
+            {children}
+          </ShiftAiLayoutGate>
+        </ShiftAiIntlProvider>
+      </div>
+    </>
   );
 }

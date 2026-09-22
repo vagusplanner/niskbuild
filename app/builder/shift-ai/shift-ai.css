@@ -53,7 +53,13 @@
 }
 
 /* Arabic UI: Noto Sans Arabic for chrome/body, Amiri as serif companion.
-   Scoped to SuperEduc8 shell dir=rtl — does not change Inter for LTR. */
+   Scoped to SuperEduc8 shell dir=rtl — does not change Inter for LTR.
+   Loaded via Google Fonts CSS link in layout.tsx (not next/font — Turbopack-safe). */
+.sa-arabic-font-scope {
+  --font-sa-arabic-sans: 'Noto Sans Arabic', sans-serif;
+  --font-sa-arabic-serif: 'Amiri', serif;
+}
+
 .shift-ai-app[dir='rtl'] {
   font-family: var(--font-sa-arabic-sans), 'Noto Sans Arabic', 'Amiri', sans-serif;
   letter-spacing: 0;
