@@ -31,6 +31,7 @@ export const PRICING_TIERS: PricingTier[] = [
       '1 project',
       'Live preview',
       '5 cloud AI credits (trial)',
+      'Model picker (spend credits on any model)',
       'Builder access (after phone verification)',
       'ZIP export locked',
       'No Marketplace access',
@@ -50,6 +51,7 @@ export const PRICING_TIERS: PricingTier[] = [
       '5 projects',
       '2 sessions',
       '150 cloud credits',
+      'Spend credits on any model (speed or premium)',
       'Clean ZIP export',
       'PWA mobile export',
       '❌ No BYOC',
@@ -70,6 +72,7 @@ export const PRICING_TIERS: PricingTier[] = [
       '15 projects',
       '5 sessions',
       '600 cloud credits',
+      'Model picker — any model per generation',
       'Clean ZIP export',
       'PWA mobile export',
       '✅ BYOC included',
@@ -193,6 +196,10 @@ export const PRICING_FAQ = [
   {
     q: 'Why is BYOC on Pro Worker and above?',
     a: 'Bring-your-own API keys let power users run unlimited local/cloud builds with their own providers. Basic stays on NiskBuild cloud credits only.',
+  },
+  {
+    q: 'How do cloud AI credits work with the model picker?',
+    a: 'Every plan includes cloud AI credits you can spend on any model — pick speed or premium quality per generation. DeepSeek V4.1 Flash costs 1 credit (default). Higher-tier models cost more credits per run. Models at 20+ credits (Opus 5, GPT-5.6 Sol, GPT-6 Astra) require Pro Worker or above.',
   },
   {
     q: 'How do reload packs work?',

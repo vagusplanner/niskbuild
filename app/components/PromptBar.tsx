@@ -6,6 +6,9 @@ import { modKey } from '@/lib/keyboard';
 import AiProviderSelector from '@/app/components/AiProviderSelector';
 import FigmaScreenshotImport from '@/app/components/FigmaScreenshotImport';
 import PromptAttachMenu from '@/app/components/PromptAttachMenu';
+import GenerationModelPicker from '@/app/components/GenerationModelPicker';
+import type { GenerationModelId } from '@/lib/generation-models';
+import { DEFAULT_GENERATION_MODEL_ID } from '@/lib/generation-models';
 
 interface PromptBarProps {
   prompt: string;
@@ -25,6 +28,8 @@ interface PromptBarProps {
   useLocalOllama?: boolean;
   onUseLocalOllamaChange?: (enabled: boolean) => void;
   onProviderUpgrade?: () => void;
+  generationModelId?: GenerationModelId;
+  onGenerationModelChange?: (id: GenerationModelId) => void;
   /** Scrollable generation log (Cursor-style) */
   activityLog?: string[];
   streamingLine?: string;
@@ -87,6 +92,8 @@ export default function PromptBar({
   useLocalOllama = false,
   onUseLocalOllamaChange,
   onProviderUpgrade,
+  generationModelId = DEFAULT_GENERATION_MODEL_ID,
+  onGenerationModelChange,
   activityLog = [],
   streamingLine,
   streamingNarration,
@@ -141,6 +148,15 @@ export default function PromptBar({
   const toolbar = (
     <div className="flex items-center gap-2 flex-wrap px-3 py-2 border-t border-[var(--border)]/60 bg-[var(--surface)]/50 relative z-[1]">
       {attachMenu}
+      {isCursor && onGenerationModelChange && !useLocalOllama && (
+        <GenerationModelPicker
+          value={generationModelId}
+          onChange={onGenerationModelChange}
+          tier={subscriptionTier}
+          disabled={isGenerating}
+          onUpgrade={onProviderUpgrade}
+        />
+      )}
       {isCursor && onUseLocalOllamaChange && onProviderUpgrade && (
         <AiProviderSelector
           tier={subscriptionTier}

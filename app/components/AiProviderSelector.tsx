@@ -48,8 +48,8 @@ export default function AiProviderSelector({
     },
     {
       id: 'cloud',
-      label: paid ? 'Cloud AI' : 'Cloud AI (Groq)',
-      sub: paid ? 'Self-heal + credits' : 'Pro plan required',
+      label: paid ? 'Cloud AI' : 'Cloud AI (credits)',
+      sub: paid ? 'Model picker + credits' : 'Sandbox trial credits',
       locked: !paid && !sandbox,
       lockReason: 'Pro plan',
     },

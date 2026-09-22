@@ -12,7 +12,7 @@ export async function readCloudGenerateStream(
   prompt: string,
   projectId: string | null,
   callbacks: CloudGenerateStreamCallbacks | ((accumulated: string, delta: string) => void),
-  options?: { narrationContext?: string }
+  options?: { narrationContext?: string; modelId?: string }
 ): Promise<{ code: string; narration: string; error?: string }> {
   const normalized: CloudGenerateStreamCallbacks =
     typeof callbacks === 'function' ? { onCodeChunk: callbacks } : callbacks;
@@ -31,6 +31,7 @@ export async function readCloudGenerateStream(
         prompt,
         projectId,
         narrationContext: options?.narrationContext,
+        modelId: options?.modelId,
       }),
     });
   } catch (err) {

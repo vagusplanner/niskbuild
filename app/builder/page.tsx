@@ -75,6 +75,11 @@ import {
   isSandboxTier,
   LOCAL_OLLAMA_PRO_BANNER,
 } from '@/lib/tier-config';
+import {
+  DEFAULT_GENERATION_MODEL_ID,
+  getGenerationModel,
+  type GenerationModelId,
+} from '@/lib/generation-models';
 import type { ComponentBlueprint } from '@/lib/blueprint-schema';
 import {
   downloadBlob,
@@ -182,6 +187,9 @@ function BuilderContent() {
   const [subscriptionTier, setSubscriptionTier] = useState('free');
   const [subscriptionStatus, setSubscriptionStatus] = useState('inactive');
   const [useLocalOllama, setUseLocalOllama] = useState(false);
+  const [generationModelId, setGenerationModelId] = useState<GenerationModelId>(
+    DEFAULT_GENERATION_MODEL_ID
+  );
   const [showProOllamaBanner, setShowProOllamaBanner] = useState(false);
   const [projectLimit, setProjectLimit] = useState(1);
   const [showMobileExport, setShowMobileExport] = useState(false);
@@ -1176,7 +1184,7 @@ function BuilderContent() {
             }, PREVIEW_STREAM_DEBOUNCE_MS);
           },
         },
-        { narrationContext }
+        { narrationContext, modelId: generationModelId }
       );
 
       const durationMs = Math.round(performance.now() - genStartedAt);
@@ -1228,7 +1236,12 @@ function BuilderContent() {
       }
 
       if (session?.user?.id) {
-        recordCloudGeneration(session.user.id, effectivePrompt, code, 1);
+        recordCloudGeneration(
+          session.user.id,
+          effectivePrompt,
+          code,
+          getGenerationModel(generationModelId).creditCost
+        );
       }
       applyGeneratedCode(
         code,
@@ -1962,6 +1975,8 @@ function BuilderContent() {
             setUseLocalOllama(enabled);
             localStorage.setItem('niskbuild_use_local_ollama', String(enabled));
           }}
+          generationModelId={generationModelId}
+          onGenerationModelChange={setGenerationModelId}
           onOllamaUpgrade={() => {
             if (subscriptionTier === 'pro') setShowProOllamaBanner(true);
             else router.push('/pricing');

@@ -85,10 +85,12 @@ export async function deductCloudCredits(
   const tier = profile.subscription_tier;
   const status = profile.subscription_status;
 
-  if (!isPaidAndActive(tier, status)) {
+  // Same eligibility as whole-credit deduct (Sandbox trial + paid). Callers that
+  // require paid-only (e.g. visual edit) gate before calling this.
+  if (!canSpendCloudCredits(tier, status)) {
     return {
       ok: false,
-      error: 'Active paid subscription required for cloud visual edits. Upgrade to Pro.',
+      error: outOfCreditsMessage(tier, status),
     };
   }
 
@@ -105,7 +107,9 @@ export async function deductCloudCredits(
   const wholeCredits = Math.floor(nextDebt);
   const leftoverDebt = Math.round((nextDebt - wholeCredits) * 100) / 100;
 
-  if (remaining < wholeCredits) {
+  // Insufficient when we need more whole credits than available, or balance is
+  // already empty (can't accumulate fractional debt with nothing to settle against).
+  if (remaining < wholeCredits || remaining <= 0) {
     maybeSendUsageAlert(userId, profile.email ?? undefined, tier ?? 'free', remaining).catch(
       () => {}
     );

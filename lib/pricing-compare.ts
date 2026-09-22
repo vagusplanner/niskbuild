@@ -22,6 +22,7 @@ import {
   isPaidAndActive,
   isSandboxTier,
   isTeamEnterpriseOrAbove,
+  tierAtLeast,
 } from '@/lib/tier-config';
 import { getProjectLimit, isUnlimitedTier } from '@/lib/project-limits';
 
@@ -141,6 +142,14 @@ export function buildCompareRows(tiers: PricingTier[] = PRICING_TIERS): CompareR
     {
       label: 'Cloud AI credits / period',
       values: keys.map((k) => formatCredits(k)),
+    },
+    {
+      label: 'Model picker (any model / gen)',
+      values: keys.map(() => true),
+    },
+    {
+      label: 'Premium models (20+ credits)',
+      values: keys.map((k) => tierAtLeast(k, 'pro')),
     },
     {
       label: 'Projects',

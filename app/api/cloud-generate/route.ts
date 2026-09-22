@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
-import { generateCode } from '@/lib/ai-providers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { canSpendCloudCredits, outOfCreditsMessage } from '@/lib/credits-init';
 import {
-  deductCloudCreditForContext,
+  deductCloudCreditsForContext,
   refundCloudCreditsForContext,
   resolveCreditChargeContext,
 } from '@/lib/org-credits';
@@ -15,6 +14,15 @@ import { recordPromptCategoryStat } from '@/lib/prompt-category-stats';
 import { touchLastBuildAt } from '@/lib/build-activity';
 import { clientIpFromHeaders } from '@/lib/coarse-town';
 import { canUseOwnApiKeys, resolveProductGatingBypass } from '@/lib/tier-access-server';
+import {
+  canSelectGenerationModel,
+  getGenerationModel,
+  isGenerationModelId,
+} from '@/lib/generation-models';
+import {
+  resolveByocSkip,
+  streamSelectedGenerationModel,
+} from '@/lib/generation-providers';
 
 async function getUserProfile(userId: string) {
   const supabase = createAdminClient();
@@ -33,12 +41,21 @@ export async function POST(request: NextRequest) {
   if (!guard.ok) return guard.response;
 
   try {
-    const { prompt, projectId } = await request.json();
+    const body = await request.json();
+    const { prompt, projectId, modelId } = body as {
+      prompt?: string;
+      projectId?: string;
+      modelId?: string;
+    };
     const userId = guard.user!.id;
 
     if (!prompt || prompt.trim() === '') {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
+
+    const selectedModel = getGenerationModel(
+      isGenerationModelId(modelId) ? modelId : undefined
+    );
 
     const chargeResolved = await resolveCreditChargeContext({
       actingUserId: userId,
@@ -64,16 +81,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!canSelectGenerationModel(selectedModel, tier) && !ownerBypass) {
+      return NextResponse.json(
+        {
+          error: `${selectedModel.label} requires Pro Worker or above. Upgrade to unlock premium models.`,
+          upgrade: true,
+        },
+        { status: 403 }
+      );
+    }
+
     const byocAllowed = canUseOwnApiKeys(tier, ownerBypass);
     const useOwnKeys = byocAllowed && !!profile?.use_own_api_keys;
-    const hasUserKeys = !!(profile?.openai_api_key || profile?.anthropic_api_key);
-    const skipCredits = useOwnKeys && hasUserKeys;
+    const keyBundle = {
+      openaiKey: byocAllowed ? profile?.openai_api_key : null,
+      anthropicKey: byocAllowed ? profile?.anthropic_api_key : null,
+    };
+    const byoc = resolveByocSkip(selectedModel.provider, useOwnKeys, keyBundle);
+    const skipCredits = byoc.skipCredits;
+    const creditCost = selectedModel.creditCost;
 
     let creditsRemaining: number | undefined;
     let didDeduct = false;
 
     if (!skipCredits) {
-      const creditResult = await deductCloudCreditForContext(chargeContext);
+      const creditResult = await deductCloudCreditsForContext(chargeContext, creditCost);
       if (!creditResult.ok) {
         return NextResponse.json(
           { error: creditResult.error || 'Insufficient cloud credits' },
@@ -84,23 +116,19 @@ export async function POST(request: NextRequest) {
       didDeduct = true;
     }
 
-    const result = await generateCode(
+    const result = await streamSelectedGenerationModel(
       prompt,
-      tier,
-      {
-        useOwnKeys,
-        openaiKey: byocAllowed ? profile?.openai_api_key : null,
-        anthropicKey: byocAllowed ? profile?.anthropic_api_key : null,
-      },
-      ownerBypass
+      selectedModel,
+      () => {},
+      { useOwnKeys, keys: keyBundle }
     );
 
-    if (result.success) {
+    if (result.ok) {
       await recordAnonymousTelemetry(
         {
           prompt,
           generatedCode: result.code,
-          aiModelUsed: skipCredits ? 'user-keys' : result.provider,
+          aiModelUsed: skipCredits ? `byoc:${selectedModel.id}` : selectedModel.id,
           generationSuccess: true,
         },
         userId
@@ -119,7 +147,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         code: result.code,
-        source: skipCredits ? 'user-keys' : result.provider,
+        source: skipCredits ? 'user-keys' : selectedModel.provider,
+        modelId: selectedModel.id,
+        creditsUsed: skipCredits ? 0 : creditCost,
         creditsRemaining,
         usedOwnKeys: skipCredits,
         byocAllowed,
@@ -127,20 +157,20 @@ export async function POST(request: NextRequest) {
     }
 
     if (didDeduct) {
-      await refundCloudCreditsForContext(chargeContext, 1).catch(() => {});
+      await refundCloudCreditsForContext(chargeContext, creditCost).catch(() => {});
     }
 
     await recordAnonymousTelemetry(
       {
         prompt,
-        aiModelUsed: result.provider,
+        aiModelUsed: selectedModel.id,
         generationSuccess: false,
       },
       userId
     );
 
     return NextResponse.json(
-      { error: result.error || 'All AI providers failed' },
+      { error: result.error || 'Generation failed' },
       { status: 500 }
     );
   } catch (error) {

@@ -1,12 +1,11 @@
 /**
- * Groq production model IDs.
+ * Groq production model IDs — used as emergency fallback when DeepSeek is unset,
+ * and for narration / truncation continue helpers.
+ *
+ * Primary cloud generate default is DeepSeek V4.1 Flash (`lib/generation-models.ts`).
  *
  * llama-3.3-70b-versatile and llama-3.1-8b-instant shut down 2026-08-16
  * (free/developer tier). See https://console.groq.com/docs/deprecations
- *
- * Code gen uses GPT-OSS 120B (production, ~500 t/s, 65k max completion) rather
- * than qwen/qwen3.6-27b: Qwen leads SWE-bench, but on Groq it is Preview-only,
- * capped at 16k completion tokens, and slower TTFT — a poor fit for live HTML streaming.
  */
 export const GROQ_CODE_MODEL = 'openai/gpt-oss-120b';
 

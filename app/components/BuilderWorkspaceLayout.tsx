@@ -38,6 +38,7 @@ import {
   setBuilderChatWidthPx,
   setBuilderPromptHeightPx,
 } from '@/lib/builder-layout-prefs';
+import type { GenerationModelId } from '@/lib/generation-models';
 
 type MobileTab = 'chat' | 'preview' | 'inspector';
 
@@ -128,6 +129,8 @@ export type BuilderWorkspaceLayoutProps = {
   useLocalOllama: boolean;
   onUseLocalOllamaChange: (enabled: boolean) => void;
   onOllamaUpgrade: () => void;
+  generationModelId: GenerationModelId;
+  onGenerationModelChange: (id: GenerationModelId) => void;
   isSandboxAtLimit: boolean;
   canImportGooglePlaces: boolean;
   canUseCompetitorIntel: boolean;
@@ -550,6 +553,8 @@ function ChatPanelContent({
   useLocalOllama,
   onUseLocalOllamaChange,
   onOllamaUpgrade,
+  generationModelId,
+  onGenerationModelChange,
   onRestoreZip,
   googlePlacesRef,
 }: {
@@ -593,6 +598,8 @@ function ChatPanelContent({
   useLocalOllama: boolean;
   onUseLocalOllamaChange: (enabled: boolean) => void;
   onOllamaUpgrade: () => void;
+  generationModelId: GenerationModelId;
+  onGenerationModelChange: (id: GenerationModelId) => void;
   onRestoreZip: (file: File) => Promise<void>;
   googlePlacesRef: RefObject<GooglePlacesImportHandle | null>;
 }) {
@@ -676,6 +683,8 @@ function ChatPanelContent({
           useLocalOllama={useLocalOllama}
           onUseLocalOllamaChange={onUseLocalOllamaChange}
           onProviderUpgrade={onOllamaUpgrade}
+          generationModelId={generationModelId}
+          onGenerationModelChange={onGenerationModelChange}
         />
         <div className="px-3 pb-2 flex items-center justify-between text-[10px] text-nisk-muted">
           <span className="capitalize">{subscriptionTier.replace('_', ' ')}</span>
@@ -784,6 +793,8 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
     useLocalOllama,
     onUseLocalOllamaChange,
     onOllamaUpgrade,
+    generationModelId,
+    onGenerationModelChange,
     isSandboxAtLimit,
     canImportGooglePlaces,
     canUseCompetitorIntel,
@@ -891,6 +902,8 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
       useLocalOllama={useLocalOllama}
       onUseLocalOllamaChange={onUseLocalOllamaChange}
       onOllamaUpgrade={onOllamaUpgrade}
+      generationModelId={generationModelId}
+      onGenerationModelChange={onGenerationModelChange}
       onRestoreZip={props.onRestoreZip}
       googlePlacesRef={googlePlacesRef}
     />
@@ -938,6 +951,8 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
       useLocalOllama={useLocalOllama}
       onUseLocalOllamaChange={onUseLocalOllamaChange}
       onOllamaUpgrade={onOllamaUpgrade}
+      generationModelId={generationModelId}
+      onGenerationModelChange={onGenerationModelChange}
       onRestoreZip={props.onRestoreZip}
       googlePlacesRef={googlePlacesRef}
     />

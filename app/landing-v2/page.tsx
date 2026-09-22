@@ -377,8 +377,9 @@ export default function LandingV2Page() {
             Start free. Upgrade when you&apos;re ready.
           </h2>
           <p className="text-nisk-muted text-center mb-12 max-w-xl mx-auto text-sm md:text-base">
-            Start building free, no card required. Every tier gets the AI builder and live preview —
-            higher tiers unlock clean code exports, marketplace access, and room to scale.
+            Every plan includes cloud AI credits you can spend on any model — pick speed or
+            premium quality per generation. Higher tiers unlock clean exports, marketplace
+            access, and room to scale.
           </p>
 
           <div className="grid md:grid-cols-3 gap-4 md:gap-5">
