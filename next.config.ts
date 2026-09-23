@@ -31,10 +31,21 @@ const VP_ADMIN_ARTIFACT_ROUTE_KEYS = [
 ] as const;
 
 const nextConfig: NextConfig = {
+  // Tailwind compile runs in export/deploy API routes (native oxide + lightningcss).
+  serverExternalPackages: [
+    '@tailwindcss/node',
+    '@tailwindcss/oxide',
+    'lightningcss',
+    'tailwindcss',
+  ],
   // VP deploy + admin artifact build need VP sources/lockfile at runtime.
   // Never ship apps/vagus-planner/node_modules (blows the 250MB function limit).
   outputFileTracingIncludes: {
     "/api/builder/*/deploy": VP_BUILD_TRACE_FILES,
+    "/api/export": [
+      "./node_modules/@tailwindcss/oxide-*/**/*",
+      "./node_modules/lightningcss-*/**/*",
+    ],
     ...Object.fromEntries(
       VP_ADMIN_ARTIFACT_ROUTE_KEYS.map((key) => [key, VP_BUILD_TRACE_FILES])
     ),

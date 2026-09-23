@@ -3,6 +3,7 @@ import { guardApiRequest } from '@/lib/api-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isPaidAndActive, resolveProductGatingBypass } from '@/lib/tier-access-server';
 import { getPreviewStatusForUser, upsertPreview } from '@/lib/preview-links';
+import { prepareShippableHtml } from '@/lib/ship-html';
 
 export async function GET(request: NextRequest) {
   const guard = await guardApiRequest(request);
@@ -46,8 +47,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'HTML content required' }, { status: 400 });
   }
 
+  // Strip Tailwind CDN and inline compiled utility CSS for the published link.
+  const { html: shippableHtml } = await prepareShippableHtml(html, { cssMode: 'inline' });
+
   const requestOrigin = request.nextUrl.origin;
-  const result = await upsertPreview(guard.user!.id, html, title, requestOrigin);
+  const result = await upsertPreview(guard.user!.id, shippableHtml, title, requestOrigin);
   if (!result) {
     return NextResponse.json({ error: 'Failed to create preview link' }, { status: 500 });
   }

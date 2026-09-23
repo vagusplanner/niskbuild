@@ -7,6 +7,7 @@ import { applyExportWatermark } from '@/lib/export-policy';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
 import { canExportCleanZip, resolveProductGatingBypass } from '@/lib/tier-access-server';
 import { cleanGeneratedCode } from '@/lib/cleanGeneratedCode';
+import { prepareShippableHtmlFiles } from '@/lib/ship-html';
 import {
   buildRobotsTxt,
   buildSitemapXml,
@@ -60,6 +61,9 @@ export async function POST(request: NextRequest) {
       config.files['index.html'] = htmlWithSeo;
     }
 
+    // Strip CDN + compile static Tailwind CSS for every HTML page in the bundle.
+    config.files = await prepareShippableHtmlFiles(config.files);
+
     const zip = new JSZip();
     const root = zip.folder('generated-app');
 
@@ -67,7 +71,7 @@ export async function POST(request: NextRequest) {
 
     root?.file(
       'README.md',
-      `# NiskBuild Generated App\n\nGenerated from: "${prompt?.substring(0, 100) || 'Unknown prompt'}"\n\nDate: ${new Date().toISOString()}\n\n## Local Sync\nThis bundle includes \`niskbuild.config.json\` — drop the ZIP back into NiskBuild to restore prompt history.\n\n---\nBuilt with NiskBuild — Build anything. Own everything.\n`
+      `# NiskBuild Generated App\n\nGenerated from: "${prompt?.substring(0, 100) || 'Unknown prompt'}"\n\nDate: ${new Date().toISOString()}\n\n## Local Sync\nThis bundle includes \`niskbuild.config.json\` — drop the ZIP back into NiskBuild to restore prompt history.\n\n## Styles\nIf present, \`styles.css\` is compiled Tailwind CSS for the utility classes used in this project. Open \`index.html\` directly in a browser — no build step required.\n\n---\nBuilt with NiskBuild — Build anything. Own everything.\n`
     );
 
     for (const [path, content] of Object.entries(config.files)) {

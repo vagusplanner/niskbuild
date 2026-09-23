@@ -1,17 +1,25 @@
 import { cleanGeneratedCode } from '@/lib/cleanGeneratedCode';
+import { prepareShippableHtml } from '@/lib/ship-html';
 import type { ProjectFile } from '@/lib/project-files';
 
-/** HTML safe to publish — uses current index.html, no editor injection scripts. */
-export function getDeployablePreviewHtml(
+/**
+ * HTML safe to publish as a live preview link — cleaned + static Tailwind CSS inlined.
+ * No editor injection scripts, no preview iframe scaffolding.
+ */
+export async function getDeployablePreviewHtml(
   generatedCode: string,
   projectFiles: ProjectFile[],
   activePage = 'index.html'
-): string {
+): Promise<string> {
   const content =
     projectFiles.find((f) => f.path === activePage)?.content?.trim() ||
     (activePage === 'index.html' ? generatedCode : '');
-  if (content) return cleanGeneratedCode(content);
-  const indexContent =
-    projectFiles.find((f) => f.path === 'index.html')?.content?.trim() || generatedCode;
-  return cleanGeneratedCode(indexContent);
+  const raw =
+    content ||
+    projectFiles.find((f) => f.path === 'index.html')?.content?.trim() ||
+    generatedCode;
+
+  const cleaned = cleanGeneratedCode(raw);
+  const { html } = await prepareShippableHtml(cleaned, { cssMode: 'inline' });
+  return html;
 }

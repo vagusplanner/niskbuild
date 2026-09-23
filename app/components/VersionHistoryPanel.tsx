@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { cleanGeneratedCode } from '@/lib/cleanGeneratedCode';
+import { preparePreviewHtml } from '@/lib/preview-html';
 import { BUILDER_PREVIEW_SANDBOX } from '@/lib/preview-html';
 import { canCompareVersions, formatTimeAgo } from '@/lib/version-limits';
 
@@ -179,7 +180,7 @@ export default function VersionHistoryPanel({
 
   const previewHtml = useMemo(() => {
     if (!previewVersion) return '';
-    return cleanGeneratedCode(previewVersion.generated_code);
+    return preparePreviewHtml(cleanGeneratedCode(previewVersion.generated_code));
   }, [previewVersion]);
 
   const diffLines = useMemo(() => {

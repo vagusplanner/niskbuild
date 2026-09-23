@@ -7,7 +7,7 @@ import { hasCompletedOnboarding, markOnboardingComplete } from '@/lib/auth';
 import { getSafeSession } from '@/lib/supabaseSession';
 import { readCloudGenerateStream } from '@/lib/cloud-generate-stream';
 import { cleanGeneratedCode, isExportableCode } from '@/lib/cleanGeneratedCode';
-import { getDeployablePreviewHtml } from '@/lib/deploy-preview';
+import { preparePreviewHtml } from '@/lib/preview-html';
 import { injectSeoIntoHtml } from '@/lib/seo-inject';
 import { buildProjectFiles, filesToMap, type ProjectFile } from '@/lib/project-files';
 import {
@@ -440,7 +440,7 @@ function BuilderContent() {
         if (data.code) {
           setPrompt(meta.prompt);
           setGeneratedCode(data.code);
-          setPreviewHtml(cleanGeneratedCode(data.code));
+          setPreviewHtml(wrapPreviewHtml(cleanGeneratedCode(data.code)));
           setProjectFiles(buildProjectFiles(data.code));
           setStatusMessage(`🎮 ${meta.name} ready — customize or export`);
           setTimeout(() => setStatusMessage(''), 6000);
@@ -528,9 +528,10 @@ function BuilderContent() {
     const pagePaths = listHtmlPages(projectFiles).map((f) => f.path);
     let html =
       pagePaths.length > 1 ? injectPreviewPageNavScript(cleaned, pagePaths) : cleaned;
-    if (visualEditMode) return injectVisualEditorScript(html);
-    if (inspectMode) return injectInspectScript(html);
-    return html;
+    if (visualEditMode) html = injectVisualEditorScript(html);
+    else if (inspectMode) html = injectInspectScript(html);
+    // Preview-only scaffolding (CDN playground, base, guards, console) — never for export/deploy.
+    return preparePreviewHtml(html);
   };
 
   const applyGeneratedCode = (
@@ -765,11 +766,11 @@ function BuilderContent() {
       snap.generatedCode
     );
     const pagePaths = listHtmlPages(filesForPreview).map((f) => f.path);
-    const html =
+    const withNav =
       pagePaths.length > 1
         ? injectPreviewPageNavScript(preview, pagePaths)
         : preview;
-    setPreviewHtml(html);
+    setPreviewHtml(preparePreviewHtml(withNav));
     if (isExportableCode(snap.generatedCode)) {
       aiOriginalCodeRef.current = snap.generatedCode;
     }
@@ -1745,7 +1746,10 @@ function BuilderContent() {
       return;
     }
 
-    let html = getDeployablePreviewHtml(generatedCode, projectFiles);
+    // Clean only here — /api/previews compiles static Tailwind server-side (Node-only).
+    let html = cleanGeneratedCode(
+      projectFiles.find((f) => f.path === 'index.html')?.content?.trim() || generatedCode
+    );
     if (seoSettings.title || seoSettings.metaDescription) {
       html = injectSeoIntoHtml(html, seoSettings);
     }
@@ -1852,7 +1856,9 @@ function BuilderContent() {
         credentials: 'include',
         body: JSON.stringify({
           prompt,
-          pageContent: getDeployablePreviewHtml(generatedCode, projectFiles),
+          pageContent: cleanGeneratedCode(
+            projectFiles.find((f) => f.path === 'index.html')?.content || generatedCode
+          ),
           blueprint: blueprintData,
         }),
       });

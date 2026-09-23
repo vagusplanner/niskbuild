@@ -1,30 +1,31 @@
-import { preparePreviewHtml } from '@/lib/preview-html';
 import { stripProgressMarkers } from '@/lib/generation-progress';
 
 /**
- * Strips markdown fences and ensures preview-ready HTML for the iframe.
- * Progress markers (<!--@step:...-->) are always removed so they never leak into preview or saved apps.
+ * Strips markdown fences and progress markers, and normalizes to a full HTML document.
+ * Does NOT inject preview-only scaffolding (base tag, CDN playground, guards, console).
+ * Use preparePreviewHtml() for the live iframe; use prepareShippableHtml() for export/deploy.
  */
 export function cleanGeneratedCode(rawCode: string): string {
   let cleaned = stripProgressMarkers(rawCode.trim());
 
-  const markdownMatch = cleaned.match(/```(?:html|javascript|jsx|tsx|typescript|css)?\n?([\s\S]*?)\n?```/i);
+  const markdownMatch = cleaned.match(
+    /```(?:html|javascript|jsx|tsx|typescript|css)?\n?([\s\S]*?)\n?```/i
+  );
   if (markdownMatch) {
     cleaned = stripProgressMarkers(markdownMatch[1].trim());
   }
 
   const doctypeMatch = cleaned.match(/(<!DOCTYPE[\s\S]*<\/html>)/i);
   if (doctypeMatch) {
-    return preparePreviewHtml(doctypeMatch[1]);
+    return doctypeMatch[1];
   }
 
   if (cleaned.includes('<html') || cleaned.includes('<!DOCTYPE')) {
-    return preparePreviewHtml(cleaned);
+    return cleaned;
   }
 
-  // Wrap plain HTML fragments or text in a full document for preview
   if (cleaned.includes('<body') || cleaned.includes('<div') || cleaned.includes('<section')) {
-    return preparePreviewHtml(`<!DOCTYPE html>
+    return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
@@ -32,10 +33,10 @@ export function cleanGeneratedCode(rawCode: string): string {
   <title>NiskBuild App</title>
 </head>
 ${cleaned.includes('<body') ? cleaned : `<body>${cleaned}</body>`}
-</html>`);
+</html>`;
   }
 
-  return preparePreviewHtml(`<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
@@ -61,10 +62,10 @@ ${cleaned.includes('<body') ? cleaned : `<body>${cleaned}</body>`}
   </style>
 </head>
 <body>
-  <h1>🚀 NiskBuild Generated App</h1>
+  <h1>🚀 NiskBuild App</h1>
   <pre>${cleaned.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
 </body>
-</html>`);
+</html>`;
 }
 
 export function isExportableCode(code: string): boolean {
