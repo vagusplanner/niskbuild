@@ -19,6 +19,24 @@ export type StreamGenResult =
 
 const CODE_MAX_TOKENS = 8192;
 
+/**
+ * Newer OpenAI chat models reject `max_tokens` and require `max_completion_tokens`
+ * (GPT-5.x Terra/Sol, GPT-6 Astra, o-series, etc.). DeepSeek/Groq still use max_tokens.
+ */
+export function openAIUsesMaxCompletionTokens(apiModelId: string): boolean {
+  const id = apiModelId.toLowerCase();
+  return (
+    id.startsWith('gpt-5') ||
+    id.startsWith('gpt-6') ||
+    id.startsWith('o1') ||
+    id.startsWith('o3') ||
+    id.startsWith('o4') ||
+    id.includes('terra') ||
+    id.includes('astra') ||
+    /-sol\b/.test(id)
+  );
+}
+
 function getDeepSeekClient(apiKey?: string | null): OpenAI | null {
   const key = apiKey?.trim() || process.env.DEEPSEEK_API_KEY?.trim();
   if (!key) return null;
@@ -54,10 +72,15 @@ export async function streamOpenAICompatible(
      * often finish with empty content → "Model returned empty code").
      */
     deepseekDisableThinking?: boolean;
+    /** Use max_completion_tokens instead of max_tokens (newer OpenAI models). */
+    useMaxCompletionTokens?: boolean;
   }
 ): Promise<StreamGenResult> {
   try {
-    // DeepSeek-only `thinking` is not on OpenAI SDK types.
+    const maxTok = options.maxTokens ?? CODE_MAX_TOKENS;
+    const useMaxCompletion =
+      options.useMaxCompletionTokens ?? openAIUsesMaxCompletionTokens(options.model);
+    // DeepSeek-only `thinking` / OpenAI max_completion_tokens are not all on SDK types.
     const stream = (await options.client.chat.completions.create({
       messages: [
         { role: 'system', content: HTML_CODE_SYSTEM_PROMPT },
@@ -65,7 +88,9 @@ export async function streamOpenAICompatible(
       ],
       model: options.model,
       temperature: options.temperature ?? 0.7,
-      max_tokens: options.maxTokens ?? CODE_MAX_TOKENS,
+      ...(useMaxCompletion
+        ? { max_completion_tokens: maxTok }
+        : { max_tokens: maxTok }),
       stream: true,
       ...(options.deepseekDisableThinking
         ? { thinking: { type: 'disabled' } }
@@ -329,6 +354,7 @@ export async function streamSelectedGenerationModel(
       client,
       model: model.apiModelId,
       onDelta,
+      useMaxCompletionTokens: true,
     });
   }
 

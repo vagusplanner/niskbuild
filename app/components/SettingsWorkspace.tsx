@@ -34,6 +34,10 @@ import CustomDomainSettingsPanel from '@/app/components/CustomDomainSettingsPane
 import TeamSettingsPanel from '@/app/components/TeamSettingsPanel';
 import WhiteLabelBrandingPanel from '@/app/components/WhiteLabelBrandingPanel';
 import OrgSsoSettingsPanel from '@/app/components/OrgSsoSettingsPanel';
+import {
+  creditsBarPercent,
+  formatCreditsRatio,
+} from '@/lib/credits-display';
 
 type TabId = 'profile' | 'billing' | 'team' | 'domains' | 'security' | 'danger';
 
@@ -764,14 +768,32 @@ export default function SettingsWorkspace() {
                     <Link href="/pricing" className="btn-primary px-4 py-2 rounded-lg text-sm">Upgrade Plan</Link>
                   )}
                 </div>
-                {billing.creditsAllowance > 0 && (
+                {(billing.creditsAllowance > 0 || billing.creditsRemaining > 0) && (
                   <div className="mt-6">
                     <div className="flex justify-between text-sm mb-2">
                       <span className="text-nisk-muted">Credits remaining</span>
-                      <span className="text-white">{billing.creditsRemaining} / {billing.creditsAllowance}</span>
+                      <span className="text-white">
+                        {formatCreditsRatio(billing.creditsRemaining, billing.creditsAllowance)}
+                        {billing.creditsRemaining > billing.creditsAllowance &&
+                          billing.creditsAllowance > 0 && (
+                            <span className="text-nisk-muted text-xs ml-1.5">
+                              (includes reloads/grants above {billing.creditsAllowance} pool)
+                            </span>
+                          )}
+                      </span>
                     </div>
                     <div className="w-full bg-nisk rounded-full h-2">
-                      <div className={`h-2 rounded-full ${creditBarColor(billing.creditsPercent)}`} style={{ width: `${Math.min(100, billing.creditsPercent)}%` }} />
+                      <div
+                        className={`h-2 rounded-full ${creditBarColor(
+                          creditsBarPercent(billing.creditsRemaining, billing.creditsAllowance)
+                        )}`}
+                        style={{
+                          width: `${creditsBarPercent(
+                            billing.creditsRemaining,
+                            billing.creditsAllowance
+                          )}%`,
+                        }}
+                      />
                     </div>
                     {billing.daysUntilReset != null && (
                       <p className="text-xs text-nisk-muted mt-2">Resets in {billing.daysUntilReset} day{billing.daysUntilReset !== 1 ? 's' : ''}</p>

@@ -21,6 +21,11 @@ import PreviewDeviceSwitcher, {
 } from '@/app/components/PreviewDeviceSwitcher';
 import BuilderPreviewPageNav from '@/app/components/BuilderPreviewPageNav';
 import { BUILDER_PREVIEW_SANDBOX } from '@/lib/preview-html';
+import {
+  creditsBarPercent,
+  formatCreditsRatio,
+  formatCreditsRemainingLabel,
+} from '@/lib/credits-display';
 import type {
   GooglePlacesBusiness,
   GooglePlacesProjectContext,
@@ -427,17 +432,18 @@ function CreditsBar({
   allowance: number;
   tier: string;
 }) {
-  const pct = allowance > 0 ? Math.min(100, Math.round((remaining / allowance) * 100)) : 0;
+  const pct = creditsBarPercent(remaining, allowance);
+  const label = formatCreditsRatio(remaining, allowance);
 
   return (
     <div className="shrink-0 px-4 py-3 border-t border-nisk bg-nisk-card/50">
       <div className="flex justify-between items-center mb-1.5">
         <span className="text-[10px] text-nisk-muted uppercase tracking-wider">Cloud credits</span>
         <span className="text-xs font-medium text-[var(--accent-cyan)]">
-          {allowance > 0 ? `${remaining} / ${allowance}` : 'Sandbox'}
+          {allowance > 0 || remaining > 0 ? label : 'Sandbox'}
         </span>
       </div>
-      {allowance > 0 ? (
+      {allowance > 0 || remaining > 0 ? (
         <div className="w-full bg-nisk rounded-full h-1.5 overflow-hidden">
           <div
             className="bg-gradient-brand h-1.5 rounded-full transition-all duration-300"
@@ -685,13 +691,15 @@ function ChatPanelContent({
           onProviderUpgrade={onOllamaUpgrade}
           generationModelId={generationModelId}
           onGenerationModelChange={onGenerationModelChange}
+          cloudCreditsRemaining={cloudCreditsRemaining}
+          cloudCreditsAllowance={cloudCreditsAllowance}
         />
         <div className="px-3 pb-2 flex items-center justify-between text-[10px] text-nisk-muted">
           <span className="capitalize">{subscriptionTier.replace('_', ' ')}</span>
-          {cloudCreditsAllowance > 0 ? (
-            <span className="text-[var(--copper-melt)]">
-              {cloudCreditsRemaining}/{cloudCreditsAllowance} credits
-            </span>
+          {cloudCreditsAllowance > 0 || cloudCreditsRemaining > 0 ? (
+            <Link href="/settings?tab=billing" className="text-[var(--copper-melt)] hover:underline">
+              Billing
+            </Link>
           ) : (
             <Link href="/pricing" className="text-[var(--copper-melt)] hover:underline">
               Upgrade

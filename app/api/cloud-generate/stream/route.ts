@@ -117,7 +117,9 @@ export async function POST(request: NextRequest) {
     anthropicKey: byocAllowed ? profile?.anthropic_api_key : null,
   };
   const byoc = resolveByocSkip(selectedModel.provider, useOwnKeys, keyBundle);
-  const skipCredits = byoc.skipCredits;
+  // Owner bypass must skip deduction at the route layer — do not rely solely on
+  // ALS inside ReadableStream.start() (context can be lost across the stream boundary).
+  const skipCredits = byoc.skipCredits || ownerBypass;
   const creditCost = selectedModel.creditCost;
 
   const encoder = new TextEncoder();
@@ -154,7 +156,12 @@ export async function POST(request: NextRequest) {
           didDeduct = true;
           deductedAmount = creditCost;
         } else {
-          send({ kind: 'status', text: 'Using your own API key — no credits charged…' });
+          send({
+            kind: 'status',
+            text: ownerBypass
+              ? 'Platform owner — no credits charged…'
+              : 'Using your own API key — no credits charged…',
+          });
         }
 
         const streamStartedAt = Date.now();
@@ -328,7 +335,9 @@ export async function POST(request: NextRequest) {
         send({
           kind: 'status',
           text: skipCredits
-            ? `Done via ${selectedModel.label} (BYOC)`
+            ? ownerBypass && !byoc.skipCredits
+              ? `Done via ${selectedModel.label} (owner — no credits charged)`
+              : `Done via ${selectedModel.label} (BYOC)`
             : `Done via ${selectedModel.label} (−${creditCost} credit${creditCost === 1 ? '' : 's'})`,
         });
         send('[DONE]');

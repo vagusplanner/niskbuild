@@ -66,7 +66,11 @@ export async function GET(request: NextRequest) {
     status: profile?.subscription_status || 'inactive',
     creditsRemaining: remaining,
     creditsAllowance: allowance,
-    creditsPercent: allowance > 0 ? Math.round((remaining / allowance) * 100) : 0,
+    // Cap display math at max(remaining, allowance) so reload/grant balances > pool never read as "11 / 5".
+    creditsPercent:
+      Math.max(allowance, remaining) > 0
+        ? Math.round((remaining / Math.max(allowance, remaining)) * 100)
+        : 0,
     nextBillingDate,
     daysUntilReset,
     isCancelled,

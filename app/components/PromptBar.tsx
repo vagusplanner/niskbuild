@@ -9,6 +9,7 @@ import PromptAttachMenu from '@/app/components/PromptAttachMenu';
 import GenerationModelPicker from '@/app/components/GenerationModelPicker';
 import type { GenerationModelId } from '@/lib/generation-models';
 import { DEFAULT_GENERATION_MODEL_ID } from '@/lib/generation-models';
+import { formatCreditsRemainingLabel } from '@/lib/credits-display';
 
 interface PromptBarProps {
   prompt: string;
@@ -30,6 +31,9 @@ interface PromptBarProps {
   onProviderUpgrade?: () => void;
   generationModelId?: GenerationModelId;
   onGenerationModelChange?: (id: GenerationModelId) => void;
+  /** Inline credit balance next to the model picker */
+  cloudCreditsRemaining?: number;
+  cloudCreditsAllowance?: number;
   /** Scrollable generation log (Cursor-style) */
   activityLog?: string[];
   streamingLine?: string;
@@ -94,6 +98,8 @@ export default function PromptBar({
   onProviderUpgrade,
   generationModelId = DEFAULT_GENERATION_MODEL_ID,
   onGenerationModelChange,
+  cloudCreditsRemaining,
+  cloudCreditsAllowance = 0,
   activityLog = [],
   streamingLine,
   streamingNarration,
@@ -157,6 +163,16 @@ export default function PromptBar({
           onUpgrade={onProviderUpgrade}
         />
       )}
+      {isCursor &&
+        typeof cloudCreditsRemaining === 'number' &&
+        (cloudCreditsRemaining > 0 || cloudCreditsAllowance > 0) && (
+          <span
+            className="text-[10px] tabular-nums text-[var(--copper-melt)] px-1.5 py-0.5 rounded-md border border-[var(--border)]/80 bg-[var(--code-bg)]"
+            title="Cloud credits remaining"
+          >
+            {formatCreditsRemainingLabel(cloudCreditsRemaining, cloudCreditsAllowance)}
+          </span>
+        )}
       {isCursor && onUseLocalOllamaChange && onProviderUpgrade && (
         <AiProviderSelector
           tier={subscriptionTier}

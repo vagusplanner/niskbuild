@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
       anthropicKey: byocAllowed ? profile?.anthropic_api_key : null,
     };
     const byoc = resolveByocSkip(selectedModel.provider, useOwnKeys, keyBundle);
-    const skipCredits = byoc.skipCredits;
+    const skipCredits = byoc.skipCredits || ownerBypass;
     const creditCost = selectedModel.creditCost;
 
     let creditsRemaining: number | undefined;
