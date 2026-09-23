@@ -44,10 +44,32 @@ export default function UnifiedFAB() {
   const [processing, setProcessing] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [showAISidebar, setShowAISidebar] = useState(false);
+  const [hideForCoach, setHideForCoach] = useState(false);
   const recognitionRef = React.useRef(null);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // AI Coach chat sets data-vp-hide-fab so Send isn't covered by this FAB on narrow viewports.
+  useEffect(() => {
+    const sync = () => {
+      setHideForCoach(document.documentElement.dataset.vpHideFab === '1');
+    };
+    sync();
+    const obs = new MutationObserver(sync);
+    obs.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-vp-hide-fab'],
+    });
+    return () => obs.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!hideForCoach) return;
+    setMenuOpen(false);
+    setMode(null);
+    setShowAISidebar(false);
+  }, [hideForCoach]);
 
   const currentPage = location.pathname.split('/').filter(Boolean).pop() || 'Dashboard';
   const aiColors = PAGE_COLORS[currentPage] || DEFAULT_COLOR;
@@ -150,6 +172,11 @@ export default function UnifiedFAB() {
   ];
 
   const hasOpenPanel = mode !== null;
+
+  // While AI Coach chat is open, stay out of the way (Send button collision on iPad compat).
+  if (hideForCoach) {
+    return null;
+  }
 
   return (
     <>

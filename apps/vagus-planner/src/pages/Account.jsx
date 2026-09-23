@@ -107,7 +107,7 @@ const SECTIONS = [
     id: 'privacy',
     icon: Shield,
     label: 'Privacy & Data',
-    sub: 'Consent, export & deletion',
+    sub: 'Consent & data export',
     gradient: 'from-teal-600 to-cyan-700',
   },
 ];
@@ -361,6 +361,28 @@ export default function Account() {
                   </div>
                 </motion.button>
               ))}
+
+              {/* App Store 5.1.1(v): Delete Account must be findable at Account hub top level */}
+              <motion.button
+                type="button"
+                whileHover={{ y: -2 }}
+                onClick={() => setShowDeleteDialog(true)}
+                className="sm:col-span-2 lg:col-span-3 w-full rounded-2xl border-2 border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/40 p-4 text-left shadow-sm hover:shadow-md hover:border-red-400 dark:hover:border-red-700 transition-all"
+                aria-label="Delete Account"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-red-600 text-white shrink-0">
+                    <Trash2 className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold text-red-700 dark:text-red-300">Delete Account</p>
+                    <p className="text-xs text-red-600/90 dark:text-red-400 mt-0.5">
+                      Permanently erase your account and all Vagus Planner data
+                    </p>
+                  </div>
+                </div>
+              </motion.button>
+
               <p className="sm:col-span-2 lg:col-span-3 text-center pt-1 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
                 <button
                   type="button"

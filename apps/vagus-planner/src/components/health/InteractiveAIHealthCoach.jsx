@@ -128,6 +128,15 @@ Provide a helpful, supportive, and actionable response. Be conversational and em
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [conversation]);
 
+  // Hide global UnifiedFAB while this coach chat is mounted (avoids Send/FAB overlap on iPad compat).
+  useEffect(() => {
+    if (!chatOnly) return undefined;
+    document.documentElement.dataset.vpHideFab = '1';
+    return () => {
+      delete document.documentElement.dataset.vpHideFab;
+    };
+  }, [chatOnly]);
+
   const chatPanel = (
     <div className="flex-1 flex flex-col m-0 p-4 space-y-4">
       <div className="flex-1 overflow-y-auto space-y-4 pr-2">
@@ -177,15 +186,27 @@ Provide a helpful, supportive, and actionable response. Be conversational and em
         <div ref={chatEndRef} />
       </div>
 
-      <div className="flex gap-2 pt-4 border-t">
+      <div
+        className={cn(
+          'flex gap-2 pt-4 border-t',
+          // Extra clearance if FAB is still visible (desktop / race); keeps Send tappable.
+          chatOnly && 'pb-[max(1rem,env(safe-area-inset-bottom))] pr-1'
+        )}
+      >
         <Input
           placeholder="Ask about your health goals, workouts, nutrition..."
           value={chatInput}
           onChange={(e) => setChatInput(e.target.value)}
           onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
           disabled={isTyping}
+          className="min-w-0 flex-1"
         />
-        <Button onClick={handleSendMessage} disabled={isTyping || !chatInput.trim()}>
+        <Button
+          onClick={handleSendMessage}
+          disabled={isTyping || !chatInput.trim()}
+          className="shrink-0 min-w-[44px] min-h-[44px]"
+          aria-label="Send message"
+        >
           <Send className="w-4 h-4" />
         </Button>
       </div>
