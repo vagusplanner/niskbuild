@@ -16,6 +16,11 @@ import {
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
+import HealthAiSourcesDisclaimer from '@/components/health/HealthAiSourcesDisclaimer';
+import {
+  buildHealthAiCitationPromptRules,
+  HEALTH_AI_SOURCE_IDS,
+} from '@/lib/health-ai-sources';
 
 export default function InteractiveAIHealthCoach({ chatOnly = false }) {
   const available = requireVpAiFunctions('analyzeMoodSleepForWellness', 'generatePersonalizedMealPlan', 'generatePersonalizedRecipes', 'generatePersonalizedWorkoutPlan', 'generateProgressReport', 'suggestPlanAdjustments');
@@ -24,8 +29,10 @@ export default function InteractiveAIHealthCoach({ chatOnly = false }) {
   const [conversation, setConversation] = useState([
     {
       role: 'assistant',
-      content: "Hi! I'm your AI Health Coach. I can help you with workout plans, meal suggestions, stress management, and sleep improvement. What would you like to discuss today?"
-    }
+      content:
+        "Hi! I'm your AI Health Coach. I can share general wellness tips on workouts, meals, stress, and sleep — not medical advice. What would you like to discuss today?",
+      sourceIds: ['nhs', 'cdc', 'mayo', 'nih'],
+    },
   ]);
   const [isTyping, setIsTyping] = useState(false);
   const chatEndRef = useRef(null);
@@ -90,34 +97,55 @@ export default function InteractiveAIHealthCoach({ chatOnly = false }) {
     if (!chatInput.trim()) return;
 
     const userMessage = chatInput;
-    setConversation(prev => [...prev, { role: 'user', content: userMessage }]);
+    setConversation((prev) => [...prev, { role: 'user', content: userMessage }]);
     setChatInput('');
     setIsTyping(true);
 
     try {
       const response = await base44.integrations.Core.InvokeLLM({
-        prompt: `You are an expert health coach having a conversation with a user. 
+        prompt: `You are a supportive wellness coach (not a clinician) having a conversation with a user.
+
+${buildHealthAiCitationPromptRules()}
 
 Previous conversation:
-${conversation.map(m => `${m.role}: ${m.content}`).join('\n')}
+${conversation.map((m) => `${m.role}: ${m.content}`).join('\n')}
 
 User: ${userMessage}
 
-Provide a helpful, supportive, and actionable response. Be conversational and empathetic. If the user asks about workout plans, meal plans, or wellness strategies, offer to generate personalized recommendations.`,
+Provide a helpful, empathetic response focused on general wellness habits. If they ask about workouts, meals, or sleep strategies, share practical tips and name allowlisted sources. Return source_ids from the allowlist for any health-adjacent tip you give.`,
+        gdpr_categories: ['health'],
         response_json_schema: {
-          type: "object",
+          type: 'object',
           properties: {
-            response: { type: "string" }
-          }
-        }
+            response: { type: 'string' },
+            source_ids: {
+              type: 'array',
+              items: { type: 'string', enum: HEALTH_AI_SOURCE_IDS },
+              description: 'Ids from the fixed allowlist referenced in the response',
+            },
+          },
+        },
       });
 
-      setConversation(prev => [...prev, { 
-        role: 'assistant', 
-        content: response.response 
-      }]);
+      const sourceIds = Array.isArray(response?.source_ids) ? response.source_ids : [];
+      setConversation((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: response?.response || 'I could not generate a response. Please try again.',
+          sourceIds,
+        },
+      ]);
     } catch (error) {
-      toast.error('Failed to get response');
+      const msg = error instanceof Error ? error.message : String(error);
+      if (/consent|art\.?\s*9|health/i.test(msg)) {
+        toast.error(
+          msg ||
+            'Health AI requires Health / wellness consent. Enable it under Account → Privacy & Data.'
+        );
+      } else {
+        toast.error(msg || 'Failed to get response');
+      }
       console.error(error);
     } finally {
       setIsTyping(false);
@@ -158,13 +186,20 @@ Provide a helpful, supportive, and actionable response. Be conversational and em
               )}
               <div
                 className={cn(
-                  "max-w-[80%] rounded-2xl px-4 py-3 text-sm",
+                  "max-w-[80%] rounded-2xl px-4 py-3 text-sm space-y-2",
                   message.role === 'user'
                     ? 'bg-teal-600 text-white'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100'
                 )}
               >
-                {message.content}
+                <div>{message.content}</div>
+                {message.role === 'assistant' && (
+                  <HealthAiSourcesDisclaimer
+                    compact
+                    variant="disclaimer"
+                    className="mt-1"
+                  />
+                )}
               </div>
             </motion.div>
           ))}
@@ -185,6 +220,15 @@ Provide a helpful, supportive, and actionable response. Be conversational and em
         </AnimatePresence>
         <div ref={chatEndRef} />
       </div>
+
+      <HealthAiSourcesDisclaimer
+        compact
+        sourceIds={
+          [...conversation]
+            .reverse()
+            .find((m) => m.role === 'assistant' && Array.isArray(m.sourceIds))?.sourceIds
+        }
+      />
 
       <div
         className={cn(
