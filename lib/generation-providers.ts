@@ -8,6 +8,7 @@ import OpenAI from 'openai';
 import { HTML_CODE_SYSTEM_PROMPT } from '@/lib/html-code-system-prompt';
 import {
   anthropicAllowsSamplingParams,
+  openAIAllowsCustomTemperature,
   type GenerationModel,
   type GenerationProvider,
 } from '@/lib/generation-models';
@@ -24,17 +25,7 @@ const CODE_MAX_TOKENS = 8192;
  * (GPT-5.x Terra/Sol, GPT-6 Astra, o-series, etc.). DeepSeek/Groq still use max_tokens.
  */
 export function openAIUsesMaxCompletionTokens(apiModelId: string): boolean {
-  const id = apiModelId.toLowerCase();
-  return (
-    id.startsWith('gpt-5') ||
-    id.startsWith('gpt-6') ||
-    id.startsWith('o1') ||
-    id.startsWith('o3') ||
-    id.startsWith('o4') ||
-    id.includes('terra') ||
-    id.includes('astra') ||
-    /-sol\b/.test(id)
-  );
+  return !openAIAllowsCustomTemperature(apiModelId);
 }
 
 function getDeepSeekClient(apiKey?: string | null): OpenAI | null {
@@ -80,6 +71,7 @@ export async function streamOpenAICompatible(
     const maxTok = options.maxTokens ?? CODE_MAX_TOKENS;
     const useMaxCompletion =
       options.useMaxCompletionTokens ?? openAIUsesMaxCompletionTokens(options.model);
+    const allowTemperature = openAIAllowsCustomTemperature(options.model);
     // DeepSeek-only `thinking` / OpenAI max_completion_tokens are not all on SDK types.
     const stream = (await options.client.chat.completions.create({
       messages: [
@@ -87,7 +79,10 @@ export async function streamOpenAICompatible(
         { role: 'user', content: prompt },
       ],
       model: options.model,
-      temperature: options.temperature ?? 0.7,
+      // GPT-5.x / GPT-6 / o-series: omit temperature (API default 1 only).
+      ...(allowTemperature
+        ? { temperature: options.temperature ?? 0.7 }
+        : {}),
       ...(useMaxCompletion
         ? { max_completion_tokens: maxTok }
         : { max_tokens: maxTok }),

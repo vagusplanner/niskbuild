@@ -161,3 +161,21 @@ export function generationModelLockedReason(model: GenerationModel): string {
 export function anthropicAllowsSamplingParams(apiModelId: string): boolean {
   return !/^claude-(sonnet-5|opus-5)\b/.test(apiModelId);
 }
+
+/**
+ * Newer OpenAI models (GPT-5.x Terra/Sol, GPT-6 Astra, o-series) reject custom
+ * temperature — only the API default (1) is allowed. Omit the param entirely.
+ */
+export function openAIAllowsCustomTemperature(apiModelId: string): boolean {
+  const id = apiModelId.toLowerCase();
+  return !(
+    id.startsWith('gpt-5') ||
+    id.startsWith('gpt-6') ||
+    id.startsWith('o1') ||
+    id.startsWith('o3') ||
+    id.startsWith('o4') ||
+    id.includes('terra') ||
+    id.includes('astra') ||
+    /-sol\b/.test(id)
+  );
+}
