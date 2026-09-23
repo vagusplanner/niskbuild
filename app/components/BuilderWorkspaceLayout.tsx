@@ -22,6 +22,8 @@ import BuilderTurnHistory from '@/app/components/BuilderTurnHistory';
 import PreviewDeviceSwitcher, {
   type PreviewDevice,
 } from '@/app/components/PreviewDeviceSwitcher';
+import PreviewBrowserChrome from '@/app/components/PreviewBrowserChrome';
+import { usePreviewHistory } from '@/app/components/usePreviewHistory';
 import BuilderPreviewPageNav from '@/app/components/BuilderPreviewPageNav';
 import { BUILDER_PREVIEW_SANDBOX } from '@/lib/preview-html';
 import {
@@ -243,6 +245,7 @@ function CanvasHeader({
   versionHistoryOpen,
   previewDevice = 'desktop',
   onPreviewDeviceChange,
+  previewNav,
   canShareSocial = false,
   onOpenSocialPublisher,
   onRunExportAudit,
@@ -277,6 +280,13 @@ function CanvasHeader({
   versionHistoryOpen?: boolean;
   previewDevice?: PreviewDevice;
   onPreviewDeviceChange?: (device: PreviewDevice) => void;
+  previewNav?: {
+    canGoBack: boolean;
+    canGoForward: boolean;
+    onBack: () => void;
+    onForward: () => void;
+    onReload: () => void;
+  };
   canShareSocial?: boolean;
   onOpenSocialPublisher?: () => void;
   onRunExportAudit?: () => void;
@@ -315,6 +325,15 @@ function CanvasHeader({
               Code
             </button>
           </div>
+        )}
+        {previewNav && (
+          <PreviewBrowserChrome
+            canGoBack={previewNav.canGoBack}
+            canGoForward={previewNav.canGoForward}
+            onBack={previewNav.onBack}
+            onForward={previewNav.onForward}
+            onReload={previewNav.onReload}
+          />
         )}
         {onPreviewDeviceChange && (
           <div className="hidden sm:block">
@@ -398,15 +417,18 @@ function PreviewIframe({
   previewHtml,
   placeholderPreview,
   previewFrameClass,
+  reloadKey = 0,
 }: {
   previewHtml: string;
   placeholderPreview: string;
   previewFrameClass: string;
+  reloadKey?: number;
 }) {
+  const doc = previewHtml || placeholderPreview;
   return (
     <iframe
-      key={previewHtml.slice(0, 80)}
-      srcDoc={previewHtml || placeholderPreview}
+      key={`${reloadKey}-${doc.length}-${doc.slice(0, 48)}`}
+      srcDoc={doc}
       title="Live Preview"
       className={`${previewFrameClass} border-0 bg-white`}
       sandbox={BUILDER_PREVIEW_SANDBOX}
@@ -883,6 +905,24 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
 
   const showStylesTab = visualEditMode && !!selectedVisualElement;
 
+  const {
+    displayHtml: previewDisplayHtml,
+    reloadKey: previewReloadKey,
+    canGoBack: previewCanGoBack,
+    canGoForward: previewCanGoForward,
+    goBack: previewGoBack,
+    goForward: previewGoForward,
+    reload: previewReload,
+  } = usePreviewHistory(previewHtml, isGenerating);
+
+  const previewNav = {
+    canGoBack: previewCanGoBack,
+    canGoForward: previewCanGoForward,
+    onBack: previewGoBack,
+    onForward: previewGoForward,
+    onReload: previewReload,
+  };
+
   const openProjectSettings = (tab: ProjectSettingsTab = 'seo') => {
     onProjectSettingsTabChange(tab);
     onProjectSettingsOpenChange(true);
@@ -1210,6 +1250,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
               versionHistoryOpen={versionHistoryOpen}
               previewDevice={previewDevice}
               onPreviewDeviceChange={onPreviewDeviceChange}
+              previewNav={previewNav}
               canShareSocial={canShareSocial}
               onOpenSocialPublisher={onOpenSocialPublisher}
               onRunExportAudit={onRunExportAudit}
@@ -1235,9 +1276,10 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
               }`}
             >
               <PreviewIframe
-                previewHtml={previewHtml}
+                previewHtml={previewDisplayHtml}
                 placeholderPreview={placeholderPreview}
                 previewFrameClass={previewFrameClass}
+                reloadKey={previewReloadKey}
               />
               <ShareThisBuildFab
                 visible={canShareSocial}
@@ -1330,6 +1372,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
             versionHistoryOpen={versionHistoryOpen}
             previewDevice={previewDevice}
             onPreviewDeviceChange={onPreviewDeviceChange}
+            previewNav={previewNav}
             canShareSocial={canShareSocial}
             onOpenSocialPublisher={onOpenSocialPublisher}
             onRunExportAudit={onRunExportAudit}
@@ -1361,9 +1404,10 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
             />
             <div className="absolute inset-0 z-[1]">
               <PreviewIframe
-                previewHtml={previewHtml}
+                previewHtml={previewDisplayHtml}
                 placeholderPreview={placeholderPreview}
                 previewFrameClass={previewFrameClass}
+                reloadKey={previewReloadKey}
               />
               <ShareThisBuildFab
                 visible={canShareSocial}
