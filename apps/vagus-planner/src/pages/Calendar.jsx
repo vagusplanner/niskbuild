@@ -412,23 +412,6 @@ export default function CalendarPage() {
     <PullToRefresh onRefresh={handleRefresh}>
       <div className="h-[calc(100dvh-3.5rem)] lg:h-screen bg-transparent" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
 
-        {/* Mobile toolbar FAB */}
-        {isMobile && !showVerticalToolbar && (
-          <button
-            type="button"
-            onClick={() => setShowVerticalToolbar(true)}
-            aria-label="Open calendar menu"
-            className="fixed left-4 z-[45] w-14 h-14 rounded-full flex items-center justify-center text-white bg-[#1D6FB8]"
-            style={{
-              bottom: 'calc(8rem + env(safe-area-inset-bottom))',
-              background: 'linear-gradient(135deg, #1D6FB8, #29ABE2)',
-              boxShadow: '0 4px 20px rgba(41,171,226,0.45)',
-            }}
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-        )}
-
         <div className="h-full lg:flex overflow-visible" ref={calendarRef}>
 
           {/* Left Vertical Toolbar */}
@@ -486,6 +469,21 @@ export default function CalendarPage() {
               <div className="px-2 sm:px-4 py-2 sm:py-3">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                    {/* Mobile: menu lives in header (not a second bottom FAB next to UnifiedFAB). */}
+                    {isMobile && !showVerticalToolbar && (
+                      <button
+                        type="button"
+                        onClick={() => setShowVerticalToolbar(true)}
+                        aria-label="Open calendar menu"
+                        className="flex items-center justify-center h-10 w-10 min-h-[44px] min-w-[44px] rounded-xl shrink-0 text-white"
+                        style={{
+                          background: 'linear-gradient(135deg, #1D6FB8, #29ABE2)',
+                          boxShadow: '0 2px 10px rgba(41,171,226,0.35)',
+                        }}
+                      >
+                        <Menu className="w-5 h-5" />
+                      </button>
+                    )}
                     <div className="p-1.5 rounded-lg shadow-sm hidden sm:flex" style={{background:'linear-gradient(135deg, #1D6FB8, #29ABE2)'}}>
                        <CalendarIcon className="w-4 h-4 text-white" />
                     </div>

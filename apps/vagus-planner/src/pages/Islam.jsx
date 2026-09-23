@@ -174,12 +174,13 @@ function PrayerContent() {
         All your prayer tools in one place: times & Adhan, tracking your 5 daily prayers, Sunnah/Nafl extras, AI coaching, missed prayers (Qada), streaks & badges, and spiritual habits.
       </p>
       <Tabs defaultValue={initialTab}>
-        <TabsList className="grid grid-cols-5 w-full h-auto mb-4">
-          <TabsTrigger value="times" className="text-[10px] sm:text-[11px] py-2">🕌 Times</TabsTrigger>
-          <TabsTrigger value="tracker" className="text-[10px] sm:text-[11px] py-2">✅ Log</TabsTrigger>
-          <TabsTrigger value="coach" className="text-[10px] sm:text-[11px] py-2">🧠 Coach</TabsTrigger>
-          <TabsTrigger value="badges" className="text-[10px] sm:text-[11px] py-2">🏆 Streaks</TabsTrigger>
-          <TabsTrigger value="habits" className="text-[10px] sm:text-[11px] py-2">🔥 Habits</TabsTrigger>
+        {/* Horizontally scrollable strip — avoids cramped 5-up squeeze on iPad compat width */}
+        <TabsList className="flex w-full h-auto mb-4 overflow-x-auto hide-scrollbar justify-start gap-1.5 p-1.5">
+          <TabsTrigger value="times" className="flex-none min-w-[5.25rem] min-h-[44px] text-xs px-3 py-2.5">🕌 Times</TabsTrigger>
+          <TabsTrigger value="tracker" className="flex-none min-w-[5.25rem] min-h-[44px] text-xs px-3 py-2.5">✅ Log</TabsTrigger>
+          <TabsTrigger value="coach" className="flex-none min-w-[5.25rem] min-h-[44px] text-xs px-3 py-2.5">🧠 Coach</TabsTrigger>
+          <TabsTrigger value="badges" className="flex-none min-w-[5.25rem] min-h-[44px] text-xs px-3 py-2.5">🏆 Streaks</TabsTrigger>
+          <TabsTrigger value="habits" className="flex-none min-w-[5.25rem] min-h-[44px] text-xs px-3 py-2.5">🔥 Habits</TabsTrigger>
         </TabsList>
         <TabsContent value="times" className="space-y-4">
           <p className="text-xs rounded-xl p-2.5 font-medium" style={{background:'rgba(29,111,184,0.08)', color:'#1B2A4A', border:'1px solid rgba(29,111,184,0.15)'}}>📍 Your daily prayer schedule with automatic Adhan sound alerts. Enable the bell icon to hear the call to prayer at each prayer time.</p>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { MOBILE_NAV_CLEARANCE, MOBILE_OVERLAY_Z } from '@/lib/mobile-layout';
 
 // ── Preset spiritual habits ────────────────────────────────────────────────
 const PRESETS = [
@@ -222,6 +223,15 @@ export default function SpiritualHabitTracker() {
   const addedIds = habits.map(h => getMeta(h).presetId).filter(Boolean);
   const availablePresets = PRESETS.filter(p => !addedIds.includes(p.id));
 
+  // Hide UnifiedFAB while add-habit sheet is open (same class as AI Coach Send/FAB overlap).
+  useEffect(() => {
+    if (!showAdd) return undefined;
+    document.documentElement.dataset.vpHideFab = '1';
+    return () => {
+      delete document.documentElement.dataset.vpHideFab;
+    };
+  }, [showAdd]);
+
   return (
     <div className="flex flex-col gap-4">
       {/* ── Header stats ────────────────────────────────────────── */}
@@ -313,12 +323,25 @@ export default function SpiritualHabitTracker() {
       <AnimatePresence>
         {showAdd && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50" onClick={() => setShowAdd(false)} />
             <motion.div
-              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/30 backdrop-blur-sm"
+              style={{ zIndex: MOBILE_OVERLAY_Z }}
+              onClick={() => setShowAdd(false)}
+            />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 26, stiffness: 300 }}
-              className="fixed inset-x-0 bottom-0 z-50 bg-white dark:bg-slate-900 rounded-t-3xl shadow-2xl border-t border-slate-200 dark:border-slate-700 p-5 max-h-[80vh] overflow-y-auto"
+              className="fixed inset-x-0 bg-white dark:bg-slate-900 rounded-t-3xl shadow-2xl border-t border-slate-200 dark:border-slate-700 p-5 max-h-[calc(100dvh-8.5rem)] overflow-y-auto"
+              style={{
+                zIndex: MOBILE_OVERLAY_Z,
+                bottom: MOBILE_NAV_CLEARANCE,
+                paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom, 0px))',
+              }}
             >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-black text-slate-800 dark:text-slate-100 text-base flex items-center gap-2">

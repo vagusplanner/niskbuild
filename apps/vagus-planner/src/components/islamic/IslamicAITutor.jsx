@@ -349,6 +349,14 @@ export default function IslamicAITutor() {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
+  // Hide global UnifiedFAB while this tutor is mounted (Send/FAB overlap on iPad compat).
+  useEffect(() => {
+    document.documentElement.dataset.vpHideFab = '1';
+    return () => {
+      delete document.documentElement.dataset.vpHideFab;
+    };
+  }, []);
+
   // Voice input
   useEffect(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
