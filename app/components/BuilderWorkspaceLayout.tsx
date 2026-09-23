@@ -57,6 +57,8 @@ export type BuilderWorkspaceLayoutProps = {
   userId?: string;
   subscriptionTier: string;
   subscriptionStatus: string;
+  /** Platform-owner product bypass — unlocks Pro-gated models in the picker */
+  platformOwnerBypass?: boolean;
   cloudCreditsRemaining: number;
   cloudCreditsAllowance: number;
   recentProjects: RecentProject[];
@@ -534,6 +536,7 @@ function ChatPanelContent({
   cloudCreditsAllowance,
   subscriptionTier,
   subscriptionStatus,
+  platformOwnerBypass = false,
   prompt,
   onPromptChange,
   onGenerate,
@@ -576,6 +579,7 @@ function ChatPanelContent({
   cloudCreditsAllowance: number;
   subscriptionTier: string;
   subscriptionStatus: string;
+  platformOwnerBypass?: boolean;
   prompt: string;
   onPromptChange: (v: string) => void;
   onGenerate: () => void;
@@ -686,6 +690,7 @@ function ChatPanelContent({
           onPlanModeChange={onPlanModeChange}
           subscriptionTier={subscriptionTier}
           subscriptionStatus={subscriptionStatus}
+          platformOwnerBypass={platformOwnerBypass}
           useLocalOllama={useLocalOllama}
           onUseLocalOllamaChange={onUseLocalOllamaChange}
           onProviderUpgrade={onOllamaUpgrade}
@@ -724,6 +729,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
     userId,
     subscriptionTier,
     subscriptionStatus,
+    platformOwnerBypass = false,
     cloudCreditsRemaining,
     cloudCreditsAllowance,
     recentProjects,
@@ -885,6 +891,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
       cloudCreditsAllowance={cloudCreditsAllowance}
       subscriptionTier={subscriptionTier}
       subscriptionStatus={subscriptionStatus}
+      platformOwnerBypass={platformOwnerBypass}
       prompt={prompt}
       onPromptChange={onPromptChange}
       onGenerate={onGenerate}
@@ -934,6 +941,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
       cloudCreditsAllowance={cloudCreditsAllowance}
       subscriptionTier={subscriptionTier}
       subscriptionStatus={subscriptionStatus}
+      platformOwnerBypass={platformOwnerBypass}
       prompt={prompt}
       onPromptChange={onPromptChange}
       onGenerate={onGenerate}

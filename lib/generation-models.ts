@@ -146,8 +146,10 @@ export function isGenerationModelId(id: unknown): id is GenerationModelId {
 
 export function canSelectGenerationModel(
   model: GenerationModel,
-  tier: string | null | undefined
+  tier: string | null | undefined,
+  bypass?: boolean
 ): boolean {
+  if (bypass) return true;
   if (!model.minTier) return true;
   return tierAtLeast(tier, model.minTier);
 }

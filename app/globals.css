@@ -480,7 +480,10 @@ pre, code {
   flex-direction: column;
   background-color: var(--card-bg);
   flex-shrink: 0;
-  overflow: hidden;
+  /* Do not use overflow:hidden — it clips the chat↔preview resize handle on the right edge */
+  overflow: visible;
+  position: relative;
+  z-index: 2;
 }
 
 .builder-chat-panel--collapsed {
@@ -497,6 +500,11 @@ pre, code {
 
 .builder-prompt-dock {
   flex-shrink: 0;
+  max-height: min(52vh, 440px);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   border-top: 1px solid var(--border);
   background: linear-gradient(180deg, var(--card-bg) 0%, var(--surface) 100%);
   box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.05);

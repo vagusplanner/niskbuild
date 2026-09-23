@@ -57,8 +57,8 @@ export function ChatPanelDragHandle({ onResize }: { onResize: (deltaX: number) =
       aria-orientation="vertical"
       aria-label="Resize AI panel"
       title="Drag to resize panel"
-      className={`hidden md:flex absolute right-0 top-0 bottom-0 w-2 z-30 cursor-col-resize items-center justify-center group touch-none ${
-        active ? 'bg-[var(--copper-primary)]/25' : 'hover:bg-[var(--copper-primary)]/15'
+      className={`hidden md:flex absolute right-0 top-0 bottom-0 w-3 translate-x-1/2 z-40 cursor-col-resize items-center justify-center group touch-none ${
+        active ? 'bg-[var(--copper-primary)]/30' : 'hover:bg-[var(--copper-primary)]/20'
       }`}
       onPointerDown={(e) => {
         setActive(true);
@@ -75,13 +75,16 @@ export function ChatPanelDragHandle({ onResize }: { onResize: (deltaX: number) =
       }}
     >
       <span
-        className={`pointer-events-none flex flex-col items-center gap-0 text-[9px] font-bold leading-none text-[var(--copper-melt)] transition-opacity ${
-          active ? 'opacity-100' : 'opacity-0 group-hover:opacity-80'
+        className={`pointer-events-none flex h-10 w-1.5 flex-col items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card-bg)] shadow-sm transition-colors ${
+          active
+            ? 'border-[var(--copper-primary)] bg-[var(--copper-primary)]/40'
+            : 'group-hover:border-[var(--copper-melt)]'
         }`}
         aria-hidden
       >
-        <span>‹</span>
-        <span>›</span>
+        <span className="text-[8px] leading-none font-bold text-[var(--copper-melt)] opacity-90">
+          ⋮
+        </span>
       </span>
     </div>
   );

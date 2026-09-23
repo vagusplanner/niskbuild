@@ -78,10 +78,10 @@ export default function ResizableSplit({
           document.body.style.cursor = 'col-resize';
           document.body.style.userSelect = 'none';
         }}
-        className="w-1.5 shrink-0 cursor-col-resize bg-nisk hover:bg-[var(--accent-cyan)]/40 active:bg-[var(--accent-cyan)]/60 transition-colors relative group"
+        className="w-3 shrink-0 cursor-col-resize bg-[var(--border)]/40 hover:bg-[var(--accent-cyan)]/40 active:bg-[var(--accent-cyan)]/60 transition-colors relative z-20 group flex items-center justify-center"
       >
         <div className="absolute inset-y-0 -left-1 -right-1" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1 h-8 rounded-full bg-[var(--border)] group-hover:bg-[var(--accent-cyan)]" />
+        <div className="w-1.5 h-10 rounded-full border border-[var(--border)] bg-[var(--card-bg)] shadow-sm group-hover:border-[var(--accent-cyan)]" />
       </div>
       <div className="min-w-0 flex flex-col flex-1">{right}</div>
     </div>

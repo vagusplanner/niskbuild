@@ -13,6 +13,8 @@ type Props = {
   value: GenerationModelId;
   onChange: (id: GenerationModelId) => void;
   tier?: string;
+  /** Platform-owner bypass — unlocks Pro-gated models regardless of profile tier */
+  platformOwnerBypass?: boolean;
   disabled?: boolean;
   onUpgrade?: () => void;
 };
@@ -21,6 +23,7 @@ export default function GenerationModelPicker({
   value,
   onChange,
   tier = 'free',
+  platformOwnerBypass = false,
   disabled = false,
   onUpgrade,
 }: Props) {
@@ -67,7 +70,7 @@ export default function GenerationModelPicker({
           </p>
           <ul className="max-h-72 overflow-y-auto py-1">
             {GENERATION_MODELS.map((model) => {
-              const locked = !canSelectGenerationModel(model, tier);
+              const locked = !canSelectGenerationModel(model, tier, platformOwnerBypass);
               const active = model.id === selected.id;
               return (
                 <li key={model.id}>

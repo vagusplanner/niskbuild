@@ -26,6 +26,8 @@ interface PromptBarProps {
   variant?: 'bottom' | 'sidebar' | 'dock' | 'cursor';
   subscriptionTier?: string;
   subscriptionStatus?: string;
+  /** Unlocks Pro-gated models for platform owners (profile tier may still be free) */
+  platformOwnerBypass?: boolean;
   useLocalOllama?: boolean;
   onUseLocalOllamaChange?: (enabled: boolean) => void;
   onProviderUpgrade?: () => void;
@@ -93,6 +95,7 @@ export default function PromptBar({
   variant = 'bottom',
   subscriptionTier = 'free',
   subscriptionStatus = 'inactive',
+  platformOwnerBypass = false,
   useLocalOllama = false,
   onUseLocalOllamaChange,
   onProviderUpgrade,
@@ -159,6 +162,7 @@ export default function PromptBar({
           value={generationModelId}
           onChange={onGenerationModelChange}
           tier={subscriptionTier}
+          platformOwnerBypass={platformOwnerBypass}
           disabled={isGenerating}
           onUpgrade={onProviderUpgrade}
         />
@@ -212,11 +216,11 @@ export default function PromptBar({
 
   if (isCursor) {
     return (
-      <div className="flex flex-col gap-0 px-3 py-3">
+      <div className="flex flex-col gap-0 px-3 py-3 min-h-0 max-h-full">
         {figmaHidden}
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--code-bg)] shadow-[0_4px_24px_rgba(0,0,0,0.25)] focus-within:border-[var(--copper-primary)]/40 focus-within:ring-1 focus-within:ring-[var(--copper-primary)]/20 transition-all">
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--code-bg)] shadow-[0_4px_24px_rgba(0,0,0,0.25)] focus-within:border-[var(--copper-primary)]/40 focus-within:ring-1 focus-within:ring-[var(--copper-primary)]/20 transition-all flex flex-col min-h-0 max-h-full overflow-hidden">
           {editingPageLabel && (
-            <p className="text-[11px] font-medium text-[var(--copper-melt)] px-3 pt-2.5 pb-0">
+            <p className="text-[11px] font-medium text-[var(--copper-melt)] px-3 pt-2.5 pb-0 shrink-0">
               Editing page: {editingPageLabel}
             </p>
           )}
@@ -226,7 +230,7 @@ export default function PromptBar({
             streamingLine ||
             (showCodeStream && streamingCode) ||
             isGenerating) && (
-            <div className="max-h-52 overflow-y-auto border-b border-[var(--border)]/60 px-3 py-2.5 space-y-2">
+            <div className="max-h-40 shrink-0 overflow-y-auto border-b border-[var(--border)]/60 px-3 py-2.5 space-y-2">
               {activityLog.map((line, i) => (
                 <p
                   key={`${i}-${line.slice(0, 24)}`}
@@ -305,7 +309,9 @@ export default function PromptBar({
               )}
             </div>
           )}
-          <SuggestionChips onPick={onChange} suggestions={chipSuggestions} />
+          <div className="shrink-0">
+            <SuggestionChips onPick={onChange} suggestions={chipSuggestions} />
+          </div>
           <textarea
             value={prompt}
             onChange={(e) => onChange(e.target.value)}
@@ -315,17 +321,21 @@ export default function PromptBar({
                 : 'Describe what you want to build…'
             }
             rows={promptRows}
-            style={promptMinHeight ? { minHeight: promptMinHeight } : undefined}
-            className="w-full bg-transparent px-3 py-2 text-[15px] leading-relaxed text-[var(--foreground)] placeholder-[var(--placeholder)] resize-y focus:outline-none min-h-[96px] font-mono"
+            style={
+              promptMinHeight
+                ? { minHeight: Math.min(promptMinHeight, 360), maxHeight: 360 }
+                : { maxHeight: 360 }
+            }
+            className="w-full bg-transparent px-3 py-2 text-[15px] leading-relaxed text-[var(--foreground)] placeholder-[var(--placeholder)] resize-none focus:outline-none min-h-[96px] max-h-[360px] overflow-y-auto font-mono"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) onGenerate();
             }}
           />
-          {toolbar}
+          <div className="shrink-0">{toolbar}</div>
         </div>
         {statusMessage && (
           <p
-            className={`text-[11px] mt-2 px-1 leading-snug whitespace-pre-wrap break-words font-mono ${
+            className={`text-[11px] mt-2 px-1 leading-snug whitespace-pre-wrap break-words font-mono shrink-0 ${
               statusMessage.includes('✅')
                 ? 'text-[var(--success)]'
                 : statusMessage.includes('❌')
@@ -336,7 +346,7 @@ export default function PromptBar({
             {statusMessage}
           </p>
         )}
-        <p className="text-xs text-nisk-muted mt-1 px-1">{mod} + Enter to generate</p>
+        <p className="text-xs text-nisk-muted mt-1 px-1 shrink-0">{mod} + Enter to generate</p>
       </div>
     );
   }

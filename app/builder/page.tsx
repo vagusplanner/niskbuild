@@ -186,6 +186,7 @@ function BuilderContent() {
   const [architecturePlan, setArchitecturePlan] = useState<string | null>(null);
   const [subscriptionTier, setSubscriptionTier] = useState('free');
   const [subscriptionStatus, setSubscriptionStatus] = useState('inactive');
+  const [platformOwnerBypass, setPlatformOwnerBypass] = useState(false);
   const [useLocalOllama, setUseLocalOllama] = useState(false);
   const [generationModelId, setGenerationModelId] = useState<GenerationModelId>(
     DEFAULT_GENERATION_MODEL_ID
@@ -253,6 +254,9 @@ function BuilderContent() {
             setSubscriptionTier(data.tier);
             setProjectLimit(data.projectLimit ?? getProjectLimit(data.tier));
             setCloudCreditsRemaining(data.cloudCreditsRemaining ?? 0);
+            if (typeof data.platformOwnerBypass === 'boolean') {
+              setPlatformOwnerBypass(data.platformOwnerBypass);
+            }
             const savedLocal = localStorage.getItem('niskbuild_use_local_ollama') === 'true';
             const sandbox = isSandboxTier(data.tier);
             setUseLocalOllama(
@@ -272,6 +276,9 @@ function BuilderContent() {
           setSubscriptionTier(data.tier);
           setSubscriptionStatus(data.status ?? 'inactive');
           setProjectLimit(data.projectLimit ?? getProjectLimit(data.tier));
+          if (typeof data.platformOwnerBypass === 'boolean') {
+            setPlatformOwnerBypass(data.platformOwnerBypass);
+          }
           if (typeof data.credits === 'number') {
             setCloudCreditsRemaining(data.credits);
           }
@@ -1868,6 +1875,7 @@ function BuilderContent() {
           userId={user?.id}
           subscriptionTier={subscriptionTier}
           subscriptionStatus={subscriptionStatus}
+          platformOwnerBypass={platformOwnerBypass}
           cloudCreditsRemaining={cloudCreditsRemaining}
           cloudCreditsAllowance={cloudCreditsAllowance}
           recentProjects={recentProjects}
