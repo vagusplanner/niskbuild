@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useRef, useState, type RefObject } from 'react';
 import Link from 'next/link';
+import DockPopover from '@/app/components/DockPopover';
 
 export type PromptAttachMenuProps = {
   disabled?: boolean;
@@ -25,17 +26,6 @@ export default function PromptAttachMenu({
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onPointer = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', onPointer);
-    return () => document.removeEventListener('mousedown', onPointer);
-  }, [open]);
 
   const pick = (action: () => void) => {
     setOpen(false);
@@ -68,22 +58,25 @@ export default function PromptAttachMenu({
         </svg>
       </button>
 
-      {open && (
-        <div
-          role="menu"
-          className="absolute bottom-full left-0 mb-1.5 z-[80] min-w-[200px] py-1 rounded-xl border border-[var(--border)] bg-[var(--code-bg)] shadow-[0_8px_32px_rgba(0,0,0,0.45)]"
-        >
-          <input
-            ref={fileRef}
-            type="file"
-            accept={uploadAccept}
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file && onUploadZip) onUploadZip(file);
-              e.target.value = '';
-            }}
-          />
+      <input
+        ref={fileRef}
+        type="file"
+        accept={uploadAccept}
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file && onUploadZip) onUploadZip(file);
+          e.target.value = '';
+        }}
+      />
+
+      <DockPopover
+        open={open}
+        onClose={() => setOpen(false)}
+        anchorRef={rootRef}
+        width={220}
+      >
+        <div role="menu" className="py-1">
           {onUploadZip && (
             <button
               type="button"
@@ -91,7 +84,9 @@ export default function PromptAttachMenu({
               className="w-full text-left px-3 py-2 text-xs text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
               onClick={() => pick(() => fileRef.current?.click())}
             >
-              <span className="mr-2" aria-hidden>💻</span>
+              <span className="mr-2" aria-hidden>
+                💻
+              </span>
               {uploadLabel}
             </button>
           )}
@@ -105,7 +100,9 @@ export default function PromptAttachMenu({
               })
             }
           >
-            <span className="mr-2" aria-hidden>📍</span>
+            <span className="mr-2" aria-hidden>
+              📍
+            </span>
             Google Business import
           </button>
           <Link
@@ -114,7 +111,9 @@ export default function PromptAttachMenu({
             className="block px-3 py-2 text-xs text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
             onClick={() => setOpen(false)}
           >
-            <span className="mr-2" aria-hidden>📚</span>
+            <span className="mr-2" aria-hidden>
+              📚
+            </span>
             Template library
           </Link>
           {onOpenFigma && (
@@ -124,12 +123,14 @@ export default function PromptAttachMenu({
               className="w-full text-left px-3 py-2 text-xs text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
               onClick={() => pick(onOpenFigma)}
             >
-              <span className="mr-2" aria-hidden>🎨</span>
+              <span className="mr-2" aria-hidden>
+                🎨
+              </span>
               Import from Figma
             </button>
           )}
         </div>
-      )}
+      </DockPopover>
     </div>
   );
 }

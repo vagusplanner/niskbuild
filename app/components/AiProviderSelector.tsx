@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   canUseLocalOllama,
   isPaidAndActive,
   isSandboxTier,
 } from '@/lib/tier-config';
+import DockPopover from '@/app/components/DockPopover';
 
 export type AiProviderChoice = 'local' | 'cloud';
 
@@ -25,6 +26,7 @@ export default function AiProviderSelector({
   onUpgrade,
 }: AiProviderSelectorProps) {
   const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
   const sandbox = isSandboxTier(tier);
   const paid = isPaidAndActive(tier, status);
   const canLocal = canUseLocalOllama(tier);
@@ -70,7 +72,7 @@ export default function AiProviderSelector({
   };
 
   return (
-    <div className="relative">
+    <div className="relative" ref={rootRef}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -82,36 +84,39 @@ export default function AiProviderSelector({
         <span className="opacity-60">▾</span>
       </button>
 
-      {open && (
-        <>
-          <div className="fixed inset-0 z-[64]" onClick={() => setOpen(false)} aria-hidden />
-          <div className="absolute left-0 bottom-full mb-1 w-52 rounded-xl border border-nisk bg-nisk-card shadow-2xl z-[65] py-1 overflow-hidden">
-            {options.map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => select(opt.id)}
-                className={`w-full text-left px-3 py-2.5 hover:bg-[var(--surface-elevated)] transition-colors ${
-                  active === opt.id ? 'bg-[var(--accent-cyan)]/10' : ''
-                }`}
-              >
-                <p className="text-xs font-medium text-white flex items-center gap-2">
-                  {opt.label}
-                  {opt.locked && (
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-[var(--secondary)]/20 text-[var(--secondary)]">
-                      🔒 {opt.lockReason}
-                    </span>
-                  )}
-                  {active === opt.id && !opt.locked && (
-                    <span className="text-[var(--accent-cyan)]">✓</span>
-                  )}
-                </p>
-                <p className="text-[10px] text-nisk-muted mt-0.5">{opt.sub}</p>
-              </button>
-            ))}
-          </div>
-        </>
-      )}
+      <DockPopover
+        open={open}
+        onClose={() => setOpen(false)}
+        anchorRef={rootRef}
+        width={208}
+        className="bg-nisk-card"
+      >
+        <div className="py-1">
+          {options.map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => select(opt.id)}
+              className={`w-full text-left px-3 py-2.5 hover:bg-[var(--surface-elevated)] transition-colors ${
+                active === opt.id ? 'bg-[var(--accent-cyan)]/10' : ''
+              }`}
+            >
+              <p className="text-xs font-medium text-white flex items-center gap-2">
+                {opt.label}
+                {opt.locked && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-[var(--secondary)]/20 text-[var(--secondary)]">
+                    🔒 {opt.lockReason}
+                  </span>
+                )}
+                {active === opt.id && !opt.locked && (
+                  <span className="text-[var(--accent-cyan)]">✓</span>
+                )}
+              </p>
+              <p className="text-[10px] text-nisk-muted mt-0.5">{opt.sub}</p>
+            </button>
+          ))}
+        </div>
+      </DockPopover>
     </div>
   );
 }

@@ -500,9 +500,9 @@ pre, code {
 
 .builder-prompt-dock {
   flex-shrink: 0;
-  /* Cap the whole dock; PromptBar flexes so only the textarea scrolls inside */
-  max-height: min(50vh, 420px);
-  min-height: 0;
+  /* Activity + chips live above the dock now — modest floor so Generate stays visible */
+  min-height: 148px;
+  max-height: none;
   display: flex;
   flex-direction: column;
   overflow: hidden;

@@ -7,6 +7,7 @@ import AiProviderSelector from '@/app/components/AiProviderSelector';
 import FigmaScreenshotImport from '@/app/components/FigmaScreenshotImport';
 import PromptAttachMenu from '@/app/components/PromptAttachMenu';
 import GenerationModelPicker from '@/app/components/GenerationModelPicker';
+import GenerationActivityPanel from '@/app/components/GenerationActivityPanel';
 import type { GenerationModelId } from '@/lib/generation-models';
 import { DEFAULT_GENERATION_MODEL_ID } from '@/lib/generation-models';
 import { formatCreditsRemainingLabel } from '@/lib/credits-display';
@@ -27,6 +28,11 @@ interface PromptBarProps {
   promptAutosaveEnabled?: boolean;
   onPromptAutosaveChange?: (enabled: boolean) => void;
   variant?: 'bottom' | 'sidebar' | 'dock' | 'cursor';
+  /**
+   * HTML builder dock redesign: parent renders activity + suggestions outside the
+   * dock card. Composer only keeps textarea + pinned toolbar.
+   */
+  externalChrome?: boolean;
   subscriptionTier?: string;
   subscriptionStatus?: string;
   /** Unlocks Pro-gated models for platform owners (profile tier may still be free) */
@@ -98,6 +104,7 @@ export default function PromptBar({
   promptAutosaveEnabled,
   onPromptAutosaveChange,
   variant = 'bottom',
+  externalChrome = false,
   subscriptionTier = 'free',
   subscriptionStatus = 'inactive',
   platformOwnerBypass = false,
@@ -160,7 +167,7 @@ export default function PromptBar({
     ) : null;
 
   const toolbar = (
-    <div className="flex items-center gap-2 flex-wrap px-3 py-2 border-t border-[var(--border)]/60 bg-[var(--surface)]/50 relative z-[1]">
+    <div className="flex items-center gap-2 flex-wrap px-3 py-2 border-t border-[var(--border)]/60 bg-[var(--surface)]/50 relative z-[1] shrink-0">
       {attachMenu}
       {isCursor && onGenerationModelChange && !useLocalOllama && (
         <GenerationModelPicker
@@ -239,98 +246,29 @@ export default function PromptBar({
         {figmaHidden}
         <div className="rounded-xl border border-[var(--border)] bg-[var(--code-bg)] shadow-[0_4px_24px_rgba(0,0,0,0.25)] focus-within:border-[var(--copper-primary)]/40 focus-within:ring-1 focus-within:ring-[var(--copper-primary)]/20 transition-all flex flex-col min-h-0 flex-1 overflow-hidden">
           {editingPageLabel && (
-            <p className="text-[11px] font-medium text-[var(--copper-melt)] px-3 pt-2.5 pb-0 shrink-0">
+            <p className="text-[11px] font-medium text-[var(--copper-melt)] px-3 pt-2.5 pb-1 shrink-0">
               Editing page: {editingPageLabel}
             </p>
           )}
-          {(activityLog.length > 0 ||
-            streamingSteps.length > 0 ||
-            streamingNarration ||
-            streamingLine ||
-            (showCodeStream && streamingCode) ||
-            isGenerating) && (
-            <div className="max-h-28 shrink-0 overflow-y-auto border-b border-[var(--border)]/60 px-3 py-2 space-y-2">
-              {activityLog.map((line, i) => (
-                <p
-                  key={`${i}-${line.slice(0, 24)}`}
-                  className={`text-[11px] text-[var(--code-comment)] leading-relaxed font-mono whitespace-pre-wrap break-words ${
-                    line.includes('❌') ? 'max-h-24 overflow-y-auto' : ''
-                  }`}
-                >
-                  {line}
-                </p>
-              ))}
-              {streamingSteps.length > 0 && (
-                <ol className="space-y-1.5" aria-live="polite" aria-label="Build progress">
-                  {streamingSteps.map((step, i) => {
-                    const isActive = isGenerating && i === streamingSteps.length - 1;
-                    const isDone = !isGenerating || i < streamingSteps.length - 1;
-                    return (
-                      <li
-                        key={`${step.source}-${step.id}`}
-                        className={`flex items-start gap-2 text-[13px] leading-snug ${
-                          isActive
-                            ? 'text-[var(--copper-melt)]'
-                            : isDone
-                              ? 'text-[var(--foreground)]/80'
-                              : 'text-[var(--code-comment)]'
-                        }`}
-                      >
-                        <span
-                          className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[10px] ${
-                            isActive
-                              ? 'border-[var(--copper-melt)] text-[var(--copper-melt)]'
-                              : isDone
-                                ? 'border-[var(--success)] text-[var(--success)]'
-                                : 'border-[var(--border)] text-[var(--code-comment)]'
-                          }`}
-                          aria-hidden
-                        >
-                          {isDone && !isActive ? '✓' : i + 1}
-                        </span>
-                        <span className="min-w-0">
-                          {step.label}
-                          {isActive && (
-                            <span
-                              className="inline-block w-2 h-[1em] bg-[var(--copper-melt)] animate-pulse align-middle ml-1"
-                              aria-hidden
-                            />
-                          )}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ol>
-              )}
-              {streamingSteps.length === 0 && streamingNarration && (
-                <div className="text-[13px] text-[var(--foreground)] leading-relaxed whitespace-pre-wrap">
-                  {streamingNarration}
-                  {isGenerating && (
-                    <span className="inline-block w-2 h-[1em] bg-[var(--copper-melt)] animate-pulse align-middle ml-0.5" aria-hidden />
-                  )}
-                </div>
-              )}
-              {showCodeStream && streamingCode && (
-                <pre className="font-mono text-xs text-[var(--code-tag)] whitespace-pre-wrap break-all leading-relaxed max-h-24 overflow-y-auto">
-                  {streamingCode.slice(-1200)}
-                  <span className="inline-block w-2 h-[1.1em] bg-[var(--copper-melt)] animate-pulse align-middle ml-0.5" aria-hidden />
-                </pre>
-              )}
-              {streamingSteps.length === 0 &&
-                !streamingNarration &&
-                !streamingCode &&
-                (streamingLine || isGenerating) && (
-                <p className="text-[13px] text-[var(--copper-melt)] leading-relaxed flex items-start gap-1">
-                  <span>{streamingLine || (planMode ? 'Planning…' : 'Building…')}</span>
-                  <span className="inline-block w-2.5 h-[1.1em] bg-[var(--copper-melt)] animate-pulse shrink-0" aria-hidden />
-                </p>
-              )}
+          {!externalChrome && (
+            <GenerationActivityPanel
+              activityLog={activityLog}
+              streamingSteps={streamingSteps}
+              streamingNarration={streamingNarration}
+              streamingLine={streamingLine}
+              streamingCode={streamingCode}
+              showCodeStream={showCodeStream}
+              isGenerating={isGenerating}
+              planMode={planMode}
+              embedded
+            />
+          )}
+          {!externalChrome && (
+            <div className="shrink-0">
+              <SuggestionChips onPick={onChange} suggestions={chipSuggestions} />
             </div>
           )}
-          <div className="shrink-0">
-            <SuggestionChips onPick={onChange} suggestions={chipSuggestions} />
-          </div>
-          {/* Only the prompt text scrolls — picker / Generate stay pinned below via shrink-0 toolbar */}
+          {/* Only the prompt text scrolls — toolbar stays pinned beneath */}
           <textarea
             value={prompt}
             onChange={(e) => onChange(e.target.value)}
@@ -341,7 +279,6 @@ export default function PromptBar({
             }
             rows={Math.min(promptRows, 6)}
             style={{
-              // flex-1 absorbs leftover dock space; shrink so toolbar never leaves the viewport
               flex: '1 1 auto',
               flexBasis: promptMinHeight
                 ? Math.min(Math.max(promptMinHeight, 72), 220)
@@ -353,7 +290,7 @@ export default function PromptBar({
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) onGenerate();
             }}
           />
-          <div className="shrink-0">{toolbar}</div>
+          {toolbar}
         </div>
         {statusMessage && (
           <p

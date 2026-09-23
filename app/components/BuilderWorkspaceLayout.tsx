@@ -16,6 +16,8 @@ import GooglePlacesImport, {
 import BuilderHeaderMenu from '@/app/components/BuilderHeaderMenu';
 import { ChatPanelDragHandle, PromptHeightDragHandle } from '@/app/components/BuilderResizeHandles';
 import PromptBar from '@/app/components/PromptBar';
+import GenerationActivityPanel from '@/app/components/GenerationActivityPanel';
+import PromptSuggestionRow from '@/app/components/PromptSuggestionRow';
 import PreviewDeviceSwitcher, {
   type PreviewDevice,
 } from '@/app/components/PreviewDeviceSwitcher';
@@ -26,6 +28,7 @@ import {
   formatCreditsRatio,
   formatCreditsRemainingLabel,
 } from '@/lib/credits-display';
+import { PROMPT_SUGGESTIONS, PROMPT_SUGGESTION_COUNT } from '@/lib/prompt-suggestions';
 import type {
   GooglePlacesBusiness,
   GooglePlacesProjectContext,
@@ -652,8 +655,30 @@ function ChatPanelContent({
             </p>
           </div>
         )}
-
+        <GenerationActivityPanel
+          activityLog={activityLog}
+          streamingSteps={streamingSteps}
+          streamingNarration={streamingNarration}
+          streamingLine={
+            isGenerating && streamingSteps.length === 0 && !streamingNarration
+              ? statusMessage
+              : undefined
+          }
+          streamingCode={streamingCode}
+          isGenerating={isGenerating}
+          planMode={planMode}
+        />
       </div>
+
+      <PromptSuggestionRow
+        suggestions={
+          (promptSuggestions.length > 0
+            ? promptSuggestions
+            : PROMPT_SUGGESTIONS
+          ).slice(0, PROMPT_SUGGESTION_COUNT)
+        }
+        onPick={onPromptChange}
+      />
 
       <div className="builder-prompt-dock">
         <PromptHeightDragHandle
@@ -671,6 +696,7 @@ function ChatPanelContent({
         <div className="min-h-0 flex-1 flex flex-col overflow-hidden">
         <PromptBar
           variant="cursor"
+          externalChrome
           prompt={prompt}
           onChange={onPromptChange}
           onGenerate={onGenerate}
@@ -680,18 +706,8 @@ function ChatPanelContent({
           projectId={activeProjectId}
           isGenerating={isGenerating}
           statusMessage={statusMessage}
-          activityLog={activityLog}
-          streamingCode={streamingCode}
-          streamingNarration={streamingNarration}
-          streamingSteps={streamingSteps}
-          streamingLine={
-            isGenerating && streamingSteps.length === 0 && !streamingNarration
-              ? statusMessage
-              : undefined
-          }
           promptRows={Math.max(3, Math.round(promptHeightPx / 28))}
           promptMinHeight={promptHeightPx}
-          suggestions={promptSuggestions}
           editingPageLabel={editingPageLabel}
           planMode={planMode}
           onPlanModeChange={onPlanModeChange}
