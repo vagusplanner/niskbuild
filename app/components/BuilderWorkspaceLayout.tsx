@@ -410,6 +410,7 @@ function PreviewIframe({
       title="Live Preview"
       className={`${previewFrameClass} border-0 bg-white`}
       sandbox={BUILDER_PREVIEW_SANDBOX}
+      referrerPolicy="no-referrer"
     />
   );
 }

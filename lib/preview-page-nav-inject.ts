@@ -10,8 +10,9 @@ export function injectPreviewPageNavScript(html: string, pagePaths: string[]): s
   function resolve(href){
     if(!href||href.startsWith('#')||href.startsWith('mailto:')||href.startsWith('tel:')||href.startsWith('javascript:'))return null;
     try{
-      var u=new URL(href,window.location.href);
+      var u=new URL(href, document.baseURI || window.location.href);
       var path=u.pathname.replace(/^\\//,'');
+      if(u.hostname && u.hostname!=='niskbuild-preview.invalid' && u.protocol.indexOf('http')===0)return null;
       if(!path.endsWith('.html'))path=path.replace(/\\/?$/,'')+(path?'/index.html':'index.html');
       if(pages.indexOf(path)>=0)return path;
       if(pages.indexOf('pages/'+path)>=0)return 'pages/'+path;
@@ -26,6 +27,7 @@ export function injectPreviewPageNavScript(html: string, pagePaths: string[]): s
     var target=resolve(a.getAttribute('href'));
     if(!target)return;
     e.preventDefault();
+    e.stopPropagation();
     parent.postMessage({type:'niskbuild-preview-nav',path:target},'*');
   },true);
 })();
