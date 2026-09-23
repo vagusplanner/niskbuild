@@ -327,7 +327,7 @@ export default function PromptBar({
               )}
             </div>
           )}
-          <div className="shrink-0 max-h-14 overflow-hidden">
+          <div className="shrink-0">
             <SuggestionChips onPick={onChange} suggestions={chipSuggestions} />
           </div>
           {/* Only the prompt text scrolls — picker / Generate stay pinned below via shrink-0 toolbar */}

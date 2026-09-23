@@ -87,6 +87,14 @@ import {
   savePromptDraft,
   setPromptAutosaveEnabled,
 } from '@/lib/prompt-draft';
+import {
+  clearWorkspaceSnapshot,
+  deriveProjectTitle,
+  getActiveProjectIdLocal,
+  loadWorkspaceSnapshot,
+  saveWorkspaceSnapshot,
+  setActiveProjectIdLocal,
+} from '@/lib/builder-workspace-persist';
 import { safeLocalStorageGet, safeLocalStorageRemove } from '@/lib/safe-storage';
 import type { ComponentBlueprint } from '@/lib/blueprint-schema';
 import {
@@ -363,10 +371,19 @@ function BuilderContent() {
   }, [activeProjectId]);
 
   useEffect(() => {
-    if (generatedCode.trim()) {
-      localStorage.setItem('niskbuild_current_code', generatedCode);
-    }
-  }, [generatedCode]);
+    if (!isExportableCode(generatedCode)) return;
+    const t = window.setTimeout(() => {
+      saveWorkspaceSnapshot({
+        generatedCode,
+        prompt,
+        activeFile,
+        projectFiles,
+        projectId: activeProjectId,
+        updatedAt: new Date().toISOString(),
+      });
+    }, 500);
+    return () => window.clearTimeout(t);
+  }, [generatedCode, prompt, activeFile, projectFiles, activeProjectId]);
 
   useEffect(() => {
     const onExport = () => void handleExportZip();
@@ -442,17 +459,28 @@ function BuilderContent() {
     setSavedProjects(projects);
     setTeamOrgs(Array.isArray(data.orgs) ? data.orgs : []);
 
-    const pendingId = localStorage.getItem('niskbuild_load_project_id');
+    // Prefer explicit "open this project" (command palette), then last active project.
+    const pendingId =
+      safeLocalStorageGet('niskbuild_load_project_id') || getActiveProjectIdLocal();
     if (pendingId) {
       const match = projects.find((p) => p.id === pendingId);
-      localStorage.removeItem('niskbuild_load_project_id');
+      safeLocalStorageRemove('niskbuild_load_project_id');
       if (match) {
         loadProject(match);
-      } else {
-        setStatusMessage(
-          '❌ Project not found — it may have been deleted. Starting with a blank workspace.'
-        );
-        setTimeout(() => setStatusMessage(''), 8000);
+        return;
+      }
+      // Stale id — fall through to local snapshot if any
+      if (getActiveProjectIdLocal() === pendingId) {
+        setActiveProjectIdLocal(null);
+      }
+    }
+
+    // No cloud project to resume — restore in-browser workspace so navigation never
+    // silently drops a successful generation.
+    if (!isExportableCode(generatedCode)) {
+      const snap = loadWorkspaceSnapshot();
+      if (snap && isExportableCode(snap.generatedCode)) {
+        restoreWorkspaceSnapshot(snap);
       }
     }
   };
@@ -541,9 +569,11 @@ function BuilderContent() {
     promptUsed: string,
     creditsUsed: number,
     filesSnapshot?: ProjectFile[],
-    activePageSnapshot?: string
+    activePageSnapshot?: string,
+    projectIdOverride?: string | null
   ) => {
-    if (!activeProjectId) return;
+    const projectId = projectIdOverride ?? activeProjectId;
+    if (!projectId) return;
     try {
       const files = filesSnapshot ?? projectFiles;
       const page = activePageSnapshot ?? activeFile;
@@ -551,7 +581,7 @@ function BuilderContent() {
       const synced = files.map((f) =>
         f.path === 'index.html' ? { ...f, content: code } : f
       );
-      const res = await fetch(`/api/projects/${activeProjectId}/versions`, {
+      const res = await fetch(`/api/projects/${projectId}/versions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -566,10 +596,132 @@ function BuilderContent() {
       const data = await res.json();
       if (res.ok && data.version?.version_number) {
         setCurrentVersionNumber(data.version.version_number);
+        setActiveProjectIdLocal(projectId);
       }
     } catch {
       // background save — never interrupt the user
     }
+  };
+
+  /** After a successful generation: local snapshot always, DB project create/version so nav never loses work. */
+  const persistGenerationAfterSuccess = async (
+    code: string,
+    promptUsed: string,
+    creditsUsed: number,
+    filesSnapshot: ProjectFile[],
+    activePageSnapshot: string
+  ) => {
+    const synced = filesSnapshot.map((f) =>
+      f.path === 'index.html' ? { ...f, content: code } : f
+    );
+    saveWorkspaceSnapshot({
+      generatedCode: code,
+      prompt: promptUsed,
+      activeFile: activePageSnapshot,
+      projectFiles: synced,
+      projectId: activeProjectId,
+      updatedAt: new Date().toISOString(),
+    });
+
+    if (activeProjectId) {
+      await saveProjectVersionSilent(
+        code,
+        promptUsed,
+        creditsUsed,
+        synced,
+        activePageSnapshot,
+        activeProjectId
+      );
+      return;
+    }
+
+    // First successful build for this session — auto-create a cloud project (no modal).
+    try {
+      const title = deriveProjectTitle(promptUsed);
+      const res = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          title,
+          prompt: promptUsed,
+          generated_code: code,
+          files_json: buildProjectFilesPayload(synced, activePageSnapshot),
+          project_context: projectContext,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setStatusMessage(
+          res.status === 403
+            ? `⚠️ Built successfully — cloud save blocked (${data.error || 'project limit'}). Work is kept in this browser until you free a slot or upgrade.`
+            : `⚠️ Built successfully — cloud save failed. Work is kept in this browser.`
+        );
+        return;
+      }
+      const newId = data.project?.id as string | undefined;
+      if (newId) {
+        setActiveProjectId(newId);
+        setActiveProjectIdLocal(newId);
+        saveWorkspaceSnapshot({
+          generatedCode: code,
+          prompt: promptUsed,
+          activeFile: activePageSnapshot,
+          projectFiles: synced,
+          projectId: newId,
+          updatedAt: new Date().toISOString(),
+        });
+        await saveProjectVersionSilent(
+          code,
+          promptUsed,
+          creditsUsed,
+          synced,
+          activePageSnapshot,
+          newId
+        );
+        void loadProjects();
+        setStatusMessage(`✅ Generated & saved as “${title}”`);
+      }
+    } catch {
+      setStatusMessage(
+        '⚠️ Built successfully — cloud save failed. Work is kept in this browser.'
+      );
+    }
+  };
+
+  const restoreWorkspaceSnapshot = (snap: NonNullable<ReturnType<typeof loadWorkspaceSnapshot>>) => {
+    setPrompt((prev) => (prev.trim() ? prev : snap.prompt));
+    const filesForPreview =
+      snap.projectFiles.length > 0
+        ? snap.projectFiles
+        : buildProjectFiles(snap.generatedCode);
+    if (snap.projectFiles.length > 0) {
+      setProjectFiles(snap.projectFiles);
+      setActiveFile(snap.activeFile || 'index.html');
+    } else {
+      syncFilesFromCode(snap.generatedCode, undefined, {
+        activePage: snap.activeFile || 'index.html',
+      });
+    }
+    lastCodeLenRef.current = snap.generatedCode.length;
+    setGeneratedCode(snap.generatedCode);
+    const preview = getPreviewHtmlForPage(
+      snap.activeFile || 'index.html',
+      filesForPreview,
+      snap.generatedCode
+    );
+    const pagePaths = listHtmlPages(filesForPreview).map((f) => f.path);
+    const html =
+      pagePaths.length > 1
+        ? injectPreviewPageNavScript(preview, pagePaths)
+        : preview;
+    setPreviewHtml(html);
+    if (isExportableCode(snap.generatedCode)) {
+      aiOriginalCodeRef.current = snap.generatedCode;
+    }
+    if (snap.projectId) setActiveProjectId(snap.projectId);
+    setStatusMessage('📂 Restored your last build from this browser');
+    setTimeout(() => setStatusMessage(''), 5000);
   };
 
   const fetchProjectVersionNumber = async (projectId: string) => {
@@ -1164,7 +1316,7 @@ function BuilderContent() {
             { activePage: activeForGen, files: filesForGen }
           );
           const localMerged = mergeGeneratedIntoFiles(filesForGen, activeForGen, localData.code);
-          void saveProjectVersionSilent(
+          void persistGenerationAfterSuccess(
             localData.code,
             effectivePrompt,
             0,
@@ -1306,7 +1458,13 @@ function BuilderContent() {
         { activePage: activeForGen, files: filesForGen }
       );
       const cloudMerged = mergeGeneratedIntoFiles(filesForGen, activeForGen, code);
-      void saveProjectVersionSilent(code, effectivePrompt, 1, cloudMerged, activeForGen);
+      void persistGenerationAfterSuccess(
+        code,
+        effectivePrompt,
+        1,
+        cloudMerged,
+        activeForGen
+      );
     } catch {
       setStreamingCode('');
       setStreamingNarration('');
@@ -1705,7 +1863,18 @@ function BuilderContent() {
       }
     } else {
       setStatusMessage('✅ Project saved');
-      if (data.project?.id) setActiveProjectId(data.project.id);
+      if (data.project?.id) {
+        setActiveProjectId(data.project.id);
+        setActiveProjectIdLocal(data.project.id);
+        saveWorkspaceSnapshot({
+          generatedCode,
+          prompt,
+          activeFile,
+          projectFiles: syncedFiles,
+          projectId: data.project.id,
+          updatedAt: new Date().toISOString(),
+        });
+      }
       loadProjects();
       setTimeout(() => setStatusMessage(''), 3000);
     }
@@ -1713,6 +1882,7 @@ function BuilderContent() {
 
   const loadProject = (project: SavedProject) => {
     setActiveProjectId(project.id);
+    setActiveProjectIdLocal(project.id);
     void fetchProjectVersionNumber(project.id);
     setPrompt(project.prompt);
     const ctx =
@@ -1732,6 +1902,14 @@ function BuilderContent() {
     setPreviewHtml(wrapPreviewHtml(preview));
     if (isExportableCode(project.generated_code)) {
       aiOriginalCodeRef.current = project.generated_code;
+      saveWorkspaceSnapshot({
+        generatedCode: project.generated_code,
+        prompt: project.prompt,
+        activeFile: resolved.activeFile,
+        projectFiles: resolved.files,
+        projectId: project.id,
+        updatedAt: new Date().toISOString(),
+      });
     }
     setStatusMessage(`📂 Loaded: ${project.title}`);
     setTimeout(() => setStatusMessage(''), 4000);
@@ -1774,6 +1952,9 @@ function BuilderContent() {
     setPromptHistory([]);
     setBlueprintData(null);
     setActiveProjectId(null);
+    setActiveProjectIdLocal(null);
+    clearWorkspaceSnapshot();
+    clearPromptDraft(null);
     setCurrentVersionNumber(0);
     setVersionHistoryOpen(false);
     setSeoSettings({ ...DEFAULT_SEO_SETTINGS });

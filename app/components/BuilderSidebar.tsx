@@ -1,11 +1,9 @@
 "use client";
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { MAIN_NAV } from '@/lib/nav-config';
-import NiskBuildLogo from '@/app/components/NiskBuildLogo';
 
 interface BuilderSidebarProps {
   onProjectsClick: () => void;
@@ -40,10 +38,6 @@ export default function BuilderSidebar({
 
   return (
     <aside className="w-[60px] shrink-0 flex flex-col items-center py-3 gap-1 border-r border-nisk bg-nisk-card shadow-[2px_0_16px_rgba(15,23,42,0.06)]">
-      <Link href="/dashboard" className="mb-2 p-1 rounded-xl hover:bg-[var(--surface-elevated)] transition-colors" title="Dashboard">
-        <NiskBuildLogo variant="icon" size="sm" />
-      </Link>
-
       {items.map((item) => {
         if (item.href === '/builder') {
           return (
@@ -109,7 +103,7 @@ export default function BuilderSidebar({
 
       <Link
         href="/dashboard"
-        title="Account"
+        title="Account / Dashboard"
         className="w-11 h-11 rounded-xl overflow-hidden ring-1 ring-nisk hover:ring-[var(--primary)]/40 transition-all mb-1"
       >
         {avatarUrl ? (
