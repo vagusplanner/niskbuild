@@ -23,6 +23,9 @@ interface PromptBarProps {
   statusMessage?: string;
   planMode?: boolean;
   onPlanModeChange?: (enabled: boolean) => void;
+  /** Persist prompt to localStorage (HTML builder v1) */
+  promptAutosaveEnabled?: boolean;
+  onPromptAutosaveChange?: (enabled: boolean) => void;
   variant?: 'bottom' | 'sidebar' | 'dock' | 'cursor';
   subscriptionTier?: string;
   subscriptionStatus?: string;
@@ -92,6 +95,8 @@ export default function PromptBar({
   statusMessage,
   planMode = false,
   onPlanModeChange,
+  promptAutosaveEnabled,
+  onPromptAutosaveChange,
   variant = 'bottom',
   subscriptionTier = 'free',
   subscriptionStatus = 'inactive',
@@ -197,6 +202,20 @@ export default function PromptBar({
           <span className="text-xs text-nisk-muted">Plan</span>
         </label>
       )}
+      {onPromptAutosaveChange && (
+        <label
+          className="flex items-center gap-1.5 cursor-pointer"
+          title="Save your prompt locally so it restores if you leave and come back"
+        >
+          <input
+            type="checkbox"
+            checked={promptAutosaveEnabled !== false}
+            onChange={(e) => onPromptAutosaveChange(e.target.checked)}
+            className="rounded border-nisk scale-90 accent-[var(--copper-primary)]"
+          />
+          <span className="text-xs text-nisk-muted">Save prompt draft</span>
+        </label>
+      )}
       <button
         type="button"
         onClick={onGenerate}
@@ -216,9 +235,9 @@ export default function PromptBar({
 
   if (isCursor) {
     return (
-      <div className="flex flex-col gap-0 px-3 py-3 min-h-0 max-h-full">
+      <div className="flex flex-col gap-0 px-3 pt-2 pb-2 min-h-0 flex-1">
         {figmaHidden}
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--code-bg)] shadow-[0_4px_24px_rgba(0,0,0,0.25)] focus-within:border-[var(--copper-primary)]/40 focus-within:ring-1 focus-within:ring-[var(--copper-primary)]/20 transition-all flex flex-col min-h-0 max-h-full overflow-hidden">
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--code-bg)] shadow-[0_4px_24px_rgba(0,0,0,0.25)] focus-within:border-[var(--copper-primary)]/40 focus-within:ring-1 focus-within:ring-[var(--copper-primary)]/20 transition-all flex flex-col min-h-0 flex-1 overflow-hidden">
           {editingPageLabel && (
             <p className="text-[11px] font-medium text-[var(--copper-melt)] px-3 pt-2.5 pb-0 shrink-0">
               Editing page: {editingPageLabel}
@@ -230,12 +249,12 @@ export default function PromptBar({
             streamingLine ||
             (showCodeStream && streamingCode) ||
             isGenerating) && (
-            <div className="max-h-40 shrink-0 overflow-y-auto border-b border-[var(--border)]/60 px-3 py-2.5 space-y-2">
+            <div className="max-h-28 shrink-0 overflow-y-auto border-b border-[var(--border)]/60 px-3 py-2 space-y-2">
               {activityLog.map((line, i) => (
                 <p
                   key={`${i}-${line.slice(0, 24)}`}
                   className={`text-[11px] text-[var(--code-comment)] leading-relaxed font-mono whitespace-pre-wrap break-words ${
-                    line.includes('❌') ? 'max-h-40 overflow-y-auto' : ''
+                    line.includes('❌') ? 'max-h-24 overflow-y-auto' : ''
                   }`}
                 >
                   {line}
@@ -283,7 +302,6 @@ export default function PromptBar({
                   })}
                 </ol>
               )}
-              {/* Narration only when no code-tied steps yet (steps replace narration as primary). */}
               {streamingSteps.length === 0 && streamingNarration && (
                 <div className="text-[13px] text-[var(--foreground)] leading-relaxed whitespace-pre-wrap">
                   {streamingNarration}
@@ -293,7 +311,7 @@ export default function PromptBar({
                 </div>
               )}
               {showCodeStream && streamingCode && (
-                <pre className="font-mono text-xs text-[var(--code-tag)] whitespace-pre-wrap break-all leading-relaxed max-h-32 overflow-y-auto">
+                <pre className="font-mono text-xs text-[var(--code-tag)] whitespace-pre-wrap break-all leading-relaxed max-h-24 overflow-y-auto">
                   {streamingCode.slice(-1200)}
                   <span className="inline-block w-2 h-[1.1em] bg-[var(--copper-melt)] animate-pulse align-middle ml-0.5" aria-hidden />
                 </pre>
@@ -309,9 +327,10 @@ export default function PromptBar({
               )}
             </div>
           )}
-          <div className="shrink-0">
+          <div className="shrink-0 max-h-14 overflow-hidden">
             <SuggestionChips onPick={onChange} suggestions={chipSuggestions} />
           </div>
+          {/* Only the prompt text scrolls — picker / Generate stay pinned below via shrink-0 toolbar */}
           <textarea
             value={prompt}
             onChange={(e) => onChange(e.target.value)}
@@ -320,13 +339,16 @@ export default function PromptBar({
                 ? `Describe changes for the ${editingPageLabel} page…`
                 : 'Describe what you want to build…'
             }
-            rows={promptRows}
-            style={
-              promptMinHeight
-                ? { minHeight: Math.min(promptMinHeight, 360), maxHeight: 360 }
-                : { maxHeight: 360 }
-            }
-            className="w-full bg-transparent px-3 py-2 text-[15px] leading-relaxed text-[var(--foreground)] placeholder-[var(--placeholder)] resize-none focus:outline-none min-h-[96px] max-h-[360px] overflow-y-auto font-mono"
+            rows={Math.min(promptRows, 6)}
+            style={{
+              // flex-1 absorbs leftover dock space; shrink so toolbar never leaves the viewport
+              flex: '1 1 auto',
+              flexBasis: promptMinHeight
+                ? Math.min(Math.max(promptMinHeight, 72), 220)
+                : 120,
+              minHeight: 72,
+            }}
+            className="w-full min-h-0 bg-transparent px-3 py-2 text-[15px] leading-relaxed text-[var(--foreground)] placeholder-[var(--placeholder)] resize-none focus:outline-none overflow-y-auto font-mono"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) onGenerate();
             }}
@@ -335,18 +357,18 @@ export default function PromptBar({
         </div>
         {statusMessage && (
           <p
-            className={`text-[11px] mt-2 px-1 leading-snug whitespace-pre-wrap break-words font-mono shrink-0 ${
+            className={`text-[11px] mt-1.5 px-1 leading-snug whitespace-pre-wrap break-words font-mono shrink-0 max-h-16 overflow-y-auto ${
               statusMessage.includes('✅')
                 ? 'text-[var(--success)]'
                 : statusMessage.includes('❌')
-                  ? 'text-[var(--error)] max-h-48 overflow-y-auto'
+                  ? 'text-[var(--error)]'
                   : 'text-[var(--copper-melt)]'
             }`}
           >
             {statusMessage}
           </p>
         )}
-        <p className="text-xs text-nisk-muted mt-1 px-1 shrink-0">{mod} + Enter to generate</p>
+        <p className="text-[10px] text-nisk-muted mt-0.5 px-1 shrink-0">{mod} + Enter to generate</p>
       </div>
     );
   }

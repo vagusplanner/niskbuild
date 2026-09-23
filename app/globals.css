@@ -500,7 +500,8 @@ pre, code {
 
 .builder-prompt-dock {
   flex-shrink: 0;
-  max-height: min(52vh, 440px);
+  /* Cap the whole dock; PromptBar flexes so only the textarea scrolls inside */
+  max-height: min(50vh, 420px);
   min-height: 0;
   display: flex;
   flex-direction: column;

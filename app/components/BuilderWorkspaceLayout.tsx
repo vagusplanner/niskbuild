@@ -75,6 +75,8 @@ export type BuilderWorkspaceLayoutProps = {
   prompt: string;
   onPromptChange: (v: string) => void;
   onGenerate: () => void;
+  promptAutosaveEnabled?: boolean;
+  onPromptAutosaveChange?: (enabled: boolean) => void;
   isGenerating: boolean;
   statusMessage: string;
   activityLog?: string[];
@@ -540,6 +542,8 @@ function ChatPanelContent({
   prompt,
   onPromptChange,
   onGenerate,
+  promptAutosaveEnabled,
+  onPromptAutosaveChange,
   isGenerating,
   statusMessage,
   activityLog = [],
@@ -583,6 +587,8 @@ function ChatPanelContent({
   prompt: string;
   onPromptChange: (v: string) => void;
   onGenerate: () => void;
+  promptAutosaveEnabled?: boolean;
+  onPromptAutosaveChange?: (enabled: boolean) => void;
   isGenerating: boolean;
   statusMessage: string;
   activityLog?: string[];
@@ -662,6 +668,7 @@ function ChatPanelContent({
             }
           }}
         />
+        <div className="min-h-0 flex-1 flex flex-col overflow-hidden">
         <PromptBar
           variant="cursor"
           prompt={prompt}
@@ -688,6 +695,8 @@ function ChatPanelContent({
           editingPageLabel={editingPageLabel}
           planMode={planMode}
           onPlanModeChange={onPlanModeChange}
+          promptAutosaveEnabled={promptAutosaveEnabled}
+          onPromptAutosaveChange={onPromptAutosaveChange}
           subscriptionTier={subscriptionTier}
           subscriptionStatus={subscriptionStatus}
           platformOwnerBypass={platformOwnerBypass}
@@ -699,7 +708,8 @@ function ChatPanelContent({
           cloudCreditsRemaining={cloudCreditsRemaining}
           cloudCreditsAllowance={cloudCreditsAllowance}
         />
-        <div className="px-3 pb-2 flex items-center justify-between text-[10px] text-nisk-muted">
+        </div>
+        <div className="px-3 pb-2 flex items-center justify-between text-[10px] text-nisk-muted shrink-0">
           <span className="capitalize">{subscriptionTier.replace('_', ' ')}</span>
           {cloudCreditsAllowance > 0 || cloudCreditsRemaining > 0 ? (
             <Link href="/settings?tab=billing" className="text-[var(--copper-melt)] hover:underline">
@@ -746,6 +756,8 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
     prompt,
     onPromptChange,
     onGenerate,
+    promptAutosaveEnabled,
+    onPromptAutosaveChange,
     isGenerating,
     statusMessage,
     activityLog = [],
@@ -895,6 +907,8 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
       prompt={prompt}
       onPromptChange={onPromptChange}
       onGenerate={onGenerate}
+      promptAutosaveEnabled={promptAutosaveEnabled}
+      onPromptAutosaveChange={onPromptAutosaveChange}
       isGenerating={isGenerating}
       statusMessage={statusMessage}
       activityLog={activityLog}
@@ -945,6 +959,8 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
       prompt={prompt}
       onPromptChange={onPromptChange}
       onGenerate={onGenerate}
+      promptAutosaveEnabled={promptAutosaveEnabled}
+      onPromptAutosaveChange={onPromptAutosaveChange}
       isGenerating={isGenerating}
       statusMessage={statusMessage}
       activityLog={activityLog}

@@ -80,6 +80,14 @@ import {
   getGenerationModel,
   type GenerationModelId,
 } from '@/lib/generation-models';
+import {
+  clearPromptDraft,
+  isPromptAutosaveEnabled,
+  loadPromptDraft,
+  savePromptDraft,
+  setPromptAutosaveEnabled,
+} from '@/lib/prompt-draft';
+import { safeLocalStorageGet, safeLocalStorageRemove } from '@/lib/safe-storage';
 import type { ComponentBlueprint } from '@/lib/blueprint-schema';
 import {
   downloadBlob,
@@ -153,6 +161,7 @@ function BuilderContent() {
   const [authChecking, setAuthChecking] = useState(true);
   const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
   const [prompt, setPrompt] = useState('');
+  const [promptAutosaveEnabled, setPromptAutosaveEnabledState] = useState(true);
   const [generatedCode, setGeneratedCode] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
@@ -310,12 +319,48 @@ function BuilderContent() {
   }, [router, searchParams]);
 
   useEffect(() => {
-    const savedPrompt = localStorage.getItem('niskbuild_template_prompt');
+    setPromptAutosaveEnabledState(isPromptAutosaveEnabled());
+
+    // Template one-shot first (marketplace / try-it), then restore draft only if still empty.
+    const savedPrompt = safeLocalStorageGet('niskbuild_template_prompt');
     if (savedPrompt) {
       setPrompt(savedPrompt);
-      localStorage.removeItem('niskbuild_template_prompt');
+      safeLocalStorageRemove('niskbuild_template_prompt');
+      return;
     }
+    if (!isPromptAutosaveEnabled()) return;
+    const draft = loadPromptDraft(null);
+    if (draft) setPrompt(draft);
   }, []);
+
+  // When switching into a saved project with an empty prompt, restore that project's draft.
+  useEffect(() => {
+    if (!activeProjectId) return;
+    if (prompt.trim()) return;
+    if (!isPromptAutosaveEnabled()) return;
+    const draft = loadPromptDraft(activeProjectId);
+    if (draft) setPrompt(draft);
+    // Only react to project id changes — not every prompt keystroke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeProjectId]);
+
+  // Debounced draft write while autosave is enabled.
+  useEffect(() => {
+    if (!promptAutosaveEnabled) return;
+    const t = window.setTimeout(() => {
+      savePromptDraft(activeProjectId, prompt);
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, [prompt, activeProjectId, promptAutosaveEnabled]);
+
+  const handlePromptAutosaveChange = useCallback((enabled: boolean) => {
+    setPromptAutosaveEnabled(enabled);
+    setPromptAutosaveEnabledState(enabled);
+    if (!enabled) {
+      clearPromptDraft(activeProjectId);
+      clearPromptDraft(null);
+    }
+  }, [activeProjectId]);
 
   useEffect(() => {
     if (generatedCode.trim()) {
@@ -990,6 +1035,10 @@ function BuilderContent() {
   const handleGenerate = async (promptOverride?: string) => {
     const basePrompt = (promptOverride ?? prompt).trim();
     if (!basePrompt) return;
+
+    // Clear local draft once a real generation starts (success path continues below).
+    clearPromptDraft(activeProjectId);
+    clearPromptDraft(null);
 
     if (isFullAppAuditPrompt(basePrompt)) {
       await runExportAudit();
@@ -1895,6 +1944,8 @@ function BuilderContent() {
           prompt={prompt}
           onPromptChange={setPrompt}
           onGenerate={() => handleGenerate()}
+          promptAutosaveEnabled={promptAutosaveEnabled}
+          onPromptAutosaveChange={handlePromptAutosaveChange}
           isGenerating={isGenerating}
           statusMessage={statusMessage}
           activityLog={activityLog}
