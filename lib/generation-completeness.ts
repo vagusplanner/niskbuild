@@ -100,7 +100,7 @@ export function truncationUserMessage(reason: TruncationReason | null): string {
   return `Generation was cut off before the page finished (${detail}). Partial output was kept — click Generate again to retry.`;
 }
 
-export const CONTINUE_GENERATION_USER_MESSAGE = `Continue exactly where you left off. Output ONLY the remaining HTML needed to finish the document through </html>. Do not repeat earlier content. Do not use markdown fences.`;
+export const CONTINUE_GENERATION_USER_MESSAGE = `Continue exactly where you left off. Output ONLY the remaining HTML needed to finish the document through </html>. Do not repeat earlier content. Do not use markdown fences. If a <script> or <style> block is open, close it properly before finishing the page.`;
 
 export function buildContinuationMessages(
   originalPrompt: string,

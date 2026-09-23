@@ -19,7 +19,6 @@ import { touchLastBuildAt } from '@/lib/build-activity';
 import { clientIpFromHeaders } from '@/lib/coarse-town';
 import {
   assessGenerationCompleteness,
-  buildContinuationMessages,
   truncationUserMessage,
 } from '@/lib/generation-completeness';
 import { countProgressMarkers } from '@/lib/generation-progress';
@@ -29,14 +28,13 @@ import {
   isGenerationModelId,
 } from '@/lib/generation-models';
 import {
+  continueSelectedGenerationModel,
   resolveByocSkip,
   streamSelectedGenerationModel,
-  streamWithAnthropicModel,
-  streamWithGroqFallback,
 } from '@/lib/generation-providers';
 
-const CONTINUE_MAX_TOKENS = 4096;
-const MAX_CONTINUE_ATTEMPTS = 1;
+const CONTINUE_MAX_TOKENS = 8192;
+const MAX_CONTINUE_ATTEMPTS = 2;
 
 async function getUserProfile(userId: string) {
   const supabase = createAdminClient();
@@ -253,42 +251,20 @@ export async function POST(request: NextRequest) {
             send({ kind: 'code', text });
           };
 
-          let continued = false;
-
-          if (selectedModel.provider === 'anthropic') {
-            const key =
-              (useOwnKeys && profile?.anthropic_api_key?.trim()) ||
-              process.env.ANTHROPIC_API_KEY?.trim() ||
-              '';
-            if (key) {
-              const cont = await streamWithAnthropicModel(
-                prompt,
-                key,
-                selectedModel.apiModelId,
-                onContinueDelta,
-                {
-                  maxTokens: CONTINUE_MAX_TOKENS,
-                  messages: buildContinuationMessages(prompt, finalCode),
-                }
-              );
-              if (cont.ok) {
-                stopReason = cont.stopReason ?? null;
-                continued = true;
-              }
+          const cont = await continueSelectedGenerationModel(
+            prompt,
+            finalCode,
+            selectedModel,
+            onContinueDelta,
+            {
+              useOwnKeys,
+              keys: keyBundle,
+              maxTokens: CONTINUE_MAX_TOKENS,
             }
-          } else {
-            // Fast continue via Groq for non-Anthropic truncations
-            const groqContinue = await streamWithGroqFallback(
-              `${prompt}\n\nContinue the HTML from where it left off. Output ONLY the continuation (no DOCTYPE replay).\n\nPartial so far:\n${finalCode.slice(-4000)}`,
-              onContinueDelta
-            );
-            if (groqContinue.ok) {
-              stopReason = groqContinue.stopReason ?? null;
-              continued = true;
-            }
-          }
+          );
 
-          if (!continued) break;
+          if (!cont.ok) break;
+          stopReason = cont.stopReason ?? null;
           completeness = assessGenerationCompleteness(finalCode, stopReason);
         }
 

@@ -13,12 +13,18 @@ import {
   type GenerationProvider,
 } from '@/lib/generation-models';
 import { GROQ_CODE_MODEL, getGroqClient } from '@/lib/groq-client';
+import { buildContinuationMessages } from '@/lib/generation-completeness';
 
 export type StreamGenResult =
   | { ok: true; code: string; streamed: boolean; stopReason?: string | null }
   | { ok: false; error: string };
 
 const CODE_MAX_TOKENS = 8192;
+
+/** DeepSeek chat/flash documents max output at 8k; keep primary gen at that ceiling. */
+export const GENERATION_CODE_MAX_TOKENS = CODE_MAX_TOKENS;
+
+type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 
 /**
  * Newer OpenAI chat models reject `max_tokens` and require `max_completion_tokens`
@@ -65,6 +71,11 @@ export async function streamOpenAICompatible(
     deepseekDisableThinking?: boolean;
     /** Use max_completion_tokens instead of max_tokens (newer OpenAI models). */
     useMaxCompletionTokens?: boolean;
+    /**
+     * Full chat transcript (system + turns). When set, `prompt` is ignored —
+     * used for same-model truncation continues.
+     */
+    messages?: ChatMessage[];
   }
 ): Promise<StreamGenResult> {
   try {
@@ -72,12 +83,15 @@ export async function streamOpenAICompatible(
     const useMaxCompletion =
       options.useMaxCompletionTokens ?? openAIUsesMaxCompletionTokens(options.model);
     const allowTemperature = openAIAllowsCustomTemperature(options.model);
+    const messages: ChatMessage[] = options.messages?.length
+      ? options.messages
+      : [
+          { role: 'system', content: HTML_CODE_SYSTEM_PROMPT },
+          { role: 'user', content: prompt },
+        ];
     // DeepSeek-only `thinking` / OpenAI max_completion_tokens are not all on SDK types.
     const stream = (await options.client.chat.completions.create({
-      messages: [
-        { role: 'system', content: HTML_CODE_SYSTEM_PROMPT },
-        { role: 'user', content: prompt },
-      ],
+      messages,
       model: options.model,
       // GPT-5.x / GPT-6 / o-series: omit temperature (API default 1 only).
       ...(allowTemperature
@@ -113,6 +127,32 @@ export async function streamOpenAICompatible(
     const msg = error instanceof Error ? error.message : 'OpenAI-compatible stream failed';
     return { ok: false, error: msg };
   }
+}
+
+/**
+ * Same-model continuation for DeepSeek / OpenAI when the first pass hits the
+ * output ceiling mid-document. Prefer this over a cross-model Groq splice.
+ */
+export async function streamOpenAICompatibleContinue(
+  originalPrompt: string,
+  partialCode: string,
+  options: {
+    client: OpenAI;
+    model: string;
+    onDelta: (text: string) => void;
+    maxTokens?: number;
+    deepseekDisableThinking?: boolean;
+    useMaxCompletionTokens?: boolean;
+  }
+): Promise<StreamGenResult> {
+  const turns = buildContinuationMessages(originalPrompt, partialCode);
+  return streamOpenAICompatible(originalPrompt, {
+    ...options,
+    messages: [
+      { role: 'system', content: HTML_CODE_SYSTEM_PROMPT },
+      ...turns,
+    ],
+  });
 }
 
 export async function streamWithAnthropicModel(
@@ -365,3 +405,77 @@ export async function streamSelectedGenerationModel(
 
   return { ok: false, error: `Unsupported provider: ${model.provider}` };
 }
+
+/**
+ * Truncation continue on the same selected model when possible.
+ * Falls back to Groq for Google / missing DeepSeek keys (emergency path).
+ */
+export async function continueSelectedGenerationModel(
+  originalPrompt: string,
+  partialCode: string,
+  model: GenerationModel,
+  onDelta: (text: string) => void,
+  options?: {
+    useOwnKeys?: boolean;
+    keys?: ProviderKeyBundle;
+    maxTokens?: number;
+  }
+): Promise<StreamGenResult> {
+  const keys = options?.keys ?? {};
+  const byoc = resolveByocSkip(model.provider, !!options?.useOwnKeys, keys);
+  const preferKey = byoc.apiKey;
+  const maxTokens = options?.maxTokens ?? CODE_MAX_TOKENS;
+
+  if (model.provider === 'anthropic') {
+    const key = preferKey || process.env.ANTHROPIC_API_KEY?.trim();
+    if (!key) return { ok: false, error: 'Anthropic API key not configured' };
+    return streamWithAnthropicModel(originalPrompt, key, model.apiModelId, onDelta, {
+      maxTokens,
+      messages: buildContinuationMessages(originalPrompt, partialCode),
+    });
+  }
+
+  if (model.provider === 'deepseek') {
+    const client = getDeepSeekClient(preferKey);
+    if (!client) {
+      return streamWithGroqFallback(
+        `${originalPrompt}\n\nContinue the HTML from where it left off. Output ONLY the continuation (no DOCTYPE replay).\n\nPartial so far:\n${partialCode.slice(-6000)}`,
+        onDelta
+      );
+    }
+    const cont = await streamOpenAICompatibleContinue(originalPrompt, partialCode, {
+      client,
+      model: model.apiModelId,
+      onDelta,
+      maxTokens,
+      deepseekDisableThinking: true,
+    });
+    if (!cont.ok && model.creditCost === 1) {
+      console.warn('[generation] DeepSeek continue failed — falling back to Groq');
+      return streamWithGroqFallback(
+        `${originalPrompt}\n\nContinue the HTML from where it left off. Output ONLY the continuation (no DOCTYPE replay).\n\nPartial so far:\n${partialCode.slice(-6000)}`,
+        onDelta
+      );
+    }
+    return cont;
+  }
+
+  if (model.provider === 'openai') {
+    const client = getOpenAIClient(preferKey);
+    if (!client) return { ok: false, error: 'OpenAI API key not configured (OPENAI_API_KEY)' };
+    return streamOpenAICompatibleContinue(originalPrompt, partialCode, {
+      client,
+      model: model.apiModelId,
+      onDelta,
+      maxTokens,
+      useMaxCompletionTokens: true,
+    });
+  }
+
+  // Gemini (and anything else): Groq emergency continue with more partial context.
+  return streamWithGroqFallback(
+    `${originalPrompt}\n\nContinue the HTML from where it left off. Output ONLY the continuation (no DOCTYPE replay). Close any open <script>/<style> and finish with </html>.\n\nPartial so far:\n${partialCode.slice(-6000)}`,
+    onDelta
+  );
+}
+
