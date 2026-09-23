@@ -78,6 +78,60 @@ const PREVIEW_NAV_GUARD = `<script data-niskbuild-preview-guard="1">
 })();
 <\/script>`;
 
+/**
+ * Relays console.log/warn/error + uncaught errors/rejections to the parent
+ * via postMessage so the builder can show an in-preview console panel.
+ * Injected early in <head> so it wraps console before generated body scripts run.
+ */
+const PREVIEW_CONSOLE_CAPTURE = `<script data-niskbuild-preview-console="1">
+(function(){
+  if(window.__niskbuildConsoleHooked)return;
+  window.__niskbuildConsoleHooked=true;
+  function ser(v){
+    if(v==null)return String(v);
+    var t=typeof v;
+    if(t==='string')return v;
+    if(t==='number'||t==='boolean'||t==='bigint'||t==='symbol'||t==='function')return String(v);
+    if(typeof Error!=='undefined'&&v instanceof Error)return v.message||String(v);
+    try{return JSON.stringify(v);}catch(e){try{return String(v);}catch(e2){return '[unserializable]';}}
+  }
+  function send(level,args,stack){
+    var parts=[];
+    for(var i=0;i<args.length;i++)parts.push(ser(args[i]));
+    try{
+      parent.postMessage({
+        type:'niskbuild-preview-console',
+        level:level,
+        message:parts.join(' '),
+        stack:stack||undefined,
+        ts:Date.now()
+      },'*');
+    }catch(e){}
+  }
+  ['log','warn','error'].forEach(function(level){
+    var orig=console[level];
+    console[level]=function(){
+      var args=Array.prototype.slice.call(arguments);
+      send(level,args);
+      if(typeof orig==='function'){
+        try{return orig.apply(console,args);}catch(e){}
+      }
+    };
+  });
+  window.addEventListener('error',function(e){
+    var msg=e&&e.message?e.message:'Uncaught error';
+    var stack=(e&&e.error&&e.error.stack)||undefined;
+    send('error',[msg],stack);
+  });
+  window.addEventListener('unhandledrejection',function(e){
+    var r=e&&e.reason;
+    var msg=(typeof Error!=='undefined'&&r instanceof Error)?(r.message||String(r)):ser(r);
+    var stack=(typeof Error!=='undefined'&&r instanceof Error)?r.stack:undefined;
+    send('error',['Unhandled rejection: '+msg],stack);
+  });
+})();
+<\/script>`;
+
 const TAILWIND_PLAYGROUND = '<script src="https://cdn.tailwindcss.com"><\/script>';
 
 const FONTAWESOME_PLACEHOLDER_RE =
@@ -137,6 +191,11 @@ export function preparePreviewHtml(html: string): string {
     } else {
       out = `${out}${PREVIEW_NAV_GUARD}`;
     }
+  }
+
+  // Last head inject → first in <head>, so console is wrapped before body scripts.
+  if (!out.includes('data-niskbuild-preview-console')) {
+    out = injectIntoHead(out, PREVIEW_CONSOLE_CAPTURE);
   }
 
   return out;

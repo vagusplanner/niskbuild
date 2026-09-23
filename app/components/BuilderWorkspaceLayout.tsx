@@ -24,8 +24,11 @@ import PreviewDeviceSwitcher, {
 } from '@/app/components/PreviewDeviceSwitcher';
 import PreviewBrowserChrome from '@/app/components/PreviewBrowserChrome';
 import { usePreviewHistory } from '@/app/components/usePreviewHistory';
+import PreviewConsolePanel from '@/app/components/PreviewConsolePanel';
+import { usePreviewConsole } from '@/app/components/usePreviewConsole';
 import BuilderPreviewPageNav from '@/app/components/BuilderPreviewPageNav';
 import { BUILDER_PREVIEW_SANDBOX } from '@/lib/preview-html';
+import { Terminal } from 'lucide-react';
 import {
   creditsBarPercent,
   formatCreditsRatio,
@@ -246,6 +249,7 @@ function CanvasHeader({
   previewDevice = 'desktop',
   onPreviewDeviceChange,
   previewNav,
+  previewConsole,
   canShareSocial = false,
   onOpenSocialPublisher,
   onRunExportAudit,
@@ -286,6 +290,11 @@ function CanvasHeader({
     onBack: () => void;
     onForward: () => void;
     onReload: () => void;
+  };
+  previewConsole?: {
+    open: boolean;
+    onToggle: () => void;
+    errorCount: number;
   };
   canShareSocial?: boolean;
   onOpenSocialPublisher?: () => void;
@@ -334,6 +343,27 @@ function CanvasHeader({
             onForward={previewNav.onForward}
             onReload={previewNav.onReload}
           />
+        )}
+        {previewConsole && (
+          <button
+            type="button"
+            onClick={previewConsole.onToggle}
+            className={`relative p-1.5 rounded-lg border transition-colors ${
+              previewConsole.open
+                ? 'bg-[var(--surface-elevated)] border-[var(--border)] text-[var(--copper-melt)]'
+                : 'bg-[var(--code-bg)] border-[var(--border)] text-[var(--muted)] hover:text-[var(--foreground)]'
+            }`}
+            title={previewConsole.open ? 'Hide console' : 'Show console'}
+            aria-label={previewConsole.open ? 'Hide preview console' : 'Show preview console'}
+            aria-pressed={previewConsole.open}
+          >
+            <Terminal className="w-4 h-4" strokeWidth={1.75} aria-hidden />
+            {previewConsole.errorCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-0.5 rounded-full bg-red-500 text-white text-[9px] font-bold leading-[14px] text-center">
+                {previewConsole.errorCount > 99 ? '99+' : previewConsole.errorCount}
+              </span>
+            )}
+          </button>
         )}
         {onPreviewDeviceChange && (
           <div className="hidden sm:block">
@@ -923,6 +953,19 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
     onReload: previewReload,
   };
 
+  const [consoleOpen, setConsoleOpen] = useState(false);
+  const {
+    entries: consoleEntries,
+    clear: clearConsole,
+    errorCount: consoleErrorCount,
+  } = usePreviewConsole(previewReloadKey, isGenerating);
+
+  const previewConsoleControls = {
+    open: consoleOpen,
+    onToggle: () => setConsoleOpen((v) => !v),
+    errorCount: consoleErrorCount,
+  };
+
   const openProjectSettings = (tab: ProjectSettingsTab = 'seo') => {
     onProjectSettingsTabChange(tab);
     onProjectSettingsOpenChange(true);
@@ -1251,6 +1294,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
               previewDevice={previewDevice}
               onPreviewDeviceChange={onPreviewDeviceChange}
               previewNav={previewNav}
+              previewConsole={previewConsoleControls}
               canShareSocial={canShareSocial}
               onOpenSocialPublisher={onOpenSocialPublisher}
               onRunExportAudit={onRunExportAudit}
@@ -1286,6 +1330,11 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
                 onOpen={onOpenSocialPublisher}
               />
             </div>
+            <PreviewConsolePanel
+              entries={consoleEntries}
+              onClear={clearConsole}
+              open={consoleOpen}
+            />
           </main>
         )}
 
@@ -1373,6 +1422,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
             previewDevice={previewDevice}
             onPreviewDeviceChange={onPreviewDeviceChange}
             previewNav={previewNav}
+            previewConsole={previewConsoleControls}
             canShareSocial={canShareSocial}
             onOpenSocialPublisher={onOpenSocialPublisher}
             onRunExportAudit={onRunExportAudit}
@@ -1428,6 +1478,11 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
               </div>
             )}
           </div>
+          <PreviewConsolePanel
+            entries={consoleEntries}
+            onClear={clearConsole}
+            open={consoleOpen}
+          />
         </main>
       </div>
 
