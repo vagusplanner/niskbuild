@@ -5,17 +5,22 @@ import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { buildDeviceFingerprint } from '@/lib/device-fingerprint';
 import { getSafeSession } from '@/lib/supabaseSession';
 import { supabase } from '@/lib/supabaseClient';
+import { safeLocalStorageGet, safeLocalStorageSet } from '@/lib/safe-storage';
 
 const SESSION_KEY = 'niskbuild_session_key';
 
 function getOrCreateSessionToken(): string {
   if (typeof window === 'undefined') return '';
-  let key = localStorage.getItem(SESSION_KEY);
-  if (!key) {
-    key = crypto.randomUUID();
-    localStorage.setItem(SESSION_KEY, key);
+  try {
+    let key = safeLocalStorageGet(SESSION_KEY);
+    if (!key) {
+      key = crypto.randomUUID();
+      safeLocalStorageSet(SESSION_KEY, key);
+    }
+    return key || '';
+  } catch {
+    return '';
   }
-  return key;
 }
 
 export default function SessionHeartbeat() {

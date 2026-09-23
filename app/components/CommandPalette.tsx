@@ -13,6 +13,7 @@ import {
 } from '@/lib/command-palette-events';
 import { paletteItemAllowed } from '@/lib/nav-access';
 import { modKey, shortcut } from '@/lib/keyboard';
+import { safeLocalStorageSet } from '@/lib/safe-storage';
 
 type Section = 'Recent' | 'Projects' | 'Templates' | 'Quick Actions' | 'Docs';
 
@@ -243,7 +244,7 @@ export default function CommandPalette() {
             badge: projectCategory(p as { project_context?: { type?: string } | null }),
             hint: '↵',
             run: () => {
-              localStorage.setItem('niskbuild_load_project_id', p.id);
+              safeLocalStorageSet('niskbuild_load_project_id', p.id);
               router.push('/builder');
             },
           })),
@@ -267,7 +268,7 @@ export default function CommandPalette() {
             router.push(`/marketplace/${t.id}`);
             return;
           }
-          localStorage.setItem('niskbuild_template_prompt', t.prompt);
+          safeLocalStorageSet('niskbuild_template_prompt', t.prompt);
           router.push('/builder');
         },
       })),

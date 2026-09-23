@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 import { getAuthRedirectOrigin } from '@/lib/canonical-url';
+import { safeLocalStorageGet, safeLocalStorageRemove, safeLocalStorageSet } from '@/lib/safe-storage';
 
 function getOrigin() {
   if (typeof window === 'undefined') return getAuthRedirectOrigin(null);
@@ -92,12 +93,12 @@ export function getOnboardingKey(userId: string) {
 
 export function hasCompletedOnboarding(userId: string) {
   if (typeof window === 'undefined') return true;
-  return localStorage.getItem(getOnboardingKey(userId)) === 'done';
+  return safeLocalStorageGet(getOnboardingKey(userId)) === 'done';
 }
 
 export function markOnboardingComplete(userId: string) {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(getOnboardingKey(userId), 'done');
+  safeLocalStorageSet(getOnboardingKey(userId), 'done');
 }
 
 const SESSION_KEY = 'niskbuild_session_key';
@@ -106,7 +107,7 @@ export async function signOut() {
   const supabase = createClient();
 
   if (typeof window !== 'undefined') {
-    const sessionToken = localStorage.getItem(SESSION_KEY);
+    const sessionToken = safeLocalStorageGet(SESSION_KEY);
     if (sessionToken) {
       try {
         await fetch('/api/session/remove', {
@@ -118,7 +119,7 @@ export async function signOut() {
       } catch {
         // Best-effort cleanup
       }
-      localStorage.removeItem(SESSION_KEY);
+      safeLocalStorageRemove(SESSION_KEY);
     }
   }
 

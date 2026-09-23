@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { safeLocalStorageGet, safeLocalStorageSet } from '@/lib/safe-storage';
 
 interface ResizableSplitProps {
   left: React.ReactNode;
@@ -24,7 +25,7 @@ export default function ResizableSplit({
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem(storageKey);
+    const saved = safeLocalStorageGet(storageKey);
     if (saved) {
       const n = Number(saved);
       if (!Number.isNaN(n) && n >= minLeftPercent && n <= maxLeftPercent) {
@@ -41,7 +42,7 @@ export default function ResizableSplit({
       const pct = ((clientX - rect.left) / rect.width) * 100;
       const clamped = Math.min(maxLeftPercent, Math.max(minLeftPercent, pct));
       setLeftPct(clamped);
-      localStorage.setItem(storageKey, String(Math.round(clamped)));
+      safeLocalStorageSet(storageKey, String(Math.round(clamped)));
     },
     [minLeftPercent, maxLeftPercent, storageKey]
   );

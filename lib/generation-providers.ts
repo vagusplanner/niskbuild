@@ -48,10 +48,17 @@ export async function streamOpenAICompatible(
     onDelta: (text: string) => void;
     maxTokens?: number;
     temperature?: number;
+    /**
+     * DeepSeek thinking is ON by default and streams into `reasoning_content`.
+     * For HTML code gen we disable it so tokens go to `content` (otherwise we
+     * often finish with empty content → "Model returned empty code").
+     */
+    deepseekDisableThinking?: boolean;
   }
 ): Promise<StreamGenResult> {
   try {
-    const stream = await options.client.chat.completions.create({
+    // DeepSeek-only `thinking` is not on OpenAI SDK types.
+    const stream = (await options.client.chat.completions.create({
       messages: [
         { role: 'system', content: HTML_CODE_SYSTEM_PROMPT },
         { role: 'user', content: prompt },
@@ -60,14 +67,21 @@ export async function streamOpenAICompatible(
       temperature: options.temperature ?? 0.7,
       max_tokens: options.maxTokens ?? CODE_MAX_TOKENS,
       stream: true,
-    });
+      ...(options.deepseekDisableThinking
+        ? { thinking: { type: 'disabled' } }
+        : {}),
+    } as OpenAI.Chat.ChatCompletionCreateParamsStreaming)) as AsyncIterable<OpenAI.Chat.ChatCompletionChunk>;
 
     let code = '';
     let finish: string | null = null;
     for await (const chunk of stream) {
       const choice = chunk.choices[0];
       if (choice?.finish_reason) finish = choice.finish_reason;
-      const text = choice?.delta?.content ?? '';
+      const delta = choice?.delta as
+        | { content?: string | null; reasoning_content?: string | null }
+        | undefined;
+      // Prefer final answer content; ignore CoT so we never ship reasoning as HTML.
+      const text = delta?.content ?? '';
       if (text) {
         code += text;
         options.onDelta(text);
@@ -293,11 +307,19 @@ export async function streamSelectedGenerationModel(
       }
       return { ok: false, error: 'DeepSeek API key not configured (DEEPSEEK_API_KEY)' };
     }
-    return streamOpenAICompatible(prompt, {
+    const result = await streamOpenAICompatible(prompt, {
       client,
       model: model.apiModelId,
       onDelta,
+      deepseekDisableThinking: true,
     });
+    // Empty content after a successful stream is a known DeepSeek thinking/budget footgun.
+    // For the default 1-credit path, fall back to Groq rather than fail the builder.
+    if (!result.ok && result.error === 'Model returned empty code' && model.creditCost === 1) {
+      console.warn('[generation] DeepSeek returned empty code — falling back to Groq');
+      return streamWithGroqFallback(prompt, onDelta);
+    }
+    return result;
   }
 
   if (model.provider === 'openai') {

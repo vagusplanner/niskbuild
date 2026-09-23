@@ -1,3 +1,8 @@
+import {
+  safeLocalStorageGet,
+  safeLocalStorageSet,
+} from '@/lib/safe-storage';
+
 export type BuilderChatWidth = 'compact' | 'comfortable' | 'wide';
 export type BuilderPromptSize = 'sm' | 'md' | 'lg';
 
@@ -27,13 +32,13 @@ const STORAGE_PROMPT_PX = 'niskbuild_builder_prompt_height_px';
 
 export function getBuilderChatWidth(): BuilderChatWidth {
   if (typeof window === 'undefined') return 'comfortable';
-  const v = localStorage.getItem(STORAGE_CHAT);
+  const v = safeLocalStorageGet(STORAGE_CHAT);
   if (v === 'compact' || v === 'wide' || v === 'comfortable') return v;
   return 'comfortable';
 }
 
 export function setBuilderChatWidth(width: BuilderChatWidth) {
-  localStorage.setItem(STORAGE_CHAT, width);
+  safeLocalStorageSet(STORAGE_CHAT, width);
 }
 
 export function chatWidthPx(width: BuilderChatWidth): number {
@@ -42,7 +47,7 @@ export function chatWidthPx(width: BuilderChatWidth): number {
 
 export function getBuilderChatWidthPx(): number {
   if (typeof window === 'undefined') return CHAT_WIDTHS.comfortable;
-  const raw = localStorage.getItem(STORAGE_CHAT_PX);
+  const raw = safeLocalStorageGet(STORAGE_CHAT_PX);
   const n = raw ? Number(raw) : NaN;
   if (Number.isFinite(n) && n >= CHAT_WIDTH_MIN && n <= CHAT_WIDTH_MAX) return n;
   return chatWidthPx(getBuilderChatWidth());
@@ -50,12 +55,12 @@ export function getBuilderChatWidthPx(): number {
 
 export function setBuilderChatWidthPx(px: number) {
   const clamped = Math.min(CHAT_WIDTH_MAX, Math.max(CHAT_WIDTH_MIN, Math.round(px)));
-  localStorage.setItem(STORAGE_CHAT_PX, String(clamped));
+  safeLocalStorageSet(STORAGE_CHAT_PX, String(clamped));
 }
 
 export function getBuilderPromptHeightPx(): number {
   if (typeof window === 'undefined') return PROMPT_HEIGHT_DEFAULT;
-  const raw = localStorage.getItem(STORAGE_PROMPT_PX);
+  const raw = safeLocalStorageGet(STORAGE_PROMPT_PX);
   const n = raw ? Number(raw) : NaN;
   if (Number.isFinite(n) && n >= PROMPT_HEIGHT_MIN && n <= PROMPT_HEIGHT_MAX) return n;
   return PROMPT_HEIGHT_DEFAULT;
@@ -63,20 +68,20 @@ export function getBuilderPromptHeightPx(): number {
 
 export function setBuilderPromptHeightPx(px: number) {
   const clamped = Math.min(PROMPT_HEIGHT_MAX, Math.max(PROMPT_HEIGHT_MIN, Math.round(px)));
-  localStorage.setItem(STORAGE_PROMPT_PX, String(clamped));
+  safeLocalStorageSet(STORAGE_PROMPT_PX, String(clamped));
 }
 
 export { CHAT_WIDTH_MIN, CHAT_WIDTH_MAX, PROMPT_HEIGHT_MIN, PROMPT_HEIGHT_MAX };
 
 export function getBuilderPromptSize(): BuilderPromptSize {
   if (typeof window === 'undefined') return 'md';
-  const v = localStorage.getItem(STORAGE_PROMPT);
+  const v = safeLocalStorageGet(STORAGE_PROMPT);
   if (v === 'sm' || v === 'lg' || v === 'md') return v;
   return 'md';
 }
 
 export function setBuilderPromptSize(size: BuilderPromptSize) {
-  localStorage.setItem(STORAGE_PROMPT, size);
+  safeLocalStorageSet(STORAGE_PROMPT, size);
 }
 
 export function promptTextareaRows(size: BuilderPromptSize): number {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from 'react';
+import { safeLocalStorageGet } from '@/lib/safe-storage';
 
 const SESSION_TOKEN_KEY = 'niskbuild_session_key';
 
@@ -22,7 +23,7 @@ export default function ActiveSessionsPanel() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem(SESSION_TOKEN_KEY) || '';
+      const token = safeLocalStorageGet(SESSION_TOKEN_KEY) || '';
       const res = await fetch(
         `/api/session/list?sessionToken=${encodeURIComponent(token)}`,
         { credentials: 'include' }
@@ -76,7 +77,7 @@ export default function ActiveSessionsPanel() {
     setRevokingOthers(true);
     setMessage('');
     try {
-      const token = localStorage.getItem(SESSION_TOKEN_KEY) || '';
+      const token = safeLocalStorageGet(SESSION_TOKEN_KEY) || '';
       const res = await fetch(
         `/api/session/revoke-others?sessionToken=${encodeURIComponent(token)}`,
         { method: 'DELETE', credentials: 'include' }

@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { THEME_STORAGE_KEY, type ThemePreference } from '@/lib/theme';
+import { safeLocalStorageSet } from '@/lib/safe-storage';
 
 type ThemeContextValue = {
   preference: ThemePreference;
@@ -22,12 +23,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     applyLightTheme();
-    localStorage.setItem(THEME_STORAGE_KEY, 'light');
+    // Must never throw — Firefox ETP / sandboxed iframes forbid localStorage.
+    safeLocalStorageSet(THEME_STORAGE_KEY, 'light');
     setPreferenceState('light');
   }, []);
 
   const setPreference = useCallback((_pref: ThemePreference) => {
-    localStorage.setItem(THEME_STORAGE_KEY, 'light');
+    safeLocalStorageSet(THEME_STORAGE_KEY, 'light');
     setPreferenceState('light');
     applyLightTheme();
   }, []);

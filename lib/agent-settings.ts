@@ -34,7 +34,11 @@ export function loadAgentSettings(): AgentSettings {
 
 export function saveAgentSettings(settings: AgentSettings): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(AGENT_SETTINGS_KEY, JSON.stringify(settings));
+  try {
+    localStorage.setItem(AGENT_SETTINGS_KEY, JSON.stringify(settings));
+  } catch {
+    /* storage forbidden — ignore */
+  }
 }
 
 export function providerBadge(provider?: string): string {
