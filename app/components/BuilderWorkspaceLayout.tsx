@@ -966,6 +966,17 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
     errorCount: consoleErrorCount,
   };
 
+  // Mobile + desktop layouts both exist in the DOM (md:hidden / hidden md:flex).
+  // Only mount one live preview iframe — otherwise both postMessage console events → duplicates.
+  const [isMdUp, setIsMdUp] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)');
+    const sync = () => setIsMdUp(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+
   const openProjectSettings = (tab: ProjectSettingsTab = 'seo') => {
     onProjectSettingsTabChange(tab);
     onProjectSettingsOpenChange(true);
@@ -1319,22 +1330,26 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
                 previewDevice !== 'desktop' || visualMobilePreview ? 'bg-[var(--iron-surface)]' : ''
               }`}
             >
-              <PreviewIframe
-                previewHtml={previewDisplayHtml}
-                placeholderPreview={placeholderPreview}
-                previewFrameClass={previewFrameClass}
-                reloadKey={previewReloadKey}
-              />
+              {!isMdUp && (
+                <PreviewIframe
+                  previewHtml={previewDisplayHtml}
+                  placeholderPreview={placeholderPreview}
+                  previewFrameClass={previewFrameClass}
+                  reloadKey={previewReloadKey}
+                />
+              )}
               <ShareThisBuildFab
                 visible={canShareSocial}
                 onOpen={onOpenSocialPublisher}
               />
             </div>
-            <PreviewConsolePanel
-              entries={consoleEntries}
-              onClear={clearConsole}
-              open={consoleOpen}
-            />
+            {!isMdUp && (
+              <PreviewConsolePanel
+                entries={consoleEntries}
+                onClear={clearConsole}
+                open={consoleOpen}
+              />
+            )}
           </main>
         )}
 
@@ -1453,12 +1468,14 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
               aria-hidden
             />
             <div className="absolute inset-0 z-[1]">
-              <PreviewIframe
-                previewHtml={previewDisplayHtml}
-                placeholderPreview={placeholderPreview}
-                previewFrameClass={previewFrameClass}
-                reloadKey={previewReloadKey}
-              />
+              {isMdUp && (
+                <PreviewIframe
+                  previewHtml={previewDisplayHtml}
+                  placeholderPreview={placeholderPreview}
+                  previewFrameClass={previewFrameClass}
+                  reloadKey={previewReloadKey}
+                />
+              )}
               <ShareThisBuildFab
                 visible={canShareSocial}
                 onOpen={onOpenSocialPublisher}
@@ -1478,11 +1495,13 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
               </div>
             )}
           </div>
-          <PreviewConsolePanel
-            entries={consoleEntries}
-            onClear={clearConsole}
-            open={consoleOpen}
-          />
+          {isMdUp && (
+            <PreviewConsolePanel
+              entries={consoleEntries}
+              onClear={clearConsole}
+              open={consoleOpen}
+            />
+          )}
         </main>
       </div>
 
