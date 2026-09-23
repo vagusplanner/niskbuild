@@ -18,6 +18,7 @@ import { ChatPanelDragHandle, PromptHeightDragHandle } from '@/app/components/Bu
 import PromptBar from '@/app/components/PromptBar';
 import GenerationActivityPanel from '@/app/components/GenerationActivityPanel';
 import PromptSuggestionRow from '@/app/components/PromptSuggestionRow';
+import BuilderTurnHistory from '@/app/components/BuilderTurnHistory';
 import PreviewDeviceSwitcher, {
   type PreviewDevice,
 } from '@/app/components/PreviewDeviceSwitcher';
@@ -29,6 +30,7 @@ import {
   formatCreditsRemainingLabel,
 } from '@/lib/credits-display';
 import { PROMPT_SUGGESTIONS, PROMPT_SUGGESTION_COUNT } from '@/lib/prompt-suggestions';
+import type { BuilderTurn } from '@/lib/builder-turns';
 import type {
   GooglePlacesBusiness,
   GooglePlacesProjectContext,
@@ -86,6 +88,9 @@ export type BuilderWorkspaceLayoutProps = {
   streamingCode?: string;
   streamingNarration?: string;
   streamingSteps?: Array<{ id: string; label: string; source: string }>;
+  /** Durable conversation history for this project */
+  builderTurns?: BuilderTurn[];
+  onReuseBuilderTurnPrompt?: (prompt: string) => void;
   planMode: boolean;
   onPlanModeChange: (v: boolean) => void;
   previewHtml: string;
@@ -553,6 +558,8 @@ function ChatPanelContent({
   streamingCode,
   streamingNarration,
   streamingSteps = [],
+  builderTurns = [],
+  onReuseBuilderTurnPrompt,
   planMode,
   onPlanModeChange,
   promptSuggestions = [],
@@ -598,6 +605,8 @@ function ChatPanelContent({
   streamingCode?: string;
   streamingNarration?: string;
   streamingSteps?: Array<{ id: string; label: string; source: string }>;
+  builderTurns?: BuilderTurn[];
+  onReuseBuilderTurnPrompt?: (prompt: string) => void;
   planMode: boolean;
   onPlanModeChange: (v: boolean) => void;
   promptSuggestions?: string[];
@@ -655,6 +664,10 @@ function ChatPanelContent({
             </p>
           </div>
         )}
+        <BuilderTurnHistory
+          turns={builderTurns}
+          onReusePrompt={onReuseBuilderTurnPrompt ?? onPromptChange}
+        />
         <GenerationActivityPanel
           activityLog={activityLog}
           streamingSteps={streamingSteps}
@@ -780,6 +793,8 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
     streamingCode,
     streamingNarration,
     streamingSteps = [],
+    builderTurns = [],
+    onReuseBuilderTurnPrompt,
     planMode,
     onPlanModeChange,
     previewHtml,
@@ -931,6 +946,8 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
       streamingCode={streamingCode}
       streamingNarration={streamingNarration}
       streamingSteps={streamingSteps}
+      builderTurns={builderTurns}
+      onReuseBuilderTurnPrompt={onReuseBuilderTurnPrompt}
       planMode={planMode}
       onPlanModeChange={onPlanModeChange}
       promptSuggestions={promptSuggestions}
@@ -983,6 +1000,8 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
       streamingCode={streamingCode}
       streamingNarration={streamingNarration}
       streamingSteps={streamingSteps}
+      builderTurns={builderTurns}
+      onReuseBuilderTurnPrompt={onReuseBuilderTurnPrompt}
       planMode={planMode}
       onPlanModeChange={onPlanModeChange}
       promptSuggestions={promptSuggestions}

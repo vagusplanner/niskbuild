@@ -95,6 +95,13 @@ import {
   saveWorkspaceSnapshot,
   setActiveProjectIdLocal,
 } from '@/lib/builder-workspace-persist';
+import {
+  createBuilderTurn,
+  fetchBuilderTurns,
+  makeLocalTurn,
+  type BuilderTurn,
+  type BuilderTurnInput,
+} from '@/lib/builder-turns';
 import { safeLocalStorageGet, safeLocalStorageRemove } from '@/lib/safe-storage';
 import type { ComponentBlueprint } from '@/lib/blueprint-schema';
 import {
@@ -187,6 +194,8 @@ function BuilderContent() {
   const [blueprintData, setBlueprintData] = useState<ComponentBlueprint | null>(null);
   const [statusMessage, setStatusMessage] = useState('');
   const [activityLog, setActivityLog] = useState<string[]>([]);
+  const [builderTurns, setBuilderTurns] = useState<BuilderTurn[]>([]);
+  const pendingBuilderTurnsRef = useRef<BuilderTurnInput[]>([]);
   const [streamingCode, setStreamingCode] = useState('');
   const [streamingNarration, setStreamingNarration] = useState('');
   const [streamingSteps, setStreamingSteps] = useState<ProgressStep[]>([]);
@@ -603,6 +612,48 @@ function BuilderContent() {
     }
   };
 
+  /** Persist a conversation turn (optimistic UI + DB when project exists). */
+  const recordBuilderTurn = useCallback(
+    async (
+      input: BuilderTurnInput,
+      projectIdOverride?: string | null
+    ): Promise<string | null> => {
+      const pid = projectIdOverride ?? activeProjectId;
+      const optimistic = makeLocalTurn(pid, input);
+      setBuilderTurns((prev) => [...prev, optimistic]);
+
+      if (!pid) {
+        pendingBuilderTurnsRef.current.push({ ...input, tempId: optimistic.id });
+        return null;
+      }
+
+      const saved = await createBuilderTurn(pid, input);
+      if (saved) {
+        setBuilderTurns((prev) =>
+          prev.map((t) => (t.id === optimistic.id ? saved : t))
+        );
+        return saved.id;
+      }
+      return optimistic.id;
+    },
+    [activeProjectId]
+  );
+
+  const flushPendingBuilderTurns = useCallback(async (projectId: string) => {
+    const pending = [...pendingBuilderTurnsRef.current];
+    pendingBuilderTurnsRef.current = [];
+    for (const input of pending) {
+      const saved = await createBuilderTurn(projectId, input);
+      if (saved && input.tempId) {
+        setBuilderTurns((prev) =>
+          prev.map((t) => (t.id === input.tempId ? saved : t))
+        );
+      } else if (saved) {
+        setBuilderTurns((prev) => [...prev, saved]);
+      }
+    }
+  }, []);
+
   /** After a successful generation: local snapshot always, DB project create/version so nav never loses work. */
   const persistGenerationAfterSuccess = async (
     code: string,
@@ -610,7 +661,7 @@ function BuilderContent() {
     creditsUsed: number,
     filesSnapshot: ProjectFile[],
     activePageSnapshot: string
-  ) => {
+  ): Promise<string | null> => {
     const synced = filesSnapshot.map((f) =>
       f.path === 'index.html' ? { ...f, content: code } : f
     );
@@ -632,7 +683,7 @@ function BuilderContent() {
         activePageSnapshot,
         activeProjectId
       );
-      return;
+      return activeProjectId;
     }
 
     // First successful build for this session — auto-create a cloud project (no modal).
@@ -657,7 +708,7 @@ function BuilderContent() {
             ? `⚠️ Built successfully — cloud save blocked (${data.error || 'project limit'}). Work is kept in this browser until you free a slot or upgrade.`
             : `⚠️ Built successfully — cloud save failed. Work is kept in this browser.`
         );
-        return;
+        return null;
       }
       const newId = data.project?.id as string | undefined;
       if (newId) {
@@ -679,14 +730,17 @@ function BuilderContent() {
           activePageSnapshot,
           newId
         );
+        await flushPendingBuilderTurns(newId);
         void loadProjects();
         setStatusMessage(`✅ Generated & saved as “${title}”`);
+        return newId;
       }
     } catch {
       setStatusMessage(
         '⚠️ Built successfully — cloud save failed. Work is kept in this browser.'
       );
     }
+    return null;
   };
 
   const restoreWorkspaceSnapshot = (snap: NonNullable<ReturnType<typeof loadWorkspaceSnapshot>>) => {
@@ -1025,11 +1079,20 @@ function BuilderContent() {
         if (typeof data.creditsRemaining === 'number') {
           setCloudCreditsRemaining(data.creditsRemaining);
         }
+        const editPrompt = `Visual edit: ${selectedVisualElement?.selector || 'element'}`;
         void saveProjectVersionSilent(
           data.code,
-          `Visual edit: ${selectedVisualElement?.selector || 'element'}`,
+          editPrompt,
           Number(data.creditsUsed) || 0.3
         );
+        void recordBuilderTurn({
+          prompt: editPrompt,
+          outcome: 'edited',
+          outcome_detail: 'Visual editor style change applied',
+          model_id: 'visual-edit',
+          model_label: 'Visual edit',
+          credits_used: Number(data.creditsUsed) || 0.3,
+        });
       }
     } catch {
       setVisualEditHistory((prev) => prev.slice(0, -1));
@@ -1316,12 +1379,23 @@ function BuilderContent() {
             { activePage: activeForGen, files: filesForGen }
           );
           const localMerged = mergeGeneratedIntoFiles(filesForGen, activeForGen, localData.code);
-          void persistGenerationAfterSuccess(
+          const localProjectId = await persistGenerationAfterSuccess(
             localData.code,
             effectivePrompt,
             0,
             localMerged,
             activeForGen
+          );
+          void recordBuilderTurn(
+            {
+              prompt: effectivePrompt,
+              outcome: 'built',
+              outcome_detail: 'Generated via Local Ollama',
+              model_id: 'local-ollama',
+              model_label: 'Local Ollama',
+              credits_used: 0,
+            },
+            localProjectId
           );
           return;
         }
@@ -1336,6 +1410,14 @@ function BuilderContent() {
           );
         }
         setStatusMessage(`❌ ${localData.error || 'Local generation failed'}`);
+        void recordBuilderTurn({
+          prompt: effectivePrompt,
+          outcome: 'failed',
+          outcome_detail: localData.error || 'Local generation failed',
+          model_id: 'local-ollama',
+          model_label: 'Local Ollama',
+          credits_used: 0,
+        });
       } catch {
         setGeneratedCode('// Failed to reach local Ollama.');
         setPreviewHtml(
@@ -1344,6 +1426,14 @@ function BuilderContent() {
             : '<div style="padding:2rem;color:#EF4444;text-align:center">❌ Network error — is Ollama running?</div>'
         );
         setStatusMessage('❌ Network error');
+        void recordBuilderTurn({
+          prompt: effectivePrompt,
+          outcome: 'failed',
+          outcome_detail: 'Network error reaching local Ollama',
+          model_id: 'local-ollama',
+          model_label: 'Local Ollama',
+          credits_used: 0,
+        });
       } finally {
         setIsGenerating(false);
         setStreamingNarration('');
@@ -1415,6 +1505,8 @@ function BuilderContent() {
       setStreamingNarration('');
       setStreamingSteps([]);
 
+      const selectedModelMeta = getGenerationModel(generationModelId);
+
       if (error) {
         if (!code.trim()) {
           setGeneratedCode(`// Error: ${error}`);
@@ -1422,6 +1514,14 @@ function BuilderContent() {
             `<div style="padding:2rem;color:#EF4444;background:#1a0a0a;height:100%;text-align:center"><h3>❌ Generation Failed</h3><p>${error}</p><p style="margin-top:1rem"><a href="/pricing" style="color:#d49a5c">View plans</a></p></div>`
           );
           setStatusMessage(`❌ ${error}`);
+          void recordBuilderTurn({
+            prompt: effectivePrompt,
+            outcome: 'failed',
+            outcome_detail: error,
+            model_id: selectedModelMeta.id,
+            model_label: selectedModelMeta.shortLabel,
+            credits_used: 0,
+          });
           return;
         }
 
@@ -1431,6 +1531,14 @@ function BuilderContent() {
           `<div style="padding:2rem;color:#FBBF24;background:#1a1612;height:100%;text-align:center"><h3>⚠️ Generation Interrupted</h3><p>${error}</p><p style="margin-top:0.75rem;color:#94A3B8">We kept the partial output in the editor. Click Generate again to retry.</p></div>`
         );
         setStatusMessage(`⚠️ Generation interrupted — ${error}`);
+        void recordBuilderTurn({
+          prompt: effectivePrompt,
+          outcome: 'interrupted',
+          outcome_detail: error,
+          model_id: selectedModelMeta.id,
+          model_label: selectedModelMeta.shortLabel,
+          credits_used: 0,
+        });
         return;
       }
 
@@ -1440,6 +1548,14 @@ function BuilderContent() {
           '<div style="padding:2rem;color:#EF4444;background:#1a0a0a;height:100%;text-align:center"><h3>❌ Generation Failed</h3><p>Empty response from cloud AI</p></div>'
         );
         setStatusMessage('❌ Generation failed');
+        void recordBuilderTurn({
+          prompt: effectivePrompt,
+          outcome: 'failed',
+          outcome_detail: 'Empty response from cloud AI',
+          model_id: selectedModelMeta.id,
+          model_label: selectedModelMeta.shortLabel,
+          credits_used: 0,
+        });
         return;
       }
 
@@ -1448,7 +1564,7 @@ function BuilderContent() {
           session.user.id,
           effectivePrompt,
           code,
-          getGenerationModel(generationModelId).creditCost
+          selectedModelMeta.creditCost
         );
       }
       applyGeneratedCode(
@@ -1458,12 +1574,23 @@ function BuilderContent() {
         { activePage: activeForGen, files: filesForGen }
       );
       const cloudMerged = mergeGeneratedIntoFiles(filesForGen, activeForGen, code);
-      void persistGenerationAfterSuccess(
+      const cloudProjectId = await persistGenerationAfterSuccess(
         code,
         effectivePrompt,
-        1,
+        selectedModelMeta.creditCost,
         cloudMerged,
         activeForGen
+      );
+      void recordBuilderTurn(
+        {
+          prompt: effectivePrompt,
+          outcome: 'built',
+          outcome_detail: `Generated via ${selectedModelMeta.shortLabel}`,
+          model_id: selectedModelMeta.id,
+          model_label: selectedModelMeta.shortLabel,
+          credits_used: selectedModelMeta.creditCost,
+        },
+        cloudProjectId
       );
     } catch {
       setStreamingCode('');
@@ -1472,6 +1599,14 @@ function BuilderContent() {
       setGeneratedCode('// Failed to generate. Please try again.');
       setPreviewHtml('<div style="padding:2rem;color:#EF4444;text-align:center">❌ Network error — please try again</div>');
       setStatusMessage('❌ Network error');
+      void recordBuilderTurn({
+        prompt: effectivePrompt,
+        outcome: 'failed',
+        outcome_detail: 'Network error',
+        model_id: generationModelId,
+        model_label: getGenerationModel(generationModelId).shortLabel,
+        credits_used: 0,
+      });
     } finally {
       setIsGenerating(false);
       setStreamingCode('');
@@ -1874,6 +2009,8 @@ function BuilderContent() {
           projectId: data.project.id,
           updatedAt: new Date().toISOString(),
         });
+        void flushPendingBuilderTurns(data.project.id);
+        void fetchBuilderTurns(data.project.id).then(setBuilderTurns);
       }
       loadProjects();
       setTimeout(() => setStatusMessage(''), 3000);
@@ -1884,6 +2021,8 @@ function BuilderContent() {
     setActiveProjectId(project.id);
     setActiveProjectIdLocal(project.id);
     void fetchProjectVersionNumber(project.id);
+    void fetchBuilderTurns(project.id).then(setBuilderTurns);
+    pendingBuilderTurnsRef.current = [];
     setPrompt(project.prompt);
     const ctx =
       project.project_context?.type === 'google_places' ? project.project_context : null;
@@ -1955,6 +2094,8 @@ function BuilderContent() {
     setActiveProjectIdLocal(null);
     clearWorkspaceSnapshot();
     clearPromptDraft(null);
+    setBuilderTurns([]);
+    pendingBuilderTurnsRef.current = [];
     setCurrentVersionNumber(0);
     setVersionHistoryOpen(false);
     setSeoSettings({ ...DEFAULT_SEO_SETTINGS });
@@ -2133,6 +2274,11 @@ function BuilderContent() {
           streamingCode={streamingCode}
           streamingNarration={streamingNarration}
           streamingSteps={streamingSteps}
+          builderTurns={builderTurns}
+          onReuseBuilderTurnPrompt={(p) => {
+            setPrompt(p);
+            setActiveEditorTab('chat');
+          }}
           planMode={planMode}
           onPlanModeChange={setPlanMode}
           previewHtml={previewHtml}
