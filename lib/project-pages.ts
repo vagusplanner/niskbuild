@@ -211,6 +211,40 @@ export type PageScopedHtmlSources = {
   activeHtml?: string;
 };
 
+/** Marker separating the AI-only wrapper from the user's visible request. */
+export const PAGE_SCOPED_USER_REQUEST_MARKER = '\nUser request:\n';
+
+/**
+ * True when `prompt` is the AI-only multi-page wrapper (HTML reference blocks
+ * + edit rules), not a plain user instruction.
+ */
+export function isPageScopedPrompt(prompt: string): boolean {
+  const t = prompt.trimStart();
+  return (
+    t.startsWith('MULTI-PAGE PROJECT') ||
+    t.includes('--- EXISTING index.html (design system / nav reference) ---')
+  );
+}
+
+/**
+ * Recover the user-visible instruction from a stored prompt.
+ * `buildPageScopedPrompt` is for the model only — never put that blob in the
+ * textarea, history cards, drafts, or project.prompt. Older sessions may have
+ * persisted the full wrapper; strip it on read.
+ */
+export function extractUserPromptFromScoped(prompt: string): string {
+  const raw = prompt ?? '';
+  if (!raw.trim()) return '';
+  if (!isPageScopedPrompt(raw)) return raw;
+
+  const idx = raw.lastIndexOf(PAGE_SCOPED_USER_REQUEST_MARKER);
+  if (idx !== -1) {
+    return raw.slice(idx + PAGE_SCOPED_USER_REQUEST_MARKER.length).trim();
+  }
+  // Malformed / truncated scoped blob — don't dump HTML into the UI.
+  return '';
+}
+
 export function buildPageScopedPrompt(
   userPrompt: string,
   ctx: ProjectPageContext,
@@ -260,9 +294,7 @@ Rules:
 - Reuse the existing color palette, CSS variables, typography (Google Fonts), spacing, and navigation from the reference HTML above — do not invent a new visual system.
 - Link nav items to sibling pages (${others}) using relative paths.
 - Do not output markdown fences or explanations.
-
-User request:
-${userPrompt}`;
+${PAGE_SCOPED_USER_REQUEST_MARKER}${userPrompt}`;
 }
 
 export function mergeGeneratedIntoFiles(

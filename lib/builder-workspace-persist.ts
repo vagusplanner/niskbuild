@@ -26,7 +26,13 @@ export type BuilderWorkspaceSnapshot = {
 };
 
 export function deriveProjectTitle(prompt: string): string {
-  const trimmed = prompt.trim().replace(/\s+/g, ' ');
+  // Prefer the user-facing slice if a multi-page AI wrapper was persisted by mistake.
+  let text = prompt.trim();
+  const marker = '\nUser request:\n';
+  if (text.startsWith('MULTI-PAGE PROJECT') && text.includes(marker)) {
+    text = text.slice(text.lastIndexOf(marker) + marker.length).trim();
+  }
+  const trimmed = text.replace(/\s+/g, ' ');
   if (!trimmed) return 'Untitled Project';
   return trimmed.length > 50 ? `${trimmed.slice(0, 50).trimEnd()}…` : trimmed;
 }

@@ -6,6 +6,7 @@ import {
   outcomeToneClass,
   type BuilderTurn,
 } from '@/lib/builder-turns';
+import { extractUserPromptFromScoped } from '@/lib/project-pages';
 
 type BuilderTurnHistoryProps = {
   turns: BuilderTurn[];
@@ -20,9 +21,11 @@ function TurnCard({
   onReusePrompt: (prompt: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const long = turn.prompt.length > 140;
+  // Older turns may have stored the AI-only multi-page wrapper; never show that.
+  const displayPrompt = extractUserPromptFromScoped(turn.prompt) || '(prompt unavailable)';
+  const long = displayPrompt.length > 140;
   const shown =
-    expanded || !long ? turn.prompt : `${turn.prompt.slice(0, 140).trimEnd()}…`;
+    expanded || !long ? displayPrompt : `${displayPrompt.slice(0, 140).trimEnd()}…`;
   const when = new Date(turn.created_at);
   const timeLabel = Number.isNaN(when.getTime())
     ? ''
@@ -38,7 +41,7 @@ function TurnCard({
       <div className="flex items-start justify-between gap-2">
         <button
           type="button"
-          onClick={() => onReusePrompt(turn.prompt)}
+          onClick={() => onReusePrompt(displayPrompt === '(prompt unavailable)' ? '' : displayPrompt)}
           className="text-left text-[12px] leading-snug text-[var(--foreground)] hover:text-[var(--copper-melt)] transition-colors whitespace-pre-wrap break-words min-w-0 flex-1"
           title="Click to refill the prompt box"
         >

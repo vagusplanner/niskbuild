@@ -17,6 +17,7 @@ import {
 import {
   addProjectPage,
   buildPageScopedPrompt,
+  extractUserPromptFromScoped,
   getPreviewHtmlForPage,
   inferProjectContext,
   isHtmlPage,
@@ -347,7 +348,7 @@ function BuilderContent() {
     }
     if (!isPromptAutosaveEnabled()) return;
     const draft = loadPromptDraft(null);
-    if (draft) setPrompt(draft);
+    if (draft) setPrompt(extractUserPromptFromScoped(draft));
   }, []);
 
   // When switching into a saved project with an empty prompt, restore that project's draft.
@@ -356,7 +357,7 @@ function BuilderContent() {
     if (prompt.trim()) return;
     if (!isPromptAutosaveEnabled()) return;
     const draft = loadPromptDraft(activeProjectId);
-    if (draft) setPrompt(draft);
+    if (draft) setPrompt(extractUserPromptFromScoped(draft));
     // Only react to project id changes — not every prompt keystroke.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeProjectId]);
@@ -745,7 +746,9 @@ function BuilderContent() {
   };
 
   const restoreWorkspaceSnapshot = (snap: NonNullable<ReturnType<typeof loadWorkspaceSnapshot>>) => {
-    setPrompt((prev) => (prev.trim() ? prev : snap.prompt));
+    setPrompt((prev) =>
+      prev.trim() ? prev : extractUserPromptFromScoped(snap.prompt || '')
+    );
     const filesForPreview =
       snap.projectFiles.length > 0
         ? snap.projectFiles
@@ -1178,8 +1181,14 @@ function BuilderContent() {
     }
 
     const mainCode = config.files['index.html'] || Object.values(config.files)[0] || '';
-    setPrompt(config.promptHistory[config.promptHistory.length - 1]?.prompt || '');
-    setPromptHistory(config.promptHistory);
+    const lastHist = config.promptHistory[config.promptHistory.length - 1]?.prompt || '';
+    setPrompt(extractUserPromptFromScoped(lastHist));
+    setPromptHistory(
+      config.promptHistory.map((e) => ({
+        ...e,
+        prompt: extractUserPromptFromScoped(e.prompt),
+      }))
+    );
     syncFilesFromCode(mainCode, config.files);
     if (user?.id) {
       recordLocalWork(user.id, estimateTokens(mainCode));
@@ -1262,9 +1271,14 @@ function BuilderContent() {
     }
 
     const placesContext = buildGooglePlacesPrompt(projectContext?.business);
-    const withPlaces = placesContext
-      ? `${basePrompt}\n\n${placesContext}`
-      : basePrompt;
+    // User-visible / persisted prompt only — never the AI multi-page wrapper.
+    const userFacingPrompt = extractUserPromptFromScoped(
+      placesContext ? `${basePrompt}\n\n${placesContext}` : basePrompt
+    );
+    // If the textarea still holds a leaked scoped blob (legacy drafts/turns), scrub it now.
+    if (userFacingPrompt !== prompt.trim()) {
+      setPrompt(userFacingPrompt);
+    }
 
     let filesForGen = projectFiles;
     let activeForGen = activeFile;
@@ -1294,7 +1308,7 @@ function BuilderContent() {
       businessName: projectContext?.business?.name ?? null,
       businessType: projectContext?.business?.businessType ?? null,
       savedProjectTitle,
-      currentPrompt: basePrompt,
+      currentPrompt: userFacingPrompt,
       lastPrompt: promptHistory[promptHistory.length - 1]?.prompt,
       promptHistory: promptHistory.map((h) => h.prompt),
     });
@@ -1304,10 +1318,15 @@ function BuilderContent() {
     const activeHtmlForContext =
       filesForGen.find((f) => f.path === activeForGen)?.content?.trim() ||
       (activeForGen === 'index.html' && isExportableCode(generatedCode) ? generatedCode : '');
-    const effectivePrompt = buildPageScopedPrompt(withPlaces, ctx, {
+    // AI-only: wraps userFacingPrompt with page HTML reference blocks. Never persist this.
+    const effectivePrompt = buildPageScopedPrompt(userFacingPrompt, ctx, {
       indexHtml: indexHtmlForContext,
       activeHtml: activeHtmlForContext,
     });
+    const historyEntry: NiskBuildPromptEntry = {
+      prompt: userFacingPrompt,
+      timestamp: new Date().toISOString(),
+    };
     const narrationContext = formatNarrationContext({
       pageLabel: ctx.pageLabel,
       siteKind: ctx.siteKind,
@@ -1371,25 +1390,25 @@ function BuilderContent() {
             markerCount,
           });
           if (session?.user?.id) {
-            recordLocalGeneration(session.user.id, effectivePrompt, localData.code);
+            recordLocalGeneration(session.user.id, userFacingPrompt, localData.code);
           }
           applyGeneratedCode(
             localData.code,
             '✅ Generated via Local Ollama',
-            { prompt: effectivePrompt, timestamp: new Date().toISOString() },
+            historyEntry,
             { activePage: activeForGen, files: filesForGen }
           );
           const localMerged = mergeGeneratedIntoFiles(filesForGen, activeForGen, localData.code);
           const localProjectId = await persistGenerationAfterSuccess(
             localData.code,
-            effectivePrompt,
+            userFacingPrompt,
             0,
             localMerged,
             activeForGen
           );
           void recordBuilderTurn(
             {
-              prompt: effectivePrompt,
+              prompt: userFacingPrompt,
               outcome: 'built',
               outcome_detail: 'Generated via Local Ollama',
               model_id: 'local-ollama',
@@ -1412,7 +1431,7 @@ function BuilderContent() {
         }
         setStatusMessage(`❌ ${localData.error || 'Local generation failed'}`);
         void recordBuilderTurn({
-          prompt: effectivePrompt,
+          prompt: userFacingPrompt,
           outcome: 'failed',
           outcome_detail: localData.error || 'Local generation failed',
           model_id: 'local-ollama',
@@ -1428,7 +1447,7 @@ function BuilderContent() {
         );
         setStatusMessage('❌ Network error');
         void recordBuilderTurn({
-          prompt: effectivePrompt,
+          prompt: userFacingPrompt,
           outcome: 'failed',
           outcome_detail: 'Network error reaching local Ollama',
           model_id: 'local-ollama',
@@ -1449,8 +1468,6 @@ function BuilderContent() {
         ? '☁️ Generating with your free trial cloud credits...'
         : '☁️ Generating with cloud AI (live)...'
     );
-
-    const historyEntry: NiskBuildPromptEntry = { prompt: effectivePrompt, timestamp: new Date().toISOString() };
 
     try {
       const { code, error } = await readCloudGenerateStream(
@@ -1516,7 +1533,7 @@ function BuilderContent() {
           );
           setStatusMessage(`❌ ${error}`);
           void recordBuilderTurn({
-            prompt: effectivePrompt,
+            prompt: userFacingPrompt,
             outcome: 'failed',
             outcome_detail: error,
             model_id: selectedModelMeta.id,
@@ -1533,7 +1550,7 @@ function BuilderContent() {
         );
         setStatusMessage(`⚠️ Generation interrupted — ${error}`);
         void recordBuilderTurn({
-          prompt: effectivePrompt,
+          prompt: userFacingPrompt,
           outcome: 'interrupted',
           outcome_detail: error,
           model_id: selectedModelMeta.id,
@@ -1550,7 +1567,7 @@ function BuilderContent() {
         );
         setStatusMessage('❌ Generation failed');
         void recordBuilderTurn({
-          prompt: effectivePrompt,
+          prompt: userFacingPrompt,
           outcome: 'failed',
           outcome_detail: 'Empty response from cloud AI',
           model_id: selectedModelMeta.id,
@@ -1563,7 +1580,7 @@ function BuilderContent() {
       if (session?.user?.id) {
         recordCloudGeneration(
           session.user.id,
-          effectivePrompt,
+          userFacingPrompt,
           code,
           selectedModelMeta.creditCost
         );
@@ -1577,14 +1594,14 @@ function BuilderContent() {
       const cloudMerged = mergeGeneratedIntoFiles(filesForGen, activeForGen, code);
       const cloudProjectId = await persistGenerationAfterSuccess(
         code,
-        effectivePrompt,
+        userFacingPrompt,
         selectedModelMeta.creditCost,
         cloudMerged,
         activeForGen
       );
       void recordBuilderTurn(
         {
-          prompt: effectivePrompt,
+          prompt: userFacingPrompt,
           outcome: 'built',
           outcome_detail: `Generated via ${selectedModelMeta.shortLabel}`,
           model_id: selectedModelMeta.id,
@@ -1601,7 +1618,7 @@ function BuilderContent() {
       setPreviewHtml('<div style="padding:2rem;color:#EF4444;text-align:center">❌ Network error — please try again</div>');
       setStatusMessage('❌ Network error');
       void recordBuilderTurn({
-        prompt: effectivePrompt,
+        prompt: userFacingPrompt,
         outcome: 'failed',
         outcome_detail: 'Network error',
         model_id: generationModelId,
@@ -2046,7 +2063,7 @@ function BuilderContent() {
     void fetchProjectVersionNumber(project.id);
     void fetchBuilderTurns(project.id).then(setBuilderTurns);
     pendingBuilderTurnsRef.current = [];
-    setPrompt(project.prompt);
+    setPrompt(extractUserPromptFromScoped(project.prompt || ''));
     const ctx =
       project.project_context?.type === 'google_places' ? project.project_context : null;
     setProjectContext(ctx);
@@ -2139,8 +2156,10 @@ function BuilderContent() {
 
   const handleTargetedEdit = async (changePrompt: string) => {
     if (!inspectTarget) return;
-    const scoped = `${prompt}\n\nTARGETED EDIT — only modify this element, do not change unrelated layout:\nElement: <${inspectTarget.tag.toLowerCase()}>${inspectTarget.id ? ` id="${inspectTarget.id}"` : ''}${inspectTarget.classes ? ` class="${inspectTarget.classes}"` : ''}\nText snippet: "${inspectTarget.text}"\nChange requested: ${changePrompt}`;
-    setPrompt(scoped);
+    const userRequest = changePrompt.trim();
+    // Keep the textarea on the user's short instruction — TARGETED EDIT context is AI-only.
+    if (userRequest) setPrompt(userRequest);
+    const scoped = `${extractUserPromptFromScoped(prompt)}\n\nTARGETED EDIT — only modify this element, do not change unrelated layout:\nElement: <${inspectTarget.tag.toLowerCase()}>${inspectTarget.id ? ` id="${inspectTarget.id}"` : ''}${inspectTarget.classes ? ` class="${inspectTarget.classes}"` : ''}\nText snippet: "${inspectTarget.text}"\nChange requested: ${changePrompt}`;
     setInspectTarget(null);
     setInspectMode(false);
     await handleGenerate(scoped);
@@ -2299,7 +2318,7 @@ function BuilderContent() {
           streamingSteps={streamingSteps}
           builderTurns={builderTurns}
           onReuseBuilderTurnPrompt={(p) => {
-            setPrompt(p);
+            setPrompt(extractUserPromptFromScoped(p));
             setActiveEditorTab('chat');
           }}
           planMode={planMode}
@@ -2418,7 +2437,7 @@ function BuilderContent() {
           projectId={activeProjectId}
           subscriptionTier={subscriptionTier}
           onRestore={(payload) => {
-            setPrompt(payload.prompt);
+            setPrompt(extractUserPromptFromScoped(payload.prompt || ''));
             if (payload.blueprint_json) {
               setBlueprintData(payload.blueprint_json as ComponentBlueprint);
             }
