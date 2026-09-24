@@ -2,7 +2,7 @@
 
 import Layout from '@/app/components/Layout';
 
-const LAST_UPDATED = 'September 19, 2026';
+const LAST_UPDATED = 'September 24, 2026';
 
 /**
  * NiskBuild platform Privacy Policy — approved draft (exact text).
@@ -18,22 +18,23 @@ export default function NiskBuildPrivacyPage() {
           <section className="space-y-3">
             <p>
               This Privacy Policy explains how NiskBuild (&quot;we,&quot; &quot;us&quot;) collects, uses, stores,
-              and protects your personal data when you use our platform at niskbuild.com.
+              and protects your personal data when you use our platform.
             </p>
             <p>
-              This policy is written to be accurate and complete as of today. It has been reviewed for
-              factual accuracy against our actual systems, but has not yet received final sign-off from
-              outside legal counsel. We recommend treating it as authoritative in the meantime, and we
-              will update this notice once that review is complete.
+              This policy is written to be accurate and complete as of today, based on a full
+              technical review of our systems. It has not yet received final sign-off from outside
+              legal counsel — we recommend treating it as an accurate, good-faith account of our real
+              practices in the meantime, and we will update this notice once that review is complete.
+              One item below is flagged as needing specific legal review before we can make a
+              definitive compliance statement about it — see Section 8.
             </p>
           </section>
 
           <section>
             <h2 className="text-2xl font-semibold text-white mb-4">1. Who We Are</h2>
             <p>
-              NiskBuild is an AI-powered app-building platform. For any privacy questions or requests,
-              contact us through our support system in your dashboard, or via the contact details on
-              our website.
+              NiskBuild is an AI-powered app-building platform. For privacy questions or requests,
+              contact us through your dashboard support system.
             </p>
           </section>
 
@@ -43,35 +44,46 @@ export default function NiskBuildPrivacyPage() {
             <h3 className="text-xl font-medium text-white mb-2 mt-4">Account &amp; Identity</h3>
             <ul className="list-disc pl-6 space-y-2">
               <li>
-                Email address and authentication credentials (or OAuth sign-in details, if you sign
-                in via a third-party provider)
+                Email address and authentication credentials (or OAuth details, if you sign in via a
+                third-party provider)
               </li>
               <li>Your profile information (name, subscription tier and status)</li>
               <li>
-                Phone number and verification status — required for free-tier accounts as part of our
-                anti-abuse measures; paid accounts can skip this
+                Phone number and verification status - required for free-tier accounts; paid accounts
+                can skip this
               </li>
               <li>
-                Age confirmation — we verify you meet our minimum age requirement (13) at signup, but
-                we do not store your date of birth itself; we only record the date on which you
-                confirmed meeting this requirement
+                Age confirmation - we verify you meet our minimum age requirement (13) at signup, but
+                we do not store your date of birth, only the date you confirmed meeting this
+                requirement
               </li>
               <li>
-                Optional, coarse demographic information (a general age band and region) if you choose
-                to provide it — never your exact birthdate
+                Optional, coarse demographic information, never your exact birthdate
               </li>
             </ul>
 
             <h3 className="text-xl font-medium text-white mb-2 mt-4">What You Build</h3>
             <ul className="list-disc pl-6 space-y-2">
               <li>
-                Prompts you write, project blueprints, generated code and version history, SEO
+                Prompts you write, project blueprints, generated code and file versions, SEO
                 metadata, and any project assets you create or upload
               </li>
               <li>
+                Your build history: we keep a record of every attempt to generate or edit a page in a
+                project - not just successful results, but also interrupted or failed attempts -
+                including the prompt, the outcome, which AI model was used, and how many credits it
+                cost. This helps you review your own session and helps us improve reliability. This
+                history is deleted when its project is deleted.
+              </li>
+              <li>
                 Important: prompts you write are sent to our AI providers to generate results, and are
-                stored as part of your project. Please don&apos;t include sensitive personal
-                information (yours or anyone else&apos;s) directly in prompts.
+                stored as part of your project and build history. Please don&apos;t include sensitive
+                personal information (yours or anyone else&apos;s) directly in prompts.
+              </li>
+              <li>
+                If you choose to use your own API key for an AI provider (available on paid plans),
+                that key is stored securely on your account so we can use it on your behalf; we never
+                use it for any purpose other than fulfilling your own generation requests.
               </li>
             </ul>
 
@@ -87,20 +99,27 @@ export default function NiskBuildPrivacyPage() {
               </li>
             </ul>
 
-            <h3 className="text-xl font-medium text-white mb-2 mt-4">Billing</h3>
+            <h3 className="text-xl font-medium text-white mb-2 mt-4">Billing &amp; Credits</h3>
             <ul className="list-disc pl-6 space-y-2">
               <li>Subscription and payment status, linked to your Stripe customer record</li>
               <li>
-                We do not store your full card number — payment details are handled entirely by Stripe
+                Your cloud AI credit balance, and records of credit-reload-pack purchases (processed
+                via Stripe)
+              </li>
+              <li>
+                Which AI model you used and how many credits each generation cost, so we can
+                accurately track your usage against your plan
+              </li>
+              <li>
+                We do not store your full card number - payment details are handled entirely by Stripe
               </li>
             </ul>
 
             <h3 className="text-xl font-medium text-white mb-2 mt-4">Support</h3>
             <ul className="list-disc pl-6 space-y-2">
               <li>
-                Records of support tickets you submit — including your message, contact details, and
-                category — are kept to help us assist you; these are anonymized if you later delete
-                your account
+                Records of support tickets you submit are kept to help us assist you; anonymized if
+                you later delete your account
               </li>
             </ul>
 
@@ -115,21 +134,49 @@ export default function NiskBuildPrivacyPage() {
           <section>
             <h2 className="text-2xl font-semibold text-white mb-4">3. Third-Party Services We Use</h2>
             <p>
-              Supabase (authentication, our core database, and file storage); Stripe (payment
-              processing and subscription billing); Resend (transactional and account-related email);
-              Groq (default AI provider for code generation and agent features); Together AI /
-              Anthropic (backup AI providers used if Groq is unavailable); Google (used only where you
-              explicitly connect it, e.g. an optional Places import feature or Google sign-in — this
-              is separate from any Vagus Planner-specific integration); Vercel (hosting our platform).
+              AI generation providers - which of these receives your prompt depends on which model
+              you select for a given generation (or the default, if you don&apos;t choose one):
+              DeepSeek (default model), Google (Gemini models), OpenAI (GPT models), Anthropic
+              (Claude models), Groq (used for some generations and as an internal reliability
+              fallback), Together AI (fallback path).
             </p>
             <p className="mt-4">
-              We do not sell your personal data to anyone, and we do not use your data for third-party
-              advertising.
+              Other services: Supabase (database, authentication, file storage); Stripe (payment
+              processing and subscription/credit billing); Resend (transactional email); Vercel
+              (hosting); Sentry (technical error monitoring, to help us catch and fix bugs); Umami
+              (privacy-focused product analytics); Google (also used separately for Places import and
+              sign-in, where you explicitly connect it).
+            </p>
+            <p className="mt-4">
+              We do not sell your personal data, and we do not use it for third-party advertising.
             </p>
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-white mb-4">4. How Long We Keep Your Data</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">4. International Data Transfers</h2>
+            <p>
+              Because we use globally-operating service providers, your data may be processed in
+              countries outside your own, including the United States.
+            </p>
+            <p className="mt-4">
+              A specific note on DeepSeek: DeepSeek is based in China. If you are in the EU/UK and
+              select DeepSeek as your generation model (including as the default), your prompt and
+              related project data may be transferred to China for processing. We have not yet
+              completed the legal review needed to confirm what specific safeguards this transfer
+              requires or whether additional measures need to be put in place - this is a genuine
+              open item, not something we can make a compliance claim about yet. If this matters to
+              you, you can choose a different AI model in the picker for your generations in the
+              meantime. We&apos;ll update this policy once we&apos;ve completed that review.
+            </p>
+            <p className="mt-4">
+              For our other providers (US-based), we rely on the safeguards those providers maintain
+              for international transfers; we are in the process of confirming these meet current
+              EU/UK standards as part of the same legal review.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-semibold text-white mb-4">5. How Long We Keep Your Data</h2>
             <ul className="list-disc pl-6 space-y-2">
               <li>
                 If you cancel your subscription: your projects and prompts are preserved. Only
@@ -138,89 +185,96 @@ export default function NiskBuildPrivacyPage() {
               <li>
                 If you delete your account: we permanently delete your storage files, invite records,
                 and signup/analytics records tied to you, anonymize any support tickets, and delete
-                your projects, profile, and account. If you have an active Stripe subscription,
-                it&apos;s cancelled as part of this process.
+                your projects, profile, build history, and account. If you have an active Stripe
+                subscription, it&apos;s cancelled as part of this process.
               </li>
               <li>
-                We keep limited, fully de-identified aggregate statistics (like category-level usage
-                trends) that are never tied back to your individual account, even after deletion —
-                this helps us understand platform-wide patterns without retaining anything personal.
+                Build history (prompts, generation outcomes) is kept until its associated project is
+                deleted, then removed automatically.
               </li>
               <li>
-                Currently, we do not automatically delete data for accounts that have simply gone
+                We keep limited, fully de-identified aggregate statistics that are never tied back to
+                your individual account, even after deletion.
+              </li>
+              <li>
+                We do not currently automatically delete data for accounts that have simply gone
                 inactive.
               </li>
             </ul>
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-white mb-4">5. Your Rights</h2>
-            <p>
-              Export your data (request a ZIP export of your account information, projects, and SEO
-              data from your account settings — project source code should be exported separately from
-              within each project); delete your account (from Settings → Danger Zone); manage
-              analytics preferences (opt in or out of optional analytics from your privacy settings).
-            </p>
+            <h2 className="text-2xl font-semibold text-white mb-4">6. Your Rights</h2>
+            <ul className="list-disc pl-6 space-y-2">
+              <li>
+                Export your data: request an export of your account, project, and SEO data from your
+                account settings. Note: this export currently covers projects and SEO data; build
+                history and detailed credit records are not yet included in the automated export -
+                contact support if you need these specifically.
+              </li>
+              <li>Delete your account: from Settings → Danger Zone</li>
+              <li>
+                Access, correct, or object to our processing of your data: contact us through your
+                dashboard support system
+              </li>
+              <li>
+                Manage analytics preferences: opt in or out of optional analytics from your privacy
+                settings
+              </li>
+              <li>
+                Lodge a complaint: if you&apos;re in the EU/UK, you have the right to complain to
+                your local data protection authority if you believe we&apos;ve mishandled your data
+              </li>
+            </ul>
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-white mb-4">6. Children&apos;s Privacy</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">7. Security</h2>
             <p>
-              NiskBuild is not intended for anyone under 13. We verify age at signup (via email signup
-              or an age-gate check for OAuth sign-ins) and do not knowingly collect data from anyone
-              under this age. We record only that this confirmation happened, not your date of birth
-              itself.
+              We use encrypted connections (HTTPS/TLS) for all data in transit, access controls
+              limiting who can view your data, and secure credential storage - including for any
+              personal AI provider keys you choose to store with us.
             </p>
           </section>
 
           <section>
             <h2 className="text-2xl font-semibold text-white mb-4">
-              7. AI Processing — Important Note
+              8. Open Items Pending Legal Review
             </h2>
+            <p className="mb-3">
+              In the interest of transparency, here&apos;s what we know still needs a lawyer&apos;s
+              input before we can call this policy complete:
+            </p>
+            <ul className="list-disc pl-6 space-y-2">
+              <li>
+                The DeepSeek/China transfer question (Section 4) - our highest-priority open item
+              </li>
+              <li>
+                Confirming the specific legal basis (under GDPR Article 6) for each category of
+                processing described above
+              </li>
+              <li>
+                A complete, formal retention-period table for each data category, rather than the
+                event-based descriptions above
+              </li>
+              <li>
+                Confirming our controller details meet full Article 13 requirements
+              </li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-semibold text-white mb-4">9. Changes to This Policy</h2>
             <p>
-              When you use NiskBuild&apos;s AI-powered features, your prompts and related project
-              context are sent to our AI providers (Groq, and Together AI/Anthropic as backups) to
-              generate results. This content becomes part of your stored project. Please avoid
-              including sensitive personal data — yours or anyone else&apos;s — directly in prompts,
-              since this content is processed by external AI systems and retained as part of your
-              project history.
+              We&apos;ll update the &quot;Last updated&quot; date whenever we make changes, and make
+              a reasonable effort to notify you of material changes.
             </p>
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-white mb-4">8. International Data Transfers</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">10. Contact Us</h2>
             <p>
-              Because we use globally-operating service providers (listed in Section 3), your data may
-              be processed in countries outside your own, including the United States. Each of these
-              providers maintains their own data protection safeguards appropriate to international
-              transfers.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-white mb-4">9. Security</h2>
-            <p>
-              We use industry-standard measures to protect your data, including encrypted connections
-              (HTTPS/TLS) for all data in transit, access controls limiting who can view your data,
-              and secure credential storage. No system is perfectly secure, but we take reasonable,
-              ongoing steps to protect your information.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-white mb-4">10. Changes to This Policy</h2>
-            <p>
-              We&apos;ll update the &quot;Last updated&quot; date at the top of this page whenever we
-              make changes, and we&apos;ll make a reasonable effort to notify you of any material
-              changes.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold text-white mb-4">11. Contact Us</h2>
-            <p>
-              Questions, requests, or concerns about this policy or your data can be submitted through
-              your NiskBuild dashboard support system.
+              Questions or requests can be submitted through your NiskBuild dashboard support system.
             </p>
           </section>
         </div>
