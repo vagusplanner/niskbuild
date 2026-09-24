@@ -3,7 +3,6 @@ import Stripe from 'stripe';
 import { apiErrorResponse } from '@/lib/api-error';
 import { guardApiRequest } from '@/lib/api-auth';
 import { sendGoodbyeEmail } from '@/lib/goodbye-email';
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { purgeVagusPlannerUserData } from '@/lib/vp-gdpr/purge-user-data';
 import { purgeNiskBuildUserData } from '@/lib/nisk-gdpr/purge-user-data';
@@ -69,7 +68,6 @@ export async function POST(request: NextRequest) {
   if (!guard.ok) return guard.response;
 
   try {
-    const supabase = await createClient();
     const user = guard.user!;
     const body = await request.json().catch(() => ({}));
     const email = typeof body.email === 'string' ? body.email : '';
@@ -112,12 +110,31 @@ export async function POST(request: NextRequest) {
     }
 
     const userEmail = user.email;
+    if (!userEmail) {
+      return NextResponse.json({ error: 'Account email is required' }, { status: 400 });
+    }
 
-    const { data: profile } = await supabase
+    // CRITICAL: Capacitor (and any Bearer-auth client) authenticates via Authorization
+    // header in guardApiRequest, but createClient() is cookie-only. RLS then silently
+    // no-ops user-scoped deletes. Use the service-role client for all destructive steps
+    // after the user has been verified — otherwise profiles survive and
+    // auth.admin.deleteUser fails with "Database error deleting user", which previously
+    // returned Apple-prohibited "contact support to complete" language (Guideline 5.1.1v).
+    const admin = createAdminClient();
+
+    const { data: profile, error: profileReadError } = await admin
       .from('profiles')
       .select('subscription_id')
       .eq('id', user.id)
       .maybeSingle();
+
+    if (profileReadError) {
+      console.error('Profile read failed during account delete:', profileReadError);
+      return NextResponse.json(
+        { error: 'Could not load account billing state. Account was not deleted — try again.' },
+        { status: 502 }
+      );
+    }
 
     const subscriptionId =
       typeof profile?.subscription_id === 'string' ? profile.subscription_id.trim() : '';
@@ -130,7 +147,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           {
             error:
-              'Could not cancel your active subscription. Account was not deleted — update billing in Settings or contact support.',
+              'Could not cancel your active subscription. Account was not deleted — update billing in Settings, then try again.',
           },
           { status: 502 }
         );
@@ -141,11 +158,7 @@ export async function POST(request: NextRequest) {
     // Purge NiskBuild leftovers that would survive SET NULL / leave storage orphans.
     let niskPurge: Awaited<ReturnType<typeof purgeNiskBuildUserData>> | null = null;
     try {
-      const adminForNisk = createAdminClient();
-      if (!userEmail) {
-        return NextResponse.json({ error: 'Account email is required' }, { status: 400 });
-      }
-      niskPurge = await purgeNiskBuildUserData(adminForNisk, {
+      niskPurge = await purgeNiskBuildUserData(admin, {
         id: user.id,
         email: userEmail,
       });
@@ -155,7 +168,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error:
-            'Could not delete account personal data. Account was not deleted — try again or contact support.',
+            'Could not delete account personal data. Account was not deleted — try again.',
         },
         { status: 502 }
       );
@@ -164,46 +177,78 @@ export async function POST(request: NextRequest) {
     // Purge all firstparty.vp_* personal data + uploads BEFORE auth wipe.
     let vpPurge: Awaited<ReturnType<typeof purgeVagusPlannerUserData>> | null = null;
     try {
-      const adminForVp = createAdminClient();
-      vpPurge = await purgeVagusPlannerUserData(adminForVp, user.id);
+      vpPurge = await purgeVagusPlannerUserData(admin, user.id);
       console.log('VP GDPR purge complete for', user.id, vpPurge);
     } catch (err) {
       console.error('VP GDPR purge failed during account delete:', err);
       return NextResponse.json(
         {
           error:
-            'Could not delete Vagus Planner personal data. Account was not deleted — try again or contact support.',
+            'Could not delete Vagus Planner personal data. Account was not deleted — try again.',
         },
         { status: 502 }
       );
     }
 
     // Profile delete cascades organizations where this user is billing_owner_id.
-    await supabase.from('projects').delete().eq('user_id', user.id);
-    await supabase.from('profiles').delete().eq('id', user.id);
+    const { error: projectsError } = await admin
+      .from('projects')
+      .delete()
+      .eq('user_id', user.id);
+    if (projectsError) {
+      console.error('Projects delete failed during account delete:', projectsError);
+      return NextResponse.json(
+        {
+          error: 'Could not delete projects. Account was not deleted — try again.',
+        },
+        { status: 502 }
+      );
+    }
 
-    try {
-      const admin = createAdminClient();
-      const { error: authError } = await admin.auth.admin.deleteUser(user.id);
-      if (authError) {
-        console.error('Auth user delete error:', authError);
-        return NextResponse.json({
-          partial: true,
-          message: 'Projects and profile deleted. Contact support to complete account removal.',
-        });
+    const { error: profileDeleteError } = await admin
+      .from('profiles')
+      .delete()
+      .eq('id', user.id);
+    if (profileDeleteError) {
+      console.error('Profile delete failed during account delete:', profileDeleteError);
+      return NextResponse.json(
+        {
+          error: 'Could not delete profile. Account was not deleted — try again.',
+        },
+        { status: 502 }
+      );
+    }
+
+    const { error: authError } = await admin.auth.admin.deleteUser(user.id);
+    if (authError) {
+      console.error('Auth user delete error:', authError);
+      // Last-chance: leftover profile FK is the most common cause of
+      // "Database error deleting user". Retry profile wipe then auth once.
+      const { error: retryProfileError } = await admin
+        .from('profiles')
+        .delete()
+        .eq('id', user.id);
+      if (retryProfileError) {
+        console.error('Profile retry delete failed:', retryProfileError);
       }
-    } catch {
-      return NextResponse.json({
-        partial: true,
-        message: 'Projects and profile deleted. Contact support to complete account removal.',
-      });
+      const { error: retryAuthError } = await admin.auth.admin.deleteUser(user.id);
+      if (retryAuthError) {
+        console.error('Auth user delete retry error:', retryAuthError);
+        return NextResponse.json(
+          {
+            error:
+              'Could not finish removing account access. Personal data was cleared where possible — please try Delete Account again.',
+            code: 'AUTH_USER_DELETE_FAILED',
+            detail: retryAuthError.message,
+          },
+          { status: 502 }
+        );
+      }
     }
 
-    if (userEmail) {
-      void sendGoodbyeEmail(userEmail).catch((err) => {
-        console.error('Goodbye email failed:', err);
-      });
-    }
+    void sendGoodbyeEmail(userEmail).catch((err) => {
+      console.error('Goodbye email failed:', err);
+    });
 
     return NextResponse.json({
       success: true,

@@ -29,8 +29,16 @@ export default function AccountDeletionDialog({ isOpen, onClose, userEmail }) {
     try {
       const result = await base44.functions.invoke('deleteUserAccount', {});
       const payload = result?.data ?? result;
-      if (payload && payload.success === false) {
-        throw new Error(payload.error || payload.message || 'Delete failed');
+      // Treat anything other than explicit success as failure — including legacy
+      // `{ partial: true, message: '…contact support…' }` responses and thrown
+      // invoke errors that surface as `{ success: false, error }`.
+      if (!payload || payload.success !== true || payload.partial === true) {
+        throw new Error(
+          payload?.error ||
+            payload?.message ||
+            result?.error ||
+            'Delete failed'
+        );
       }
 
       toast.success(t('common.success') || 'Account deleted');

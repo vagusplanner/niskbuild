@@ -7,19 +7,20 @@ export const deleteUserAccount: VpFunctionHandler = async ({ request, user }) =>
     return { ok: false, error: 'Account email is required', status: 400 };
   }
 
-  const { ok, json } = await callInternalApi(request, '/api/account/delete', { email });
+  const { ok, status, json } = await callInternalApi(request, '/api/account/delete', { email });
 
-  if (!ok) {
-    const error = typeof json.error === 'string' ? json.error : 'Failed to delete account';
-    return { ok: false, error, status: 400 };
+  if (!ok || json.partial === true || json.success !== true) {
+    const error =
+      (typeof json.error === 'string' && json.error) ||
+      (typeof json.message === 'string' && json.message) ||
+      'Failed to delete account';
+    return { ok: false, error, status: status >= 400 ? status : 502 };
   }
 
   return {
     ok: true,
     data: {
-      success: json.success === true,
-      partial: json.partial === true,
-      message: typeof json.message === 'string' ? json.message : undefined,
+      success: true,
     },
   };
 };

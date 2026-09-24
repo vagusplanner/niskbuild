@@ -455,6 +455,15 @@ export default function SettingsWorkspace() {
         }
         throw new Error(data.error || 'Delete failed');
       }
+      if (data.partial === true || data.success !== true) {
+        throw new Error(
+          typeof data.message === 'string'
+            ? data.message
+            : typeof data.error === 'string'
+              ? data.error
+              : 'Delete failed'
+        );
+      }
       await signOut();
       window.location.href = '/landing-v2';
     } catch (err) {
