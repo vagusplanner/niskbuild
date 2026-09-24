@@ -45,7 +45,24 @@ const nextConfig: NextConfig = {
     "/api/export": [
       "./node_modules/@tailwindcss/oxide-*/**/*",
       "./node_modules/lightningcss-*/**/*",
+      // @import "tailwindcss" resolves these on disk at compile time — must be traced
+      // or serverless/export fails mid-request (and can surface as a non-JSON HTML 500).
+      "./node_modules/tailwindcss/index.css",
+      "./node_modules/tailwindcss/theme.css",
+      "./node_modules/tailwindcss/preflight.css",
+      "./node_modules/tailwindcss/utilities.css",
+      "./node_modules/tailwindcss/package.json",
     ],
+    "/api/previews": [
+      "./node_modules/@tailwindcss/oxide-*/**/*",
+      "./node_modules/lightningcss-*/**/*",
+      "./node_modules/tailwindcss/index.css",
+      "./node_modules/tailwindcss/theme.css",
+      "./node_modules/tailwindcss/preflight.css",
+      "./node_modules/tailwindcss/utilities.css",
+      "./node_modules/tailwindcss/package.json",
+    ],
+
     ...Object.fromEntries(
       VP_ADMIN_ARTIFACT_ROUTE_KEYS.map((key) => [key, VP_BUILD_TRACE_FILES])
     ),

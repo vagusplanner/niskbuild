@@ -7,7 +7,6 @@ import { applyExportWatermark } from '@/lib/export-policy';
 import { getAuthenticatedProfile } from '@/lib/server-profile';
 import { canExportCleanZip, resolveProductGatingBypass } from '@/lib/tier-access-server';
 import { cleanGeneratedCode } from '@/lib/cleanGeneratedCode';
-import { prepareShippableHtmlFiles } from '@/lib/ship-html';
 import {
   buildRobotsTxt,
   buildSitemapXml,
@@ -15,11 +14,16 @@ import {
 } from '@/lib/seo-inject';
 import { DEFAULT_SEO_SETTINGS, type ProjectSeoSettings } from '@/lib/seo-types';
 
+export const runtime = 'nodejs';
+
 export async function POST(request: NextRequest) {
   const guard = await guardApiRequest(request);
   if (!guard.ok) return guard.response;
 
   try {
+    // Dynamic import so a Tailwind/oxide load failure is caught below as JSON,
+    // not as a route-module crash that returns an HTML error page to the client.
+    const { prepareShippableHtmlFiles } = await import('@/lib/ship-html');
     const { user, profile } = await getAuthenticatedProfile();
     if (!user) {
       return NextResponse.json({ error: 'Sign in required to export' }, { status: 401 });

@@ -1640,7 +1640,19 @@ function BuilderContent() {
       });
 
       if (!response.ok) {
-        const err = await response.json();
+        // Server may return HTML (e.g. unhandled module crash) — never assume JSON.
+        const raw = await response.text();
+        let err: { error?: string; upgrade?: boolean } = {};
+        try {
+          err = JSON.parse(raw) as { error?: string; upgrade?: boolean };
+        } catch {
+          const sniff = raw.trimStart().slice(0, 120).replace(/\s+/g, ' ');
+          throw new Error(
+            sniff.startsWith('<')
+              ? `Export failed (HTTP ${response.status}): server returned HTML instead of JSON — check server logs`
+              : sniff || `Export failed (HTTP ${response.status})`
+          );
+        }
         if (response.status === 403 && err.upgrade) {
           const upgrade = confirm(
             `${err.error}\n\nOpen Pricing to upgrade?`
