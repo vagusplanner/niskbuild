@@ -66,7 +66,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Strip CDN + compile static Tailwind CSS for every HTML page in the bundle.
-    config.files = await prepareShippableHtmlFiles(config.files);
+    const ship = await prepareShippableHtmlFiles(config.files);
+    config.files = ship.files;
+    if (ship.fellBackToCdn) {
+      console.error(
+        '[api/export] Tailwind static compile fell back to CDN:',
+        ship.compileError || '(no message)'
+      );
+    }
 
     const zip = new JSZip();
     const root = zip.folder('generated-app');
@@ -104,6 +111,11 @@ export async function POST(request: NextRequest) {
       headers: {
         'Content-Type': 'application/zip',
         'Content-Disposition': `attachment; filename="niskbuild-export-${Date.now()}.zip"`,
+        // Observability for ship CSS path (compiled vs CDN fallback).
+        'X-NiskBuild-Ship-Css': ship.fellBackToCdn ? 'cdn-fallback' : 'compiled',
+        ...(ship.compileError
+          ? { 'X-NiskBuild-Ship-Css-Error': ship.compileError.slice(0, 200).replace(/[\r\n]+/g, ' ') }
+          : {}),
         ...(cleanExport ? {} : { 'X-NiskBuild-Watermarked': '1' }),
       },
     });

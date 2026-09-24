@@ -44,23 +44,33 @@ const nextConfig: NextConfig = {
     "/api/builder/*/deploy": VP_BUILD_TRACE_FILES,
     "/api/export": [
       "./node_modules/@tailwindcss/oxide-*/**/*",
+      "./node_modules/@tailwindcss/node/**/*",
       "./node_modules/lightningcss-*/**/*",
-      // @import "tailwindcss" resolves these on disk at compile time — must be traced
-      // or serverless/export fails mid-request (and can surface as a non-JSON HTML 500).
-      "./node_modules/tailwindcss/index.css",
-      "./node_modules/tailwindcss/theme.css",
-      "./node_modules/tailwindcss/preflight.css",
-      "./node_modules/tailwindcss/utilities.css",
-      "./node_modules/tailwindcss/package.json",
+      "./node_modules/lightningcss/**/*",
+      // @import "tailwindcss" must resolve on disk in the serverless bundle.
+      "./node_modules/tailwindcss/**/*",
     ],
     "/api/previews": [
       "./node_modules/@tailwindcss/oxide-*/**/*",
+      "./node_modules/@tailwindcss/node/**/*",
       "./node_modules/lightningcss-*/**/*",
-      "./node_modules/tailwindcss/index.css",
-      "./node_modules/tailwindcss/theme.css",
-      "./node_modules/tailwindcss/preflight.css",
-      "./node_modules/tailwindcss/utilities.css",
-      "./node_modules/tailwindcss/package.json",
+      "./node_modules/lightningcss/**/*",
+      "./node_modules/tailwindcss/**/*",
+    ],
+    // Alternate Next path shapes (picomatch contains:true)
+    "**/api/export/**": [
+      "./node_modules/@tailwindcss/oxide-*/**/*",
+      "./node_modules/@tailwindcss/node/**/*",
+      "./node_modules/lightningcss-*/**/*",
+      "./node_modules/lightningcss/**/*",
+      "./node_modules/tailwindcss/**/*",
+    ],
+    "**/api/previews/**": [
+      "./node_modules/@tailwindcss/oxide-*/**/*",
+      "./node_modules/@tailwindcss/node/**/*",
+      "./node_modules/lightningcss-*/**/*",
+      "./node_modules/lightningcss/**/*",
+      "./node_modules/tailwindcss/**/*",
     ],
 
     ...Object.fromEntries(

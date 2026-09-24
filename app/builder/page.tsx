@@ -1676,10 +1676,15 @@ function BuilderContent() {
       a.click();
       URL.revokeObjectURL(url);
       const watermarked = response.headers.get('X-NiskBuild-Watermarked') === '1';
+      const shipCss = response.headers.get('X-NiskBuild-Ship-Css') || 'unknown';
       showToast(
         watermarked
           ? '✅ ZIP exported with Sandbox watermark — upgrade for clean exports'
-          : '✅ ZIP exported — your code, your ownership'
+          : shipCss === 'compiled'
+            ? '✅ ZIP exported with compiled Tailwind CSS — your code, your ownership'
+            : shipCss === 'cdn-fallback'
+              ? '✅ ZIP exported (Tailwind CDN fallback — check server logs)'
+              : '✅ ZIP exported — your code, your ownership'
       );
     } catch (err) {
       showToast(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`, { error: true });

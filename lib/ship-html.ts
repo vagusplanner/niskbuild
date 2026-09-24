@@ -4,8 +4,16 @@
  *
  * Resilience: @tailwindcss/node is loaded dynamically and any compile failure falls back
  * to the CDN script so Export/Deploy never hard-fail with a non-JSON 500 HTML page.
+ *
+ * Production pitfall: @tailwindcss/node's default resolver uses `base: process.cwd()`.
+ * On Vercel serverless that often cannot resolve the `tailwindcss` package even when
+ * index.css is NFT-traced → "Can't resolve 'tailwindcss' in '/var/task'" → silent CDN
+ * fallback. We resolve the package absolute path and pass customCssResolver instead.
  */
 
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
+import { existsSync } from 'node:fs';
 import { cleanGeneratedCode } from '@/lib/cleanGeneratedCode';
 
 const TAILWIND_CDN_SCRIPT =
@@ -31,7 +39,87 @@ export type PrepareShippableHtmlResult = {
   usedTailwind: boolean;
   /** True when static compile failed and CDN was kept/restored. */
   fellBackToCdn?: boolean;
+  /** Last compile error message (when fellBackToCdn). */
+  compileError?: string;
 };
+
+/** Locate tailwindcss package root regardless of serverless cwd quirks. */
+export function resolveTailwindcssRoot(): string {
+  const tried: string[] = [];
+
+  const tryRequireFrom = (fromFile: string): string | null => {
+    try {
+      const req = createRequire(fromFile);
+      const pkgJson = req.resolve('tailwindcss/package.json');
+      return dirname(pkgJson);
+    } catch (err) {
+      tried.push(`${fromFile}: ${err instanceof Error ? err.message : String(err)}`);
+      return null;
+    }
+  };
+
+  // 1) From process.cwd()/package.json (local next start / monorepo root)
+  const fromCwd = tryRequireFrom(join(process.cwd(), 'package.json'));
+  if (fromCwd) return fromCwd;
+
+  // 2) Direct filesystem candidates (NFT layout on Vercel)
+  const fsCandidates = [
+    join(process.cwd(), 'node_modules', 'tailwindcss'),
+    join(process.cwd(), '.next', 'server', 'node_modules', 'tailwindcss'),
+    join(process.cwd(), '.next', 'node_modules', 'tailwindcss'),
+  ];
+  for (const dir of fsCandidates) {
+    if (existsSync(join(dir, 'index.css')) && existsSync(join(dir, 'package.json'))) {
+      return dir;
+    }
+  }
+
+  // 3) From @tailwindcss/node (always co-installed; works when cwd resolve fails)
+  try {
+    const nodeReq = createRequire(join(process.cwd(), 'package.json'));
+    const twNodePkg = nodeReq.resolve('@tailwindcss/node/package.json');
+    const fromTwNode = tryRequireFrom(twNodePkg);
+    if (fromTwNode) return fromTwNode;
+  } catch (err) {
+    tried.push(`@tailwindcss/node: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  throw new Error(
+    `Cannot locate tailwindcss package root (cwd=${process.cwd()}). Tried:\n${tried.join('\n')}`
+  );
+}
+
+function resolveTailwindStylesheet(id: string, twRoot: string): string | false {
+  const normalized = id.replace(/\\/g, '/');
+
+  if (
+    normalized === 'tailwindcss' ||
+    normalized === 'tailwindcss/index' ||
+    normalized === 'tailwindcss/index.css'
+  ) {
+    return join(twRoot, 'index.css');
+  }
+
+  const map: Record<string, string> = {
+    'tailwindcss/theme': 'theme.css',
+    'tailwindcss/theme.css': 'theme.css',
+    'tailwindcss/preflight': 'preflight.css',
+    'tailwindcss/preflight.css': 'preflight.css',
+    'tailwindcss/utilities': 'utilities.css',
+    'tailwindcss/utilities.css': 'utilities.css',
+  };
+  if (map[normalized]) {
+    return join(twRoot, map[normalized]);
+  }
+
+  // Relative imports from within the package (./theme.css etc.)
+  if (normalized.startsWith('.')) {
+    const abs = join(twRoot, normalized);
+    if (existsSync(abs)) return abs;
+  }
+
+  return false;
+}
 
 export function extractClassCandidates(...htmlDocuments: string[]): string[] {
   const set = new Set<string>();
@@ -101,21 +189,36 @@ function injectInlineCss(html: string, css: string): string {
   return `${style}\n${html}`;
 }
 
+function formatCompileError(err: unknown): string {
+  if (err instanceof Error) {
+    return err.stack ? `${err.message}\n${err.stack}` : err.message;
+  }
+  return String(err);
+}
+
 /**
  * Compile a static CSS bundle for the given utility class candidates (Tailwind v4).
- * Dynamic-imports @tailwindcss/node so a native/oxide load failure is catchable
- * (static import can crash the whole /api/export module → HTML 500 → client JSON.parse blowup).
+ * Uses an absolute package path + customCssResolver so Vercel serverless cwd
+ * cannot break `@import "tailwindcss"` resolution.
  */
 export async function compileTailwindCss(candidates: string[]): Promise<string> {
   if (candidates.length === 0) {
     return '/* NiskBuild: no Tailwind utility classes detected */\n';
   }
 
+  const twRoot = resolveTailwindcssRoot();
   const { compile, optimize } = await import('@tailwindcss/node');
+
   const { build } = await compile('@import "tailwindcss";', {
-    base: process.cwd(),
+    // Prefer package root over process.cwd() — cwd often cannot resolve on Vercel.
+    base: twRoot,
     onDependency() {},
+    customCssResolver: async (id, _base) => {
+      const resolved = resolveTailwindStylesheet(id, twRoot);
+      return resolved || false;
+    },
   });
+
   const raw = build(candidates);
   return optimize(raw, { minify: true }).code;
 }
@@ -150,15 +253,23 @@ export async function prepareShippableHtml(
 
     return { html, css, usedTailwind: true };
   } catch (err) {
-    console.error('[ship-html] Tailwind compile failed; falling back to CDN:', err);
+    const compileError = formatCompileError(err);
+    console.error('[ship-html] Tailwind compile failed; falling back to CDN:', compileError);
     return {
       html: injectCdnScript(cleaned),
       css: '',
       usedTailwind: true,
       fellBackToCdn: true,
+      compileError,
     };
   }
 }
+
+export type PrepareShippableHtmlFilesResult = {
+  files: Record<string, string>;
+  fellBackToCdn: boolean;
+  compileError?: string;
+};
 
 /**
  * Prepare a multi-file HTML app for ZIP export: shared styles.css + rewritten pages.
@@ -166,10 +277,12 @@ export async function prepareShippableHtml(
  */
 export async function prepareShippableHtmlFiles(
   files: Record<string, string>
-): Promise<Record<string, string>> {
+): Promise<PrepareShippableHtmlFilesResult> {
   const out: Record<string, string> = { ...files };
   const htmlPaths = Object.keys(out).filter((p) => /\.html?$/i.test(p));
-  if (htmlPaths.length === 0) return out;
+  if (htmlPaths.length === 0) {
+    return { files: out, fellBackToCdn: false };
+  }
 
   const cleanedDocs: Record<string, string> = {};
   let anyNeedsTw = false;
@@ -183,7 +296,7 @@ export async function prepareShippableHtmlFiles(
     for (const path of htmlPaths) {
       out[path] = stripTailwindCdn(cleanedDocs[path]);
     }
-    return out;
+    return { files: out, fellBackToCdn: false };
   }
 
   try {
@@ -196,13 +309,14 @@ export async function prepareShippableHtmlFiles(
       html = injectStylesheetLink(html, stylesheetHrefFor(path));
       out[path] = html;
     }
-    return out;
+    return { files: out, fellBackToCdn: false };
   } catch (err) {
-    console.error('[ship-html] Tailwind compile failed for ZIP; falling back to CDN:', err);
+    const compileError = formatCompileError(err);
+    console.error('[ship-html] Tailwind compile failed for ZIP; falling back to CDN:', compileError);
     for (const path of htmlPaths) {
       out[path] = injectCdnScript(cleanedDocs[path]);
     }
     delete out['styles.css'];
-    return out;
+    return { files: out, fellBackToCdn: true, compileError };
   }
 }
