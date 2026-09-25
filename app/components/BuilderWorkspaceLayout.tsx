@@ -98,6 +98,8 @@ export type BuilderWorkspaceLayoutProps = {
   onReuseBuilderTurnPrompt?: (prompt: string) => void;
   planMode: boolean;
   onPlanModeChange: (v: boolean) => void;
+  outputMode?: 'simple' | 'full-app';
+  onOutputModeChange?: (mode: 'simple' | 'full-app') => void;
   previewHtml: string;
   placeholderPreview: string;
   previewFrameClass: string;
@@ -615,6 +617,8 @@ function ChatPanelContent({
   onReuseBuilderTurnPrompt,
   planMode,
   onPlanModeChange,
+  outputMode = 'simple',
+  onOutputModeChange,
   promptSuggestions = [],
   editingPageLabel,
   promptHeightPx,
@@ -662,6 +666,8 @@ function ChatPanelContent({
   onReuseBuilderTurnPrompt?: (prompt: string) => void;
   planMode: boolean;
   onPlanModeChange: (v: boolean) => void;
+  outputMode?: 'simple' | 'full-app';
+  onOutputModeChange?: (mode: 'simple' | 'full-app') => void;
   promptSuggestions?: string[];
   editingPageLabel?: string;
   promptHeightPx: number;
@@ -777,6 +783,8 @@ function ChatPanelContent({
           editingPageLabel={editingPageLabel}
           planMode={planMode}
           onPlanModeChange={onPlanModeChange}
+          outputMode={outputMode}
+          onOutputModeChange={onOutputModeChange}
           promptAutosaveEnabled={promptAutosaveEnabled}
           onPromptAutosaveChange={onPromptAutosaveChange}
           subscriptionTier={subscriptionTier}
@@ -850,6 +858,8 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
     onReuseBuilderTurnPrompt,
     planMode,
     onPlanModeChange,
+    outputMode = 'simple',
+    onOutputModeChange,
     previewHtml,
     placeholderPreview,
     previewFrameClass,
@@ -1045,6 +1055,8 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
       onReuseBuilderTurnPrompt={onReuseBuilderTurnPrompt}
       planMode={planMode}
       onPlanModeChange={onPlanModeChange}
+      outputMode={outputMode}
+      onOutputModeChange={onOutputModeChange}
       promptSuggestions={promptSuggestions}
       editingPageLabel={editingPageLabel}
       promptHeightPx={promptHeightPx}
@@ -1099,6 +1111,8 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
       onReuseBuilderTurnPrompt={onReuseBuilderTurnPrompt}
       planMode={planMode}
       onPlanModeChange={onPlanModeChange}
+      outputMode={outputMode}
+      onOutputModeChange={onOutputModeChange}
       promptSuggestions={promptSuggestions}
       editingPageLabel={editingPageLabel}
       promptHeightPx={Math.min(promptHeightPx, 120)}

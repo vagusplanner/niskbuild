@@ -40,6 +40,17 @@ import {
   type ProgressStep,
 } from '@/lib/generation-progress';
 import { isFullAppAuditPrompt } from '@/lib/builder-audit-shared';
+import {
+  DEFAULT_BUILDER_OUTPUT_MODE,
+  type BuilderOutputMode,
+} from '@/lib/builder-output-mode';
+import {
+  fullAppFilesToProjectFiles,
+  fullAppPreviewPlaceholder,
+  fullAppPrimaryCode,
+  isFullAppProjectFiles,
+  parseFullAppBundle,
+} from '@/lib/full-app-bundle';
 import { injectPreviewPageNavScript } from '@/lib/preview-page-nav-inject';
 import type { NiskBuildPromptEntry } from '@/lib/niskbuild-config';
 import { parseNiskBuildConfig } from '@/lib/niskbuild-config';
@@ -218,6 +229,7 @@ function BuilderContent() {
   const [generationModelId, setGenerationModelId] = useState<GenerationModelId>(
     DEFAULT_GENERATION_MODEL_ID
   );
+  const [outputMode, setOutputMode] = useState<BuilderOutputMode>(DEFAULT_BUILDER_OUTPUT_MODE);
   const [showProOllamaBanner, setShowProOllamaBanner] = useState(false);
   const [projectLimit, setProjectLimit] = useState(1);
   const [showMobileExport, setShowMobileExport] = useState(false);
@@ -390,10 +402,11 @@ function BuilderContent() {
         projectFiles,
         projectId: activeProjectId,
         updatedAt: new Date().toISOString(),
+        outputMode,
       });
     }, 500);
     return () => window.clearTimeout(t);
-  }, [generatedCode, prompt, activeFile, projectFiles, activeProjectId]);
+  }, [generatedCode, prompt, activeFile, projectFiles, activeProjectId, outputMode]);
 
   useEffect(() => {
     const onExport = () => void handleExportZip();
@@ -539,13 +552,49 @@ function BuilderContent() {
     rawCode: string,
     status: string,
     entry?: NiskBuildPromptEntry,
-    overrides?: { activePage?: string; files?: ProjectFile[] }
+    overrides?: { activePage?: string; files?: ProjectFile[]; outputMode?: BuilderOutputMode }
   ) => {
+    const mode = overrides?.outputMode ?? outputMode;
     const targetPage = overrides?.activePage ?? activeFile;
     const filesSnapshot = overrides?.files ?? projectFiles;
     const hasExistingProject = isExportableCode(generatedCode);
-    // Never persist progress markers into editor / project files.
     const code = stripProgressMarkers(rawCode);
+
+    if (mode === 'full-app') {
+      const parsed = parseFullAppBundle(code);
+      if (parsed.fileCount === 0) {
+        setGeneratedCode(code);
+        setPreviewHtml(
+          fullAppPreviewPlaceholder({
+            error: 'Model did not return a valid multi-file Full App bundle. Try Generate again.',
+          })
+        );
+        setStatusMessage('❌ Full App parse failed — no files found');
+        return;
+      }
+      const files = fullAppFilesToProjectFiles(parsed.files);
+      const primary = fullAppPrimaryCode(parsed.files);
+      setProjectFiles(files);
+      setActiveFile(
+        files.find((f) => f.path === 'src/App.jsx' || f.path === 'src/App.tsx')?.path ||
+          files.find((f) => f.path === 'package.json')?.path ||
+          files[0]?.path ||
+          'package.json'
+      );
+      lastCodeLenRef.current = primary.length;
+      setGeneratedCode(primary);
+      setPreviewHtml(fullAppPreviewPlaceholder({ fileCount: files.length }));
+      if (!aiOriginalCodeRef.current) {
+        aiOriginalCodeRef.current = primary;
+      }
+      setStatusMessage(status);
+      setActiveEditorTab('preview');
+      if (entry) {
+        setPromptHistory((prev) => [...prev, { ...entry, target: 'full-app' }]);
+        fetchBlueprint(entry.prompt);
+      }
+      return;
+    }
 
     if (hasExistingProject && isHtmlPage(targetPage)) {
       const merged = mergeGeneratedIntoFiles(filesSnapshot, targetPage, code);
@@ -761,20 +810,33 @@ function BuilderContent() {
         activePage: snap.activeFile || 'index.html',
       });
     }
+    const restoredMode: BuilderOutputMode =
+      snap.outputMode === 'full-app' || isFullAppProjectFiles(filesForPreview)
+        ? 'full-app'
+        : snap.outputMode === 'simple'
+          ? 'simple'
+          : DEFAULT_BUILDER_OUTPUT_MODE;
+    setOutputMode(restoredMode);
     lastCodeLenRef.current = snap.generatedCode.length;
     setGeneratedCode(snap.generatedCode);
-    const preview = getPreviewHtmlForPage(
-      snap.activeFile || 'index.html',
-      filesForPreview,
-      snap.generatedCode
-    );
-    const pagePaths = listHtmlPages(filesForPreview).map((f) => f.path);
-    const withNav =
-      pagePaths.length > 1
-        ? injectPreviewPageNavScript(preview, pagePaths)
-        : preview;
-    setPreviewHtml(preparePreviewHtml(withNav));
-    if (isExportableCode(snap.generatedCode)) {
+    if (restoredMode === 'full-app') {
+      setPreviewHtml(
+        fullAppPreviewPlaceholder({ fileCount: filesForPreview.length })
+      );
+    } else {
+      const preview = getPreviewHtmlForPage(
+        snap.activeFile || 'index.html',
+        filesForPreview,
+        snap.generatedCode
+      );
+      const pagePaths = listHtmlPages(filesForPreview).map((f) => f.path);
+      const withNav =
+        pagePaths.length > 1
+          ? injectPreviewPageNavScript(preview, pagePaths)
+          : preview;
+      setPreviewHtml(preparePreviewHtml(withNav));
+    }
+    if (isExportableCode(snap.generatedCode) || isFullAppProjectFiles(filesForPreview)) {
       aiOriginalCodeRef.current = snap.generatedCode;
     }
     if (snap.projectId) setActiveProjectId(snap.projectId);
@@ -1283,7 +1345,9 @@ function BuilderContent() {
     let filesForGen = projectFiles;
     let activeForGen = activeFile;
 
-    const pageIntent = detectAddPageIntent(basePrompt);
+    const isFullAppGen = outputMode === 'full-app';
+
+    const pageIntent = !isFullAppGen ? detectAddPageIntent(basePrompt) : null;
     if (pageIntent && isExportableCode(generatedCode)) {
       const indexHtml =
         projectFiles.find((f) => f.path === 'index.html')?.content?.trim() || generatedCode;
@@ -1318,22 +1382,24 @@ function BuilderContent() {
     const activeHtmlForContext =
       filesForGen.find((f) => f.path === activeForGen)?.content?.trim() ||
       (activeForGen === 'index.html' && isExportableCode(generatedCode) ? generatedCode : '');
-    // AI-only: wraps userFacingPrompt with page HTML reference blocks. Never persist this.
-    const effectivePrompt = buildPageScopedPrompt(userFacingPrompt, ctx, {
-      indexHtml: indexHtmlForContext,
-      activeHtml: activeHtmlForContext,
-    });
+    // AI-only HTML page wrapper — never used for Full App mode.
+    const effectivePrompt = isFullAppGen
+      ? userFacingPrompt
+      : buildPageScopedPrompt(userFacingPrompt, ctx, {
+          indexHtml: indexHtmlForContext,
+          activeHtml: activeHtmlForContext,
+        });
     const historyEntry: NiskBuildPromptEntry = {
       prompt: userFacingPrompt,
       timestamp: new Date().toISOString(),
     };
     const narrationContext = formatNarrationContext({
-      pageLabel: ctx.pageLabel,
-      siteKind: ctx.siteKind,
+      pageLabel: isFullAppGen ? 'Full App' : ctx.pageLabel,
+      siteKind: isFullAppGen ? 'react-app' : ctx.siteKind,
       businessName: ctx.businessName,
       projectTitle: savedProjectTitle ?? ctx.projectTitle,
       primaryHeading: ctx.primaryHeading,
-      activePage: ctx.activePage,
+      activePage: isFullAppGen ? 'full-app' : ctx.activePage,
     });
 
     if (planMode && !promptOverride?.includes('TARGETED EDIT')) {
@@ -1349,7 +1415,11 @@ function BuilderContent() {
     setSelectedVisualElement(null);
     aiOriginalCodeRef.current = null;
     setGeneratedCode('// Generating...');
-    setPreviewHtml('<div style="padding:2rem;text-align:center;color:#94A3B8;background:#0B0F19;height:100%">🔄 Generating your app...</div>');
+    setPreviewHtml(
+      isFullAppGen
+        ? fullAppPreviewPlaceholder({ generating: true, fileCount: 0 })
+        : '<div style="padding:2rem;text-align:center;color:#94A3B8;background:#0B0F19;height:100%">🔄 Generating your app...</div>'
+    );
 
     const genStartedAt = performance.now();
     let clientTtfcMs: number | null = null;
@@ -1361,8 +1431,13 @@ function BuilderContent() {
       typeof window !== 'undefined' &&
       !['localhost', '127.0.0.1'].includes(window.location.hostname);
     const useLocalPath =
+      !isFullAppGen &&
       !onProductionHost &&
       (sandbox || (useLocalOllama && canUseLocalOllama(subscriptionTier)));
+
+    if (isFullAppGen && useLocalOllama && !onProductionHost) {
+      setStatusMessage('⚛️ Full App mode uses cloud generation (local Ollama skipped for this run)');
+    }
 
     if (useLocalPath) {
       setStatusMessage('🖥️ Generating via local Ollama...');
@@ -1464,9 +1539,13 @@ function BuilderContent() {
     }
 
     setStatusMessage(
-      sandbox
-        ? '☁️ Generating with your free trial cloud credits...'
-        : '☁️ Generating with cloud AI (live)...'
+      isFullAppGen
+        ? sandbox
+          ? '⚛️ Generating Full App (React + Vite) with trial cloud credits…'
+          : '⚛️ Generating Full App (React + Vite) with cloud AI…'
+        : sandbox
+          ? '☁️ Generating with your free trial cloud credits...'
+          : '☁️ Generating with cloud AI (live)...'
     );
 
     try {
@@ -1487,6 +1566,19 @@ function BuilderContent() {
             ) {
               clientTtfcMs = Math.round(performance.now() - genStartedAt);
             }
+            if (isFullAppGen) {
+              const partial = parseFullAppBundle(accumulated);
+              if (partial.fileCount > 0) {
+                setProjectFiles(fullAppFilesToProjectFiles(partial.files));
+              }
+              setPreviewHtml(
+                fullAppPreviewPlaceholder({
+                  generating: true,
+                  fileCount: partial.fileCount,
+                })
+              );
+              return;
+            }
             const displayCode = stripProgressMarkers(accumulated);
             if (!(ctx.isExistingProject && isHtmlPage(activeForGen) && activeForGen !== 'index.html')) {
               setGeneratedCode(displayCode);
@@ -1500,7 +1592,11 @@ function BuilderContent() {
             }, PREVIEW_STREAM_DEBOUNCE_MS);
           },
         },
-        { narrationContext, modelId: generationModelId }
+        {
+          narrationContext,
+          modelId: generationModelId,
+          outputMode: isFullAppGen ? 'full-app' : 'simple',
+        }
       );
 
       const durationMs = Math.round(performance.now() - genStartedAt);
@@ -1587,23 +1683,40 @@ function BuilderContent() {
       }
       applyGeneratedCode(
         code,
-        '✅ Generated via Cloud AI (live)',
+        isFullAppGen
+          ? '✅ Full App generated (React + Vite) — inspect files in the tree'
+          : '✅ Generated via Cloud AI (live)',
         historyEntry,
-        { activePage: activeForGen, files: filesForGen }
+        {
+          activePage: activeForGen,
+          files: filesForGen,
+          outputMode: isFullAppGen ? 'full-app' : 'simple',
+        }
       );
-      const cloudMerged = mergeGeneratedIntoFiles(filesForGen, activeForGen, code);
+      const cloudMerged = isFullAppGen
+        ? fullAppFilesToProjectFiles(parseFullAppBundle(code).files)
+        : mergeGeneratedIntoFiles(filesForGen, activeForGen, code);
+      const cloudPrimary = isFullAppGen
+        ? fullAppPrimaryCode(parseFullAppBundle(code).files)
+        : code;
       const cloudProjectId = await persistGenerationAfterSuccess(
-        code,
+        cloudPrimary,
         userFacingPrompt,
         selectedModelMeta.creditCost,
-        cloudMerged,
-        activeForGen
+        cloudMerged.length ? cloudMerged : filesForGen,
+        isFullAppGen
+          ? cloudMerged.find((f) => f.path === 'src/App.jsx')?.path ||
+              cloudMerged[0]?.path ||
+              'package.json'
+          : activeForGen
       );
       void recordBuilderTurn(
         {
           prompt: userFacingPrompt,
           outcome: 'built',
-          outcome_detail: `Generated via ${selectedModelMeta.shortLabel}`,
+          outcome_detail: isFullAppGen
+            ? `Full App via ${selectedModelMeta.shortLabel} (${cloudMerged.length} files)`
+            : `Generated via ${selectedModelMeta.shortLabel}`,
           model_id: selectedModelMeta.id,
           model_label: selectedModelMeta.shortLabel,
           credits_used: selectedModelMeta.creditCost,
@@ -2071,15 +2184,23 @@ function BuilderContent() {
     const resolved = resolveProjectFiles(project.generated_code, project.files_json);
     setProjectFiles(resolved.files);
     setActiveFile(resolved.activeFile);
+    const loadedMode: BuilderOutputMode = isFullAppProjectFiles(resolved.files)
+      ? 'full-app'
+      : 'simple';
+    setOutputMode(loadedMode);
     lastCodeLenRef.current = project.generated_code.length;
     setGeneratedCode(project.generated_code);
-    const preview = getPreviewHtmlForPage(
-      resolved.activeFile,
-      resolved.files,
-      project.generated_code
-    );
-    setPreviewHtml(wrapPreviewHtml(preview));
-    if (isExportableCode(project.generated_code)) {
+    if (loadedMode === 'full-app') {
+      setPreviewHtml(fullAppPreviewPlaceholder({ fileCount: resolved.files.length }));
+    } else {
+      const preview = getPreviewHtmlForPage(
+        resolved.activeFile,
+        resolved.files,
+        project.generated_code
+      );
+      setPreviewHtml(wrapPreviewHtml(preview));
+    }
+    if (isExportableCode(project.generated_code) || isFullAppProjectFiles(resolved.files)) {
       aiOriginalCodeRef.current = project.generated_code;
       saveWorkspaceSnapshot({
         generatedCode: project.generated_code,
@@ -2088,6 +2209,7 @@ function BuilderContent() {
         projectFiles: resolved.files,
         projectId: project.id,
         updatedAt: new Date().toISOString(),
+        outputMode: loadedMode,
       });
     }
     setStatusMessage(`📂 Loaded: ${project.title}`);
@@ -2118,14 +2240,16 @@ function BuilderContent() {
 
   const handleNewProject = () => {
     if (
-      isExportableCode(generatedCode) &&
+      (isExportableCode(generatedCode) || isFullAppProjectFiles(projectFiles)) &&
       !confirm('Start a new project? Current unsaved work will be cleared.')
     ) {
       return;
     }
     setPrompt('');
     setGeneratedCode('');
-    setPreviewHtml(PLACEHOLDER_PREVIEW);
+    setPreviewHtml(
+      outputMode === 'full-app' ? fullAppPreviewPlaceholder() : PLACEHOLDER_PREVIEW
+    );
     setProjectFiles(buildProjectFiles(''));
     setActiveFile('index.html');
     setPromptHistory([]);
@@ -2177,7 +2301,7 @@ function BuilderContent() {
   }
 
   const userName = user?.email?.split('@')[0];
-  const canAct = isExportableCode(generatedCode);
+  const canAct = isExportableCode(generatedCode) || isFullAppProjectFiles(projectFiles);
   const canPwa = canExportPwa(subscriptionTier, subscriptionStatus);
   const canNative = canExportNative(subscriptionTier, subscriptionStatus);
   const canVisualEdit = canUseVisualEditor(subscriptionTier, subscriptionStatus);
@@ -2323,6 +2447,8 @@ function BuilderContent() {
           }}
           planMode={planMode}
           onPlanModeChange={setPlanMode}
+          outputMode={outputMode}
+          onOutputModeChange={setOutputMode}
           previewHtml={previewHtml}
           placeholderPreview={PLACEHOLDER_PREVIEW}
           previewFrameClass={previewFrameClass}
@@ -2388,7 +2514,10 @@ function BuilderContent() {
           onAddPage={handleAddPage}
           onRenamePage={handleRenamePage}
           onDeletePage={handleDeletePage}
-          canAddPage={canAct || !isExportableCode(generatedCode)}
+          canAddPage={
+            outputMode !== 'full-app' &&
+            (canAct || !isExportableCode(generatedCode))
+          }
           onRunExportAudit={() => void runExportAudit()}
           codeEditor={
             <CodeEditor

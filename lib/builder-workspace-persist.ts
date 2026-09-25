@@ -23,6 +23,8 @@ export type BuilderWorkspaceSnapshot = {
   projectFiles: ProjectFile[];
   projectId: string | null;
   updatedAt: string;
+  /** simple = HTML; full-app = React+Vite multi-file */
+  outputMode?: 'simple' | 'full-app';
 };
 
 export function deriveProjectTitle(prompt: string): string {
@@ -85,6 +87,10 @@ export function loadWorkspaceSnapshot(): BuilderWorkspaceSnapshot | null {
       projectFiles: Array.isArray(parsed.projectFiles) ? parsed.projectFiles : [],
       projectId: parsed.projectId ?? getActiveProjectIdLocal(),
       updatedAt: parsed.updatedAt || new Date(0).toISOString(),
+      outputMode:
+        parsed.outputMode === 'full-app' || parsed.outputMode === 'simple'
+          ? parsed.outputMode
+          : undefined,
     };
   } catch {
     return null;

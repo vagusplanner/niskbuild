@@ -104,11 +104,15 @@ export const CONTINUE_GENERATION_USER_MESSAGE = `Continue exactly where you left
 
 export function buildContinuationMessages(
   originalPrompt: string,
-  partialCode: string
+  partialCode: string,
+  continueUserMessage?: string
 ): Array<{ role: 'user' | 'assistant'; content: string }> {
   return [
     { role: 'user', content: originalPrompt },
     { role: 'assistant', content: stripGenerationFences(partialCode) },
-    { role: 'user', content: CONTINUE_GENERATION_USER_MESSAGE },
+    {
+      role: 'user',
+      content: continueUserMessage?.trim() || CONTINUE_GENERATION_USER_MESSAGE,
+    },
   ];
 }

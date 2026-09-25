@@ -1,6 +1,7 @@
 /** Client helper — read SSE from /api/cloud-generate/stream (narration + code) */
 
 export const CLOUD_GENERATE_STREAM_TIMEOUT_MS = 120_000;
+export const CLOUD_GENERATE_FULL_APP_TIMEOUT_MS = 180_000;
 
 export type CloudGenerateStreamCallbacks = {
   onNarration?: (accumulated: string, delta: string) => void;
@@ -12,13 +13,21 @@ export async function readCloudGenerateStream(
   prompt: string,
   projectId: string | null,
   callbacks: CloudGenerateStreamCallbacks | ((accumulated: string, delta: string) => void),
-  options?: { narrationContext?: string; modelId?: string }
+  options?: {
+    narrationContext?: string;
+    modelId?: string;
+    outputMode?: 'simple' | 'full-app';
+  }
 ): Promise<{ code: string; narration: string; error?: string }> {
   const normalized: CloudGenerateStreamCallbacks =
     typeof callbacks === 'function' ? { onCodeChunk: callbacks } : callbacks;
 
+  const timeoutMs =
+    options?.outputMode === 'full-app'
+      ? CLOUD_GENERATE_FULL_APP_TIMEOUT_MS
+      : CLOUD_GENERATE_STREAM_TIMEOUT_MS;
   const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), CLOUD_GENERATE_STREAM_TIMEOUT_MS);
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
 
   let res: Response;
   try {
@@ -32,6 +41,7 @@ export async function readCloudGenerateStream(
         projectId,
         narrationContext: options?.narrationContext,
         modelId: options?.modelId,
+        outputMode: options?.outputMode ?? 'simple',
       }),
     });
   } catch (err) {
@@ -40,7 +50,7 @@ export async function readCloudGenerateStream(
       return {
         code: '',
         narration: '',
-        error: 'Generation timed out after 120 seconds. Please try again.',
+        error: `Generation timed out after ${Math.round(timeoutMs / 1000)} seconds. Please try again.`,
       };
     }
     return { code: '', narration: '', error: 'Stream failed' };
@@ -62,7 +72,7 @@ export async function readCloudGenerateStream(
   let buffer = '';
   let code = '';
   let narration = '';
-  const streamDeadline = Date.now() + CLOUD_GENERATE_STREAM_TIMEOUT_MS;
+  const streamDeadline = Date.now() + timeoutMs;
 
   while (true) {
     if (Date.now() > streamDeadline) {
@@ -70,7 +80,7 @@ export async function readCloudGenerateStream(
       return {
         code,
         narration,
-        error: 'Generation timed out after 120 seconds. Please try again.',
+        error: `Generation timed out after ${Math.round(timeoutMs / 1000)} seconds. Please try again.`,
       };
     }
 
@@ -83,7 +93,7 @@ export async function readCloudGenerateStream(
         return {
           code,
           narration,
-          error: 'Generation timed out after 120 seconds. Please try again.',
+          error: `Generation timed out after ${Math.round(timeoutMs / 1000)} seconds. Please try again.`,
         };
       }
       return { code, narration, error: 'Stream interrupted' };

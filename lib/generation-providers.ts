@@ -76,6 +76,8 @@ export async function streamOpenAICompatible(
      * used for same-model truncation continues.
      */
     messages?: ChatMessage[];
+    /** Override default HTML system prompt (e.g. Full App React bundle). */
+    systemPrompt?: string;
   }
 ): Promise<StreamGenResult> {
   try {
@@ -83,10 +85,11 @@ export async function streamOpenAICompatible(
     const useMaxCompletion =
       options.useMaxCompletionTokens ?? openAIUsesMaxCompletionTokens(options.model);
     const allowTemperature = openAIAllowsCustomTemperature(options.model);
+    const systemPrompt = options.systemPrompt ?? HTML_CODE_SYSTEM_PROMPT;
     const messages: ChatMessage[] = options.messages?.length
       ? options.messages
       : [
-          { role: 'system', content: HTML_CODE_SYSTEM_PROMPT },
+          { role: 'system', content: systemPrompt },
           { role: 'user', content: prompt },
         ];
     // DeepSeek-only `thinking` / OpenAI max_completion_tokens are not all on SDK types.
@@ -143,13 +146,20 @@ export async function streamOpenAICompatibleContinue(
     maxTokens?: number;
     deepseekDisableThinking?: boolean;
     useMaxCompletionTokens?: boolean;
+    systemPrompt?: string;
+    continueUserMessage?: string;
   }
 ): Promise<StreamGenResult> {
-  const turns = buildContinuationMessages(originalPrompt, partialCode);
+  const systemPrompt = options.systemPrompt ?? HTML_CODE_SYSTEM_PROMPT;
+  const turns = buildContinuationMessages(
+    originalPrompt,
+    partialCode,
+    options.continueUserMessage
+  );
   return streamOpenAICompatible(originalPrompt, {
     ...options,
     messages: [
-      { role: 'system', content: HTML_CODE_SYSTEM_PROMPT },
+      { role: 'system', content: systemPrompt },
       ...turns,
     ],
   });
@@ -163,6 +173,7 @@ export async function streamWithAnthropicModel(
   options?: {
     maxTokens?: number;
     messages?: Array<{ role: 'user' | 'assistant'; content: string }>;
+    systemPrompt?: string;
   }
 ): Promise<StreamGenResult> {
   try {
@@ -172,7 +183,7 @@ export async function streamWithAnthropicModel(
       model: apiModelId,
       max_tokens: options?.maxTokens ?? CODE_MAX_TOKENS,
       ...(allowSampling ? { temperature: 0.7 } : {}),
-      system: HTML_CODE_SYSTEM_PROMPT,
+      system: options?.systemPrompt ?? HTML_CODE_SYSTEM_PROMPT,
       messages: options?.messages ?? [{ role: 'user', content: prompt }],
     });
 
@@ -206,7 +217,8 @@ export async function streamWithGemini(
   prompt: string,
   apiModelId: string,
   onDelta: (text: string) => void,
-  apiKeyOverride?: string | null
+  apiKeyOverride?: string | null,
+  systemPrompt?: string
 ): Promise<StreamGenResult> {
   const apiKey = getGeminiApiKey(apiKeyOverride);
   if (!apiKey) return { ok: false, error: 'Gemini API key not configured (GEMINI_API_KEY)' };
@@ -220,7 +232,9 @@ export async function streamWithGemini(
         'x-goog-api-key': apiKey,
       },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: HTML_CODE_SYSTEM_PROMPT }] },
+        systemInstruction: {
+          parts: [{ text: systemPrompt ?? HTML_CODE_SYSTEM_PROMPT }],
+        },
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         generationConfig: {
           temperature: 0.7,
@@ -287,14 +301,15 @@ export async function streamWithGemini(
 /** Emergency fallback when DeepSeek is unset — same 1-credit baseline cost. */
 export async function streamWithGroqFallback(
   prompt: string,
-  onDelta: (text: string) => void
+  onDelta: (text: string) => void,
+  systemPrompt?: string
 ): Promise<StreamGenResult> {
   const groq = getGroqClient();
   if (!groq) return { ok: false, error: 'Groq API key not configured' };
   try {
     const stream = await groq.chat.completions.create({
       messages: [
-        { role: 'system', content: HTML_CODE_SYSTEM_PROMPT },
+        { role: 'system', content: systemPrompt ?? HTML_CODE_SYSTEM_PROMPT },
         { role: 'user', content: prompt },
       ],
       model: GROQ_CODE_MODEL,
@@ -344,26 +359,31 @@ export function resolveByocSkip(
   return { skipCredits: false, apiKey: null };
 }
 
+export type StreamGenerationOptions = {
+  useOwnKeys?: boolean;
+  keys?: ProviderKeyBundle;
+  /** Override HTML system prompt (Full App React bundle, etc.). */
+  systemPrompt?: string;
+  continueUserMessage?: string;
+  maxTokens?: number;
+};
+
 export async function streamSelectedGenerationModel(
   prompt: string,
   model: GenerationModel,
   onDelta: (text: string) => void,
-  options?: {
-    useOwnKeys?: boolean;
-    keys?: ProviderKeyBundle;
-  }
+  options?: StreamGenerationOptions
 ): Promise<StreamGenResult> {
   const keys = options?.keys ?? {};
   const byoc = resolveByocSkip(model.provider, !!options?.useOwnKeys, keys);
-  // Prefer matching BYOC key when present; else platform env.
   const preferKey = byoc.apiKey;
+  const systemPrompt = options?.systemPrompt;
 
   if (model.provider === 'deepseek') {
     const client = getDeepSeekClient(preferKey);
     if (!client) {
-      // Platform DeepSeek missing — fall back to Groq for the default 1-credit path only.
       if (model.creditCost === 1) {
-        return streamWithGroqFallback(prompt, onDelta);
+        return streamWithGroqFallback(prompt, onDelta, systemPrompt);
       }
       return { ok: false, error: 'DeepSeek API key not configured (DEEPSEEK_API_KEY)' };
     }
@@ -372,12 +392,11 @@ export async function streamSelectedGenerationModel(
       model: model.apiModelId,
       onDelta,
       deepseekDisableThinking: true,
+      systemPrompt,
     });
-    // Empty content after a successful stream is a known DeepSeek thinking/budget footgun.
-    // For the default 1-credit path, fall back to Groq rather than fail the builder.
     if (!result.ok && result.error === 'Model returned empty code' && model.creditCost === 1) {
       console.warn('[generation] DeepSeek returned empty code — falling back to Groq');
-      return streamWithGroqFallback(prompt, onDelta);
+      return streamWithGroqFallback(prompt, onDelta, systemPrompt);
     }
     return result;
   }
@@ -390,17 +409,18 @@ export async function streamSelectedGenerationModel(
       model: model.apiModelId,
       onDelta,
       useMaxCompletionTokens: true,
+      systemPrompt,
     });
   }
 
   if (model.provider === 'anthropic') {
     const key = preferKey || process.env.ANTHROPIC_API_KEY?.trim();
     if (!key) return { ok: false, error: 'Anthropic API key not configured' };
-    return streamWithAnthropicModel(prompt, key, model.apiModelId, onDelta);
+    return streamWithAnthropicModel(prompt, key, model.apiModelId, onDelta, { systemPrompt });
   }
 
   if (model.provider === 'google') {
-    return streamWithGemini(prompt, model.apiModelId, onDelta, preferKey);
+    return streamWithGemini(prompt, model.apiModelId, onDelta, preferKey, systemPrompt);
   }
 
   return { ok: false, error: `Unsupported provider: ${model.provider}` };
@@ -415,23 +435,26 @@ export async function continueSelectedGenerationModel(
   partialCode: string,
   model: GenerationModel,
   onDelta: (text: string) => void,
-  options?: {
-    useOwnKeys?: boolean;
-    keys?: ProviderKeyBundle;
-    maxTokens?: number;
-  }
+  options?: StreamGenerationOptions
 ): Promise<StreamGenResult> {
   const keys = options?.keys ?? {};
   const byoc = resolveByocSkip(model.provider, !!options?.useOwnKeys, keys);
   const preferKey = byoc.apiKey;
   const maxTokens = options?.maxTokens ?? CODE_MAX_TOKENS;
+  const systemPrompt = options?.systemPrompt;
+  const continueUserMessage = options?.continueUserMessage;
 
   if (model.provider === 'anthropic') {
     const key = preferKey || process.env.ANTHROPIC_API_KEY?.trim();
     if (!key) return { ok: false, error: 'Anthropic API key not configured' };
     return streamWithAnthropicModel(originalPrompt, key, model.apiModelId, onDelta, {
       maxTokens,
-      messages: buildContinuationMessages(originalPrompt, partialCode),
+      systemPrompt,
+      messages: buildContinuationMessages(
+        originalPrompt,
+        partialCode,
+        continueUserMessage
+      ),
     });
   }
 
@@ -439,8 +462,9 @@ export async function continueSelectedGenerationModel(
     const client = getDeepSeekClient(preferKey);
     if (!client) {
       return streamWithGroqFallback(
-        `${originalPrompt}\n\nContinue the HTML from where it left off. Output ONLY the continuation (no DOCTYPE replay).\n\nPartial so far:\n${partialCode.slice(-6000)}`,
-        onDelta
+        `${originalPrompt}\n\nContinue from where it left off. Output ONLY the continuation.\n\nPartial so far:\n${partialCode.slice(-6000)}`,
+        onDelta,
+        systemPrompt
       );
     }
     const cont = await streamOpenAICompatibleContinue(originalPrompt, partialCode, {
@@ -449,12 +473,15 @@ export async function continueSelectedGenerationModel(
       onDelta,
       maxTokens,
       deepseekDisableThinking: true,
+      systemPrompt,
+      continueUserMessage,
     });
     if (!cont.ok && model.creditCost === 1) {
       console.warn('[generation] DeepSeek continue failed — falling back to Groq');
       return streamWithGroqFallback(
-        `${originalPrompt}\n\nContinue the HTML from where it left off. Output ONLY the continuation (no DOCTYPE replay).\n\nPartial so far:\n${partialCode.slice(-6000)}`,
-        onDelta
+        `${originalPrompt}\n\nContinue from where it left off. Output ONLY the continuation.\n\nPartial so far:\n${partialCode.slice(-6000)}`,
+        onDelta,
+        systemPrompt
       );
     }
     return cont;
@@ -469,13 +496,14 @@ export async function continueSelectedGenerationModel(
       onDelta,
       maxTokens,
       useMaxCompletionTokens: true,
+      systemPrompt,
+      continueUserMessage,
     });
   }
 
-  // Gemini (and anything else): Groq emergency continue with more partial context.
   return streamWithGroqFallback(
-    `${originalPrompt}\n\nContinue the HTML from where it left off. Output ONLY the continuation (no DOCTYPE replay). Close any open <script>/<style> and finish with </html>.\n\nPartial so far:\n${partialCode.slice(-6000)}`,
-    onDelta
+    `${originalPrompt}\n\nContinue from where it left off. Output ONLY the continuation.\n\nPartial so far:\n${partialCode.slice(-6000)}`,
+    onDelta,
+    systemPrompt
   );
 }
-

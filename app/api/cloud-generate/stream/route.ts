@@ -21,6 +21,11 @@ import {
   assessGenerationCompleteness,
   truncationUserMessage,
 } from '@/lib/generation-completeness';
+import {
+  assessFullAppCompleteness,
+  fullAppTruncationUserMessage,
+} from '@/lib/full-app-bundle';
+import { FULL_APP_CONTINUE_USER_MESSAGE, FULL_APP_SYSTEM_PROMPT } from '@/lib/full-app-system-prompt';
 import { countProgressMarkers } from '@/lib/generation-progress';
 import {
   canSelectGenerationModel,
@@ -62,15 +67,21 @@ export async function POST(request: NextRequest) {
   }
 
   const bodyJson = await request.json();
-  const { prompt, projectId, narrationContext, modelId } = bodyJson as {
+  const { prompt, projectId, narrationContext, modelId, outputMode } = bodyJson as {
     prompt?: string;
     projectId?: string;
     narrationContext?: string;
     modelId?: string;
+    outputMode?: string;
   };
   if (!prompt?.trim()) {
     return new Response(JSON.stringify({ error: 'Prompt is required' }), { status: 400 });
   }
+
+  const isFullApp = outputMode === 'full-app';
+  const systemPrompt = isFullApp ? FULL_APP_SYSTEM_PROMPT : undefined;
+  const continueUserMessage = isFullApp ? FULL_APP_CONTINUE_USER_MESSAGE : undefined;
+  const maxContinueAttempts = isFullApp ? 4 : MAX_CONTINUE_ATTEMPTS;
 
   const selectedModel = getGenerationModel(
     isGenerationModelId(modelId) ? modelId : undefined
@@ -175,7 +186,7 @@ export async function POST(request: NextRequest) {
           try {
             await streamBuildNarration(
               prompt,
-              'html',
+              isFullApp ? 'vp' : 'html',
               (accumulated) => {
                 send({ kind: 'narration', text: accumulated });
               },
@@ -190,7 +201,9 @@ export async function POST(request: NextRequest) {
         const codePromise = (async () => {
           send({
             kind: 'status',
-            text: `Generating with ${selectedModel.shortLabel} — preview updates as code streams…`,
+            text: isFullApp
+              ? `Generating Full App (React + Vite) with ${selectedModel.shortLabel}…`
+              : `Generating with ${selectedModel.shortLabel} — preview updates as code streams…`,
           });
 
           let streamedCode = false;
@@ -202,7 +215,7 @@ export async function POST(request: NextRequest) {
               streamedCode = true;
               send({ kind: 'code', text });
             },
-            { useOwnKeys, keys: keyBundle }
+            { useOwnKeys, keys: keyBundle, systemPrompt }
           );
 
           if (!result.ok) {
@@ -233,15 +246,29 @@ export async function POST(request: NextRequest) {
           send({ kind: 'code', text: finalCode });
         }
 
-        let completeness = assessGenerationCompleteness(finalCode, stopReason);
+        let completeness = isFullApp
+          ? (() => {
+              const r = assessFullAppCompleteness(finalCode, stopReason);
+              return {
+                complete: r.complete,
+                reason: r.reason,
+                missing: r.missing,
+              };
+            })()
+          : {
+              ...assessGenerationCompleteness(finalCode, stopReason),
+              missing: [] as string[],
+            };
         for (
           let attempt = 0;
-          !completeness.complete && attempt < MAX_CONTINUE_ATTEMPTS;
+          !completeness.complete && attempt < maxContinueAttempts;
           attempt++
         ) {
           send({
             kind: 'status',
-            text: 'Output was cut off — continuing generation…',
+            text: isFullApp
+              ? 'Full App output was cut off — continuing file generation…'
+              : 'Output was cut off — continuing generation…',
           });
 
           const onContinueDelta = (text: string) => {
@@ -260,12 +287,26 @@ export async function POST(request: NextRequest) {
               useOwnKeys,
               keys: keyBundle,
               maxTokens: CONTINUE_MAX_TOKENS,
+              systemPrompt,
+              continueUserMessage,
             }
           );
 
           if (!cont.ok) break;
           stopReason = cont.stopReason ?? null;
-          completeness = assessGenerationCompleteness(finalCode, stopReason);
+          if (isFullApp) {
+            const r = assessFullAppCompleteness(finalCode, stopReason);
+            completeness = {
+              complete: r.complete,
+              reason: r.reason,
+              missing: r.missing,
+            };
+          } else {
+            completeness = {
+              ...assessGenerationCompleteness(finalCode, stopReason),
+              missing: [],
+            };
+          }
         }
 
         if (!completeness.complete) {
@@ -280,7 +321,16 @@ export async function POST(request: NextRequest) {
             progressSource: markerCount > 0 ? 'markers' : 'none',
             markerCount,
           });
-          throw new Error(truncationUserMessage(completeness.reason));
+          throw new Error(
+            isFullApp
+              ? fullAppTruncationUserMessage(
+                  completeness.reason,
+                  completeness.missing ?? []
+                )
+              : truncationUserMessage(
+                  completeness.reason as Parameters<typeof truncationUserMessage>[0]
+                )
+          );
         }
 
         const durationMs = Date.now() - streamStartedAt;

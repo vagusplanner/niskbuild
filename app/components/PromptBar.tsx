@@ -27,6 +27,9 @@ interface PromptBarProps {
   /** Persist prompt to localStorage (HTML builder v1) */
   promptAutosaveEnabled?: boolean;
   onPromptAutosaveChange?: (enabled: boolean) => void;
+  /** Simple (HTML) vs Full App (React+Vite multi-file) */
+  outputMode?: 'simple' | 'full-app';
+  onOutputModeChange?: (mode: 'simple' | 'full-app') => void;
   variant?: 'bottom' | 'sidebar' | 'dock' | 'cursor';
   /**
    * HTML builder dock redesign: parent renders activity + suggestions outside the
@@ -103,6 +106,8 @@ export default function PromptBar({
   onPlanModeChange,
   promptAutosaveEnabled,
   onPromptAutosaveChange,
+  outputMode = 'simple',
+  onOutputModeChange,
   variant = 'bottom',
   externalChrome = false,
   subscriptionTier = 'free',
@@ -209,6 +214,43 @@ export default function PromptBar({
           <span className="text-xs text-nisk-muted">Plan</span>
         </label>
       )}
+      {onOutputModeChange && (
+        <div
+          className="inline-flex rounded-lg border border-[var(--border)] bg-[var(--code-bg)] p-0.5"
+          role="group"
+          aria-label="Generation mode"
+          title={
+            outputMode === 'full-app'
+              ? 'Full App: multi-file React + Vite with routing and shared state'
+              : 'Simple: single-file or multi-page HTML'
+          }
+        >
+          <button
+            type="button"
+            disabled={isGenerating}
+            onClick={() => onOutputModeChange('simple')}
+            className={`px-2 py-1 text-[11px] font-semibold rounded-md transition-colors disabled:opacity-50 ${
+              outputMode === 'simple'
+                ? 'bg-[var(--copper-primary)]/20 text-[var(--copper-melt)]'
+                : 'text-nisk-muted hover:text-[var(--foreground)]'
+            }`}
+          >
+            Simple
+          </button>
+          <button
+            type="button"
+            disabled={isGenerating}
+            onClick={() => onOutputModeChange('full-app')}
+            className={`px-2 py-1 text-[11px] font-semibold rounded-md transition-colors disabled:opacity-50 ${
+              outputMode === 'full-app'
+                ? 'bg-[var(--copper-primary)]/20 text-[var(--copper-melt)]'
+                : 'text-nisk-muted hover:text-[var(--foreground)]'
+            }`}
+          >
+            Full App
+          </button>
+        </div>
+      )}
       {onPromptAutosaveChange && (
         <label
           className="flex items-center gap-1.5 cursor-pointer"
@@ -275,7 +317,9 @@ export default function PromptBar({
             placeholder={
               editingPageLabel
                 ? `Describe changes for the ${editingPageLabel} page…`
-                : 'Describe what you want to build…'
+                : outputMode === 'full-app'
+                  ? 'Describe a multi-page React app (routing, shared nav/state)…'
+                  : 'Describe what you want to build…'
             }
             rows={Math.min(promptRows, 6)}
             style={{

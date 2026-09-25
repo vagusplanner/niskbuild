@@ -17,7 +17,17 @@ export function buildProjectFiles(code: string, fileMap?: Record<string, string>
       path,
       name: path.split('/').pop() || path,
       content,
-      icon: path.endsWith('.css') ? '🎨' : path.endsWith('.js') ? '⚡' : path.endsWith('.tsx') ? '⚛️' : '📄',
+      icon: path.endsWith('.css')
+        ? '🎨'
+        : path.endsWith('.json')
+          ? '📦'
+          : path.endsWith('.tsx') || path.endsWith('.jsx')
+            ? '⚛️'
+            : path.endsWith('.ts') || path.endsWith('.js') || path.endsWith('.mjs')
+              ? '⚡'
+              : path.endsWith('.html')
+                ? '📄'
+                : '📄',
     }));
   }
 
