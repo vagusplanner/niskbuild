@@ -48,6 +48,79 @@ function notConfigured(op) {
   };
 }
 
+/** In-process lock — Web Locks API is blocked in sandboxed preview iframes. */
+const processLockQueues = Object.create(null);
+function processLock(name, _acquireTimeout, fn) {
+  const prev = processLockQueues[name] || Promise.resolve();
+  const next = prev.catch(function () {}).then(function () {
+    return fn();
+  });
+  processLockQueues[name] = next.then(
+    function () {},
+    function () {}
+  );
+  return next;
+}
+
+function useProcessLock() {
+  return (
+    typeof globalThis !== 'undefined' && globalThis.__NISK_PREVIEW__ === true
+  );
+}
+
+/**
+ * Thenable query chain mirroring PostgREST / supabase-js:
+ *   await dataClient.from('t').insert(row).select()
+ *   await dataClient.from('t').update(row).eq('id', id).select()
+ *   await dataClient.from('t').delete().eq('id', id)
+ */
+function makeChain(getBuilder, notConfiguredOp) {
+  if (!getBuilder) {
+    const rejected = Promise.resolve(notConfigured(notConfiguredOp));
+    const stub = {
+      select() {
+        return stub;
+      },
+      eq() {
+        return stub;
+      },
+      order() {
+        return stub;
+      },
+      limit() {
+        return stub;
+      },
+      then(onFulfilled, onRejected) {
+        return rejected.then(onFulfilled, onRejected);
+      },
+    };
+    return stub;
+  }
+  let q = getBuilder();
+  const chain = {
+    select(columns) {
+      q = q.select(columns === undefined ? '*' : columns);
+      return chain;
+    },
+    eq(column, value) {
+      q = q.eq(column, value);
+      return chain;
+    },
+    order(column, opts) {
+      q = q.order(column, opts);
+      return chain;
+    },
+    limit(n) {
+      q = q.limit(n);
+      return chain;
+    },
+    then(onFulfilled, onRejected) {
+      return q.then(onFulfilled, onRejected);
+    },
+  };
+  return chain;
+}
+
 /**
  * @param {{ url?: string, anonKey?: string }} [options]
  */
@@ -60,6 +133,9 @@ export function createSupabaseDataClient(options = {}) {
           persistSession: true,
           autoRefreshToken: true,
           detectSessionInUrl: true,
+          // Preview iframe: navigator.locks.request throws
+          // "LockManager.request: request() is not allowed in this context".
+          ...(useProcessLock() ? { lock: processLock } : {}),
         },
       })
     : null;
@@ -99,85 +175,28 @@ export function createSupabaseDataClient(options = {}) {
   function from(table) {
     return {
       select(columns = '*') {
-        if (!supabase) {
-          const rejected = Promise.resolve(notConfigured(\`from('\${table}').select\`));
-          return Object.assign(rejected, {
-            eq() {
-              return this;
-            },
-            order() {
-              return this;
-            },
-            limit() {
-              return this;
-            },
-          });
-        }
-        let q = supabase.from(table).select(columns);
-        const chain = {
-          eq(column, value) {
-            q = q.eq(column, value);
-            return chain;
-          },
-          order(column, opts) {
-            q = q.order(column, opts);
-            return chain;
-          },
-          limit(n) {
-            q = q.limit(n);
-            return chain;
-          },
-          then(onFulfilled, onRejected) {
-            return q.then(onFulfilled, onRejected);
-          },
-        };
-        return chain;
+        return makeChain(
+          supabase ? () => supabase.from(table).select(columns) : null,
+          \`from('\${table}').select\`
+        );
       },
-      async insert(values) {
-        if (!supabase) return notConfigured(\`from('\${table}').insert\`);
-        return supabase.from(table).insert(values).select();
+      insert(values) {
+        return makeChain(
+          supabase ? () => supabase.from(table).insert(values) : null,
+          \`from('\${table}').insert\`
+        );
       },
       update(values) {
-        if (!supabase) {
-          const rejected = Promise.resolve(notConfigured(\`from('\${table}').update\`));
-          return Object.assign(rejected, {
-            eq() {
-              return this;
-            },
-          });
-        }
-        let q = supabase.from(table).update(values);
-        const chain = {
-          eq(column, value) {
-            q = q.eq(column, value);
-            return chain;
-          },
-          then(onFulfilled, onRejected) {
-            return q.select().then(onFulfilled, onRejected);
-          },
-        };
-        return chain;
+        return makeChain(
+          supabase ? () => supabase.from(table).update(values) : null,
+          \`from('\${table}').update\`
+        );
       },
       delete() {
-        if (!supabase) {
-          const rejected = Promise.resolve(notConfigured(\`from('\${table}').delete\`));
-          return Object.assign(rejected, {
-            eq() {
-              return this;
-            },
-          });
-        }
-        let q = supabase.from(table).delete();
-        const chain = {
-          eq(column, value) {
-            q = q.eq(column, value);
-            return chain;
-          },
-          then(onFulfilled, onRejected) {
-            return q.then(onFulfilled, onRejected);
-          },
-        };
-        return chain;
+        return makeChain(
+          supabase ? () => supabase.from(table).delete() : null,
+          \`from('\${table}').delete\`
+        );
       },
     };
   }

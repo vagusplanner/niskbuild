@@ -317,7 +317,7 @@ export default function Habits() {
       title: trimmed,
       user_id: user.id,
       completed: false,
-    });
+    }).select();
     if (err) {
       setError(err.message);
       return;
@@ -389,7 +389,8 @@ export default function HabitDetail() {
     const { data, error: err } = await dataClient
       .from('habits')
       .update({ completed: !habit.completed, updated_at: new Date().toISOString() })
-      .eq('id', habit.id);
+      .eq('id', habit.id)
+      .select();
     if (err) {
       setError(err.message);
       return;

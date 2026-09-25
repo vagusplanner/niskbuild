@@ -43,11 +43,12 @@ DATACLIENT (mandatory — do not invent another client):
   await dataClient.auth.getSession()
   await dataClient.auth.getUser()
   dataClient.auth.onAuthStateChange((event, session) => { ... })
-- Database API (returns { data, error } like PostgREST):
+- Database API (thenable PostgREST-style chains — all of select/insert/update/delete share the same pattern):
   await dataClient.from('table').select().eq('user_id', user.id).order('created_at', { ascending: false })
-  await dataClient.from('table').insert({ ... }).then(...)
-  await dataClient.from('table').update({ ... }).eq('id', id)
+  await dataClient.from('table').insert({ ... }).select()
+  await dataClient.from('table').update({ ... }).eq('id', id).select()
   await dataClient.from('table').delete().eq('id', id)
+- Do NOT treat insert as a bare Promise that already includes .select() — always chain .select() when you need the inserted row(s) back (same as real supabase-js).
 - If !isDataClientConfigured(), show a clear empty state: "Connect your Supabase backend in Project settings" — do not fake data with localStorage when the app is meant to be auth+CRUD.
 
 PATTERN A (v1 default for auth + list/detail apps — todos, habits, notes, simple trackers):

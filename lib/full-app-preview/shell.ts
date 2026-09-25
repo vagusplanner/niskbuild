@@ -26,8 +26,41 @@ export type PreviewShellOptions = {
 };
 
 function buildBackendBootstrap(backend?: FullAppPreviewBackendEnv | null): string {
+  // Always mark preview host so DataClient can opt out of Web Locks
+  // (navigator.locks.request throws in sandboxed blob iframes).
+  const previewFlag = `window.__NISK_PREVIEW__ = true;`;
+  // Process-lock polyfill: auth-js calls navigator.locks.request for session
+  // refresh coordination. In this sandbox it fails with
+  // "LockManager.request: request() is not allowed in this context".
+  // Replace with an in-process queue before any app/supabase code loads.
+  const locksPolyfill = `(function(){
+  try {
+    var queues = Object.create(null);
+    function processRequest(name, options, callback) {
+      var fn = typeof options === 'function' ? options : callback;
+      if (typeof fn !== 'function') return Promise.resolve();
+      var prev = queues[name] || Promise.resolve();
+      var result = prev.catch(function(){}).then(function(){
+        return fn({ name: name, mode: 'exclusive' });
+      });
+      queues[name] = result.then(function(){}, function(){});
+      return result;
+    }
+    Object.defineProperty(navigator, 'locks', {
+      configurable: true,
+      enumerable: true,
+      value: {
+        request: processRequest,
+        query: function(){ return Promise.resolve({ held: [], pending: [] }); }
+      }
+    });
+  } catch (e) { /* ignore */ }
+})();`;
+
   if (!backend?.supabaseUrl?.trim() || !backend?.supabaseAnonKey?.trim()) {
     return `<script data-niskbuild-preview-backend="1">
+${previewFlag}
+${locksPolyfill}
 window.__NISK_BACKEND__ = window.__NISK_BACKEND__ || {};
 </script>`;
   }
@@ -36,6 +69,8 @@ window.__NISK_BACKEND__ = window.__NISK_BACKEND__ || {};
     supabaseAnonKey: backend.supabaseAnonKey.trim(),
   });
   return `<script data-niskbuild-preview-backend="1">
+${previewFlag}
+${locksPolyfill}
 window.__NISK_BACKEND__ = ${payload};
 </script>`;
 }
