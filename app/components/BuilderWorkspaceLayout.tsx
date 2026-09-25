@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect, type ReactNode, type RefObject } from 'react';
+import { useRef, useState, useEffect, useCallback, type ReactNode, type RefObject } from 'react';
 import Link from 'next/link';
 import InspectPicker, { type InspectTarget } from '@/app/components/InspectPicker';
 import ProjectLimitBadge from '@/app/components/ProjectLimitBadge';
@@ -26,6 +26,7 @@ import PreviewBrowserChrome from '@/app/components/PreviewBrowserChrome';
 import { usePreviewHistory } from '@/app/components/usePreviewHistory';
 import PreviewConsolePanel from '@/app/components/PreviewConsolePanel';
 import { usePreviewConsole } from '@/app/components/usePreviewConsole';
+import FullAppLivePreview from '@/app/components/FullAppLivePreview';
 import BuilderPreviewPageNav from '@/app/components/BuilderPreviewPageNav';
 import { BUILDER_PREVIEW_SANDBOX } from '@/lib/preview-html';
 import { Terminal } from 'lucide-react';
@@ -944,24 +945,55 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
   } = props;
 
   const showStylesTab = visualEditMode && !!selectedVisualElement;
+  const isFullAppMode = outputMode === 'full-app';
 
   const {
     displayHtml: previewDisplayHtml,
-    reloadKey: previewReloadKey,
-    canGoBack: previewCanGoBack,
-    canGoForward: previewCanGoForward,
-    goBack: previewGoBack,
-    goForward: previewGoForward,
-    reload: previewReload,
-  } = usePreviewHistory(previewHtml, isGenerating);
+    reloadKey: htmlPreviewReloadKey,
+    canGoBack: htmlCanGoBack,
+    canGoForward: htmlCanGoForward,
+    goBack: htmlGoBack,
+    goForward: htmlGoForward,
+    reload: htmlReload,
+  } = usePreviewHistory(isFullAppMode ? '' : previewHtml, isGenerating);
 
-  const previewNav = {
-    canGoBack: previewCanGoBack,
-    canGoForward: previewCanGoForward,
-    onBack: previewGoBack,
-    onForward: previewGoForward,
-    onReload: previewReload,
-  };
+  const [fullAppReloadKey, setFullAppReloadKey] = useState(0);
+  const [fullAppNav, setFullAppNav] = useState({
+    canGoBack: false,
+    canGoForward: false,
+    goBack: () => {},
+    goForward: () => {},
+  });
+
+  const handleFullAppNavChange = useCallback(
+    (nav: {
+      canGoBack: boolean;
+      canGoForward: boolean;
+      goBack: () => void;
+      goForward: () => void;
+    }) => {
+      setFullAppNav(nav);
+    },
+    []
+  );
+
+  const previewReloadKey = isFullAppMode ? fullAppReloadKey : htmlPreviewReloadKey;
+
+  const previewNav = isFullAppMode
+    ? {
+        canGoBack: fullAppNav.canGoBack,
+        canGoForward: fullAppNav.canGoForward,
+        onBack: fullAppNav.goBack,
+        onForward: fullAppNav.goForward,
+        onReload: () => setFullAppReloadKey((k) => k + 1),
+      }
+    : {
+        canGoBack: htmlCanGoBack,
+        canGoForward: htmlCanGoForward,
+        onBack: htmlGoBack,
+        onForward: htmlGoForward,
+        onReload: htmlReload,
+      };
 
   const [consoleOpen, setConsoleOpen] = useState(false);
   const {
@@ -1328,15 +1360,17 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
               activeFile={activeFile}
               onSelectFile={onSelectFile}
             />
-            <BuilderPreviewPageNav
-              projectFiles={projectFiles}
-              activeFile={activeFile}
-              onSelectPage={onSelectFile}
-              onAddPage={onAddPage}
-              onRenamePage={onRenamePage}
-              onDeletePage={onDeletePage}
-              canAddPage={canAddPage}
-            />
+            {!isFullAppMode && (
+              <BuilderPreviewPageNav
+                projectFiles={projectFiles}
+                activeFile={activeFile}
+                onSelectPage={onSelectFile}
+                onAddPage={onAddPage}
+                onRenamePage={onRenamePage}
+                onDeletePage={onDeletePage}
+                canAddPage={canAddPage}
+              />
+            )}
             {visualToolbar}
             <div
               ref={mobilePreviewFullscreenRef}
@@ -1344,14 +1378,23 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
                 previewDevice !== 'desktop' || visualMobilePreview ? 'bg-[var(--iron-surface)]' : ''
               }`}
             >
-              {!isMdUp && (
-                <PreviewIframe
-                  previewHtml={previewDisplayHtml}
-                  placeholderPreview={placeholderPreview}
-                  previewFrameClass={previewFrameClass}
-                  reloadKey={previewReloadKey}
-                />
-              )}
+              {!isMdUp &&
+                (isFullAppMode ? (
+                  <FullAppLivePreview
+                    projectFiles={projectFiles}
+                    isGenerating={isGenerating}
+                    previewFrameClass={previewFrameClass}
+                    reloadKey={previewReloadKey}
+                    onNavChange={handleFullAppNavChange}
+                  />
+                ) : (
+                  <PreviewIframe
+                    previewHtml={previewDisplayHtml}
+                    placeholderPreview={placeholderPreview}
+                    previewFrameClass={previewFrameClass}
+                    reloadKey={previewReloadKey}
+                  />
+                ))}
               <ShareThisBuildFab
                 visible={canShareSocial}
                 onOpen={onOpenSocialPublisher}
@@ -1460,15 +1503,17 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
             activeFile={activeFile}
             onSelectFile={onSelectFile}
           />
-          <BuilderPreviewPageNav
-            projectFiles={projectFiles}
-            activeFile={activeFile}
-            onSelectPage={onSelectFile}
-            onAddPage={onAddPage}
-            onRenamePage={onRenamePage}
-            onDeletePage={onDeletePage}
-            canAddPage={canAddPage}
-          />
+          {!isFullAppMode && (
+            <BuilderPreviewPageNav
+              projectFiles={projectFiles}
+              activeFile={activeFile}
+              onSelectPage={onSelectFile}
+              onAddPage={onAddPage}
+              onRenamePage={onRenamePage}
+              onDeletePage={onDeletePage}
+              canAddPage={canAddPage}
+            />
+          )}
           {visualToolbar}
           <div
             ref={previewFullscreenRef}
@@ -1482,14 +1527,23 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
               aria-hidden
             />
             <div className="absolute inset-0 z-[1]">
-              {isMdUp && (
-                <PreviewIframe
-                  previewHtml={previewDisplayHtml}
-                  placeholderPreview={placeholderPreview}
-                  previewFrameClass={previewFrameClass}
-                  reloadKey={previewReloadKey}
-                />
-              )}
+              {isMdUp &&
+                (isFullAppMode ? (
+                  <FullAppLivePreview
+                    projectFiles={projectFiles}
+                    isGenerating={isGenerating}
+                    previewFrameClass={previewFrameClass}
+                    reloadKey={previewReloadKey}
+                    onNavChange={handleFullAppNavChange}
+                  />
+                ) : (
+                  <PreviewIframe
+                    previewHtml={previewDisplayHtml}
+                    placeholderPreview={placeholderPreview}
+                    previewFrameClass={previewFrameClass}
+                    reloadKey={previewReloadKey}
+                  />
+                ))}
               <ShareThisBuildFab
                 visible={canShareSocial}
                 onOpen={onOpenSocialPublisher}

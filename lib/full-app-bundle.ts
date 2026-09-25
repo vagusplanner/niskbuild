@@ -158,7 +158,7 @@ export function fullAppTruncationUserMessage(reason: string | null, missing: str
   return 'Full App generation was cut off before the project finished. Partial files were kept — click Generate again to retry.';
 }
 
-/** Interim builder preview — honest until React preview host exists. */
+/** Status / error / generating HTML for Full App when live bundle isn't shown yet. */
 export function fullAppPreviewPlaceholder(opts?: {
   fileCount?: number;
   generating?: boolean;
@@ -168,19 +168,19 @@ export function fullAppPreviewPlaceholder(opts?: {
   const generating = opts?.generating === true;
   const error = opts?.error?.trim();
   const title = error
-    ? 'Generation issue'
+    ? 'Preview issue'
     : generating
       ? 'Generating Full App…'
-      : 'Full App preview coming soon';
+      : 'Full App ready';
   const detail = error
     ? error
     : generating
       ? count > 0
-        ? `${count} file${count === 1 ? '' : 's'} received so far. Live React preview ships in a later milestone — use the file tree to inspect source.`
-        : 'Streaming a multi-file React + Vite project. Live preview is not available yet for Full App mode.'
+        ? `${count} file${count === 1 ? '' : 's'} received so far. Live React preview starts when generation finishes.`
+        : 'Streaming a multi-file React + Vite project…'
       : count > 0
-        ? `${count} project files are ready in the file tree. Open any file to review. Live iframe preview for Full App is coming next.`
-        : 'Switch to Full App, describe a multi-page product, and Generate. Files will appear in the tree; live preview follows in a later release.';
+        ? `${count} project files ready — live React preview should appear here.`
+        : 'Switch to Full App, describe a multi-page product, and Generate.';
 
   return `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">

@@ -48,6 +48,7 @@ export const PUBLIC_PATHS = [
   '/terms',
   '/games',
   '/dev/full-app-preview-spike',
+  '/dev/full-app-builder-preview',
   ...VAGUS_PLANNER_PUBLIC_LEGAL_PATHS,
 ];
 

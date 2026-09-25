@@ -1,8 +1,13 @@
 /**
- * Preview iframe HTML shell: import map + CSS + ESM blob entry.
+ * Preview iframe HTML shell: import map + CSS + ESM blob entry + chrome bridges.
  */
 
 import { buildPreviewImportMap } from '@/lib/full-app-preview/allowlist';
+import {
+  FULL_APP_CONSOLE_BRIDGE,
+  FULL_APP_NAV_BRIDGE,
+  FULL_APP_STORAGE_POLYFILL,
+} from '@/lib/full-app-preview/bridges';
 
 export type PreviewShellOptions = {
   /** Bundled ESM source (react/react-dom remain external). */
@@ -14,19 +19,17 @@ export type PreviewShellOptions = {
 };
 
 /**
- * Build a complete HTML document for iframe srcDoc / blob URL.
- * Module code is inlined as a blob: URL so we avoid escaping hell in srcDoc.
- * For srcDoc without blob (sandbox without same-origin), we inline the module
- * via a data URL instead.
+ * Build a complete HTML document for iframe srcDoc.
+ * Module code is base64-decoded then loaded via blob URL inside the iframe.
  */
 export function buildFullAppPreviewHtml(opts: PreviewShellOptions): string {
   const importMap = buildPreviewImportMap();
   const title = opts.title ?? 'Full App Preview';
   const css = opts.css ?? '';
-  // Escape for embedding inside a script type=importmap / module
-  const codeB64 = typeof btoa === 'function'
-    ? btoa(unescape(encodeURIComponent(opts.code)))
-    : Buffer.from(opts.code, 'utf8').toString('base64');
+  const codeB64 =
+    typeof btoa === 'function'
+      ? btoa(unescape(encodeURIComponent(opts.code)))
+      : Buffer.from(opts.code, 'utf8').toString('base64');
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -34,6 +37,8 @@ export function buildFullAppPreviewHtml(opts: PreviewShellOptions): string {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${escapeHtml(title)}</title>
+  ${FULL_APP_STORAGE_POLYFILL}
+  ${FULL_APP_CONSOLE_BRIDGE}
   <script type="importmap">
 ${JSON.stringify({ imports: importMap }, null, 2)}
   </script>
@@ -45,6 +50,7 @@ ${css}
 </head>
 <body>
   <div id="root"></div>
+  ${FULL_APP_NAV_BRIDGE}
   <script type="module">
     const code = decodeURIComponent(escape(atob(${JSON.stringify(codeB64)})));
     const blob = new Blob([code], { type: 'text/javascript' });

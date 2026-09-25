@@ -68,12 +68,19 @@ export function collectPreviewCss(files: FullAppPreviewFiles): string {
 /**
  * Scan source for bare imports outside the allowlist.
  * Relative imports (./ ../) are fine; http(s) rejected.
+ * Only app source under src/ (plus root entry candidates) — ignore vite.config etc.
  */
 export function findDisallowedImports(files: FullAppPreviewFiles): string[] {
   const bad = new Set<string>();
   for (const [path, content] of Object.entries(files)) {
     const n = normalizePath(path);
     if (!/\.(jsx?|tsx?|mjs|cjs)$/i.test(n)) continue;
+    // Tooling configs often import vite plugins — not part of the browser bundle.
+    if (/(^|\/)vite\.config\./i.test(n)) continue;
+    if (/(^|\/)(eslint|prettier|postcss|tailwind)\.config\./i.test(n)) continue;
+    if (!n.startsWith('src/') && !ENTRY_CANDIDATES.includes(n as (typeof ENTRY_CANDIDATES)[number])) {
+      continue;
+    }
     BARE_IMPORT_RE.lastIndex = 0;
     let m: RegExpExecArray | null;
     while ((m = BARE_IMPORT_RE.exec(content)) !== null) {
@@ -182,7 +189,7 @@ function virtualFsPlugin(files: FullAppPreviewFiles): Plugin {
 
       build.onLoad({ filter: /.*/, namespace: 'nisk-virtual' }, (args) => {
         const path = normalizePath(args.path);
-        const contents = fs.get(path) ?? fs.get('/' + path);
+        let contents = fs.get(path) ?? fs.get('/' + path);
         if (contents == null) {
           return { errors: [{ text: `Missing virtual file: ${path}` }] };
         }
@@ -194,6 +201,13 @@ function virtualFsPlugin(files: FullAppPreviewFiles): Plugin {
         if (path.endsWith('.json')) {
           return { contents, loader: 'json' };
         }
+
+        // srcDoc iframes have no real path URL — BrowserRouter breaks.
+        // Rewrite to HashRouter so client routes work under about:srcdoc.
+        if (/\.(jsx?|tsx?)$/i.test(path)) {
+          contents = rewriteBrowserRouterForPreview(contents);
+        }
+
         if (path.endsWith('.tsx')) return { contents, loader: 'tsx' };
         if (path.endsWith('.ts')) return { contents, loader: 'ts' };
         if (path.endsWith('.jsx')) return { contents, loader: 'jsx' };
@@ -293,4 +307,9 @@ export async function bundleFullAppPreview(
 function formatEsbuildErrors(err: { errors?: Array<{ text: string }> }): string {
   const texts = (err.errors ?? []).map((e) => e.text).filter(Boolean);
   return texts.length ? texts.join('\n') : 'Bundle failed';
+}
+
+/** Preview-only rewrite so generated BrowserRouter apps run in srcDoc. */
+export function rewriteBrowserRouterForPreview(source: string): string {
+  return source.replace(/\bBrowserRouter\b/g, 'HashRouter');
 }

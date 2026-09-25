@@ -22,14 +22,15 @@ REQUIRED PROJECT SHAPE (always include these files):
 - package.json — name, private, type module, scripts: { "dev": "vite", "build": "vite build", "preview": "vite preview" }, dependencies: react, react-dom, react-router-dom; devDependencies: vite, @vitejs/plugin-react
 - vite.config.js — react plugin, default Vite config
 - index.html — Vite entry that mounts #root and loads /src/main.jsx
-- src/main.jsx — createRoot + BrowserRouter wrapping <App />
+- src/main.jsx — createRoot + BrowserRouter (or HashRouter) wrapping <App />
 - src/App.jsx — layout shell with shared navigation + <Routes>
 - src/styles.css — global styles (modern, distinctive, subject-driven — not generic purple SaaS)
 - src/pages/*.jsx — at least TWO route pages matching the prompt (e.g. Home + detail/settings/list)
 - src/components/ — at least one shared component used by multiple pages (Nav, Layout, or similar)
 
 ARCHITECTURE:
-- Real client-side routing with react-router-dom (Routes, Route, NavLink/Link).
+- Real client-side routing with react-router-dom (Routes, Route, NavLink/Link). Prefer BrowserRouter in source; the live preview host rewrites to HashRouter automatically.
+- Only use these npm packages unless the user insists otherwise: react, react-dom, react-router-dom (curated preview allowlist).
 - Shared state via React context OR a small custom hook module under src/ — not prop-drilling everything from App only when state is cross-page.
 - Functional components, hooks, clear folder structure.
 - No TypeScript for v1 unless the user explicitly asks — prefer .jsx.
