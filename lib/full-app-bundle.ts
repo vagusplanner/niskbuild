@@ -4,6 +4,8 @@
 
 import type { ProjectFile } from '@/lib/project-files';
 import { providerIndicatesTruncation } from '@/lib/generation-completeness';
+import { injectDataClientScaffold } from '@/lib/full-app-dataclient/inject';
+import { SCHEMA_SQL_PATH } from '@/lib/full-app-dataclient/scaffold-files';
 
 export const FULL_APP_FILE_START = '@@@FILE';
 export const FULL_APP_FILE_END = '@@@ENDFILE';
@@ -55,7 +57,8 @@ export function iconForProjectPath(path: string): string {
 }
 
 export function fullAppFilesToProjectFiles(files: Record<string, string>): ProjectFile[] {
-  return Object.entries(files)
+  const finalized = injectDataClientScaffold(files);
+  return Object.entries(finalized)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([path, content]) => ({
       path,
@@ -125,6 +128,13 @@ export function assessFullAppCompleteness(
     /^src\/components\/.+\.(jsx|tsx)$/i.test(p)
   );
   if (!hasSharedComponent) missing.push('src/components/*');
+
+  // schema.sql is required for backend Full Apps; inject will add a fallback,
+  // but prefer the model to emit it — still treat as complete if other files ok.
+  const finalized = injectDataClientScaffold(parsed.files);
+  if (!finalized[SCHEMA_SQL_PATH]?.trim()) {
+    missing.push(SCHEMA_SQL_PATH);
+  }
 
   if (missing.length > 0) {
     // Still streaming — incomplete until files appear.

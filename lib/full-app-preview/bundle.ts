@@ -6,8 +6,9 @@
 import type { Plugin } from 'esbuild-wasm';
 import {
   FULL_APP_PREVIEW_EXTERNALS,
-  isAllowedBareImport,
+  isAllowedBareImportInFile,
 } from '@/lib/full-app-preview/allowlist';
+import { injectDataClientScaffold } from '@/lib/full-app-dataclient/inject';
 
 export type FullAppPreviewFiles = Record<string, string>;
 
@@ -91,7 +92,7 @@ export function findDisallowedImports(files: FullAppPreviewFiles): string[] {
         bad.add(spec);
         continue;
       }
-      if (!isAllowedBareImport(spec)) bad.add(spec);
+      if (!isAllowedBareImportInFile(spec, n)) bad.add(`${spec} (in ${n})`);
     }
   }
   return [...bad].sort();
@@ -165,9 +166,9 @@ function virtualFsPlugin(files: FullAppPreviewFiles): Plugin {
         if (
           FULL_APP_PREVIEW_EXTERNALS.includes(
             spec as (typeof FULL_APP_PREVIEW_EXTERNALS)[number]
-          ) ||
-          isAllowedBareImport(spec)
+          )
         ) {
+          // @supabase/supabase-js only from adapter — checked in findDisallowedImports
           return { path: spec, external: true };
         }
 
@@ -246,7 +247,8 @@ export async function bundleFullAppPreview(
   files: FullAppPreviewFiles
 ): Promise<FullAppBundleResult> {
   const started = Date.now();
-  const entry = findPreviewEntry(files);
+  const prepared = injectDataClientScaffold(files);
+  const entry = findPreviewEntry(prepared);
   if (!entry) {
     return {
       ok: false,
@@ -255,11 +257,11 @@ export async function bundleFullAppPreview(
     };
   }
 
-  const disallowed = findDisallowedImports(files);
+  const disallowed = findDisallowedImports(prepared);
   if (disallowed.length > 0) {
     return {
       ok: false,
-      error: `Unsupported package imports (v1 allowlist only): ${disallowed.join(', ')}. Allowed: react, react-dom, react-router-dom.`,
+      error: `Unsupported package imports (v1 allowlist only): ${disallowed.join(', ')}. Allowed: react, react-dom, react-router-dom, and @supabase/supabase-js (adapter only).`,
       durationMs: Date.now() - started,
     };
   }
@@ -275,7 +277,7 @@ export async function bundleFullAppPreview(
       jsx: 'automatic',
       jsxImportSource: 'react',
       logLevel: 'silent',
-      plugins: [virtualFsPlugin(files)],
+      plugins: [virtualFsPlugin(prepared)],
       external: [...FULL_APP_PREVIEW_EXTERNALS],
     });
 
@@ -298,7 +300,7 @@ export async function bundleFullAppPreview(
     return {
       ok: true,
       code: jsOut.text,
-      css: collectPreviewCss(files),
+      css: collectPreviewCss(prepared),
       entry,
       warnings,
       durationMs: Date.now() - started,

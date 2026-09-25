@@ -6,8 +6,16 @@ import SeoPanel from '@/app/components/SeoPanel';
 import IntegrationsPanel from '@/app/components/IntegrationsPanel';
 import BuilderOllamaSettings, { BuilderOllamaLockedHint } from '@/app/components/BuilderOllamaSettings';
 import RoiTracker from '@/app/components/RoiTracker';
+import FullAppBackendPanel from '@/app/components/FullAppBackendPanel';
+import type { FullAppBackendConfig } from '@/lib/full-app-backend';
 
-export type ProjectSettingsTab = 'seo' | 'integrations' | 'blueprint' | 'ai' | 'credits';
+export type ProjectSettingsTab =
+  | 'seo'
+  | 'integrations'
+  | 'blueprint'
+  | 'ai'
+  | 'credits'
+  | 'backend';
 
 const TABS: {
   id: ProjectSettingsTab;
@@ -15,7 +23,10 @@ const TABS: {
   icon: string;
   /** false = not meaningful for Full App React projects yet */
   fullAppReady: boolean;
+  /** Only show this tab in Full App mode */
+  fullAppOnly?: boolean;
 }[] = [
+  { id: 'backend', label: 'Backend', icon: '🗄️', fullAppReady: true, fullAppOnly: true },
   { id: 'seo', label: 'SEO', icon: '🔍', fullAppReady: false },
   { id: 'integrations', label: 'Integrations', icon: '🔌', fullAppReady: false },
   { id: 'blueprint', label: 'Blueprint', icon: '📋', fullAppReady: false },
@@ -48,6 +59,7 @@ type BuilderProjectSettingsDrawerProps = {
   onIntegrationAdded: (code: string, message: string, creditsRemaining?: number) => void;
   onIntegrationStatus?: (message: string) => void;
   outputMode?: 'simple' | 'full-app';
+  onFullAppBackendChange?: (config: FullAppBackendConfig | null) => void;
 };
 
 function FullAppLimitedNotice({ feature }: { feature: string }) {
@@ -91,11 +103,13 @@ export default function BuilderProjectSettingsDrawer({
   onIntegrationAdded,
   onIntegrationStatus,
   outputMode = 'simple',
+  onFullAppBackendChange,
 }: BuilderProjectSettingsDrawerProps) {
   if (!open) return null;
 
   const isFullApp = outputMode === 'full-app';
-  const activeTabMeta = TABS.find((t) => t.id === tab);
+  const visibleTabs = TABS.filter((t) => (isFullApp ? true : !t.fullAppOnly));
+  const activeTabMeta = visibleTabs.find((t) => t.id === tab) ?? visibleTabs[0];
   const tabLimited = isFullApp && activeTabMeta && !activeTabMeta.fullAppReady;
 
   return (
@@ -117,7 +131,7 @@ export default function BuilderProjectSettingsDrawer({
             <h2 className="text-sm font-semibold text-[var(--foreground)]">Project settings</h2>
             <p className="text-[10px] text-nisk-muted">
               {isFullApp
-                ? 'Full App — AI and credits available; SEO / integrations / blueprint coming later'
+                ? 'Full App — Backend, AI, and credits; SEO / HTML integrations later'
                 : 'SEO, integrations, blueprint, and AI'}
             </p>
           </div>
@@ -132,7 +146,7 @@ export default function BuilderProjectSettingsDrawer({
         </div>
 
         <div className="flex gap-1 overflow-x-auto border-b border-nisk px-3 py-2 shrink-0">
-          {TABS.map((t) => {
+          {visibleTabs.map((t) => {
             const limited = isFullApp && !t.fullAppReady;
             return (
               <button
@@ -156,6 +170,13 @@ export default function BuilderProjectSettingsDrawer({
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto">
+          {tab === 'backend' && isFullApp ? (
+            <FullAppBackendPanel
+              projectId={activeProjectId}
+              onBackendChange={(cfg) => onFullAppBackendChange?.(cfg)}
+            />
+          ) : null}
+
           {tabLimited ? (
             <FullAppLimitedNotice
               feature={

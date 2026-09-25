@@ -9,6 +9,11 @@ import {
   FULL_APP_STORAGE_POLYFILL,
 } from '@/lib/full-app-preview/bridges';
 
+export type FullAppPreviewBackendEnv = {
+  supabaseUrl: string;
+  supabaseAnonKey: string;
+};
+
 export type PreviewShellOptions = {
   /** Bundled ESM source (react/react-dom remain external). */
   code: string;
@@ -16,7 +21,24 @@ export type PreviewShellOptions = {
   css?: string;
   /** Optional marker for spike debugging. */
   title?: string;
+  /** BYO Supabase credentials injected before the app module loads. */
+  backend?: FullAppPreviewBackendEnv | null;
 };
+
+function buildBackendBootstrap(backend?: FullAppPreviewBackendEnv | null): string {
+  if (!backend?.supabaseUrl?.trim() || !backend?.supabaseAnonKey?.trim()) {
+    return `<script data-niskbuild-preview-backend="1">
+window.__NISK_BACKEND__ = window.__NISK_BACKEND__ || {};
+</script>`;
+  }
+  const payload = JSON.stringify({
+    supabaseUrl: backend.supabaseUrl.trim(),
+    supabaseAnonKey: backend.supabaseAnonKey.trim(),
+  });
+  return `<script data-niskbuild-preview-backend="1">
+window.__NISK_BACKEND__ = ${payload};
+</script>`;
+}
 
 /**
  * Build a complete HTML document for iframe srcDoc.
@@ -39,6 +61,7 @@ export function buildFullAppPreviewHtml(opts: PreviewShellOptions): string {
   <title>${escapeHtml(title)}</title>
   ${FULL_APP_STORAGE_POLYFILL}
   ${FULL_APP_CONSOLE_BRIDGE}
+  ${buildBackendBootstrap(opts.backend)}
   <script type="importmap">
 ${JSON.stringify({ imports: importMap }, null, 2)}
   </script>

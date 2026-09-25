@@ -103,6 +103,9 @@ export type BuilderWorkspaceLayoutProps = {
   onPlanModeChange: (v: boolean) => void;
   outputMode?: 'simple' | 'full-app';
   onOutputModeChange?: (mode: 'simple' | 'full-app') => void;
+  /** BYO Supabase env for Full App preview DataClient */
+  fullAppBackendEnv?: { supabaseUrl: string; supabaseAnonKey: string } | null;
+  onFullAppBackendChange?: (config: import('@/lib/full-app-backend').FullAppBackendConfig | null) => void;
   previewHtml: string;
   placeholderPreview: string;
   previewFrameClass: string;
@@ -639,11 +642,11 @@ function ChatPanelContent({
   streamingSteps = [],
   builderTurns = [],
   onReuseBuilderTurnPrompt,
-  planMode,
-  onPlanModeChange,
-  outputMode = 'simple',
-  onOutputModeChange,
-  promptSuggestions = [],
+    planMode,
+    onPlanModeChange,
+    outputMode = 'simple',
+    onOutputModeChange,
+    promptSuggestions = [],
   editingPageLabel,
   promptHeightPx,
   onPromptHeightChange,
@@ -884,6 +887,8 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
     onPlanModeChange,
     outputMode = 'simple',
     onOutputModeChange,
+    fullAppBackendEnv = null,
+    onFullAppBackendChange,
     previewHtml,
     placeholderPreview,
     previewFrameClass,
@@ -1065,7 +1070,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
   }, []);
 
   const openProjectSettings = (tab?: ProjectSettingsTab) => {
-    onProjectSettingsTabChange(tab ?? (isFullAppMode ? 'ai' : 'seo'));
+    onProjectSettingsTabChange(tab ?? (isFullAppMode ? 'backend' : 'seo'));
     onProjectSettingsOpenChange(true);
   };
 
@@ -1312,6 +1317,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
       onIntegrationAdded={onIntegrationAdded}
       onIntegrationStatus={onIntegrationStatus}
       outputMode={outputMode}
+      onFullAppBackendChange={onFullAppBackendChange}
     />
   );
 
@@ -1442,6 +1448,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
                     previewFrameClass={previewFrameClass}
                     reloadKey={previewReloadKey}
                     navigateRequest={fullAppNavigateRequest}
+                    backendEnv={fullAppBackendEnv}
                     onNavChange={handleFullAppNavChange}
                   />
                 ) : (
@@ -1602,6 +1609,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
                     previewFrameClass={previewFrameClass}
                     reloadKey={previewReloadKey}
                     navigateRequest={fullAppNavigateRequest}
+                    backendEnv={fullAppBackendEnv}
                     onNavChange={handleFullAppNavChange}
                   />
                 ) : (

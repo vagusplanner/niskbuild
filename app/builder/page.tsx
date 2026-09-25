@@ -71,6 +71,12 @@ import { type PreviewDevice, previewFrameClassForDevice } from '@/app/components
 import VersionHistoryPanel from '@/app/components/VersionHistoryPanel';
 import { type InspectorTab } from '@/app/components/BuilderInspectorPanel';
 import { type ProjectSettingsTab } from '@/app/components/BuilderProjectSettingsDrawer';
+import type { FullAppBackendConfig } from '@/lib/full-app-backend';
+import {
+  loadFullAppBackendLocal,
+  migrateFullAppBackendLocal,
+  previewEnvFromConfig,
+} from '@/lib/full-app-backend';
 import PlanPanel from '@/app/components/PlanPanel';
 import MobileExportModal from '@/app/components/MobileExportModal';
 import { DEFAULT_SEO_SETTINGS, type ProjectSeoSettings } from '@/lib/seo-types';
@@ -231,11 +237,21 @@ function BuilderContent() {
     DEFAULT_GENERATION_MODEL_ID
   );
   const [outputMode, setOutputMode] = useState<BuilderOutputMode>(DEFAULT_BUILDER_OUTPUT_MODE);
+  const [fullAppBackend, setFullAppBackend] = useState<FullAppBackendConfig | null>(null);
+  const fullAppBackendEnv = useMemo(
+    () => previewEnvFromConfig(fullAppBackend),
+    [fullAppBackend]
+  );
   const [showProOllamaBanner, setShowProOllamaBanner] = useState(false);
   const [projectLimit, setProjectLimit] = useState(1);
   const [showMobileExport, setShowMobileExport] = useState(false);
   const [mobileExporting, setMobileExporting] = useState<'pwa' | 'native' | null>(null);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setFullAppBackend(loadFullAppBackendLocal(activeProjectId));
+  }, [activeProjectId]);
+
   const [currentVersionNumber, setCurrentVersionNumber] = useState(0);
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const [seoSettings, setSeoSettings] = useState<ProjectSeoSettings>(DEFAULT_SEO_SETTINGS);
@@ -766,6 +782,8 @@ function BuilderContent() {
       if (newId) {
         setActiveProjectId(newId);
         setActiveProjectIdLocal(newId);
+        migrateFullAppBackendLocal(null, newId);
+        setFullAppBackend(loadFullAppBackendLocal(newId));
         saveWorkspaceSnapshot({
           generatedCode: code,
           prompt: promptUsed,
@@ -2207,6 +2225,7 @@ function BuilderContent() {
       ? 'full-app'
       : 'simple';
     setOutputMode(loadedMode);
+    setFullAppBackend(loadFullAppBackendLocal(project.id));
     lastCodeLenRef.current = project.generated_code.length;
     setGeneratedCode(project.generated_code);
     if (loadedMode === 'full-app') {
@@ -2275,6 +2294,7 @@ function BuilderContent() {
     setBlueprintData(null);
     setActiveProjectId(null);
     setActiveProjectIdLocal(null);
+    setFullAppBackend(null);
     clearWorkspaceSnapshot();
     clearPromptDraft(null);
     setBuilderTurns([]);
@@ -2468,6 +2488,8 @@ function BuilderContent() {
           onPlanModeChange={setPlanMode}
           outputMode={outputMode}
           onOutputModeChange={setOutputMode}
+          fullAppBackendEnv={fullAppBackendEnv}
+          onFullAppBackendChange={setFullAppBackend}
           previewHtml={previewHtml}
           placeholderPreview={PLACEHOLDER_PREVIEW}
           previewFrameClass={previewFrameClass}

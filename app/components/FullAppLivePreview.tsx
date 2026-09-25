@@ -23,6 +23,8 @@ type FullAppLivePreviewProps = {
    * Bumping `nonce` re-sends even if `path` is unchanged.
    */
   navigateRequest?: { path: string; nonce: number } | null;
+  /** BYO Supabase credentials for DataClient in the preview iframe. */
+  backendEnv?: { supabaseUrl: string; supabaseAnonKey: string } | null;
   onNavChange?: (nav: {
     canGoBack: boolean;
     canGoForward: boolean;
@@ -69,6 +71,7 @@ export default function FullAppLivePreview({
   previewFrameClass,
   reloadKey,
   navigateRequest = null,
+  backendEnv = null,
   onNavChange,
 }: FullAppLivePreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -158,6 +161,7 @@ export default function FullAppLivePreview({
             code: result.code,
             css: result.css,
             title: 'Full App Preview',
+            backend: backendEnv,
           });
           reset();
           setPhase({
@@ -180,7 +184,7 @@ export default function FullAppLivePreview({
       window.clearTimeout(timer);
     };
     // reloadKey forces remount/rebundle
-  }, [signature, isGenerating, hasEntry, reloadKey, projectFiles, reset]);
+  }, [signature, isGenerating, hasEntry, reloadKey, projectFiles, reset, backendEnv]);
 
   if (isGenerating) {
     return (
