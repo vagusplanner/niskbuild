@@ -36,8 +36,29 @@ const ENTRY_CANDIDATES = [
   'src/index.jsx',
 ] as const;
 
-const BARE_IMPORT_RE =
-  /(?:from|import)\s*(?:[\s\n]*['"]([^'"]+)['"]|[\s\n]*\(\s*['"]([^'"]+)['"])/g;
+/**
+ * Match genuine ES module import/export specifiers only.
+ * Must NOT match method calls like dataClient.from('habits') or
+ * template strings like `from('${table}').select`.
+ */
+const STATIC_IMPORT_RE =
+  /\bimport\s+(?:type\s+)?(?:[\w*\s{},$]+?\s+from\s+)?['"]([^'"]+)['"]/g;
+const EXPORT_FROM_RE =
+  /\bexport\s+(?:type\s+)?(?:\*(?:\s+as\s+[\w$]+)?\s+from\s+|\{[^}]*\}\s+from\s+)['"]([^'"]+)['"]/g;
+const DYNAMIC_IMPORT_RE = /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
+
+function collectBareImportSpecs(source: string): string[] {
+  const specs: string[] = [];
+  for (const re of [STATIC_IMPORT_RE, EXPORT_FROM_RE, DYNAMIC_IMPORT_RE]) {
+    re.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(source)) !== null) {
+      const spec = (m[1] || '').trim();
+      if (spec) specs.push(spec);
+    }
+  }
+  return specs;
+}
 
 function normalizePath(p: string): string {
   return p.replace(/^\.\//, '').replace(/\\/g, '/');
@@ -70,6 +91,7 @@ export function collectPreviewCss(files: FullAppPreviewFiles): string {
  * Scan source for bare imports outside the allowlist.
  * Relative imports (./ ../) are fine; http(s) rejected.
  * Only app source under src/ (plus root entry candidates) — ignore vite.config etc.
+ * Only real import/export/import() statements — not from('table') method calls.
  */
 export function findDisallowedImports(files: FullAppPreviewFiles): string[] {
   const bad = new Set<string>();
@@ -82,11 +104,7 @@ export function findDisallowedImports(files: FullAppPreviewFiles): string[] {
     if (!n.startsWith('src/') && !ENTRY_CANDIDATES.includes(n as (typeof ENTRY_CANDIDATES)[number])) {
       continue;
     }
-    BARE_IMPORT_RE.lastIndex = 0;
-    let m: RegExpExecArray | null;
-    while ((m = BARE_IMPORT_RE.exec(content)) !== null) {
-      const spec = (m[1] || m[2] || '').trim();
-      if (!spec) continue;
+    for (const spec of collectBareImportSpecs(content)) {
       if (spec.startsWith('.') || spec.startsWith('/')) continue;
       if (spec.startsWith('http:') || spec.startsWith('https:')) {
         bad.add(spec);
