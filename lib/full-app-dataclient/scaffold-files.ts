@@ -231,9 +231,16 @@ VITE_SUPABASE_ANON_KEY=your_anon_key_here
 /**
  * Pattern A reference schema — auth-gated list/detail (habits/todos style).
  * AI should emit a subject-specific schema.sql; this is the fallback template.
+ *
+ * IMPORTANT: With "Automatically expose new tables" OFF (Supabase secure default),
+ * RLS alone is not enough — PostgREST roles need explicit GRANTs or you get
+ * "permission denied for table …" before any policy runs.
  */
 export const PATTERN_A_SCHEMA_SQL = `-- Pattern A: auth-gated owned rows (list/detail)
 -- Apply in Supabase SQL Editor (or CLI) after connecting your project.
+--
+-- Grants are required when "Automatically expose new tables" is OFF
+-- (recommended). Postgres checks GRANTs before RLS policies.
 
 create table if not exists public.items (
   id uuid primary key default gen_random_uuid(),
@@ -247,21 +254,31 @@ create table if not exists public.items (
 
 create index if not exists items_user_id_idx on public.items (user_id);
 
+-- Expose to Data API roles (RLS still restricts rows)
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on table public.items to authenticated;
+-- service_role is server-only; keep for dashboard/admin tooling
+grant select, insert, update, delete on table public.items to service_role;
+
 alter table public.items enable row level security;
 
+drop policy if exists "items_select_own" on public.items;
 create policy "items_select_own"
   on public.items for select
   using (auth.uid() = user_id);
 
+drop policy if exists "items_insert_own" on public.items;
 create policy "items_insert_own"
   on public.items for insert
   with check (auth.uid() = user_id);
 
+drop policy if exists "items_update_own" on public.items;
 create policy "items_update_own"
   on public.items for update
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
+drop policy if exists "items_delete_own" on public.items;
 create policy "items_delete_own"
   on public.items for delete
   using (auth.uid() = user_id);

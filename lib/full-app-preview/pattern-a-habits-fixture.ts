@@ -570,6 +570,9 @@ button.danger {
   padding: 1rem;
 }`,
   'supabase/schema.sql': `-- Pattern A: auth-gated habits
+-- Grants required when "Automatically expose new tables" is OFF (recommended).
+-- Postgres checks GRANTs before RLS — missing grants → "permission denied for table".
+
 create table if not exists public.habits (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users (id) on delete cascade,
@@ -581,6 +584,10 @@ create table if not exists public.habits (
 );
 
 create index if not exists habits_user_id_idx on public.habits (user_id);
+
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on table public.habits to authenticated;
+grant select, insert, update, delete on table public.habits to service_role;
 
 alter table public.habits enable row level security;
 

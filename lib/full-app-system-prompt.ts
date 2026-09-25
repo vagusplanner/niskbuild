@@ -28,7 +28,7 @@ REQUIRED PROJECT SHAPE (always include these files):
 - src/styles.css — global styles (modern, distinctive, subject-driven — not generic purple SaaS)
 - src/pages/*.jsx — at least TWO route pages matching the prompt (e.g. Home + list/detail)
 - src/components/ — at least one shared component used by multiple pages (Nav, Layout, or similar)
-- supabase/schema.sql — CREATE TABLE + RLS policies for the app's data (see PATTERN A)
+- supabase/schema.sql — CREATE TABLE + explicit GRANTs + RLS policies for the app's data (see PATTERN A)
 - .env.example — VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY placeholders
 
 DATACLIENT (mandatory — do not invent another client):
@@ -60,7 +60,13 @@ PATTERN A (v1 default for auth + list/detail apps — todos, habits, notes, simp
   optional notes/text fields,
   created_at / updated_at timestamptz
 - RLS: enable RLS; policies so auth.uid() = user_id for select/insert/update/delete
-- Put full SQL in supabase/schema.sql
+- GRANTs (mandatory — do not skip): with Supabase "Automatically expose new tables" OFF,
+  PostgREST roles have no table privileges by default. RLS never runs if GRANTs are missing
+  (error: "permission denied for table …"). Always include in schema.sql:
+    grant usage on schema public to authenticated;
+    grant select, insert, update, delete on table public.<your_table> to authenticated;
+    grant select, insert, update, delete on table public.<your_table> to service_role;
+  Do NOT grant to anon for Pattern A (signed-in only). Put full SQL in supabase/schema.sql
 - UI flows:
   1. Auth page or gate: sign up + sign in (email/password). Signed-out users cannot CRUD.
   2. List page: load rows for the current user via dataClient.from(...).select().eq('user_id', user.id)
