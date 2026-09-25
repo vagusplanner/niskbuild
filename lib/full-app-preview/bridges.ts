@@ -138,6 +138,13 @@ export const FULL_APP_NAV_BRIDGE = `<script data-niskbuild-preview-nav="1">
       try{history.forward();}catch(err){}
     }else if(d.action==='reload'){
       try{location.reload();}catch(err){}
+    }else if(d.action==='goto' && typeof d.path==='string'){
+      try{
+        var p=String(d.path);
+        if(p.charAt(0)!=='/')p='/'+p;
+        location.hash='#'+p;
+        setTimeout(onHash,0);
+      }catch(err){}
     }
   });
   window.addEventListener('hashchange',onHash);

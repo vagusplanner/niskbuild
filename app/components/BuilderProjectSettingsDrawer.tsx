@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import type { ComponentBlueprint } from '@/lib/blueprint-schema';
 import type { ProjectSeoSettings } from '@/lib/seo-types';
@@ -9,12 +9,18 @@ import RoiTracker from '@/app/components/RoiTracker';
 
 export type ProjectSettingsTab = 'seo' | 'integrations' | 'blueprint' | 'ai' | 'credits';
 
-const TABS: { id: ProjectSettingsTab; label: string; icon: string }[] = [
-  { id: 'seo', label: 'SEO', icon: '🔍' },
-  { id: 'integrations', label: 'Integrations', icon: '🔌' },
-  { id: 'blueprint', label: 'Blueprint', icon: '📋' },
-  { id: 'ai', label: 'AI / Ollama', icon: '🤖' },
-  { id: 'credits', label: 'Credits / ROI', icon: '📊' },
+const TABS: {
+  id: ProjectSettingsTab;
+  label: string;
+  icon: string;
+  /** false = not meaningful for Full App React projects yet */
+  fullAppReady: boolean;
+}[] = [
+  { id: 'seo', label: 'SEO', icon: '🔍', fullAppReady: false },
+  { id: 'integrations', label: 'Integrations', icon: '🔌', fullAppReady: false },
+  { id: 'blueprint', label: 'Blueprint', icon: '📋', fullAppReady: false },
+  { id: 'ai', label: 'AI / Ollama', icon: '🤖', fullAppReady: true },
+  { id: 'credits', label: 'Credits / ROI', icon: '📊', fullAppReady: true },
 ];
 
 type BuilderProjectSettingsDrawerProps = {
@@ -41,7 +47,24 @@ type BuilderProjectSettingsDrawerProps = {
   generatedCode: string;
   onIntegrationAdded: (code: string, message: string, creditsRemaining?: number) => void;
   onIntegrationStatus?: (message: string) => void;
+  outputMode?: 'simple' | 'full-app';
 };
+
+function FullAppLimitedNotice({ feature }: { feature: string }) {
+  return (
+    <div className="m-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <p className="text-sm font-medium text-[var(--foreground)] mb-1">
+        {feature} isn’t wired for Full App yet
+      </p>
+      <p className="text-xs text-nisk-muted leading-relaxed">
+        This control was built for Simple (HTML) projects. Full App React projects use{' '}
+        <code className="text-[10px]">src/</code> files and client routing — {feature.toLowerCase()}{' '}
+        will return here once that path is supported. Use the file tree / Code panel to edit source
+        for now.
+      </p>
+    </div>
+  );
+}
 
 export default function BuilderProjectSettingsDrawer({
   open,
@@ -67,8 +90,13 @@ export default function BuilderProjectSettingsDrawer({
   generatedCode,
   onIntegrationAdded,
   onIntegrationStatus,
+  outputMode = 'simple',
 }: BuilderProjectSettingsDrawerProps) {
   if (!open) return null;
+
+  const isFullApp = outputMode === 'full-app';
+  const activeTabMeta = TABS.find((t) => t.id === tab);
+  const tabLimited = isFullApp && activeTabMeta && !activeTabMeta.fullAppReady;
 
   return (
     <div className="fixed inset-0 z-[80] flex justify-end">
@@ -87,7 +115,11 @@ export default function BuilderProjectSettingsDrawer({
         <div className="flex items-center justify-between gap-2 border-b border-nisk px-4 py-3 shrink-0">
           <div>
             <h2 className="text-sm font-semibold text-[var(--foreground)]">Project settings</h2>
-            <p className="text-[10px] text-nisk-muted">SEO, integrations, blueprint, and AI</p>
+            <p className="text-[10px] text-nisk-muted">
+              {isFullApp
+                ? 'Full App — AI and credits available; SEO / integrations / blueprint coming later'
+                : 'SEO, integrations, blueprint, and AI'}
+            </p>
           </div>
           <button
             type="button"
@@ -100,24 +132,43 @@ export default function BuilderProjectSettingsDrawer({
         </div>
 
         <div className="flex gap-1 overflow-x-auto border-b border-nisk px-3 py-2 shrink-0">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => onTabChange(t.id)}
-              className={`shrink-0 rounded-lg px-2.5 py-1.5 text-xs transition-colors ${
-                tab === t.id
-                  ? 'bg-[var(--primary)]/20 text-[var(--primary)]'
-                  : 'text-nisk-muted hover:text-[var(--foreground)]'
-              }`}
-            >
-              {t.icon} {t.label}
-            </button>
-          ))}
+          {TABS.map((t) => {
+            const limited = isFullApp && !t.fullAppReady;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => onTabChange(t.id)}
+                className={`shrink-0 rounded-lg px-2.5 py-1.5 text-xs transition-colors ${
+                  tab === t.id
+                    ? 'bg-[var(--primary)]/20 text-[var(--primary)]'
+                    : limited
+                      ? 'text-nisk-muted/70 hover:text-nisk-muted'
+                      : 'text-nisk-muted hover:text-[var(--foreground)]'
+                }`}
+                title={limited ? `${t.label} — not available for Full App yet` : t.label}
+              >
+                {t.icon} {t.label}
+                {limited ? ' · soon' : ''}
+              </button>
+            );
+          })}
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto">
-          {tab === 'seo' && (
+          {tabLimited ? (
+            <FullAppLimitedNotice
+              feature={
+                tab === 'seo'
+                  ? 'SEO'
+                  : tab === 'integrations'
+                    ? 'Integrations'
+                    : 'Blueprint'
+              }
+            />
+          ) : null}
+
+          {tab === 'seo' && !tabLimited && (
             <SeoPanel
               settings={seoSettings}
               onChange={onSeoChange}
@@ -132,7 +183,7 @@ export default function BuilderProjectSettingsDrawer({
             />
           )}
 
-          {tab === 'integrations' && (
+          {tab === 'integrations' && !tabLimited && (
             <div className="p-4">
               <IntegrationsPanel
                 projectId={activeProjectId}
@@ -145,7 +196,7 @@ export default function BuilderProjectSettingsDrawer({
             </div>
           )}
 
-          {tab === 'blueprint' && (
+          {tab === 'blueprint' && !tabLimited && (
             <div className="p-4">
               {blueprintData ? (
                 <pre className="text-xs font-mono text-gray-300 whitespace-pre-wrap">

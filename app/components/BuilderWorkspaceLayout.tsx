@@ -28,7 +28,9 @@ import PreviewConsolePanel from '@/app/components/PreviewConsolePanel';
 import { usePreviewConsole } from '@/app/components/usePreviewConsole';
 import FullAppLivePreview from '@/app/components/FullAppLivePreview';
 import BuilderPreviewPageNav from '@/app/components/BuilderPreviewPageNav';
+import BuilderFullAppPageNav from '@/app/components/BuilderFullAppPageNav';
 import { BUILDER_PREVIEW_SANDBOX } from '@/lib/preview-html';
+import { listFullAppRoutePages, type FullAppRoutePage } from '@/lib/full-app-pages';
 import { Terminal } from 'lucide-react';
 import {
   creditsBarPercent,
@@ -185,6 +187,8 @@ export type BuilderWorkspaceLayoutProps = {
   onRenamePage?: (path: string, newName: string) => void;
   onDeletePage?: (path: string) => void;
   canAddPage?: boolean;
+  /** Full App: add src/pages/* + wire into router. */
+  onAddFullAppPage?: (name: string) => void;
   onRunExportAudit?: () => void;
 };
 
@@ -197,12 +201,17 @@ function ProjectPageTabs({
   activeFile: string;
   onSelectFile: (path: string) => void;
 }) {
-  if (projectFiles.length <= 1) return null;
+  // Simple mode only — HTML pages. (Full App uses BuilderFullAppPageNav.)
+  const pages = projectFiles.filter((f) => /\.html?$/i.test(f.path));
+  if (pages.length <= 1) return null;
 
   return (
     <div className="flex items-center gap-1 min-w-0 overflow-x-auto max-w-[min(50vw,420px)] scrollbar-thin">
-      {projectFiles.map((file) => {
-        const label = file.path.replace(/^pages\//, '').replace(/\.html$/, '') || file.path;
+      {pages.map((file) => {
+        const label =
+          file.path.replace(/^pages\//, '').replace(/\.html?$/i, '') || file.path;
+        const display =
+          label === 'index' ? 'Home' : label.replace(/[-_]/g, ' ');
         const active = file.path === activeFile;
         return (
           <button
@@ -216,7 +225,7 @@ function ProjectPageTabs({
             }`}
             title={file.path}
           >
-            {label}
+            {display}
           </button>
         );
       })}
@@ -260,6 +269,7 @@ function CanvasHeader({
   projectFiles = [],
   activeFile = '',
   onSelectFile,
+  isFullAppMode = false,
 }: {
   canAct: boolean;
   isExporting: boolean;
@@ -306,8 +316,10 @@ function CanvasHeader({
   projectFiles?: ProjectFile[];
   activeFile?: string;
   onSelectFile?: (path: string) => void;
+  isFullAppMode?: boolean;
 }) {
   const codeViewActive = inspectorOpen && inspectorTab === 'code';
+  const routeCount = isFullAppMode ? listFullAppRoutePages(projectFiles).length : 0;
 
   return (
     <div className="shrink-0 flex items-center justify-between gap-2 px-3 py-1.5 border-b border-nisk builder-canvas-header">
@@ -374,8 +386,15 @@ function CanvasHeader({
           </div>
         )}
         <span className="w-1.5 h-1.5 rounded-full bg-[var(--copper-primary)] status-dot-active shrink-0 hidden sm:block" />
-        <span className="text-xs font-medium text-nisk-muted hidden lg:inline">Live preview</span>
-        {onSelectFile && (
+        <span className="text-xs font-medium text-nisk-muted hidden lg:inline">
+          {isFullAppMode ? 'Full App preview' : 'Live preview'}
+        </span>
+        {isFullAppMode && routeCount > 0 && (
+          <span className="text-[10px] text-nisk-muted hidden md:inline tabular-nums">
+            {routeCount} route{routeCount === 1 ? '' : 's'}
+          </span>
+        )}
+        {!isFullAppMode && onSelectFile && (
           <ProjectPageTabs
             projectFiles={projectFiles}
             activeFile={activeFile}
@@ -389,10 +408,14 @@ function CanvasHeader({
             type="button"
             onClick={onOpenProjectSettings}
             className="btn-secondary px-2.5 py-1.5 text-xs rounded-lg inline-flex items-center gap-1"
-            title="Project settings — SEO, integrations, blueprint, AI"
+            title={
+              isFullAppMode
+                ? 'Project settings — AI, credits (SEO/integrations limited in Full App)'
+                : 'Project settings — SEO, integrations, blueprint, AI'
+            }
           >
             <span aria-hidden>⚙️</span>
-            <span className="hidden sm:inline">Project</span>
+            <span className="hidden sm:inline">Settings</span>
           </button>
         )}
         <button
@@ -942,10 +965,14 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
     onRenamePage,
     onDeletePage,
     canAddPage = true,
+    onAddFullAppPage,
   } = props;
 
-  const showStylesTab = visualEditMode && !!selectedVisualElement;
+  const showStylesTab = visualEditMode && !!selectedVisualElement && outputMode !== 'full-app';
   const isFullAppMode = outputMode === 'full-app';
+  /** Visual edit / inspect are HTML-DOM tools — not applicable to React Full App yet. */
+  const visualEditEnabled = canVisualEdit && !isFullAppMode;
+  const visualEditFullEnabled = canVisualEditFull && !isFullAppMode;
 
   const {
     displayHtml: previewDisplayHtml,
@@ -963,6 +990,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
     canGoForward: false,
     goBack: () => {},
     goForward: () => {},
+    goToPath: (_path: string) => {},
   });
 
   const handleFullAppNavChange = useCallback(
@@ -971,10 +999,19 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
       canGoForward: boolean;
       goBack: () => void;
       goForward: () => void;
+      goToPath: (path: string) => void;
     }) => {
       setFullAppNav(nav);
     },
     []
+  );
+
+  const handleFullAppRouteSelect = useCallback(
+    (page: FullAppRoutePage) => {
+      onSelectFile(page.filePath);
+      fullAppNav.goToPath(page.routePath);
+    },
+    [onSelectFile, fullAppNav]
   );
 
   const previewReloadKey = isFullAppMode ? fullAppReloadKey : htmlPreviewReloadKey;
@@ -1019,8 +1056,8 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
     return () => mq.removeEventListener('change', sync);
   }, []);
 
-  const openProjectSettings = (tab: ProjectSettingsTab = 'seo') => {
-    onProjectSettingsTabChange(tab);
+  const openProjectSettings = (tab?: ProjectSettingsTab) => {
+    onProjectSettingsTabChange(tab ?? (isFullAppMode ? 'ai' : 'seo'));
     onProjectSettingsOpenChange(true);
   };
 
@@ -1170,11 +1207,11 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
     <VisualEditorToolbar
       editMode={visualEditMode}
       onToggleEditMode={onToggleVisualEdit}
-      canUseEditor={canVisualEdit}
+      canUseEditor={visualEditEnabled}
       mobilePreview={visualMobilePreview}
       onToggleMobilePreview={onToggleMobilePreview}
-      showMobileToggle={canVisualEditFull}
-      showUndoReset={canVisualEditFull}
+      showMobileToggle={visualEditFullEnabled}
+      showUndoReset={visualEditFullEnabled}
       onUndo={onVisualUndo}
       onReset={onVisualReset}
       canUndo={visualEditHistoryLength > 0}
@@ -1236,7 +1273,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
       stylePanel={stylePanel}
       onStyleChange={onStyleChange}
       visualMobilePreview={visualMobilePreview}
-      showMobileStyleControls={canVisualEditFull}
+      showMobileStyleControls={visualEditFullEnabled}
       visualEditApplying={visualEditApplying}
     />
   );
@@ -1266,6 +1303,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
       generatedCode={generatedCode}
       onIntegrationAdded={onIntegrationAdded}
       onIntegrationStatus={onIntegrationStatus}
+      outputMode={outputMode}
     />
   );
 
@@ -1323,7 +1361,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
               isExporting={isExporting}
               mobileExporting={mobileExporting}
               canPwa={canPwa}
-              canVisualEdit={canVisualEdit}
+              canVisualEdit={visualEditEnabled}
               visualEditMode={visualEditMode}
               inspectMode={inspectMode}
               cloudCreditsRemaining={cloudCreditsRemaining}
@@ -1355,10 +1393,11 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
               canShareSocial={canShareSocial}
               onOpenSocialPublisher={onOpenSocialPublisher}
               onRunExportAudit={onRunExportAudit}
-              onOpenProjectSettings={() => openProjectSettings('seo')}
+              onOpenProjectSettings={() => openProjectSettings()}
               projectFiles={projectFiles}
               activeFile={activeFile}
               onSelectFile={onSelectFile}
+              isFullAppMode={isFullAppMode}
             />
             {!isFullAppMode && (
               <BuilderPreviewPageNav
@@ -1371,7 +1410,16 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
                 canAddPage={canAddPage}
               />
             )}
-            {visualToolbar}
+            {isFullAppMode && (
+              <BuilderFullAppPageNav
+                projectFiles={projectFiles}
+                activeFile={activeFile}
+                onSelectPage={handleFullAppRouteSelect}
+                onAddPage={onAddFullAppPage}
+                canAddPage={Boolean(onAddFullAppPage)}
+              />
+            )}
+            {!isFullAppMode && visualToolbar}
             <div
               ref={mobilePreviewFullscreenRef}
               className={`flex-1 min-h-0 relative builder-preview-canvas ${
@@ -1426,7 +1474,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
               stylePanel={stylePanel}
               onStyleChange={onStyleChange}
               visualMobilePreview={visualMobilePreview}
-              showMobileStyleControls={canVisualEditFull}
+              showMobileStyleControls={visualEditFullEnabled}
               visualEditApplying={visualEditApplying}
             />
           </div>
@@ -1471,7 +1519,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
             isExporting={isExporting}
             mobileExporting={mobileExporting}
             canPwa={canPwa}
-            canVisualEdit={canVisualEdit}
+            canVisualEdit={visualEditEnabled}
             visualEditMode={visualEditMode}
             inspectMode={inspectMode}
             cloudCreditsRemaining={cloudCreditsRemaining}
@@ -1498,10 +1546,11 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
             canShareSocial={canShareSocial}
             onOpenSocialPublisher={onOpenSocialPublisher}
             onRunExportAudit={onRunExportAudit}
-            onOpenProjectSettings={() => openProjectSettings('seo')}
+            onOpenProjectSettings={() => openProjectSettings()}
             projectFiles={projectFiles}
             activeFile={activeFile}
             onSelectFile={onSelectFile}
+            isFullAppMode={isFullAppMode}
           />
           {!isFullAppMode && (
             <BuilderPreviewPageNav
@@ -1514,7 +1563,16 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
               canAddPage={canAddPage}
             />
           )}
-          {visualToolbar}
+          {isFullAppMode && (
+            <BuilderFullAppPageNav
+              projectFiles={projectFiles}
+              activeFile={activeFile}
+              onSelectPage={handleFullAppRouteSelect}
+              onAddPage={onAddFullAppPage}
+              canAddPage={Boolean(onAddFullAppPage)}
+            />
+          )}
+          {!isFullAppMode && visualToolbar}
           <div
             ref={previewFullscreenRef}
             className={`flex-1 min-h-0 relative builder-preview-canvas ${

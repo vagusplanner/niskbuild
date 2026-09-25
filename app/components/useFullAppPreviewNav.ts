@@ -53,6 +53,18 @@ export function useFullAppPreviewNav(iframeRef: React.RefObject<HTMLIFrameElemen
   const goBack = useCallback(() => postNav('back'), [postNav]);
   const goForward = useCallback(() => postNav('forward'), [postNav]);
   const requestReload = useCallback(() => postNav('reload'), [postNav]);
+  const goToPath = useCallback(
+    (path: string) => {
+      const win = iframeRef.current?.contentWindow;
+      if (!win) return;
+      try {
+        win.postMessage({ type: 'niskbuild-preview-nav', action: 'goto', path }, '*');
+      } catch {
+        /* ignore */
+      }
+    },
+    [iframeRef]
+  );
 
-  return { nav, reset, goBack, goForward, requestReload };
+  return { nav, reset, goBack, goForward, requestReload, goToPath };
 }

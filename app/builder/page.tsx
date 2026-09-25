@@ -51,6 +51,7 @@ import {
   isFullAppProjectFiles,
   parseFullAppBundle,
 } from '@/lib/full-app-bundle';
+import { addFullAppRoutePage, reactPageDisplayLabel } from '@/lib/full-app-pages';
 import { injectPreviewPageNavScript } from '@/lib/preview-page-nav-inject';
 import type { NiskBuildPromptEntry } from '@/lib/niskbuild-config';
 import { parseNiskBuildConfig } from '@/lib/niskbuild-config';
@@ -956,6 +957,24 @@ function BuilderContent() {
     setProjectFiles(added.files);
     handleSelectFile(added.path);
     setStatusMessage(`📄 Added ${pageDisplayLabel(added.path)} — prompt to fill it in for your app`);
+    setTimeout(() => setStatusMessage(''), 6000);
+  };
+
+  const handleAddFullAppPage = (name: string) => {
+    if (!name?.trim()) return;
+    const added = addFullAppRoutePage(projectFiles, name);
+    if (!added) {
+      setStatusMessage(
+        '❌ Could not add route — need src/routes.jsx (or App.jsx with <Routes>) and a unique page name'
+      );
+      setTimeout(() => setStatusMessage(''), 6000);
+      return;
+    }
+    setProjectFiles(added.files);
+    setActiveFile(added.filePath);
+    setStatusMessage(
+      `📄 Added ${added.label} (${added.routePath}) — prompt to flesh out ${reactPageDisplayLabel(added.filePath)}`
+    );
     setTimeout(() => setStatusMessage(''), 6000);
   };
 
@@ -2517,6 +2536,9 @@ function BuilderContent() {
           canAddPage={
             outputMode !== 'full-app' &&
             (canAct || !isExportableCode(generatedCode))
+          }
+          onAddFullAppPage={
+            outputMode === 'full-app' && canAct ? handleAddFullAppPage : undefined
           }
           onRunExportAudit={() => void runExportAudit()}
           codeEditor={

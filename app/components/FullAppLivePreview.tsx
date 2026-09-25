@@ -23,6 +23,7 @@ type FullAppLivePreviewProps = {
     canGoForward: boolean;
     goBack: () => void;
     goForward: () => void;
+    goToPath: (path: string) => void;
   }) => void;
 };
 
@@ -65,7 +66,7 @@ export default function FullAppLivePreview({
   onNavChange,
 }: FullAppLivePreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const { nav, reset, goBack, goForward } = useFullAppPreviewNav(iframeRef);
+  const { nav, reset, goBack, goForward, goToPath } = useFullAppPreviewNav(iframeRef);
   const [phase, setPhase] = useState<BundlePhase>({ kind: 'idle' });
   const signature = useMemo(() => filesSignature(projectFiles), [projectFiles]);
   const hasEntry = useMemo(
@@ -79,8 +80,9 @@ export default function FullAppLivePreview({
       canGoForward: nav.canGoForward,
       goBack,
       goForward,
+      goToPath,
     });
-  }, [nav.canGoBack, nav.canGoForward, goBack, goForward, onNavChange]);
+  }, [nav.canGoBack, nav.canGoForward, goBack, goForward, goToPath, onNavChange]);
 
   useEffect(() => {
     if (isGenerating) {
