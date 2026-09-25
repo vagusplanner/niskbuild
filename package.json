@@ -18,7 +18,10 @@
     "start": "next start",
     "lint": "eslint",
     "build:vp-deploy-artifact": "node scripts/build-vp-deploy-artifact.js",
-    "postinstall": "npm ci --prefix apps/vagus-planner --omit=dev --maxsockets=1 --no-audit --prefer-offline --no-fund"
+    "postinstall": "npm ci --prefix apps/vagus-planner --omit=dev --maxsockets=1 --no-audit --prefer-offline --no-fund",
+    "copy:preview-wasm": "mkdir -p public/preview-runtime && cp node_modules/esbuild-wasm/esbuild.wasm public/preview-runtime/esbuild.wasm",
+    "predev": "npm run copy:preview-wasm",
+    "prebuild": "npm run copy:preview-wasm"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",
@@ -30,6 +33,7 @@
     "@supabase/supabase-js": "^2.106.2",
     "@tailwindcss/node": "^4",
     "archiver": "^7.0.1",
+    "esbuild-wasm": "^0.25.12",
     "figma-api": "^2.2.0-beta",
     "groq-sdk": "^1.2.0",
     "jszip": "^3.10.1",
@@ -63,6 +67,7 @@
     "eslint-config-next": "16.2.6",
     "opentype.js": "^2.0.0",
     "pdf-lib": "^1.17.1",
+    "playwright": "^1.63.0",
     "typescript": "^5"
   }
 }

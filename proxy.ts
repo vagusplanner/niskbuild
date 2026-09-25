@@ -293,6 +293,6 @@ export const config = {
   matcher: [
     // Include site.webmanifest so custom domains can rewrite to /tenant-manifest.
     // Static NiskBuild manifest still served on base platform via next().
-    '/((?!api/auth|_next/static|_next/image|assets|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|txt|xml|woff2?)$).*)',
+    '/((?!api/auth|_next/static|_next/image|assets|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|txt|xml|woff2?|wasm)$).*)',
   ],
 };

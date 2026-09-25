@@ -31,6 +31,8 @@ const VP_ADMIN_ARTIFACT_ROUTE_KEYS = [
 ] as const;
 
 const nextConfig: NextConfig = {
+  // Allow Playwright/automation hitting 127.0.0.1 during local spikes.
+  allowedDevOrigins: ['127.0.0.1', 'localhost'],
   // Tailwind compile runs in export/deploy API routes (native oxide + lightningcss).
   serverExternalPackages: [
     '@tailwindcss/node',
@@ -38,6 +40,12 @@ const nextConfig: NextConfig = {
     'lightningcss',
     'tailwindcss',
   ],
+  // esbuild-wasm browser entry must not resolve to the Node service binary.
+  turbopack: {
+    resolveAlias: {
+      'esbuild-wasm': 'esbuild-wasm/lib/browser.js',
+    },
+  },
   // VP deploy + admin artifact build need VP sources/lockfile at runtime.
   // Never ship apps/vagus-planner/node_modules (blows the 250MB function limit).
   outputFileTracingIncludes: {

@@ -30,6 +30,12 @@ node_modules/
 /apps/imported/*
 !/apps/imported/.gitkeep
 
+# esbuild-wasm binary (copied from node_modules for Full App preview)
+/public/preview-runtime/esbuild.wasm
+.tmp-full-app-preview-spike/
+.tmp-full-app-smoke/
+.tmp-sentry-sweep/
+
 # debug
 npm-debug.log*
 yarn-debug.log*

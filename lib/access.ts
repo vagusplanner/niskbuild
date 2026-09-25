@@ -47,6 +47,7 @@ export const PUBLIC_PATHS = [
   '/privacy',
   '/terms',
   '/games',
+  '/dev/full-app-preview-spike',
   ...VAGUS_PLANNER_PUBLIC_LEGAL_PATHS,
 ];
 
@@ -125,7 +126,7 @@ export function isStaticPublicAsset(pathname: string) {
     pathname === '/site.webmanifest' ||
     pathname === '/robots.txt' ||
     pathname === '/sitemap.xml' ||
-    /\.(?:webmanifest|ico|json|txt|xml|woff2?)$/i.test(pathname)
+    /\.(?:webmanifest|ico|json|txt|xml|woff2?|wasm)$/i.test(pathname)
   );
 }
 
