@@ -145,8 +145,22 @@ function virtualFsPlugin(files: FullAppPreviewFiles): Plugin {
   return {
     name: 'nisk-virtual-fs',
     setup(build) {
+      build.onResolve({ filter: /^nisk:preview-nav-bridge$/ }, () => ({
+        path: 'nisk:preview-nav-bridge',
+        namespace: 'nisk-bridge',
+      }));
+
+      build.onLoad({ filter: /.*/, namespace: 'nisk-bridge' }, () => ({
+        contents: PREVIEW_NAV_BRIDGE_MODULE,
+        loader: 'jsx',
+      }));
+
       build.onResolve({ filter: /.*/ }, (args) => {
         const spec = args.path;
+
+        if (spec === 'nisk:preview-nav-bridge') {
+          return { path: spec, namespace: 'nisk-bridge' };
+        }
 
         if (
           FULL_APP_PREVIEW_EXTERNALS.includes(
@@ -202,10 +216,10 @@ function virtualFsPlugin(files: FullAppPreviewFiles): Plugin {
           return { contents, loader: 'json' };
         }
 
-        // srcDoc iframes have no real path URL — BrowserRouter breaks.
-        // Rewrite to HashRouter so client routes work under about:srcdoc.
+        // Blob/sandbox preview cannot safely set location.hash — use MemoryRouter
+        // + in-app navigate bridge driven by parent postMessage.
         if (/\.(jsx?|tsx?)$/i.test(path)) {
-          contents = rewriteBrowserRouterForPreview(contents);
+          contents = injectPreviewNavBridge(contents, path);
         }
 
         if (path.endsWith('.tsx')) return { contents, loader: 'tsx' };
@@ -309,7 +323,116 @@ function formatEsbuildErrors(err: { errors?: Array<{ text: string }> }): string 
   return texts.length ? texts.join('\n') : 'Bundle failed';
 }
 
-/** Preview-only rewrite so generated BrowserRouter apps run in srcDoc. */
+/** Preview-only rewrite: BrowserRouter/HashRouter → MemoryRouter (blob sandbox can't set location.hash). */
 export function rewriteBrowserRouterForPreview(source: string): string {
-  return source.replace(/\bBrowserRouter\b/g, 'HashRouter');
+  return source
+    .replace(/\bBrowserRouter\b/g, 'MemoryRouter')
+    .replace(/\bHashRouter\b/g, 'MemoryRouter');
 }
+
+/** Inject MemoryRouter nav bridge so parent postMessage can call react-router navigate(). */
+export function injectPreviewNavBridge(source: string, filePath: string): string {
+  const isEntry = /(?:^|\/)main\.(jsx|tsx|js|ts)$/i.test(filePath);
+  const hasRouter =
+    /<(MemoryRouter|BrowserRouter|HashRouter)\b/.test(source) ||
+    /\bMemoryRouter\b/.test(source);
+
+  if (!isEntry && !hasRouter) return source;
+
+  let out = rewriteBrowserRouterForPreview(source);
+
+  if (!out.includes('nisk:preview-nav-bridge')) {
+    out = `import { NiskPreviewNavBridge } from "nisk:preview-nav-bridge";\n${out}`;
+  }
+
+  if (!out.includes('<NiskPreviewNavBridge')) {
+    // Prefer injecting as first child of the router element.
+    const replaced = out.replace(
+      /<(MemoryRouter)(\s[^>]*)?>/g,
+      (match) => `${match}\n      <NiskPreviewNavBridge />`
+    );
+    if (replaced !== out) {
+      out = replaced;
+    } else if (isEntry) {
+      // Fallback: wrap default export render tree is too risky — leave a runtime hint.
+      out += `\n;console.warn("[nisk-preview] Could not inject NiskPreviewNavBridge into Router");\n`;
+    }
+  }
+
+  return out;
+}
+
+export const PREVIEW_NAV_BRIDGE_MODULE = `
+import { useEffect, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+
+/** Lives inside MemoryRouter — parent posts {type:'niskbuild-preview-nav', action, path? }. */
+export function NiskPreviewNavBridge() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const depthRef = useRef(0);
+  const stackRef = useRef([location.pathname || "/"]);
+
+  useEffect(() => {
+    function report() {
+      try {
+        const path = location.pathname || "/";
+        parent.postMessage({
+          type: "niskbuild-preview-history",
+          canGoBack: depthRef.current > 0,
+          canGoForward: false,
+          path,
+          ts: Date.now(),
+        }, "*");
+      } catch (_) {}
+    }
+
+    function onMessage(e) {
+      const d = e && e.data;
+      if (!d || d.type !== "niskbuild-preview-nav") return;
+      if (d.action === "goto" && typeof d.path === "string") {
+        let p = String(d.path).trim();
+        if (!p) return;
+        if (p.charAt(0) !== "/") p = "/" + p;
+        p = p.split("#")[0].split("?")[0] || "/";
+        depthRef.current += 1;
+        stackRef.current.push(p);
+        navigate(p);
+      } else if (d.action === "back") {
+        if (depthRef.current > 0) depthRef.current -= 1;
+        navigate(-1);
+      } else if (d.action === "forward") {
+        depthRef.current += 1;
+        navigate(1);
+      } else if (d.action === "reload") {
+        try { window.location.reload(); } catch (_) {}
+      }
+    }
+
+    window.addEventListener("message", onMessage);
+    window.__niskPreviewNavigate = (path) => {
+      depthRef.current += 1;
+      navigate(path);
+    };
+    report();
+    return () => {
+      window.removeEventListener("message", onMessage);
+      try { delete window.__niskPreviewNavigate; } catch (_) {}
+    };
+  }, [navigate, location.pathname]);
+
+  useEffect(() => {
+    try {
+      parent.postMessage({
+        type: "niskbuild-preview-history",
+        canGoBack: depthRef.current > 0,
+        canGoForward: false,
+        path: location.pathname || "/",
+        ts: Date.now(),
+      }, "*");
+    } catch (_) {}
+  }, [location.pathname]);
+
+  return null;
+}
+`.trim();

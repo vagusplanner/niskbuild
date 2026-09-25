@@ -85,72 +85,50 @@ export const FULL_APP_CONSOLE_BRIDGE = `<script data-niskbuild-preview-console="
 <\/script>`;
 
 /**
- * Back/forward for HashRouter (preview rewrites BrowserRouter → HashRouter).
- * Parent sends { type:'niskbuild-preview-nav', action:'back'|'forward' }.
- * Child reports { type:'niskbuild-preview-history', canGoBack, canGoForward, path }.
+ * Fallback nav bridge in the shell. Prefer React MemoryRouter bridge
+ * (window.__niskPreviewNavigate / message listener inside the app).
+ * Avoid setting location.hash on sandboxed blob iframes — Chrome blocks it.
  */
 export const FULL_APP_NAV_BRIDGE = `<script data-niskbuild-preview-nav="1">
 (function(){
   if(window.__niskbuildNavHooked)return;
   window.__niskbuildNavHooked=true;
-  var stack=[pathNow()];
-  var index=0;
   function pathNow(){
     try{
+      if(typeof window.__niskPreviewPath==='string')return window.__niskPreviewPath;
       var h=location.hash||'';
       if(h.charAt(0)==='#')h=h.slice(1);
       if(!h||h.charAt(0)!=='/')h='/'+(h||'');
       return h || '/';
     }catch(e){return '/';}
   }
-  function report(){
+  function report(extra){
     try{
-      parent.postMessage({
+      parent.postMessage(Object.assign({
         type:'niskbuild-preview-history',
-        canGoBack:index>0,
-        canGoForward:index<stack.length-1,
+        canGoBack:false,
+        canGoForward:false,
         path:pathNow(),
         ts:Date.now()
-      },'*');
+      },extra||{}),'*');
     }catch(e){}
-  }
-  function onHash(){
-    var p=pathNow();
-    var at=stack.indexOf(p);
-    // Prefer matching an earlier entry as back, later as forward
-    if(at>=0 && at<index){
-      index=at;
-    }else if(at>index){
-      index=at;
-    }else if(p!==stack[index]){
-      stack=stack.slice(0,index+1);
-      stack.push(p);
-      index=stack.length-1;
-    }
-    report();
   }
   window.addEventListener('message',function(e){
     var d=e&&e.data;
     if(!d||d.type!=='niskbuild-preview-nav')return;
-    if(d.action==='back'){
-      try{history.back();}catch(err){}
-    }else if(d.action==='forward'){
-      try{history.forward();}catch(err){}
-    }else if(d.action==='reload'){
+    // React bridge (MemoryRouter) registers its own listener — if present, let it win for goto/back/forward.
+    if(typeof window.__niskPreviewNavigate==='function' && (d.action==='goto'||d.action==='back'||d.action==='forward')){
+      return;
+    }
+    if(d.action==='goto' && typeof d.path==='string' && typeof window.__niskPreviewNavigate==='function'){
+      try{ window.__niskPreviewNavigate(d.path); }catch(err){}
+      return;
+    }
+    if(d.action==='reload'){
       try{location.reload();}catch(err){}
-    }else if(d.action==='goto' && typeof d.path==='string'){
-      try{
-        var p=String(d.path);
-        if(p.charAt(0)!=='/')p='/'+p;
-        location.hash='#'+p;
-        setTimeout(onHash,0);
-      }catch(err){}
     }
   });
-  window.addEventListener('hashchange',onHash);
-  document.addEventListener('click',function(){ setTimeout(onHash,0); },true);
   setTimeout(report,0);
   setTimeout(report,300);
-  setTimeout(report,1000);
 })();
 <\/script>`;

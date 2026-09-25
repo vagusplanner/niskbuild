@@ -2,18 +2,24 @@
 
 import { useCallback, useState } from 'react';
 import FullAppLivePreview from '@/app/components/FullAppLivePreview';
+import BuilderFullAppPageNav from '@/app/components/BuilderFullAppPageNav';
 import PreviewBrowserChrome from '@/app/components/PreviewBrowserChrome';
 import PreviewConsolePanel from '@/app/components/PreviewConsolePanel';
 import { usePreviewConsole } from '@/app/components/usePreviewConsole';
 import { EMBER_HABITS_PROJECT_FILES } from '@/lib/full-app-preview/ember-habits-fixture';
+import type { FullAppRoutePage } from '@/lib/full-app-pages';
 
 /**
- * Builder-chrome integration smoke — same FullAppLivePreview + console/nav
- * wiring as the real builder, without auth.
+ * Builder-chrome integration smoke — FullAppLivePreview + route dropdown + console.
  */
 export default function FullAppBuilderPreviewSmokePage() {
   const [reloadKey, setReloadKey] = useState(0);
   const [consoleOpen, setConsoleOpen] = useState(true);
+  const [activeFile, setActiveFile] = useState('src/pages/Home.jsx');
+  const [navigateRequest, setNavigateRequest] = useState<{
+    path: string;
+    nonce: number;
+  } | null>(null);
   const [nav, setNav] = useState({
     canGoBack: false,
     canGoForward: false,
@@ -28,9 +34,24 @@ export default function FullAppBuilderPreviewSmokePage() {
       canGoForward: boolean;
       goBack: () => void;
       goForward: () => void;
-    }) => setNav(next),
+      goToPath?: (path: string) => void;
+    }) =>
+      setNav({
+        canGoBack: next.canGoBack,
+        canGoForward: next.canGoForward,
+        goBack: next.goBack,
+        goForward: next.goForward,
+      }),
     []
   );
+
+  const onSelectPage = useCallback((page: FullAppRoutePage) => {
+    setActiveFile(page.filePath);
+    setNavigateRequest((prev) => ({
+      path: page.routePath,
+      nonce: (prev?.nonce ?? 0) + 1,
+    }));
+  }, []);
 
   return (
     <div
@@ -55,7 +76,7 @@ export default function FullAppBuilderPreviewSmokePage() {
       >
         <strong style={{ fontSize: 14 }}>Full App builder preview (smoke)</strong>
         <span style={{ fontSize: 12, color: '#8b98a5' }}>
-          Ember Habits · {EMBER_HABITS_PROJECT_FILES.length} files · real FullAppLivePreview
+          Ember Habits · route dropdown + navigateRequest
         </span>
         <PreviewBrowserChrome
           canGoBack={nav.canGoBack}
@@ -81,12 +102,19 @@ export default function FullAppBuilderPreviewSmokePage() {
           Console{errorCount ? ` (${errorCount})` : ''}
         </button>
       </header>
+      <BuilderFullAppPageNav
+        projectFiles={EMBER_HABITS_PROJECT_FILES}
+        activeFile={activeFile}
+        onSelectPage={onSelectPage}
+        canAddPage={false}
+      />
       <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
         <FullAppLivePreview
           projectFiles={EMBER_HABITS_PROJECT_FILES}
           isGenerating={false}
           previewFrameClass="w-full h-full absolute inset-0"
           reloadKey={reloadKey}
+          navigateRequest={navigateRequest}
           onNavChange={onNavChange}
         />
       </div>

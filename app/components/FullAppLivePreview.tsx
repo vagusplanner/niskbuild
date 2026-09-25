@@ -18,6 +18,11 @@ type FullAppLivePreviewProps = {
   previewFrameClass: string;
   /** Bumped by chrome reload — remount + rebundle. */
   reloadKey: number;
+  /**
+   * Imperative route navigation from the builder chrome (route dropdown).
+   * Bumping `nonce` re-sends even if `path` is unchanged.
+   */
+  navigateRequest?: { path: string; nonce: number } | null;
   onNavChange?: (nav: {
     canGoBack: boolean;
     canGoForward: boolean;
@@ -63,11 +68,13 @@ export default function FullAppLivePreview({
   isGenerating,
   previewFrameClass,
   reloadKey,
+  navigateRequest = null,
   onNavChange,
 }: FullAppLivePreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { nav, reset, goBack, goForward, goToPath } = useFullAppPreviewNav(iframeRef);
   const [phase, setPhase] = useState<BundlePhase>({ kind: 'idle' });
+  const [iframeReady, setIframeReady] = useState(false);
   const signature = useMemo(() => filesSignature(projectFiles), [projectFiles]);
   const hasEntry = useMemo(
     () => Boolean(findPreviewEntry(filesToRecord(projectFiles))),
@@ -83,6 +90,34 @@ export default function FullAppLivePreview({
       goToPath,
     });
   }, [nav.canGoBack, nav.canGoForward, goBack, goForward, goToPath, onNavChange]);
+
+  // Direct route selection from chrome — don't rely on stale goToPath closures.
+  useEffect(() => {
+    if (!navigateRequest?.path || phase.kind !== 'ready' || !iframeReady) return;
+    const path = navigateRequest.path.startsWith('/')
+      ? navigateRequest.path
+      : `/${navigateRequest.path}`;
+
+    let attempts = 0;
+    const send = () => {
+      const win = iframeRef.current?.contentWindow;
+      if (!win) {
+        if (attempts++ < 10) window.setTimeout(send, 50);
+        return;
+      }
+      try {
+        win.postMessage(
+          { type: 'niskbuild-preview-nav', action: 'goto', path },
+          '*'
+        );
+      } catch {
+        /* ignore */
+      }
+    };
+    // Let the iframe finish registering its message listener after mount.
+    const t = window.setTimeout(send, 0);
+    return () => window.clearTimeout(t);
+  }, [navigateRequest?.path, navigateRequest?.nonce, phase.kind, iframeReady]);
 
   useEffect(() => {
     if (isGenerating) {
@@ -210,6 +245,8 @@ export default function FullAppLivePreview({
       reloadKey={reloadKey}
       durationMs={phase.durationMs}
       previewFrameClass={previewFrameClass}
+      onIframeLoad={() => setIframeReady(true)}
+      onIframeUnload={() => setIframeReady(false)}
     />
   );
 }
@@ -223,21 +260,29 @@ function FullAppBlobIframe({
   durationMs,
   previewFrameClass,
   iframeRef,
+  onIframeLoad,
+  onIframeUnload,
 }: {
   html: string;
   reloadKey: number;
   durationMs: number;
   previewFrameClass: string;
   iframeRef: React.RefObject<HTMLIFrameElement | null>;
+  onIframeLoad?: () => void;
+  onIframeUnload?: () => void;
 }) {
   const [src, setSrc] = useState<string>('');
 
   useEffect(() => {
+    onIframeUnload?.();
     const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
     setSrc(url);
     return () => {
+      onIframeUnload?.();
       URL.revokeObjectURL(url);
     };
+    // Intentionally omit onIframeUnload from deps — parent passes inline setters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [html, reloadKey, durationMs]);
 
   if (!src) {
@@ -259,6 +304,7 @@ function FullAppBlobIframe({
       className={`${previewFrameClass} border-0 bg-white`}
       sandbox={BUILDER_PREVIEW_SANDBOX}
       referrerPolicy="no-referrer"
+      onLoad={() => onIframeLoad?.()}
     />
   );
 }

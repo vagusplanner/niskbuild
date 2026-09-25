@@ -992,6 +992,11 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
     goForward: () => {},
     goToPath: (_path: string) => {},
   });
+  /** Imperative preview navigation — nonce forces re-send for same path. */
+  const [fullAppNavigateRequest, setFullAppNavigateRequest] = useState<{
+    path: string;
+    nonce: number;
+  } | null>(null);
 
   const handleFullAppNavChange = useCallback(
     (nav: {
@@ -1009,9 +1014,12 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
   const handleFullAppRouteSelect = useCallback(
     (page: FullAppRoutePage) => {
       onSelectFile(page.filePath);
-      fullAppNav.goToPath(page.routePath);
+      setFullAppNavigateRequest((prev) => ({
+        path: page.routePath,
+        nonce: (prev?.nonce ?? 0) + 1,
+      }));
     },
-    [onSelectFile, fullAppNav]
+    [onSelectFile]
   );
 
   const previewReloadKey = isFullAppMode ? fullAppReloadKey : htmlPreviewReloadKey;
@@ -1433,6 +1441,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
                     isGenerating={isGenerating}
                     previewFrameClass={previewFrameClass}
                     reloadKey={previewReloadKey}
+                    navigateRequest={fullAppNavigateRequest}
                     onNavChange={handleFullAppNavChange}
                   />
                 ) : (
@@ -1592,6 +1601,7 @@ export default function BuilderWorkspaceLayout(props: BuilderWorkspaceLayoutProp
                     isGenerating={isGenerating}
                     previewFrameClass={previewFrameClass}
                     reloadKey={previewReloadKey}
+                    navigateRequest={fullAppNavigateRequest}
                     onNavChange={handleFullAppNavChange}
                   />
                 ) : (

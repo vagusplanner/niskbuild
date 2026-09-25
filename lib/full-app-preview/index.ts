@@ -15,6 +15,7 @@ export {
   collectPreviewCss,
   findDisallowedImports,
   rewriteBrowserRouterForPreview,
+  injectPreviewNavBridge,
   type FullAppPreviewFiles,
   type FullAppBundleResult,
   type EsbuildApi,
