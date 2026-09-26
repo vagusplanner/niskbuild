@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { Check, Copy, GraduationCap, Loader2, Plus, Users, Volume2 } from 'lucide-react';
@@ -8,6 +8,7 @@ import {
   SHIFT_CURRICULA,
   SHIFT_CURRICULUM_FLAGS,
   SHIFT_STUDY_LANGUAGES,
+  SHIFT_STUDY_LANGUAGE_LABELS,
   type ShiftStudyLanguage,
 } from '@/lib/shift-ai/constants';
 import {
@@ -15,17 +16,14 @@ import {
   type InviteTokenInfo,
   type SettingsProfile,
 } from '@/lib/shift-ai/settings-shared';
+import {
+  OPENAI_TTS_VOICE_OPTIONS,
+  isOpenAiTtsVoiceId,
+  resolveOpenAiTtsVoice,
+} from '@/lib/shift-ai/openai-tts-voices';
 import { SA } from '@/lib/shift-ai/theme';
 import type { ShiftPlanAccess } from '@/lib/shift-ai/plan-access';
 import ShiftAiAccountSection from '@/app/builder/shift-ai/settings/ShiftAiAccountSection';
-
-const VOICE_FALLBACKS = [
-  'Google UK English Female',
-  'Google UK English Male',
-  'Samantha',
-  'Daniel',
-  'Karen',
-];
 
 export default function ShiftAiSettingsClient({
   profile,
@@ -48,14 +46,17 @@ export default function ShiftAiSettingsClient({
   const [subjects, setSubjects] = useState(profile.favourite_subjects);
   const [newSubject, setNewSubject] = useState('');
   const [voiceEnabled, setVoiceEnabled] = useState(profile.voice_enabled);
-  const [preferredVoice, setPreferredVoice] = useState(profile.preferred_voice ?? '');
+  const [preferredVoice, setPreferredVoice] = useState(() =>
+    isOpenAiTtsVoiceId(profile.preferred_voice)
+      ? profile.preferred_voice
+      : resolveOpenAiTtsVoice({ studyLanguage: profile.study_language })
+  );
   const [studyLanguage, setStudyLanguage] = useState<ShiftStudyLanguage>(profile.study_language);
   const [personas, setPersonas] = useState<Record<string, string>>(
     Object.fromEntries(
       profile.subjects.map((s) => [s.name, s.aiPersona ?? 'chill'])
     )
   );
-  const [voiceOptions, setVoiceOptions] = useState(VOICE_FALLBACKS);
   const [parentTokens, setParentTokens] = useState(initialTokens.parent);
   const [mentorTokens, setMentorTokens] = useState(initialTokens.mentor);
   const [saving, setSaving] = useState(false);
@@ -63,19 +64,6 @@ export default function ShiftAiSettingsClient({
   const [copied, setCopied] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-
-  useEffect(() => {
-    const load = () => {
-      const voices = window.speechSynthesis?.getVoices() ?? [];
-      const names = voices.map((v) => v.name).filter(Boolean);
-      if (names.length > 0) {
-        setVoiceOptions(names.filter((n) => n.toLowerCase().includes('english')).slice(0, 12));
-      }
-    };
-    load();
-    window.speechSynthesis?.addEventListener('voiceschanged', load);
-    return () => window.speechSynthesis?.removeEventListener('voiceschanged', load);
-  }, []);
 
   const saveSettings = async () => {
     setSaving(true);
@@ -221,7 +209,7 @@ export default function ShiftAiSettingsClient({
                   : 'border-[var(--sa-navy-100)]'
               }`}
             >
-              {t(`languages.${lang}`)}
+              {SHIFT_STUDY_LANGUAGE_LABELS[lang]}
             </button>
           ))}
         </div>
@@ -275,18 +263,19 @@ export default function ShiftAiSettingsClient({
         </label>
         {voiceEnabled ? (
           <div className="grid gap-2 sm:grid-cols-2">
-            {voiceOptions.map((v) => (
+            {OPENAI_TTS_VOICE_OPTIONS.map((v) => (
               <button
-                key={v}
+                key={v.id}
                 type="button"
-                onClick={() => setPreferredVoice(v)}
+                onClick={() => setPreferredVoice(v.id)}
                 className={`rounded-lg border px-3 py-2 text-start text-sm ${
-                  preferredVoice === v
+                  preferredVoice === v.id
                     ? 'border-[var(--sa-navy-600)] bg-[var(--sa-navy-50)] font-semibold'
                     : 'border-[var(--sa-navy-100)]'
                 }`}
               >
-                {v}
+                <span className="block font-medium">{v.id}</span>
+                <span className={`text-xs ${SA.muted}`}>{v.label}</span>
               </button>
             ))}
           </div>

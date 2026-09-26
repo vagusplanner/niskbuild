@@ -16,6 +16,10 @@ export type SpeakOptions = {
   pitch?: number;
   volume?: number;
   lang?: string;
+  /** OpenAI TTS voice id override (optional) */
+  voice?: string;
+  /** Prefer warmer Voice Buddy defaults when no Settings preference */
+  warmer?: boolean;
   onEnd?: () => void;
 };
 
@@ -29,18 +33,20 @@ export const IOS_VOICE_FALLBACK_HINT =
 
 /** Warmer, slower delivery for younger learners (ages 7–8 family / Voice Buddy path). */
 export const VOICE_BUDDY_SPEAK_OPTIONS: SpeakOptions = {
-  rate: 0.85,
-  pitch: 1.35,
+  rate: 0.9,
+  pitch: 1,
   volume: 1,
   lang: 'en-GB',
+  warmer: true,
 };
 
-/** Clear, natural pace for older students. */
+/** Clear pace for older students — OpenAI tts-1-hd via /api/shift-ai/tts. */
 export const VOICE_TUTOR_SPEAK_OPTIONS: SpeakOptions = {
-  rate: 0.95,
-  pitch: 1.0,
+  rate: 1,
+  pitch: 1,
   volume: 1,
   lang: 'en-GB',
+  warmer: false,
 };
 
 /** Minimal Web Speech API recognition types (not in all TS lib targets). */
@@ -164,6 +170,8 @@ export function checkSpeechSupport(): SpeechSupport {
 }
 
 let voicesReady = false;
+let currentAudio: HTMLAudioElement | null = null;
+let currentObjectUrl: string | null = null;
 
 function ensureVoicesLoaded(): void {
   if (typeof window === 'undefined' || !('speechSynthesis' in window) || voicesReady) return;
@@ -199,31 +207,100 @@ export function stopSpeaking(): void {
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     window.speechSynthesis.cancel();
   }
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio.src = '';
+    currentAudio = null;
+  }
+  if (currentObjectUrl) {
+    URL.revokeObjectURL(currentObjectUrl);
+    currentObjectUrl = null;
+  }
 }
 
-export function speak(text: string, options: SpeakOptions = {}): void {
-  if (!text.trim() || typeof window === 'undefined' || !('speechSynthesis' in window)) {
+function speakWithWebSpeechFallback(text: string, options: SpeakOptions): void {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
     options.onEnd?.();
     return;
   }
 
   ensureVoicesLoaded();
-  stopSpeaking();
-
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.rate = options.rate ?? 1;
   utterance.pitch = options.pitch ?? 1;
   utterance.volume = options.volume ?? 1;
   utterance.lang = options.lang ?? 'en-GB';
 
-  const warmer = (options.rate ?? 1) < 0.9 || (options.pitch ?? 1) > 1.1;
+  const warmer = options.warmer === true || (options.rate ?? 1) < 0.9 || (options.pitch ?? 1) > 1.1;
   const voice = pickVoice(utterance.lang, warmer);
   if (voice) utterance.voice = voice;
 
   utterance.onend = () => options.onEnd?.();
   utterance.onerror = () => options.onEnd?.();
-
   window.speechSynthesis.speak(utterance);
+}
+
+/**
+ * Speak via OpenAI tts-1-hd (/api/shift-ai/tts). Falls back to browser Web Speech
+ * only if the neural TTS endpoint is unavailable.
+ */
+export function speak(text: string, options: SpeakOptions = {}): void {
+  if (!text.trim()) {
+    options.onEnd?.();
+    return;
+  }
+
+  if (typeof window === 'undefined') {
+    options.onEnd?.();
+    return;
+  }
+
+  stopSpeaking();
+
+  void (async () => {
+    try {
+      const res = await fetch('/api/shift-ai/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          text: text.trim(),
+          warmer: options.warmer === true,
+          voice: options.voice || undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        speakWithWebSpeechFallback(text, options);
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      currentObjectUrl = url;
+      const audio = new Audio(url);
+      currentAudio = audio;
+      audio.onended = () => {
+        if (currentObjectUrl === url) {
+          URL.revokeObjectURL(url);
+          currentObjectUrl = null;
+        }
+        currentAudio = null;
+        options.onEnd?.();
+      };
+      audio.onerror = () => {
+        if (currentObjectUrl === url) {
+          URL.revokeObjectURL(url);
+          currentObjectUrl = null;
+        }
+        currentAudio = null;
+        speakWithWebSpeechFallback(text, options);
+      };
+      await audio.play();
+    } catch {
+      speakWithWebSpeechFallback(text, options);
+    }
+  })();
 }
 
 export type ListeningSession = {

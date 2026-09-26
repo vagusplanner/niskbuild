@@ -70,12 +70,14 @@ export function normalizeEmail(value: string): string {
   return value.trim().toLowerCase();
 }
 
-export const SHIFT_STUDY_LANGUAGES = ['en', 'ar'] as const;
+export const SHIFT_STUDY_LANGUAGES = ['en', 'ar', 'fr', 'es'] as const;
 export type ShiftStudyLanguage = (typeof SHIFT_STUDY_LANGUAGES)[number];
 
 export const SHIFT_STUDY_LANGUAGE_LABELS: Record<ShiftStudyLanguage, string> = {
   en: 'English',
   ar: 'Arabic',
+  fr: 'French',
+  es: 'Spanish',
 };
 
 export function isShiftStudyLanguage(value: string): value is ShiftStudyLanguage {
@@ -83,7 +85,9 @@ export function isShiftStudyLanguage(value: string): value is ShiftStudyLanguage
 }
 
 export function defaultStudyLanguageForCurriculum(curriculum: string): ShiftStudyLanguage {
-  return curriculum === 'saudi' ? 'ar' : 'en';
+  if (curriculum === 'saudi') return 'ar';
+  if (curriculum === 'france') return 'fr';
+  return 'en';
 }
 
 export function parseStudyLanguage(

@@ -92,7 +92,16 @@ export default function ShiftAiHomeworkClient({
         return;
       }
 
-      if (!res.ok || !data.aiResponse) {
+      if (!res.ok || !data.aiResponse || !data.uploadId || !data.imageUrl) {
+        if (data.code === 'VISION_FAILED') {
+          throw new Error(
+            data.error ||
+              'Could not read this photo (not a billing issue). Try a clearer JPEG or PNG.'
+          );
+        }
+        if (data.code === 'UNSUPPORTED_TYPE' || data.code === 'CONVERT_FAILED') {
+          throw new Error(data.error || t('errors.unsupportedImage'));
+        }
         throw new Error(data.error || t('errors.analyse'));
       }
 

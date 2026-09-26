@@ -11,6 +11,10 @@ import {
   startListening,
   stopSpeaking,
 } from '@/lib/shift-ai/browser-speech';
+import {
+  resolveOpenAiTtsVoice,
+  speechRecognitionLangForStudyLanguage,
+} from '@/lib/shift-ai/openai-tts-voices';
 import type { BuddyGame } from '@/lib/shift-ai/voice-buddy';
 
 type BuddyRound = {
@@ -37,9 +41,15 @@ function appendTypeHint(message: string, showTypeFallback: boolean): string {
 export default function ShiftAiVoiceBuddyClient({
   games,
   friendName,
+  preferredVoice,
+  studyLanguage = 'en',
+  voiceEnabled = true,
 }: {
   games: BuddyGame[];
   friendName: string;
+  preferredVoice?: string | null;
+  studyLanguage?: string;
+  voiceEnabled?: boolean;
 }) {
   const [speechSupport] = useState(() => checkSpeechSupport());
   const showTypeFallback =
@@ -57,10 +67,16 @@ export default function ShiftAiVoiceBuddyClient({
   const [feedback, setFeedback] = useState<BuddyEvaluation | null>(null);
   const [loading, setLoading] = useState(false);
   const [micPhase, setMicPhase] = useState<MicPhase>('idle');
-  const [muted, setMuted] = useState(false);
+  const [muted, setMuted] = useState(!voiceEnabled);
   const [error, setError] = useState('');
   const sessionRef = useRef<ReturnType<typeof startListening> | null>(null);
   const readyDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const ttsVoice = resolveOpenAiTtsVoice({
+    preferredVoice,
+    studyLanguage,
+    warmer: true,
+  });
 
   const clearReadyDelay = () => {
     if (readyDelayRef.current) {
@@ -100,6 +116,9 @@ export default function ShiftAiVoiceBuddyClient({
     setMicPhase('buddy-speaking');
     speak(text, {
       ...VOICE_BUDDY_SPEAK_OPTIONS,
+      voice: ttsVoice,
+      warmer: true,
+      lang: speechRecognitionLangForStudyLanguage(studyLanguage),
       onEnd: beginMicReadyCountdown,
     });
   };
@@ -182,7 +201,12 @@ export default function ShiftAiVoiceBuddyClient({
         setStars((s) => s + 1);
       }
       if (!muted) {
-        speak(data.evaluation.message, VOICE_BUDDY_SPEAK_OPTIONS);
+        speak(data.evaluation.message, {
+          ...VOICE_BUDDY_SPEAK_OPTIONS,
+          voice: ttsVoice,
+          warmer: true,
+          lang: speechRecognitionLangForStudyLanguage(studyLanguage),
+        });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not check your answer');
@@ -219,7 +243,7 @@ export default function ShiftAiVoiceBuddyClient({
         void evaluateAnswer(transcript);
       },
       handleListenError,
-      { lang: 'en-GB' }
+      { lang: speechRecognitionLangForStudyLanguage(studyLanguage) }
     );
 
     if (session) {

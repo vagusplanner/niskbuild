@@ -114,7 +114,7 @@
     "yearGroupPlaceholder": "Year group (e.g. Year 9, Intermediate 2)",
     "managedByParent": "{flag} {curriculum} · {yearGroup} — managed by your parent account.",
     "studyLanguage": "Study language",
-    "studyLanguageHint": "AI tools will use this language in a later update. Arabic is the default for Saudi Arabia; you can switch anytime.",
+    "studyLanguageHint": "AI Tutor, Voice Tutor, and homework help reply in this language. French is the default for France curriculum; Arabic for Saudi. Voice uses OpenAI neural TTS.",
     "languages": {
       "en": "English",
       "ar": "Arabic"
@@ -269,7 +269,8 @@
     "secondarySchool": "secondary school",
     "errors": {
       "analyse": "Could not analyse homework",
-      "extend": "Could not extend photo retention"
+      "extend": "Could not extend photo retention",
+      "unsupportedImage": "Unsupported image format. Use JPEG, PNG, WebP, or HEIC."
     }
   },
   "curriculumPacks": {

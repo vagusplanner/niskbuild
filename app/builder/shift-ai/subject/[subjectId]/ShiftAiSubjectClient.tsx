@@ -66,8 +66,17 @@ function SubjectNotesPanel({
   const t = useTranslations('subject');
   const [content, setContent] = useState(initialContent);
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const contentRef = useRef(content);
+  const dirtyRef = useRef(false);
+  const initialRef = useRef(initialContent);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const save = async (nextContent: string) => {
+  contentRef.current = content;
+
+  const save = async (nextContent: string, opts?: { keepalive?: boolean }) => {
+    if (nextContent === initialRef.current && !dirtyRef.current) {
+      return;
+    }
     setStatus('saving');
     try {
       const res = await fetch('/api/shift-ai/notes', {
@@ -78,19 +87,56 @@ function SubjectNotesPanel({
           subjectId: subjectDbId,
           content: nextContent,
         }),
+        keepalive: opts?.keepalive === true,
       });
 
-      const data = (await res.json()) as { error?: string };
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
         throw new Error(data.error || t('saveError'));
       }
 
+      initialRef.current = nextContent;
+      dirtyRef.current = false;
       setStatus('saved');
       window.setTimeout(() => setStatus('idle'), 2000);
     } catch {
       setStatus('error');
     }
   };
+
+  const scheduleSave = (nextContent: string) => {
+    dirtyRef.current = true;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      saveTimerRef.current = null;
+      void save(nextContent);
+    }, 800);
+  };
+
+  useEffect(() => {
+    const flush = () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      if (!dirtyRef.current) return;
+      void save(contentRef.current, { keepalive: true });
+    };
+
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!dirtyRef.current) return;
+      flush();
+      event.preventDefault();
+      event.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', onBeforeUnload);
+      flush();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- flush on unmount only
+  }, [subjectDbId]);
 
   return (
     <div className="space-y-3">
@@ -100,12 +146,23 @@ function SubjectNotesPanel({
           {status === 'saving' ? t('saving') : null}
           {status === 'saved' ? t('saved') : null}
           {status === 'error' ? t('saveFailed') : null}
+          {status === 'idle' && dirtyRef.current ? '…' : null}
         </span>
       </div>
       <textarea
         value={content}
-        onChange={(e) => setContent(e.target.value)}
-        onBlur={() => void save(content)}
+        onChange={(e) => {
+          const next = e.target.value;
+          setContent(next);
+          scheduleSave(next);
+        }}
+        onBlur={() => {
+          if (saveTimerRef.current) {
+            clearTimeout(saveTimerRef.current);
+            saveTimerRef.current = null;
+          }
+          void save(content);
+        }}
         placeholder={t('notesPlaceholder')}
         rows={14}
         className={`${SA.textarea} resize-y rounded-2xl`}

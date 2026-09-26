@@ -89,7 +89,7 @@ Events: `checkout.session.completed`, `customer.subscription.*`, `invoice.paid`.
 
 | Variable | Description |
 |----------|-------------|
-| `OPENAI_API_KEY` | Cloud AI generation |
+| `OPENAI_API_KEY` | Cloud AI generation **and** SuperEduc8 Voice Tutor/Buddy neural TTS (`tts-1-hd` via `/api/shift-ai/tts`). Without this key, voice falls back to browser Web Speech (robotic). |
 | `ANTHROPIC_API_KEY` | Cloud AI generation |
 | `TOGETHER_API_KEY` | Fallback AI provider |
 | `RESEND_API_KEY` | Transactional email |

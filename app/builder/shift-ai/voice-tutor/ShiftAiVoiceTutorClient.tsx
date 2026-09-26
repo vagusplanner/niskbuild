@@ -9,6 +9,8 @@ import {
   startListening,
   stopSpeaking,
 } from '@/lib/shift-ai/browser-speech';
+import { speechRecognitionLangForStudyLanguage, resolveOpenAiTtsVoice } from '@/lib/shift-ai/openai-tts-voices';
+import type { ShiftStudyLanguage } from '@/lib/shift-ai/constants';
 import { SA } from '@/lib/shift-ai/theme';
 
 type VoiceMessage = {
@@ -19,9 +21,15 @@ type VoiceMessage = {
 export default function ShiftAiVoiceTutorClient({
   subjectOptions,
   yearGroup,
+  preferredVoice,
+  studyLanguage,
+  voiceEnabled = true,
 }: {
   subjectOptions: string[];
   yearGroup: string;
+  preferredVoice?: string | null;
+  studyLanguage: ShiftStudyLanguage;
+  voiceEnabled?: boolean;
 }) {
   const [speechSupport] = useState(() => checkSpeechSupport());
   const [subject, setSubject] = useState(subjectOptions[0] ?? '');
@@ -31,10 +39,17 @@ export default function ShiftAiVoiceTutorClient({
   const [listening, setListening] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [thinking, setThinking] = useState(false);
-  const [muted, setMuted] = useState(false);
+  const [muted, setMuted] = useState(!voiceEnabled);
   const [error, setError] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
   const sessionRef = useRef<ReturnType<typeof startListening> | null>(null);
+
+  const ttsVoice = resolveOpenAiTtsVoice({
+    preferredVoice,
+    studyLanguage,
+    warmer: false,
+  });
+  const listenLang = speechRecognitionLangForStudyLanguage(studyLanguage);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -52,6 +67,9 @@ export default function ShiftAiVoiceTutorClient({
     setSpeaking(true);
     speak(text, {
       ...VOICE_TUTOR_SPEAK_OPTIONS,
+      lang: listenLang,
+      voice: ttsVoice,
+      warmer: false,
       onEnd: () => setSpeaking(false),
     });
   };
@@ -129,7 +147,7 @@ export default function ShiftAiVoiceTutorClient({
         setListening(false);
         sessionRef.current = null;
       },
-      { lang: 'en-GB', interimResults: true }
+      { lang: listenLang, interimResults: true }
     );
 
     if (session) {
@@ -169,7 +187,9 @@ export default function ShiftAiVoiceTutorClient({
           <div>
             <h1 className={SA.headingMd}>Voice Tutor</h1>
             <p className={`text-sm ${SA.muted}`}>
-              Speak with your AI teacher — for {yearGroup} students
+              Speak with your AI teacher — for {yearGroup} students · voice:{' '}
+              <span className="font-semibold">{ttsVoice}</span> · lang:{' '}
+              <span className="font-semibold">{studyLanguage}</span>
             </p>
           </div>
         </div>

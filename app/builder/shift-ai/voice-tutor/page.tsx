@@ -15,7 +15,7 @@ export default async function ShiftAiVoiceTutorPage() {
   const { data: student } = await admin
     .schema('firstparty')
     .from('shift_students')
-    .select('id, favourite_subjects, year_group')
+    .select('id, favourite_subjects, year_group, preferred_voice, study_language, curriculum, voice_enabled')
     .eq('user_id', session.user.id)
     .maybeSingle();
 
@@ -27,10 +27,16 @@ export default async function ShiftAiVoiceTutorPage() {
     Array.isArray(student.favourite_subjects) ? student.favourite_subjects : []
   ).filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
 
+  const { studyLanguageFromStudent } = await import('@/lib/shift-ai/study-language');
+  const studyLanguage = studyLanguageFromStudent(student);
+
   return (
     <ShiftAiVoiceTutorClient
       subjectOptions={subjectOptions}
       yearGroup={student.year_group || 'secondary school'}
+      preferredVoice={student.preferred_voice}
+      studyLanguage={studyLanguage}
+      voiceEnabled={student.voice_enabled !== false}
     />
   );
 }

@@ -78,15 +78,36 @@ export async function getRequestStudyLanguage(): Promise<ShiftStudyLanguage> {
 
 /**
  * Append to system/user prompts. Empty for English.
- * JSON keys stay English; only human-readable values switch to Arabic.
+ * JSON keys stay English; only human-readable values switch language.
  */
 export function languageInstruction(lang: ShiftStudyLanguage | null | undefined): string {
-  if (lang !== 'ar') return '';
-  return [
-    'Respond in Modern Standard Arabic (العربية الفصحى), even though these instructions are in English.',
-    'If the output is JSON, keep every JSON key, field name, and identifier exactly as specified in English.',
-    'Only write human-readable content values in Arabic (questions, answers, explanations, titles, card text, hints, comments, narratives).',
-  ].join(' ');
+  if (!lang || lang === 'en') return '';
+
+  if (lang === 'ar') {
+    return [
+      'Respond in Modern Standard Arabic (العربية الفصحى), even though these instructions are in English.',
+      'If the output is JSON, keep every JSON key, field name, and identifier exactly as specified in English.',
+      'Only write human-readable content values in Arabic (questions, answers, explanations, titles, card text, hints, comments, narratives).',
+    ].join(' ');
+  }
+
+  if (lang === 'fr') {
+    return [
+      'Respond in clear French (français), even though these instructions are in English.',
+      'If the output is JSON, keep every JSON key, field name, and identifier exactly as specified in English.',
+      'Only write human-readable content values in French.',
+    ].join(' ');
+  }
+
+  if (lang === 'es') {
+    return [
+      'Respond in clear Spanish (español), even though these instructions are in English.',
+      'If the output is JSON, keep every JSON key, field name, and identifier exactly as specified in English.',
+      'Only write human-readable content values in Spanish.',
+    ].join(' ');
+  }
+
+  return '';
 }
 
 export function withLanguageInstruction(

@@ -18,7 +18,7 @@ export default async function ShiftAiVoiceBuddyPage() {
   const { data: student } = await admin
     .schema('firstparty')
     .from('shift_students')
-    .select('id, favourite_subjects')
+    .select('id, favourite_subjects, preferred_voice, study_language, curriculum, voice_enabled')
     .eq('user_id', session.user.id)
     .maybeSingle();
 
@@ -27,8 +27,17 @@ export default async function ShiftAiVoiceBuddyPage() {
   }
 
   const friendName = FRIEND_NAMES[Math.floor(Math.random() * FRIEND_NAMES.length)];
+  const { studyLanguageFromStudent } = await import('@/lib/shift-ai/study-language');
 
-  return <ShiftAiVoiceBuddyClient games={BUDDY_GAMES} friendName={friendName} />;
+  return (
+    <ShiftAiVoiceBuddyClient
+      games={BUDDY_GAMES}
+      friendName={friendName}
+      preferredVoice={student.preferred_voice}
+      studyLanguage={studyLanguageFromStudent(student)}
+      voiceEnabled={student.voice_enabled !== false}
+    />
+  );
 }
 
 export async function generateMetadata() {
