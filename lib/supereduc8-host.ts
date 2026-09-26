@@ -49,6 +49,8 @@ export function isSuperEduc8PassthroughPath(pathname: string): boolean {
   // Shared legal pages — privacy is host-aware; terms currently NiskBuild until SE8 terms exist.
   if (pathname === '/privacy' || pathname.startsWith('/privacy/')) return true;
   if (pathname === '/terms' || pathname.startsWith('/terms/')) return true;
+  // NOTE: `/tips` is intentionally NOT a passthrough. On SuperEduc8 it rewrites to
+  // `/builder/shift-ai/tips` (SE8 Tips & Help). NiskBuild Tips stay at app/tips on NB hosts.
   return false;
 }
 

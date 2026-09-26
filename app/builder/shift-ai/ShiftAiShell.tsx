@@ -3,9 +3,11 @@
 import Image from 'next/image';
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Menu, X } from 'lucide-react';
+import Link from 'next/link';
+import { Lightbulb, Menu, X } from 'lucide-react';
 import ShiftAiSidebar from '@/app/builder/shift-ai/ShiftAiSidebar';
 import type { ShiftStudyLanguage } from '@/lib/shift-ai/constants';
+import { shiftAiAppPath } from '@/lib/supereduc8-host';
 
 export default function ShiftAiShell({
   children,
@@ -75,6 +77,14 @@ export default function ShiftAiShell({
               <span className="sr-only">{tBrand('name')}</span>
             </div>
           </div>
+          <Link
+            href={shiftAiAppPath('/tips')}
+            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-semibold text-[var(--sa-navy-800)] hover:bg-[var(--sa-secondary)]"
+            aria-label={tSidebar('items.tips')}
+          >
+            <Lightbulb className="h-4 w-4" />
+            <span>{tSidebar('items.tips')}</span>
+          </Link>
         </div>
 
         <main className="flex-1 overflow-y-auto">{children}</main>
