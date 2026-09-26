@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { Lightbulb, Menu, X } from 'lucide-react';
 import ShiftAiSidebar from '@/app/builder/shift-ai/ShiftAiSidebar';
+import ShiftAiEightAssistant from '@/app/components/shift-ai/ShiftAiEightAssistant';
 import type { ShiftStudyLanguage } from '@/lib/shift-ai/constants';
 import { shiftAiAppPath } from '@/lib/supereduc8-host';
 
@@ -88,6 +89,7 @@ export default function ShiftAiShell({
         </div>
 
         <main className="flex-1 overflow-y-auto">{children}</main>
+        <ShiftAiEightAssistant />
       </div>
     </div>
   );
