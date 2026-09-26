@@ -107,8 +107,8 @@ function planFromSubscription(subscription: Stripe.Subscription): Se8PlanId {
 
 function multiCurriculumFromSubscription(subscription: Stripe.Subscription): boolean {
   const raw = subscription.metadata?.multiCurriculum ?? subscription.metadata?.multi_curriculum;
-  if (raw === true || raw === 'true' || raw === '1') return true;
-  if (raw === false || raw === 'false' || raw === '0') return false;
+  if (raw === 'true' || raw === '1') return true;
+  if (raw === 'false' || raw === '0') return false;
   return false;
 }
 
