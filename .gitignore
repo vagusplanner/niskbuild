@@ -34,6 +34,7 @@ node_modules/
 /public/preview-runtime/esbuild.wasm
 .tmp-full-app-preview-spike/
 .tmp-full-app-smoke/
+.tmp-full-app-export-evidence/
 .tmp-sentry-sweep/
 
 # debug

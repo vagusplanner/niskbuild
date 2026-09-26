@@ -1785,7 +1785,8 @@ function BuilderContent() {
   };
 
   const handleExportZip = async () => {
-    if (!isExportableCode(generatedCode)) {
+    const canExportFullApp = isFullAppProjectFiles(projectFiles);
+    if (!canExportFullApp && !isExportableCode(generatedCode)) {
       showToast('Generate an app first before exporting.', { error: true });
       return;
     }
@@ -1803,6 +1804,14 @@ function BuilderContent() {
           activeFile,
           projectName: prompt.substring(0, 50) || 'NiskBuild Project',
           seo: seoSettings,
+          outputMode: canExportFullApp || outputMode === 'full-app' ? 'full-app' : 'simple',
+          backend:
+            canExportFullApp || outputMode === 'full-app'
+              ? {
+                  connected: Boolean(fullAppBackendEnv?.supabaseUrl),
+                  supabaseUrl: fullAppBackendEnv?.supabaseUrl ?? null,
+                }
+              : undefined,
         }),
       });
 
@@ -1843,15 +1852,18 @@ function BuilderContent() {
       a.click();
       URL.revokeObjectURL(url);
       const watermarked = response.headers.get('X-NiskBuild-Watermarked') === '1';
+      const runtime = response.headers.get('X-NiskBuild-Export-Runtime') || '';
       const shipCss = response.headers.get('X-NiskBuild-Ship-Css') || 'unknown';
       showToast(
         watermarked
           ? '✅ ZIP exported with Sandbox watermark — upgrade for clean exports'
-          : shipCss === 'compiled'
-            ? '✅ ZIP exported with compiled Tailwind CSS — your code, your ownership'
-            : shipCss === 'cdn-fallback'
-              ? '✅ ZIP exported (Tailwind CDN fallback — check server logs)'
-              : '✅ ZIP exported — your code, your ownership'
+          : runtime === 'full-app'
+            ? '✅ Full App ZIP exported — unzip, npm install && npm run dev'
+            : shipCss === 'compiled'
+              ? '✅ ZIP exported with compiled Tailwind CSS — your code, your ownership'
+              : shipCss === 'cdn-fallback'
+                ? '✅ ZIP exported (Tailwind CDN fallback — check server logs)'
+                : '✅ ZIP exported — your code, your ownership'
       );
     } catch (err) {
       showToast(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`, { error: true });
