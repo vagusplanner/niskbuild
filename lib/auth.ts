@@ -1,5 +1,10 @@
 import { createClient } from '@/lib/supabase/client';
 import { getAuthRedirectOrigin } from '@/lib/canonical-url';
+import {
+  resolvePostAuthProduct,
+  sanitizeNextPath,
+  sanitizeSuperEduc8NextPath,
+} from '@/lib/post-auth-redirect';
 import { safeLocalStorageGet, safeLocalStorageRemove, safeLocalStorageSet } from '@/lib/safe-storage';
 
 function getOrigin() {
@@ -9,9 +14,26 @@ function getOrigin() {
   return getAuthRedirectOrigin(window.location.origin);
 }
 
+/** Build /auth/callback URL with product-aware next + SE8 product tag. */
+function buildAuthCallbackUrl(nextPath: string, extra?: Record<string, string>): string {
+  const origin = getOrigin();
+  const product = resolvePostAuthProduct(origin);
+  const safeNext =
+    product === 'supereduc8'
+      ? sanitizeSuperEduc8NextPath(nextPath)
+      : sanitizeNextPath(nextPath) || '/pricing';
+  const params = new URLSearchParams({ next: safeNext, ...extra });
+  if (product === 'supereduc8') {
+    // Survives Supabase Site URL fallback onto niskbuild.com so the callback
+    // can bounce the session back to SuperEduc8 instead of NiskBuild pricing.
+    params.set('product', 'supereduc8');
+  }
+  return `${origin}/auth/callback?${params.toString()}`;
+}
+
 export async function signInWithGoogle(nextPath = '/pricing') {
   const supabase = createClient();
-  const callbackUrl = `${getOrigin()}/auth/callback?next=${encodeURIComponent(nextPath)}`;
+  const callbackUrl = buildAuthCallbackUrl(nextPath);
 
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
@@ -30,7 +52,7 @@ export async function signInWithSso(params: {
 }) {
   const supabase = createClient();
   const nextPath = params.nextPath || '/dashboard';
-  const callbackUrl = `${getOrigin()}/auth/callback?next=${encodeURIComponent(nextPath)}&sso=1`;
+  const callbackUrl = buildAuthCallbackUrl(nextPath, { sso: '1' });
 
   const options = {
     redirectTo: callbackUrl,
@@ -62,11 +84,14 @@ export async function signInWithEmail(email: string, password: string) {
 
 export async function signUpWithEmail(email: string, password: string) {
   const supabase = createClient();
+  const product = resolvePostAuthProduct(getOrigin());
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      emailRedirectTo: `${getOrigin()}/auth/callback?next=/pricing`,
+      emailRedirectTo: buildAuthCallbackUrl(
+        product === 'supereduc8' ? '/dashboard' : '/pricing'
+      ),
     },
   });
   if (error) throw error;
@@ -129,6 +154,7 @@ export async function signOut() {
   }
 
   if (typeof window !== 'undefined') {
-    window.location.href = '/landing-v2';
+    const product = resolvePostAuthProduct(window.location.origin);
+    window.location.href = product === 'supereduc8' ? '/' : '/landing-v2';
   }
 }

@@ -4,7 +4,8 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import {
   resolvePostAuthPath,
-  resolvePostAuthProduct,
+  resolvePostAuthProductFromRequest,
+  resolvePostAuthRedirectUrl,
 } from '@/lib/post-auth-redirect';
 import { isPlatformOwner } from '@/lib/platform-owner-auth';
 import { recordSignupIfNewUser } from '@/lib/usage-events';
@@ -43,9 +44,14 @@ export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
   const next = requestUrl.searchParams.get('next');
+  const productParam = requestUrl.searchParams.get('product');
   const ssoFlag = requestUrl.searchParams.get('sso') === '1';
   const authError = requestUrl.searchParams.get('error');
   const origin = redirectBase(requestUrl);
+  const product = resolvePostAuthProductFromRequest({
+    hostOrOrigin: origin,
+    productParam,
+  });
 
   if (authError) {
     return NextResponse.redirect(new URL('/login?error=auth_failed', origin));
@@ -84,15 +90,13 @@ export async function GET(request: Request) {
 
     const platformOwner = await isPlatformOwner(userId);
 
-    const product = resolvePostAuthProduct(origin);
     let destinationPath = resolvePostAuthPath(profile ?? {}, next, {
       isPlatformOwner: platformOwner,
       product,
     });
-    const destination = new URL(destinationPath, origin);
 
     const ssoLogin = ssoFlag || isSsoUser(user);
-    if (ssoLogin && user.email) {
+    if (ssoLogin && user.email && product !== 'supereduc8') {
       const domain = emailDomain(user.email);
       const org = domain ? await findEnabledOrgBySsoDomain(domain) : null;
 
@@ -101,8 +105,14 @@ export async function GET(request: Request) {
         email: user.email,
       });
       if (duplicate) {
-        destination.pathname = '/dashboard';
-        destination.searchParams.set('sso_notice', 'duplicate_account');
+        destinationPath = '/dashboard';
+        const destination = new URL(
+          resolvePostAuthRedirectUrl({
+            destinationPath: `${destinationPath}?sso_notice=duplicate_account`,
+            callbackOrigin: origin,
+            product,
+          })
+        );
         return NextResponse.redirect(destination);
       }
 
@@ -113,29 +123,61 @@ export async function GET(request: Request) {
           orgId: org.orgId,
         });
         if (membership.status === 'no_invite') {
-          destination.pathname = '/dashboard';
+          const destination = new URL(
+            resolvePostAuthRedirectUrl({
+              destinationPath: '/dashboard',
+              callbackOrigin: origin,
+              product,
+            })
+          );
           destination.searchParams.set('sso_notice', 'no_invite');
           destination.searchParams.set('sso_org', membership.orgName);
-        } else if (membership.status === 'invite_accepted') {
-          destination.pathname = '/dashboard';
+          return NextResponse.redirect(destination);
+        }
+        if (membership.status === 'invite_accepted') {
+          const destination = new URL(
+            resolvePostAuthRedirectUrl({
+              destinationPath: '/dashboard',
+              callbackOrigin: origin,
+              product,
+            })
+          );
           destination.searchParams.set('sso_notice', 'joined');
           destination.searchParams.set('sso_org', membership.orgName);
+          return NextResponse.redirect(destination);
         }
       }
     }
 
     if (
-      destinationPath.startsWith('/builder') ||
-      (next && next.startsWith('/builder'))
+      product !== 'supereduc8' &&
+      (destinationPath.startsWith('/builder') || (next && next.startsWith('/builder')))
     ) {
+      const destination = new URL(
+        resolvePostAuthRedirectUrl({
+          destinationPath,
+          callbackOrigin: origin,
+          product,
+        })
+      );
       destination.searchParams.set('welcome', '1');
+      return NextResponse.redirect(destination);
     }
-    return NextResponse.redirect(destination);
+
+    return NextResponse.redirect(
+      resolvePostAuthRedirectUrl({
+        destinationPath,
+        callbackOrigin: origin,
+        product,
+      })
+    );
   }
 
-  const fallback = new URL(
-    resolvePostAuthPath({}, next, { product: resolvePostAuthProduct(origin) }),
-    origin
+  return NextResponse.redirect(
+    resolvePostAuthRedirectUrl({
+      destinationPath: resolvePostAuthPath({}, next, { product }),
+      callbackOrigin: origin,
+      product,
+    })
   );
-  return NextResponse.redirect(fallback);
 }

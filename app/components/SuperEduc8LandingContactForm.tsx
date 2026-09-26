@@ -3,23 +3,39 @@
 import { useState } from 'react';
 
 /**
- * Public Teacher/School + general contact form for the SuperEduc8 landing.
- * Posts to the shared /api/support/contact endpoint (no login required).
+ * Public contact form for the SuperEduc8 landing (Teacher/School + general).
+ * Posts to /api/support/contact — no login required.
  */
+const CATEGORIES = [
+  { value: 'sales', label: 'Sales / Pricing' },
+  { value: 'partnership', label: 'Partnership' },
+  { value: 'technical', label: 'Technical Support' },
+  { value: 'general', label: 'General Inquiry' },
+] as const;
+
+type CategoryValue = (typeof CATEGORIES)[number]['value'];
+
 export default function SuperEduc8LandingContactForm() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [subject, setSubject] = useState('Teacher / School inquiry');
+  const [category, setCategory] = useState<CategoryValue>('sales');
+  const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  const categoryLabel =
+    CATEGORIES.find((c) => c.value === category)?.label ?? 'General Inquiry';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     setSuccess('');
+
+    const resolvedSubject =
+      subject.trim() || `${categoryLabel} — SuperEduc8 landing`;
 
     try {
       const res = await fetch('/api/support/contact', {
@@ -29,8 +45,8 @@ export default function SuperEduc8LandingContactForm() {
         body: JSON.stringify({
           name,
           email,
-          subject,
-          category: 'sales',
+          subject: resolvedSubject,
+          category,
           message,
           product: 'supereduc8',
           source: 'supereduc8_landing',
@@ -43,6 +59,7 @@ export default function SuperEduc8LandingContactForm() {
       }
       setSuccess(data.message || 'Thanks — we received your message and will reply soon.');
       setMessage('');
+      setSubject('');
     } catch {
       setError('Network error — please try again.');
     } finally {
@@ -77,13 +94,25 @@ export default function SuperEduc8LandingContactForm() {
         </label>
       </div>
       <label className="se8-contact-field">
-        <span>Subject</span>
+        <span>Category</span>
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value as CategoryValue)}
+          required
+        >
+          {CATEGORIES.map((c) => (
+            <option key={c.value} value={c.value}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="se8-contact-field">
+        <span>Subject <span className="se8-contact-optional">(optional)</span></span>
         <input
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
-          required
-          minLength={3}
-          placeholder="Teacher / School inquiry"
+          placeholder={`e.g. ${categoryLabel} for our school`}
         />
       </label>
       <label className="se8-contact-field">

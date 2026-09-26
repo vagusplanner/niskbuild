@@ -545,7 +545,8 @@
 }
 
 .se8-contact-field input,
-.se8-contact-field textarea {
+.se8-contact-field textarea,
+.se8-contact-field select {
   width: 100%;
   box-sizing: border-box;
   border: 1px solid var(--se8-border);
@@ -555,6 +556,11 @@
   font-weight: 400;
   color: var(--se8-navy);
   background: #fff;
+}
+
+.se8-contact-optional {
+  font-weight: 400;
+  color: var(--se8-muted);
 }
 
 .se8-contact-field textarea {

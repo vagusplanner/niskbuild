@@ -14,15 +14,28 @@ export function isProductionVercelAlias(hostname: string): boolean {
   return host === 'niskbuild.vercel.app';
 }
 
+function isSuperEduc8Hostname(hostname: string): boolean {
+  const host = hostname.toLowerCase().split(':')[0];
+  return (
+    host === 'supereduc8.com' ||
+    host === 'www.supereduc8.com' ||
+    host.endsWith('.supereduc8.com')
+  );
+}
+
 /**
  * Origin to use for auth redirects / post-login navigation.
  * Never keep users on the production *.vercel.app alias when a custom domain exists.
+ * Never remap SuperEduc8 hosts onto NiskBuild — SE8 keeps its own origin.
  */
 export function getAuthRedirectOrigin(currentOrigin?: string | null): string {
   const canonical = getCanonicalAppUrl();
   if (!currentOrigin) return canonical;
   try {
     const url = new URL(currentOrigin);
+    if (isSuperEduc8Hostname(url.hostname)) {
+      return url.origin;
+    }
     if (isProductionVercelAlias(url.hostname)) return canonical;
     return url.origin;
   } catch {

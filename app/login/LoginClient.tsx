@@ -15,7 +15,7 @@ import {
   AUTH_BRAND_COPY,
   type AuthProductBrand,
 } from '@/app/components/auth/auth-brand';
-import { sanitizeNextPath } from '@/lib/post-auth-redirect';
+import { sanitizeNextPath, sanitizeSuperEduc8NextPath } from '@/lib/post-auth-redirect';
 
 function LoginContent({ brand }: { brand: AuthProductBrand }) {
   const copy = AUTH_BRAND_COPY[brand];
@@ -24,7 +24,9 @@ function LoginContent({ brand }: { brand: AuthProductBrand }) {
   const [error, setError] = useState('');
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = sanitizeNextPath(searchParams.get('next')) || copy.defaultNext;
+  const rawNext = sanitizeNextPath(searchParams.get('next')) || copy.defaultNext;
+  const next =
+    brand === 'supereduc8' ? sanitizeSuperEduc8NextPath(rawNext) : rawNext;
 
   useEffect(() => {
     if (searchParams.get('error') === 'auth_failed') {

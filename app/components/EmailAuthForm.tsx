@@ -5,6 +5,10 @@ import { signInWithEmail, signUpWithEmail, requestPasswordReset } from '@/lib/au
 import { AGE_RANGE_OPTIONS, AGE_RANGE_LABELS } from '@/lib/age-range';
 import { meetsMinimumAge, NISK_MINIMUM_AGE } from '@/lib/age-gate';
 import { getAuthRedirectOrigin } from '@/lib/canonical-url';
+import {
+  resolvePostAuthProduct,
+  sanitizeSuperEduc8NextPath,
+} from '@/lib/post-auth-redirect';
 
 interface EmailAuthFormProps {
   nextPath?: string;
@@ -70,11 +74,15 @@ function PasswordInput({
 function navigateAfterAuth(nextPath: string) {
   const path = nextPath.startsWith('/') ? nextPath : `/${nextPath}`;
   const origin = getAuthRedirectOrigin(window.location.origin);
-  if (origin !== window.location.origin) {
-    window.location.href = `${origin}${path}`;
-  } else {
-    window.location.href = path;
-  }
+  const product = resolvePostAuthProduct(origin);
+  const safePath =
+    product === 'supereduc8' ? sanitizeSuperEduc8NextPath(path) : path;
+
+  // SuperEduc8 must never leave its origin for NiskBuild pricing/dashboard.
+  window.location.href =
+    product === 'supereduc8' || origin !== window.location.origin
+      ? `${origin}${safePath}`
+      : safePath;
 }
 
 export default function EmailAuthForm({

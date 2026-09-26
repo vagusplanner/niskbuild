@@ -8,7 +8,15 @@ import {
   type SupportProduct,
 } from '@/lib/support-tickets';
 
-const VALID_CATEGORIES = new Set(['general', 'billing', 'technical', 'sales', 'feature', 'bug']);
+const VALID_CATEGORIES = new Set([
+  'general',
+  'billing',
+  'technical',
+  'sales',
+  'partnership',
+  'feature',
+  'bug',
+]);
 
 function resolveProduct(body: Record<string, unknown>): SupportProduct {
   if (body.product === 'vagus-planner' || body.source === 'vp_contact_form') {
