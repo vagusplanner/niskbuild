@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { ChevronLeft } from 'lucide-react';
 import { signUpWithEmail } from '@/lib/auth';
@@ -13,14 +13,24 @@ import {
 } from '@/lib/shift-ai/constants';
 import { SA } from '@/lib/shift-ai/theme';
 import { shiftAiAppPath } from '@/lib/supereduc8-host';
+import ShiftAiPasswordField from '@/app/components/shift-ai/ShiftAiPasswordField';
 
 type SignupPath = 'choose' | 'self' | 'supervised' | 'family';
+
+function safeNextPath(raw: string | null): string {
+  if (!raw || !raw.startsWith('/') || raw.startsWith('//')) {
+    return shiftAiAppPath('/dashboard');
+  }
+  return raw;
+}
 
 export default function ShiftAiSignupForm() {
   const t = useTranslations('auth');
   const tDash = useTranslations('dashboard');
   const tAge = useTranslations('onboarding.ageRanges');
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextAfterSignup = safeNextPath(searchParams.get('next'));
   const [path, setPath] = useState<SignupPath>('choose');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -67,7 +77,7 @@ export default function ShiftAiSignupForm() {
         throw new Error(data.error || t('createProfileFailed'));
       }
 
-      router.replace(shiftAiAppPath('/dashboard'));
+      router.replace(nextAfterSignup);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('signupFailed'));
     } finally {
@@ -159,12 +169,11 @@ export default function ShiftAiSignupForm() {
             onChange={(e) => setEmail(e.target.value)}
             required
           />
-          <input
-            className={SA.input}
-            type="password"
+          <ShiftAiPasswordField
             placeholder={t('password')}
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={setPassword}
+            autoComplete="new-password"
             required
             minLength={6}
           />

@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import ShiftAiSignupForm from '@/app/builder/shift-ai/signup/ShiftAiSignupForm';
 import { shiftAiCatalog } from '@/lib/shift-ai/i18n';
 import { getRequestStudyLanguage } from '@/lib/shift-ai/study-language';
@@ -14,7 +15,9 @@ export default async function ShiftAiSignupPage() {
           <h1 className={`mt-2 text-3xl font-bold ${SA.text}`}>{catalog.title}</h1>
           <p className={`mt-3 ${SA.muted}`}>{catalog.subtitle}</p>
         </header>
-        <ShiftAiSignupForm />
+        <Suspense fallback={<p className={SA.muted}>Loading…</p>}>
+          <ShiftAiSignupForm />
+        </Suspense>
       </div>
     </main>
   );

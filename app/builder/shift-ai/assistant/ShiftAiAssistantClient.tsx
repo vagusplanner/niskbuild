@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { GraduationCap, Loader2, Send } from 'lucide-react';
 import type { ShiftChatMessage } from '@/lib/shift-ai/assistant';
+import { isShiftPremiumRequiredResponse } from '@/lib/shift-ai/checkout-client';
 import { SA } from '@/lib/shift-ai/theme';
+import ShiftAiUpgradeGate from '@/app/components/shift-ai/ShiftAiUpgradeGate';
 
 export default function ShiftAiAssistantClient({
   initialMessages,
@@ -19,6 +21,7 @@ export default function ShiftAiAssistantClient({
   const [subject, setSubject] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,9 +49,16 @@ export default function ShiftAiAssistantClient({
 
       const data = (await res.json()) as {
         error?: string;
+        code?: string;
         userMessage?: ShiftChatMessage;
         assistantMessage?: ShiftChatMessage;
       };
+
+      if (isShiftPremiumRequiredResponse(res.status, data)) {
+        setUpgradeOpen(true);
+        setInput(text);
+        return;
+      }
 
       if (!res.ok || !data.userMessage || !data.assistantMessage) {
         throw new Error(data.error || t('sendError'));
@@ -67,6 +77,11 @@ export default function ShiftAiAssistantClient({
 
   return (
     <div className={`${SA.contentNarrow} flex min-h-[calc(100vh-4rem)] flex-col`}>
+      <ShiftAiUpgradeGate
+        open={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        feature="AI Tutor"
+      />
       <div className="mb-6 flex items-center gap-3">
         <div className={SA.avatarLg}>
           <GraduationCap className="h-6 w-6" />

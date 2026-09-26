@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '@/auth/AuthContext'
 import { RedirectIfAuthed } from '@/auth/guards'
 import { shiftAiFetch } from '@/lib/api'
@@ -12,6 +13,7 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [fullName, setFullName] = useState('')
   const [curriculum, setCurriculum] = useState('uk')
   const [yearGroup, setYearGroup] = useState('')
@@ -75,14 +77,36 @@ export default function SignupPage() {
             </div>
             <div>
               <label className="sa-field-label">Password</label>
-              <input
-                className="sa-input"
-                type="password"
-                minLength={6}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  className="sa-input"
+                  type={showPassword ? 'text' : 'password'}
+                  minLength={6}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  style={{ paddingInlineEnd: '2.75rem' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  style={{
+                    position: 'absolute',
+                    insetInlineEnd: '0.5rem',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'transparent',
+                    border: 0,
+                    padding: '0.35rem',
+                    cursor: 'pointer',
+                    color: 'inherit',
+                    opacity: 0.65,
+                  }}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
             <div>
               <label className="sa-field-label">Display name</label>

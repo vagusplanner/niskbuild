@@ -16,6 +16,8 @@ import {
   type SettingsProfile,
 } from '@/lib/shift-ai/settings-shared';
 import { SA } from '@/lib/shift-ai/theme';
+import type { ShiftPlanAccess } from '@/lib/shift-ai/plan-access';
+import ShiftAiAccountSection from '@/app/builder/shift-ai/settings/ShiftAiAccountSection';
 
 const VOICE_FALLBACKS = [
   'Google UK English Female',
@@ -29,10 +31,14 @@ export default function ShiftAiSettingsClient({
   profile,
   initialTokens,
   appOrigin,
+  email,
+  planAccess,
 }: {
   profile: SettingsProfile;
   initialTokens: { parent: InviteTokenInfo[]; mentor: InviteTokenInfo[] };
   appOrigin: string;
+  email: string;
+  planAccess: ShiftPlanAccess;
 }) {
   const t = useTranslations('settings');
   const locale = useLocale();
@@ -152,6 +158,13 @@ export default function ShiftAiSettingsClient({
 
       {error ? <div className={`${SA.error} mt-4`}>{error}</div> : null}
       {saved ? <div className={`${SA.success} mt-4`}>{t('saved')}</div> : null}
+
+      <ShiftAiAccountSection
+        email={email}
+        fullName={profile.full_name || ''}
+        studentId={profile.id}
+        initialAccess={planAccess}
+      />
 
       <div className={`${SA.cardPadded} mt-6 space-y-4`}>
         <h2 className={`font-semibold ${SA.text}`}>{t('curriculumYear')}</h2>

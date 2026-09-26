@@ -10,6 +10,7 @@ import {
   CalendarDays,
   Camera,
   ChevronRight,
+  CreditCard,
   Gamepad2,
   Home,
   Layers,
@@ -33,6 +34,7 @@ const NAV_GROUPS = [
     items: [
       { subpath: '/dashboard', icon: Home, itemKey: 'dashboard', emoji: '🏠' },
       { subpath: '/planner', icon: CalendarDays, itemKey: 'planner', emoji: '📅' },
+      { subpath: '/billing', icon: CreditCard, itemKey: 'billing', emoji: '💳' },
       { subpath: '/settings', icon: Settings, itemKey: 'settings', emoji: '⚙️' },
     ],
   },

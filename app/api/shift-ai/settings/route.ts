@@ -18,6 +18,7 @@ export async function PATCH(request: NextRequest) {
 
   const payload = body as Record<string, unknown>;
 
+  const fullName = typeof payload.fullName === 'string' ? payload.fullName : undefined;
   const curriculum =
     typeof payload.curriculum === 'string' && isShiftCurriculum(payload.curriculum)
       ? payload.curriculum
@@ -52,6 +53,7 @@ export async function PATCH(request: NextRequest) {
 
   try {
     await updateSettingsProfile(auth.student.id, {
+      fullName,
       curriculum,
       yearGroup,
       favouriteSubjects,

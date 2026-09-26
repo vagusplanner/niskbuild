@@ -56,6 +56,7 @@ export async function getSettingsProfile(studentId: string): Promise<SettingsPro
 export async function updateSettingsProfile(
   studentId: string,
   input: {
+    fullName?: string;
     curriculum?: string;
     yearGroup?: string;
     favouriteSubjects?: string[];
@@ -79,6 +80,10 @@ export async function updateSettingsProfile(
 
   const accountType = String(student.account_type || 'self');
   const updates: Record<string, unknown> = {};
+
+  if (input.fullName?.trim()) {
+    updates.full_name = input.fullName.trim().slice(0, 120);
+  }
 
   if (accountType === 'self') {
     if (input.curriculum && isShiftCurriculum(input.curriculum)) {

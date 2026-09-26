@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import SuperEduc8Logo from '@/app/components/SuperEduc8Logo';
 import SuperEduc8LandingContactForm from '@/app/components/SuperEduc8LandingContactForm';
+import SuperEduc8PricingCta from '@/app/components/SuperEduc8PricingCta';
 import './supereduc8-landing.css';
 
 const SIGNUP_HREF = '/signup';
@@ -66,13 +67,14 @@ const MONTHLY_PLANS: Array<{
   detail: string;
   cta: string;
   highlight?: boolean;
-  href?: string;
+  action: 'signup' | 'billing' | 'family' | 'contact';
 }> = [
   {
     name: 'Free',
     price: '$0/month',
     detail: 'Limited daily AI tutor access, basic flashcards & quizzes',
     cta: 'Start Free',
+    action: 'signup',
   },
   {
     name: 'Free Trial',
@@ -80,31 +82,35 @@ const MONTHLY_PLANS: Array<{
     detail: 'Full access to every feature, no credit card required',
     cta: 'Start Free Trial',
     highlight: true,
+    action: 'signup',
   },
   {
     name: 'Student',
     price: '$9.99/month',
     detail: 'Unlimited AI tutor, homework scanning, essay feedback, full curriculum access',
-    cta: 'Start Free Trial',
+    cta: 'Subscribe',
+    action: 'billing',
   },
   {
     name: 'Family additional child',
     price: '+$6.99/month per child',
     detail: 'Same full access, for each additional child on your account',
-    cta: 'Start Free Trial',
+    cta: 'Add child',
+    action: 'family',
   },
   {
     name: 'Multi-Curriculum',
     price: '20% off combined',
     detail: 'For students following more than one national curriculum at once',
-    cta: 'Start Free Trial',
+    cta: 'Subscribe',
+    action: 'billing',
   },
   {
     name: 'Teacher/School',
     price: 'Contact us',
     detail: 'Custom pricing for classrooms and schools',
     cta: 'Get in touch',
-    href: '#contact',
+    action: 'contact',
   },
 ];
 
@@ -257,16 +263,7 @@ export default function SuperEduc8LandingPage() {
                       <td className="se8-pricing-price">{plan.price}</td>
                       <td>{plan.detail}</td>
                       <td>
-                        <Link
-                          href={plan.href ?? SIGNUP_HREF}
-                          className={
-                            plan.highlight
-                              ? 'se8-btn se8-btn-primary se8-btn-sm'
-                              : 'se8-btn se8-btn-ghost se8-btn-sm'
-                          }
-                        >
-                          {plan.cta}
-                        </Link>
+                        <SuperEduc8PricingCta plan={plan} />
                       </td>
                     </tr>
                   ))}

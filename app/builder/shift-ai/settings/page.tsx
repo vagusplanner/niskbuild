@@ -34,9 +34,17 @@ export default async function ShiftAiSettingsPage() {
   }
 
   const appOrigin = getSuperEduc8Origin();
+  const { resolveShiftPlanAccess } = await import('@/lib/shift-ai/plan-access');
+  const planAccess = await resolveShiftPlanAccess(session.user.id);
 
   return (
-    <ShiftAiSettingsClient profile={profile} initialTokens={tokens} appOrigin={appOrigin} />
+    <ShiftAiSettingsClient
+      profile={profile}
+      initialTokens={tokens}
+      appOrigin={appOrigin}
+      email={session.user.email || ''}
+      planAccess={planAccess}
+    />
   );
 }
 

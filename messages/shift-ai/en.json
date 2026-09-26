@@ -17,6 +17,7 @@
     "items": {
       "dashboard": "Dashboard",
       "planner": "Planner",
+      "billing": "Billing",
       "settings": "Settings",
       "tutor": "AI Tutor Chat",
       "flashcards": "Smart Flashcards",

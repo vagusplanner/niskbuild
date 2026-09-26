@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { SA } from '@/lib/shift-ai/theme';
 import { splitResponseSections } from '@/lib/shift-ai/homework-sections';
+import { isShiftPremiumRequiredResponse } from '@/lib/shift-ai/checkout-client';
+import ShiftAiUpgradeGate from '@/app/components/shift-ai/ShiftAiUpgradeGate';
 
 type AnalyzeResult = {
   uploadId: string;
@@ -40,6 +42,7 @@ export default function ShiftAiHomeworkClient({
   const [error, setError] = useState('');
   const [result, setResult] = useState<AnalyzeResult | null>(null);
   const [retentionExtended, setRetentionExtended] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   const reset = () => {
     setPreviewUrl(null);
@@ -82,7 +85,12 @@ export default function ShiftAiHomeworkClient({
         body: form,
       });
 
-      const data = (await res.json()) as AnalyzeResult & { error?: string };
+      const data = (await res.json()) as AnalyzeResult & { error?: string; code?: string };
+
+      if (isShiftPremiumRequiredResponse(res.status, data)) {
+        setUpgradeOpen(true);
+        return;
+      }
 
       if (!res.ok || !data.aiResponse) {
         throw new Error(data.error || t('errors.analyse'));
@@ -136,6 +144,11 @@ export default function ShiftAiHomeworkClient({
 
   return (
     <div className={`${SA.contentNarrow} space-y-5`}>
+      <ShiftAiUpgradeGate
+        open={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        feature="Homework Help"
+      />
       <div>
         <h1 className={`${SA.headingMd} flex items-center gap-2`}>
           <span aria-hidden>📸</span> {t('title')}
