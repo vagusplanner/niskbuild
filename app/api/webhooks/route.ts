@@ -38,8 +38,18 @@ import {
   upsertVpSubscriptionFromStripe,
 } from '@/lib/vp-stripe-billing-sync';
 import { ensureProfileForUser } from '@/lib/ensure-profile';
+import {
+  isSuperEduc8CheckoutSession,
+  isSuperEduc8StripeSubscription,
+  markSe8SubscriptionPastDue,
+  syncSe8BillingFromSubscription,
+} from '@/lib/se8-stripe-billing-sync';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+
+function isSe8Subscription(subscription: Stripe.Subscription): boolean {
+  return isSuperEduc8StripeSubscription(subscription);
+}
 
 function stripeInvoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
   const sub = (invoice as Stripe.Invoice & { subscription?: string | { id?: string } | null })
@@ -289,6 +299,56 @@ async function processStripeEvent(
         console.log(`✅ User ${userId} purchased template ${templateId}`);
       }
     } else if (session.mode === 'subscription') {
+      // SuperEduc8 shares this Stripe account — sync se8_subscriptions only;
+      // never overwrite profiles.subscription_tier / NiskBuild credits.
+      const subscriptionIdEarly =
+        typeof session.subscription === 'string'
+          ? session.subscription
+          : session.subscription?.id;
+      let se8FromPrice = false;
+      if (subscriptionIdEarly) {
+        try {
+          const earlySub = await stripe.subscriptions.retrieve(subscriptionIdEarly);
+          se8FromPrice = isSe8Subscription(earlySub);
+          if (isSuperEduc8CheckoutSession(session) || se8FromPrice) {
+            const se8UserId =
+              (typeof userId === 'string' && userId) ||
+              (typeof session.metadata?.userId === 'string' ? session.metadata.userId : null);
+            await syncSe8BillingFromSubscription(supabase, {
+              subscription: earlySub,
+              userId: se8UserId,
+            });
+            const customerId =
+              typeof session.customer === 'string'
+                ? session.customer
+                : session.customer?.id ?? null;
+            if (se8UserId && customerId) {
+              await ensureProfileForUser({
+                userId: se8UserId,
+                email: session.customer_email,
+              });
+              await supabase
+                .from('profiles')
+                .update({ stripe_customer_id: customerId })
+                .eq('id', se8UserId);
+            }
+            console.log(`✅ SuperEduc8 checkout completed for user ${se8UserId}`);
+            return;
+          }
+        } catch (err) {
+          if (isSuperEduc8CheckoutSession(session)) {
+            console.error('[se8-billing] checkout.session.completed sync failed:', err);
+            throw err instanceof Error
+              ? err
+              : new WebhookProcessingError('Failed to sync se8_subscriptions after checkout');
+          }
+          // Fall through to NiskBuild/VP handling if retrieve failed and not SE8 metadata
+        }
+      } else if (isSuperEduc8CheckoutSession(session)) {
+        console.error('[se8-billing] checkout.session.completed missing subscription id');
+        throw new WebhookProcessingError('SE8 checkout missing subscription id');
+      }
+
       const customerEmail = session.customer_email;
       const tier = session.metadata?.tier || 'pro';
       const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.id;
@@ -377,6 +437,16 @@ async function processStripeEvent(
 
   if (event.type === 'customer.subscription.created') {
     const subscription = event.data.object as Stripe.Subscription;
+    if (isSe8Subscription(subscription)) {
+      const metaUserId =
+        typeof subscription.metadata?.userId === 'string' ? subscription.metadata.userId : null;
+      await syncSe8BillingFromSubscription(supabase, {
+        subscription,
+        userId: metaUserId,
+      });
+      console.log(`✅ SuperEduc8 subscription.created ${subscription.id}`);
+      return;
+    }
     const customerId = subscription.customer as string;
     const metaUserId =
       typeof subscription.metadata?.userId === 'string' ? subscription.metadata.userId : null;
@@ -413,6 +483,17 @@ async function processStripeEvent(
 
   if (event.type === 'customer.subscription.updated') {
     const subscription = event.data.object as Stripe.Subscription;
+    if (isSe8Subscription(subscription)) {
+      const metaUserId =
+        typeof subscription.metadata?.userId === 'string' ? subscription.metadata.userId : null;
+      await syncSe8BillingFromSubscription(supabase, {
+        subscription,
+        userId: metaUserId,
+        forceCanceled: TERMINAL_SUBSCRIPTION_STATUSES.has(subscription.status),
+      });
+      console.log(`✅ SuperEduc8 subscription.updated ${subscription.id} → ${subscription.status}`);
+      return;
+    }
     const customerId = subscription.customer as string;
     const status = subscription.status;
     const tier = resolveTierFromSubscription(subscription);
@@ -515,6 +596,17 @@ async function processStripeEvent(
 
   if (event.type === 'customer.subscription.deleted') {
     const subscription = event.data.object as Stripe.Subscription;
+    if (isSe8Subscription(subscription)) {
+      const metaUserId =
+        typeof subscription.metadata?.userId === 'string' ? subscription.metadata.userId : null;
+      await syncSe8BillingFromSubscription(supabase, {
+        subscription,
+        userId: metaUserId,
+        forceCanceled: true,
+      });
+      console.log(`📉 SuperEduc8 subscription.deleted ${subscription.id} → free (trial_ends_at preserved)`);
+      return;
+    }
     const customerId = subscription.customer as string;
 
     const customer = await stripe.customers.retrieve(customerId);
@@ -550,6 +642,25 @@ async function processStripeEvent(
     const invoice = event.data.object as Stripe.Invoice;
     const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
     if (!customerId) return;
+
+    const invoiceSubIdEarly = stripeInvoiceSubscriptionId(invoice);
+    if (invoiceSubIdEarly) {
+      try {
+        const stripeSub = await stripe.subscriptions.retrieve(invoiceSubIdEarly);
+        if (isSe8Subscription(stripeSub)) {
+          const metaUserId =
+            typeof stripeSub.metadata?.userId === 'string' ? stripeSub.metadata.userId : null;
+          await syncSe8BillingFromSubscription(supabase, {
+            subscription: stripeSub,
+            userId: metaUserId,
+          });
+          console.log(`🔄 SuperEduc8 invoice.paid synced ${stripeSub.id}`);
+          return;
+        }
+      } catch (err) {
+        console.error('[se8-billing] invoice.paid retrieve failed:', err);
+      }
+    }
 
     const customer = await stripe.customers.retrieve(customerId);
     if (customer.deleted || !customer.email) return;
@@ -635,6 +746,25 @@ async function processStripeEvent(
     const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
     if (!customerId) return;
 
+    const invoiceSubId = stripeInvoiceSubscriptionId(invoice);
+    if (invoiceSubId) {
+      try {
+        const stripeSub = await stripe.subscriptions.retrieve(invoiceSubId);
+        if (isSe8Subscription(stripeSub)) {
+          const metaUserId =
+            typeof stripeSub.metadata?.userId === 'string' ? stripeSub.metadata.userId : null;
+          await markSe8SubscriptionPastDue(supabase, {
+            subscription: stripeSub,
+            userId: metaUserId,
+          });
+          console.log(`⚠️ SuperEduc8 invoice.payment_failed → past_due ${stripeSub.id}`);
+          return;
+        }
+      } catch (err) {
+        console.error('[se8-billing] invoice.payment_failed retrieve failed:', err);
+      }
+    }
+
     const customer = await stripe.customers.retrieve(customerId);
     if (customer.deleted || !customer.email) return;
 
@@ -655,14 +785,14 @@ async function processStripeEvent(
     });
     if (!user?.userId) return;
 
-    const invoiceSubId =
-      stripeInvoiceSubscriptionId(invoice) ||
+    const vpInvoiceSubId =
+      invoiceSubId ||
       (typeof profile?.subscription_id === 'string' ? profile.subscription_id.trim() : '');
     let vpSubId: string | null = null;
     let plan = toVpPlanId(profile?.subscription_tier) || 'pro';
-    if (invoiceSubId) {
+    if (vpInvoiceSubId) {
       try {
-        const stripeSub = await stripe.subscriptions.retrieve(invoiceSubId);
+        const stripeSub = await stripe.subscriptions.retrieve(vpInvoiceSubId);
         plan = toVpPlanId(resolveTierFromSubscription(stripeSub));
         await upsertVpSubscriptionFromStripe(supabase, {
           subscription: stripeSub,

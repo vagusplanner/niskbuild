@@ -111,6 +111,16 @@ export async function approveParentConsent(token: string, lang?: string | null) 
 
   await upsertVerifiedParentAccount(admin, request.parentEmail);
 
+  try {
+    const { startSe8TrialForUser } = await import('@/lib/shift-ai/trial');
+    await startSe8TrialForUser(admin, authUser.user.id);
+  } catch (err) {
+    console.error(
+      'Shift AI trial start failed after parental consent:',
+      err instanceof Error ? err.message : err
+    );
+  }
+
   const { data: parentTokenRow } = await admin
     .schema('firstparty')
     .from('shift_parent_tokens')

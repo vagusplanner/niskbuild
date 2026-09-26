@@ -5,6 +5,7 @@ import {
   verifyTeacherStudentAccess,
 } from '@/lib/shift-ai/teacher';
 import { resolveRequestUser } from '@/lib/shift-ai/student-auth';
+import { requireShiftPremiumAccess } from '@/lib/shift-ai/plan-access';
 import {
   shiftAiApiCorsPreflightResponse,
   shiftAiApiJson,
@@ -19,6 +20,9 @@ export async function POST(request: NextRequest) {
   if (!user) {
     return shiftAiApiJson(request, { error: 'Unauthorized' }, { status: 401 });
   }
+
+  const premiumBlock = await requireShiftPremiumAccess(request, user.id);
+  if (premiumBlock) return premiumBlock;
 
   const teacher = await getTeacherForUser(user.id);
   if (!teacher) {

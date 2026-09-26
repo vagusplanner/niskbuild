@@ -111,5 +111,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  try {
+    const { startSe8TrialForUser } = await import('@/lib/shift-ai/trial');
+    await startSe8TrialForUser(admin, user.id);
+  } catch (err) {
+    console.error(
+      'Shift AI trial start failed after self signup:',
+      err instanceof Error ? err.message : err
+    );
+  }
+
   return shiftAiApiJson(request, { ok: true });
 }

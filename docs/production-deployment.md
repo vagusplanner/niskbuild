@@ -238,6 +238,7 @@ Open **Supabase → SQL Editor** and run migrations **in order**. Each file is i
 29. `docs-hub-seed.sql` — documentation article content (run after #28)
 30. `retention-email-churn-migration.sql` — lifecycle email log, NPS, churn tracking (`last_build_at`)
 31. `admin-email-hub-migration.sql` — email send history columns, open/click tracking, `feature_usage`
+32. `se8-subscriptions-migration.sql` — SuperEduc8 Stripe + app-trial billing (`firstparty.se8_subscriptions`)
 
 > If a migration fails with “already exists”, it is safe to skip that statement — migrations are written to be idempotent where possible.
 

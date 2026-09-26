@@ -7,6 +7,7 @@ import {
 import { getStudentLanguage } from '@/lib/shift-ai/study-language';
 import { getShiftStudentForRequest } from '@/lib/shift-ai/student-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireShiftPremiumAccess } from '@/lib/shift-ai/plan-access';
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_TYPES = new Set([
@@ -23,6 +24,10 @@ export async function POST(request: NextRequest) {
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
+
+  const premiumBlock = await requireShiftPremiumAccess(request, auth.userId);
+  if (premiumBlock) return premiumBlock;
+
 
   try {
     const form = await request.formData();

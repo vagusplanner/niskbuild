@@ -4,6 +4,7 @@ import { curriculumLabel } from '@/lib/shift-ai/subjects';
 import { getShiftStudentForRequest } from '@/lib/shift-ai/student-auth';
 import { generateVoiceTutorReply } from '@/lib/shift-ai/voice-tutor';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireShiftPremiumAccess } from '@/lib/shift-ai/plan-access';
 
 /**
  * Privacy: this route accepts transcribed TEXT only.
@@ -15,6 +16,10 @@ export async function POST(request: NextRequest) {
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
+
+  const premiumBlock = await requireShiftPremiumAccess(request, auth.userId);
+  if (premiumBlock) return premiumBlock;
+
 
   let body: unknown;
   try {

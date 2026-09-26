@@ -6,6 +6,7 @@ import {
   type BuddyGameId,
 } from '@/lib/shift-ai/voice-buddy';
 import { getShiftStudentForRequest } from '@/lib/shift-ai/student-auth';
+import { requireShiftPremiumAccess } from '@/lib/shift-ai/plan-access';
 
 const VALID_GAME_IDS = new Set(BUDDY_GAMES.map((g) => g.id));
 
@@ -19,6 +20,10 @@ export async function POST(request: NextRequest) {
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
+
+  const premiumBlock = await requireShiftPremiumAccess(request, auth.userId);
+  if (premiumBlock) return premiumBlock;
+
 
   let body: unknown;
   try {

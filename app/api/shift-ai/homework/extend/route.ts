@@ -2,12 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { extendHomeworkRetention } from '@/lib/shift-ai/homework-storage';
 import { getShiftStudentForRequest } from '@/lib/shift-ai/student-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireShiftPremiumAccess } from '@/lib/shift-ai/plan-access';
 
 export async function POST(request: NextRequest) {
   const auth = await getShiftStudentForRequest(request);
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
+
+  const premiumBlock = await requireShiftPremiumAccess(request, auth.userId);
+  if (premiumBlock) return premiumBlock;
+
 
   let body: unknown;
   try {

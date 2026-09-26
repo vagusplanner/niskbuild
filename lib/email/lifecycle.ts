@@ -196,6 +196,10 @@ export async function sendCancelWarningEmail(
   product: LifecycleProduct = 'niskbuild',
   opts?: { islamic?: boolean; force?: boolean }
 ): Promise<boolean> {
+  if (product === 'supereduc8') {
+    // SE8-specific cancel lifecycle emails not templated yet — do not send NiskBuild copy.
+    return true;
+  }
   if (product === 'vagus-planner') {
     return sendLifecycle({
       userId,
@@ -221,6 +225,7 @@ export async function sendWinback7dEmail(
   email: string,
   product: LifecycleProduct = 'niskbuild'
 ): Promise<boolean> {
+  if (product === 'supereduc8') return true;
   if (product === 'vagus-planner') {
     return sendLifecycle({
       userId,
@@ -245,6 +250,7 @@ export async function sendWinback30dEmail(
   email: string,
   product: LifecycleProduct = 'niskbuild'
 ): Promise<boolean> {
+  if (product === 'supereduc8') return true;
   if (product === 'vagus-planner') {
     return sendLifecycle({
       userId,

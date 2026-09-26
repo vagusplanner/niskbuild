@@ -4,6 +4,7 @@ import { PACK_TYPES } from '@/lib/shift-ai/curriculum-packs-shared';
 import { getShiftStudentForRequest } from '@/lib/shift-ai/student-auth';
 import { getStudentLanguage } from '@/lib/shift-ai/study-language';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireShiftPremiumAccess } from '@/lib/shift-ai/plan-access';
 
 const VALID_PACK_TYPES = new Set<string>(PACK_TYPES);
 
@@ -12,6 +13,10 @@ export async function POST(request: NextRequest) {
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
+
+  const premiumBlock = await requireShiftPremiumAccess(request, auth.userId);
+  if (premiumBlock) return premiumBlock;
+
 
   let body: unknown;
   try {

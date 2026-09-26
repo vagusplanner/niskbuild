@@ -8,12 +8,17 @@ import {
 import { getStudentLanguage } from '@/lib/shift-ai/study-language';
 import { curriculumLabel } from '@/lib/shift-ai/subjects';
 import { getShiftStudentForRequest } from '@/lib/shift-ai/student-auth';
+import { requireShiftPremiumAccess } from '@/lib/shift-ai/plan-access';
 
 export async function POST(request: NextRequest) {
   const auth = await getShiftStudentForRequest(request);
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
+
+  const premiumBlock = await requireShiftPremiumAccess(request, auth.userId);
+  if (premiumBlock) return premiumBlock;
+
 
   let body: unknown;
   try {
