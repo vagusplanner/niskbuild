@@ -34,12 +34,37 @@ Even when writing Arabic, keep section structure as ASCII markdown headings: a "
 Do not replace "#" with Arabic punctuation or use ١. / ٢. as section headings.`;
 }
 
+export type VisionAnalyzeResult =
+  | { ok: true; text: string }
+  | {
+      ok: false;
+      code: 'VISION_UNAVAILABLE' | 'VISION_MODEL_ERROR' | 'VISION_EMPTY';
+      error: string;
+    };
+
+/** Build a data URL so Groq does not need to fetch a private/signed storage URL. */
+export function homeworkImageDataUrl(
+  buffer: Buffer,
+  contentType: 'image/jpeg' | 'image/png' | 'image/webp' = 'image/jpeg'
+): string {
+  return `data:${contentType};base64,${buffer.toString('base64')}`;
+}
+
 export async function analyzeHomeworkPhoto(
-  imageUrl: string,
+  imageUrlOrDataUrl: string,
   yearGroup: string,
   language?: ShiftStudyLanguage
 ): Promise<string | null> {
-  return analyzeImageWithVision(buildHomeworkVisionPrompt(yearGroup, language), imageUrl, {
+  const result = await analyzeHomeworkPhotoDetailed(imageUrlOrDataUrl, yearGroup, language);
+  return result.ok ? result.text : null;
+}
+
+export async function analyzeHomeworkPhotoDetailed(
+  imageUrlOrDataUrl: string,
+  yearGroup: string,
+  language?: ShiftStudyLanguage
+): Promise<VisionAnalyzeResult> {
+  return analyzeImageWithVision(buildHomeworkVisionPrompt(yearGroup, language), imageUrlOrDataUrl, {
     system: withLanguageInstruction(
       'You are a patient, encouraging tutor helping a student learn from a homework photo. Be clear, age-appropriate, and pedagogical. Always split the reply with ASCII markdown headings (# Title) even when the rest of the reply is Arabic.',
       language
@@ -48,7 +73,7 @@ export async function analyzeHomeworkPhoto(
 }
 
 export async function transcribeEssayPhoto(imageUrl: string): Promise<string | null> {
-  return analyzeImageWithVision(
+  const result = await analyzeImageWithVision(
     `Transcribe all handwritten or printed essay text from this image. Preserve paragraph breaks with blank lines. Return only the essay text — no commentary. If you cannot read the image clearly, return a single sentence explaining what is unclear.`,
     imageUrl,
     {
@@ -58,15 +83,22 @@ export async function transcribeEssayPhoto(imageUrl: string): Promise<string | n
       maxTokens: 4096,
     }
   );
+  return result.ok ? result.text : null;
 }
 
 async function analyzeImageWithVision(
   prompt: string,
   imageUrl: string,
   options: { system: string; temperature?: number; maxTokens?: number }
-): Promise<string | null> {
+): Promise<VisionAnalyzeResult> {
   const groq = getGroqClient();
-  if (!groq) return null;
+  if (!groq) {
+    return {
+      ok: false,
+      code: 'VISION_UNAVAILABLE',
+      error: 'Vision AI is not configured (missing GROQ_API_KEY).',
+    };
+  }
 
   const userContent: Array<
     | { type: 'text'; text: string }
@@ -87,9 +119,25 @@ async function analyzeImageWithVision(
       max_tokens: options.maxTokens ?? 4096,
     });
 
-    return completion.choices[0]?.message?.content?.trim() || null;
+    const text = completion.choices[0]?.message?.content?.trim() || '';
+    if (!text) {
+      return {
+        ok: false,
+        code: 'VISION_EMPTY',
+        error: 'Vision model returned an empty response for this photo.',
+      };
+    }
+    return { ok: true, text };
   } catch (error) {
-    console.error('Shift AI vision error:', error);
-    return null;
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('Shift AI vision error:', message, error);
+    const modelGone = /model_not_found|does not exist|do not have access/i.test(message);
+    return {
+      ok: false,
+      code: 'VISION_MODEL_ERROR',
+      error: modelGone
+        ? `Vision model unavailable (${GROQ_VISION_MODEL}). ${message}`
+        : `Vision model failed: ${message}`,
+    };
   }
 }

@@ -68,12 +68,26 @@ export function extensionHint(filename: string | null | undefined): DetectedImag
 }
 
 export type NormalizeHomeworkImageResult =
-  | { ok: true; buffer: Buffer; contentType: 'image/jpeg' | 'image/png' | 'image/webp'; kind: DetectedImageKind }
+  | { ok: true; buffer: Buffer; contentType: 'image/jpeg'; kind: DetectedImageKind }
   | { ok: false; error: string; code: 'UNSUPPORTED_TYPE' | 'TOO_LARGE' | 'CONVERT_FAILED' };
+
+/** Downscale + re-encode so vision requests stay well under provider limits. */
+async function toVisionJpeg(buffer: Buffer): Promise<Buffer> {
+  return sharp(buffer, { failOn: 'none' })
+    .rotate()
+    .resize({
+      width: 2048,
+      height: 2048,
+      fit: 'inside',
+      withoutEnlargement: true,
+    })
+    .jpeg({ quality: 85, mozjpeg: true })
+    .toBuffer();
+}
 
 /**
  * Validate + convert homework photos for vision models.
- * HEIC/HEIF → JPEG. Empty browser MIME is OK if magic bytes / extension match.
+ * Always emits JPEG. HEIC/HEIF → JPEG. Empty browser MIME is OK if magic bytes / extension match.
  */
 export async function normalizeHomeworkImage(input: {
   buffer: Buffer;
@@ -109,39 +123,48 @@ export async function normalizeHomeworkImage(input: {
     };
   }
 
-  if (kind === 'jpeg') {
-    return { ok: true, buffer: input.buffer, contentType: 'image/jpeg', kind };
-  }
-  if (kind === 'png') {
-    return { ok: true, buffer: input.buffer, contentType: 'image/png', kind };
-  }
-  if (kind === 'webp') {
-    return { ok: true, buffer: input.buffer, contentType: 'image/webp', kind };
+  let working = input.buffer;
+
+  if (kind === 'heic') {
+    // Prebuilt sharp does not decode HEVC (patent); use heic-convert (libheif WASM).
+    try {
+      const converted = await convert({
+        buffer: input.buffer,
+        format: 'JPEG',
+        quality: 0.9,
+      });
+      working = Buffer.from(converted);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'HEIC conversion failed';
+      console.error('[homework-image] HEIC convert failed:', message);
+      return {
+        ok: false,
+        error:
+          'Could not convert this iPhone HEIC photo. Try taking the photo again as JPEG, or export as JPG before uploading.',
+        code: 'CONVERT_FAILED',
+      };
+    }
   }
 
-  // HEIC/HEIF → JPEG for vision models.
-  // Prebuilt sharp does not decode HEVC (patent); use heic-convert (libheif WASM).
   try {
-    const converted = await convert({
-      buffer: input.buffer,
-      format: 'JPEG',
-      quality: 0.9,
-    });
-    const jpegBuffer = Buffer.from(converted);
-    // Normalize orientation / strip metadata via sharp when possible
-    try {
-      const rotated = await sharp(jpegBuffer).rotate().jpeg({ quality: 90, mozjpeg: true }).toBuffer();
-      return { ok: true, buffer: rotated, contentType: 'image/jpeg', kind: 'heic' };
-    } catch {
-      return { ok: true, buffer: jpegBuffer, contentType: 'image/jpeg', kind: 'heic' };
-    }
+    const jpeg = await toVisionJpeg(working);
+    return { ok: true, buffer: jpeg, contentType: 'image/jpeg', kind };
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'HEIC conversion failed';
-    console.error('[homework-image] HEIC convert failed:', message);
+    const message = err instanceof Error ? err.message : 'Image normalize failed';
+    console.error('[homework-image] JPEG normalize failed:', message, {
+      kind,
+      reportedMime: reported,
+      filename: input.filename,
+      bytes: input.buffer.length,
+    });
+    // HEIC already converted to JPEG bytes — return those if sharp choke on metadata
+    if (kind === 'heic' && detectImageKind(working) === 'jpeg') {
+      return { ok: true, buffer: working, contentType: 'image/jpeg', kind };
+    }
     return {
       ok: false,
       error:
-        'Could not convert this iPhone HEIC photo. Try taking the photo again as JPEG, or export as JPG before uploading.',
+        'Could not process this photo. Try a clearer JPEG/PNG, or retake the photo on your phone.',
       code: 'CONVERT_FAILED',
     };
   }

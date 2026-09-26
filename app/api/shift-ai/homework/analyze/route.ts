@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { analyzeHomeworkPhoto } from '@/lib/shift-ai/homework';
+import {
+  analyzeHomeworkPhotoDetailed,
+  homeworkImageDataUrl,
+} from '@/lib/shift-ai/homework';
 import { normalizeHomeworkImage } from '@/lib/shift-ai/homework-image';
 import {
   getHomeworkPhotoUrl,
@@ -69,6 +72,14 @@ export async function POST(request: NextRequest) {
 
     const yearGroup = profile?.year_group?.trim() || 'secondary school';
 
+    console.info('[homework-analyze] image ready', {
+      kind: normalized.kind,
+      bytes: normalized.buffer.length,
+      reportedMime: file.type || '(empty)',
+      filename: file.name || '(none)',
+      studentId: auth.student.id,
+    });
+
     const { id: uploadId } = await uploadHomeworkPhoto(
       auth.student.id,
       subject || null,
@@ -76,23 +87,37 @@ export async function POST(request: NextRequest) {
       normalized.contentType
     );
 
-    const imageUrl = await getHomeworkPhotoUrl(uploadId);
-    const aiResponse = await analyzeHomeworkPhoto(
-      imageUrl,
+    // Prefer inline data URL — Groq cannot always fetch private Supabase signed URLs.
+    const visionInput = homeworkImageDataUrl(normalized.buffer, normalized.contentType);
+    const vision = await analyzeHomeworkPhotoDetailed(
+      visionInput,
       yearGroup,
       await getStudentLanguage(auth.student.id)
     );
 
-    if (!aiResponse) {
+    if (!vision.ok) {
+      console.error('[homework-analyze] vision failed', {
+        code: vision.code,
+        error: vision.error,
+        uploadId,
+        kind: normalized.kind,
+        bytes: normalized.buffer.length,
+      });
       return NextResponse.json(
         {
           error:
-            'Could not read this homework photo (vision model unavailable or image unclear). Try a clearer JPEG/PNG photo — this is not a billing/upgrade issue.',
+            vision.code === 'VISION_UNAVAILABLE' || vision.code === 'VISION_MODEL_ERROR'
+              ? `${vision.error} This is not a billing/upgrade issue.`
+              : 'Could not read this homework photo (image unclear or vision returned nothing). Try a clearer JPEG/PNG photo — this is not a billing/upgrade issue.',
           code: 'VISION_FAILED',
+          visionCode: vision.code,
         },
         { status: 503 }
       );
     }
+
+    const aiResponse = vision.text;
+    const imageUrl = await getHomeworkPhotoUrl(uploadId);
 
     const { data: updated, error: updateError } = await admin
       .schema('firstparty')

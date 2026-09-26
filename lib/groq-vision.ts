@@ -2,8 +2,12 @@ import 'server-only';
 
 import { getGroqClient } from '@/lib/groq-client';
 
-/** Groq multimodal model — replacement for deprecated llama-3.2-*-vision-preview models. */
-export const GROQ_VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
+/**
+ * Groq multimodal model for image understanding.
+ * llama-4-scout was decommissioned (404 model_not_found on developer tier as of 2026-07).
+ * qwen/qwen3.8-27b is the current vision-capable model available on this account.
+ */
+export const GROQ_VISION_MODEL = 'qwen/qwen3.8-27b';
 
 const FIGMA_SCREENSHOT_SYSTEM_PROMPT = `You are looking at a UI design screenshot. Describe the layout, components, color palette, and structure precisely, then generate code matching this design as closely as possible, using the existing project's tech stack conventions.
 

@@ -172,6 +172,51 @@ export function checkSpeechSupport(): SpeechSupport {
 let voicesReady = false;
 let currentAudio: HTMLAudioElement | null = null;
 let currentObjectUrl: string | null = null;
+let audioUnlocked = false;
+let speakGeneration = 0;
+
+/** Tiny silent MP3 — unlocks HTMLAudioElement playback inside a user gesture on iOS. */
+const SILENT_MP3_DATA_URL =
+  'data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYoRwmHAAAAAAD/+1DEAAAGAAGn9AAAIuAQa/8AAAAAnQAAAAgAAAAAAExBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV';
+
+/**
+ * Call from a tap/click handler before any async TTS work.
+ * iOS Safari blocks Audio.play() outside the gesture chain; unlocking here
+ * lets OpenAI TTS play after the /api/shift-ai/tts fetch returns.
+ */
+export async function unlockSpeechAudio(): Promise<void> {
+  if (typeof window === 'undefined' || audioUnlocked) return;
+
+  try {
+    const AudioCtx =
+      window.AudioContext ||
+      (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (AudioCtx) {
+      const ctx = new AudioCtx();
+      if (ctx.state === 'suspended') {
+        await ctx.resume();
+      }
+      const buffer = ctx.createBuffer(1, 1, 22050);
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(ctx.destination);
+      source.start(0);
+    }
+  } catch {
+    // continue — try HTMLAudio unlock
+  }
+
+  try {
+    const silent = new Audio(SILENT_MP3_DATA_URL);
+    silent.volume = 0.01;
+    await silent.play();
+    silent.pause();
+    silent.src = '';
+    audioUnlocked = true;
+  } catch {
+    // Still try TTS later; unlock may succeed on a later gesture
+  }
+}
 
 function ensureVoicesLoaded(): void {
   if (typeof window === 'undefined' || !('speechSynthesis' in window) || voicesReady) return;
@@ -180,6 +225,7 @@ function ensureVoicesLoaded(): void {
     voicesReady = true;
     return;
   }
+  // iOS often fires this late or never — never block OpenAI TTS waiting for it.
   window.speechSynthesis.onvoiceschanged = () => {
     voicesReady = true;
   };
@@ -204,6 +250,7 @@ function pickVoice(lang = 'en-GB', warmer = false): SpeechSynthesisVoice | undef
 }
 
 export function stopSpeaking(): void {
+  speakGeneration += 1;
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     window.speechSynthesis.cancel();
   }
@@ -224,6 +271,16 @@ function speakWithWebSpeechFallback(text: string, options: SpeakOptions): void {
     return;
   }
 
+  // iOS Safari Web Speech is unreliable (empty getVoices, missing onend).
+  // Never hang the UI waiting for it — settle immediately if voices aren't ready.
+  if (isIosSafari()) {
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length === 0) {
+      options.onEnd?.();
+      return;
+    }
+  }
+
   ensureVoicesLoaded();
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.rate = options.rate ?? 1;
@@ -235,14 +292,29 @@ function speakWithWebSpeechFallback(text: string, options: SpeakOptions): void {
   const voice = pickVoice(utterance.lang, warmer);
   if (voice) utterance.voice = voice;
 
-  utterance.onend = () => options.onEnd?.();
-  utterance.onerror = () => options.onEnd?.();
-  window.speechSynthesis.speak(utterance);
+  let settled = false;
+  const settle = () => {
+    if (settled) return;
+    settled = true;
+    options.onEnd?.();
+  };
+
+  utterance.onend = settle;
+  utterance.onerror = settle;
+  // Safety: iOS sometimes never fires onend/onerror
+  window.setTimeout(settle, Math.min(20000, Math.max(4000, text.length * 80)));
+
+  try {
+    window.speechSynthesis.speak(utterance);
+  } catch {
+    settle();
+  }
 }
 
 /**
- * Speak via OpenAI tts-1-hd (/api/shift-ai/tts). Falls back to browser Web Speech
- * only if the neural TTS endpoint is unavailable.
+ * Speak via OpenAI tts-1-hd (/api/shift-ai/tts).
+ * Does not wait on speechSynthesis.getVoices().
+ * Web Speech is a last-resort fallback (skipped on iOS when voices are empty).
  */
 export function speak(text: string, options: SpeakOptions = {}): void {
   if (!text.trim()) {
@@ -256,9 +328,22 @@ export function speak(text: string, options: SpeakOptions = {}): void {
   }
 
   stopSpeaking();
+  const generation = speakGeneration;
 
   void (async () => {
+    let settled = false;
+    const settle = () => {
+      if (settled || generation !== speakGeneration) return;
+      settled = true;
+      options.onEnd?.();
+    };
+
+    // Always clear "Speaking…" / buddy-speaking even if audio never starts
+    const safety = window.setTimeout(settle, 45000);
+
     try {
+      await unlockSpeechAudio();
+
       const res = await fetch('/api/shift-ai/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -270,35 +355,79 @@ export function speak(text: string, options: SpeakOptions = {}): void {
         }),
       });
 
+      if (generation !== speakGeneration) {
+        window.clearTimeout(safety);
+        return;
+      }
+
       if (!res.ok) {
-        speakWithWebSpeechFallback(text, options);
+        // Prefer not hanging on iOS Web Speech when neural TTS is down
+        if (isIosSafari()) {
+          window.clearTimeout(safety);
+          settle();
+          return;
+        }
+        window.clearTimeout(safety);
+        speakWithWebSpeechFallback(text, { ...options, onEnd: settle });
         return;
       }
 
       const blob = await res.blob();
+      if (generation !== speakGeneration) {
+        window.clearTimeout(safety);
+        return;
+      }
+
       const url = URL.createObjectURL(blob);
       currentObjectUrl = url;
       const audio = new Audio(url);
       currentAudio = audio;
       audio.onended = () => {
+        window.clearTimeout(safety);
         if (currentObjectUrl === url) {
           URL.revokeObjectURL(url);
           currentObjectUrl = null;
         }
         currentAudio = null;
-        options.onEnd?.();
+        settle();
       };
       audio.onerror = () => {
+        window.clearTimeout(safety);
         if (currentObjectUrl === url) {
           URL.revokeObjectURL(url);
           currentObjectUrl = null;
         }
         currentAudio = null;
-        speakWithWebSpeechFallback(text, options);
+        if (isIosSafari()) {
+          settle();
+          return;
+        }
+        speakWithWebSpeechFallback(text, { ...options, onEnd: settle });
       };
-      await audio.play();
+
+      try {
+        await audio.play();
+      } catch {
+        // Retry once after another unlock attempt (common on iOS)
+        await unlockSpeechAudio();
+        try {
+          await audio.play();
+        } catch {
+          window.clearTimeout(safety);
+          if (isIosSafari()) {
+            settle();
+            return;
+          }
+          speakWithWebSpeechFallback(text, { ...options, onEnd: settle });
+        }
+      }
     } catch {
-      speakWithWebSpeechFallback(text, options);
+      window.clearTimeout(safety);
+      if (isIosSafari()) {
+        settle();
+        return;
+      }
+      speakWithWebSpeechFallback(text, { ...options, onEnd: settle });
     }
   })();
 }

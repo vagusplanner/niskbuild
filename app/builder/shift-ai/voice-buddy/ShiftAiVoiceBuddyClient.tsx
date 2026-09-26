@@ -10,6 +10,7 @@ import {
   speak,
   startListening,
   stopSpeaking,
+  unlockSpeechAudio,
 } from '@/lib/shift-ai/browser-speech';
 import {
   resolveOpenAiTtsVoice,
@@ -163,6 +164,8 @@ export default function ShiftAiVoiceBuddyClient({
   };
 
   const startGame = async (selectedGame: BuddyGame) => {
+    // Unlock audio inside the tap gesture so iOS will play OpenAI TTS after fetch.
+    void unlockSpeechAudio();
     stopSpeaking();
     setGame(selectedGame);
     setRound(0);
@@ -231,6 +234,7 @@ export default function ShiftAiVoiceBuddyClient({
 
     if (!speechSupport.recognition || micPhase !== 'ready') return;
 
+    void unlockSpeechAudio();
     setHeard('');
     setError('');
     stopSpeaking();

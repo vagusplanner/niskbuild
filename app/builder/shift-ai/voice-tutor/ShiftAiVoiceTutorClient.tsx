@@ -8,6 +8,7 @@ import {
   speak,
   startListening,
   stopSpeaking,
+  unlockSpeechAudio,
 } from '@/lib/shift-ai/browser-speech';
 import { speechRecognitionLangForStudyLanguage, resolveOpenAiTtsVoice } from '@/lib/shift-ai/openai-tts-voices';
 import type { ShiftStudyLanguage } from '@/lib/shift-ai/constants';
@@ -75,12 +76,14 @@ export default function ShiftAiVoiceTutorClient({
   };
 
   const beginSession = () => {
+    // Unlock audio inside the tap gesture so iOS will play OpenAI TTS after fetch.
+    void unlockSpeechAudio();
     const label = subject || 'your subjects';
     const greeting = `Hi! I'm your ${label} tutor. What would you like to work on today?`;
     setMessages([{ role: 'assistant', content: greeting }]);
     setStarted(true);
     setError('');
-    window.setTimeout(() => speakTutor(greeting), 300);
+    speakTutor(greeting);
   };
 
   const sendTranscript = async (text: string) => {
@@ -131,6 +134,7 @@ export default function ShiftAiVoiceTutorClient({
 
     if (!speechSupport.recognition || thinking || speaking) return;
 
+    void unlockSpeechAudio();
     setError('');
     stopSpeaking();
     setSpeaking(false);

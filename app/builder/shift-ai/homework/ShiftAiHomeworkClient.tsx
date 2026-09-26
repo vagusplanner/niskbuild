@@ -33,7 +33,8 @@ export default function ShiftAiHomeworkClient({
 }) {
   const t = useTranslations('homework');
   const locale = useLocale();
-  const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
   const [selectedSubject, setSelectedSubject] = useState(subjectOptions[0] ?? '');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -50,8 +51,50 @@ export default function ShiftAiHomeworkClient({
     setResult(null);
     setError('');
     setRetentionExtended(false);
-    if (fileRef.current) {
-      fileRef.current.value = '';
+    if (cameraRef.current) cameraRef.current.value = '';
+    if (galleryRef.current) galleryRef.current.value = '';
+  };
+
+  /**
+   * iPhone camera/`capture` blobs are often HEIC or oddly-typed.
+   * Re-encode via canvas to a real JPEG before upload so the server always
+   * receives bytes vision models accept (and empty MIME is avoided).
+   */
+  const prepareHomeworkFile = async (file: File): Promise<File> => {
+    if (typeof window === 'undefined' || typeof createImageBitmap !== 'function') {
+      return file;
+    }
+
+    try {
+      const bitmap = await createImageBitmap(file);
+      const maxEdge = 2048;
+      const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
+      const width = Math.max(1, Math.round(bitmap.width * scale));
+      const height = Math.max(1, Math.round(bitmap.height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        bitmap.close();
+        return file;
+      }
+      ctx.drawImage(bitmap, 0, 0, width, height);
+      bitmap.close();
+
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.88)
+      );
+      if (!blob) return file;
+
+      const base = (file.name || 'homework').replace(/\.[^.]+$/, '') || 'homework';
+      return new File([blob], `${base}.jpg`, {
+        type: 'image/jpeg',
+        lastModified: Date.now(),
+      });
+    } catch {
+      // HEIC may fail createImageBitmap on some browsers — server heic-convert handles it.
+      return file;
     }
   };
 
@@ -62,8 +105,12 @@ export default function ShiftAiHomeworkClient({
     setError('');
     setResult(null);
     setRetentionExtended(false);
-    setSelectedFile(file);
-    setPreviewUrl(URL.createObjectURL(file));
+
+    void (async () => {
+      const prepared = await prepareHomeworkFile(file);
+      setSelectedFile(prepared);
+      setPreviewUrl(URL.createObjectURL(prepared));
+    })();
   };
 
   const analyseHomework = async () => {
@@ -199,7 +246,7 @@ export default function ShiftAiHomeworkClient({
           <div className="mt-5 flex flex-wrap justify-center gap-3">
             <button
               type="button"
-              onClick={() => fileRef.current?.click()}
+              onClick={() => cameraRef.current?.click()}
               className={`${SA.btnPrimary} h-11 px-5`}
             >
               <Camera className="h-4 w-4" />
@@ -207,18 +254,26 @@ export default function ShiftAiHomeworkClient({
             </button>
             <button
               type="button"
-              onClick={() => fileRef.current?.click()}
+              onClick={() => galleryRef.current?.click()}
               className={`${SA.btnSecondary} inline-flex h-11 items-center gap-2 px-5`}
             >
               <Upload className="h-4 w-4" />
               {t('uploadImage')}
             </button>
           </div>
+          {/* Separate inputs: capture forces camera; gallery must omit capture or iOS never shows the library. */}
           <input
-            ref={fileRef}
+            ref={cameraRef}
             type="file"
             accept="image/*"
             capture="environment"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+          <input
+            ref={galleryRef}
+            type="file"
+            accept="image/*,.heic,.heif,image/heic,image/heif"
             className="hidden"
             onChange={handleFileChange}
           />
