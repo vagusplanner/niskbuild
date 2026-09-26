@@ -2,22 +2,29 @@ import 'server-only';
 
 import { getGroqClient } from '@/lib/groq-client';
 import { GROQ_VISION_MODEL } from '@/lib/groq-vision';
-import { withLanguageInstruction, type ShiftStudyLanguage } from '@/lib/shift-ai/study-language';
+import {
+  studyLanguageLabel,
+  withLanguageInstruction,
+  type ShiftStudyLanguage,
+} from '@/lib/shift-ai/study-language';
 
-const HOMEWORK_SECTION_STRUCTURE = `Structure the response with ASCII markdown headings so each section can be parsed. Use exactly this heading form (hash + space + title), even if the title and body are not English:
+const HOMEWORK_SECTION_STRUCTURE = `Structure the response with ASCII markdown headings so each section can be parsed. Use exactly this heading form (hash + space + title):
 
 # Summary
 # Step-by-step guidance
 # Key concepts
 # Check your work
 
-Heading markers must stay ASCII "#" (or the ASCII pattern "1. Title:" with a Latin capital letter after the number). Do not use Arabic-Indic numerals (١ ٢ ٣) or unmarked paragraphs as section structure. Human-readable heading titles and all body text may be Arabic.`;
+Heading markers must stay ASCII "#" (or the ASCII pattern "1. Title:" with a Latin capital letter after the number). Do not use Arabic-Indic numerals (١ ٢ ٣) or unmarked paragraphs as section structure. Write heading titles and all body text in the student's study language only.`;
 
 export function buildHomeworkVisionPrompt(
   yearGroup: string,
   language?: ShiftStudyLanguage
 ): string {
+  const langLabel = studyLanguageLabel(language);
   const base = `This is a student's homework. Help them understand and solve it step by step. Do not just give the final answer — guide them through the reasoning, appropriate for a ${yearGroup} student. If you cannot read the image clearly, say so.
+
+Student study language: ${langLabel}. Every student-facing sentence must be in ${langLabel}.
 
 ${HOMEWORK_SECTION_STRUCTURE}`;
 
@@ -66,7 +73,7 @@ export async function analyzeHomeworkPhotoDetailed(
 ): Promise<VisionAnalyzeResult> {
   return analyzeImageWithVision(buildHomeworkVisionPrompt(yearGroup, language), imageUrlOrDataUrl, {
     system: withLanguageInstruction(
-      'You are a patient, encouraging tutor helping a student learn from a homework photo. Be clear, age-appropriate, and pedagogical. Always split the reply with ASCII markdown headings (# Title) even when the rest of the reply is Arabic.',
+      `You are a patient, encouraging tutor helping a student learn from a homework photo. Be clear, age-appropriate, and pedagogical. Always split the reply with ASCII markdown headings (# Title). Reply only in ${studyLanguageLabel(language)}.`,
       language
     ),
   });
@@ -116,7 +123,8 @@ async function analyzeImageWithVision(
         { role: 'user', content: userContent },
       ],
       temperature: options.temperature ?? 0.4,
-      max_tokens: options.maxTokens ?? 4096,
+      // Free/on_demand Groq OTPM rejects expected output > ~1000 tokens/min for this model.
+      max_tokens: options.maxTokens ?? 900,
     });
 
     const text = completion.choices[0]?.message?.content?.trim() || '';

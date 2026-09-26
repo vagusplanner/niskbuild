@@ -77,37 +77,42 @@ export async function getRequestStudyLanguage(): Promise<ShiftStudyLanguage> {
 }
 
 /**
- * Append to system/user prompts. Empty for English.
- * JSON keys stay English; only human-readable values switch language.
+ * Append to system/user prompts. Always states the response language explicitly —
+ * empty instructions for English let some models (e.g. qwen vision) drift into Arabic
+ * when surrounding prompts mention Arabic section examples.
  */
 export function languageInstruction(lang: ShiftStudyLanguage | null | undefined): string {
-  if (!lang || lang === 'en') return '';
+  const resolved: ShiftStudyLanguage =
+    lang === 'ar' || lang === 'fr' || lang === 'es' || lang === 'en' ? lang : 'en';
 
-  if (lang === 'ar') {
+  if (resolved === 'ar') {
     return [
-      'Respond in Modern Standard Arabic (العربية الفصحى), even though these instructions are in English.',
+      'CRITICAL: Write the entire reply in Modern Standard Arabic (العربية الفصحى). Do not use English, French, or Spanish for any student-facing sentences.',
       'If the output is JSON, keep every JSON key, field name, and identifier exactly as specified in English.',
       'Only write human-readable content values in Arabic (questions, answers, explanations, titles, card text, hints, comments, narratives).',
     ].join(' ');
   }
 
-  if (lang === 'fr') {
+  if (resolved === 'fr') {
     return [
-      'Respond in clear French (français), even though these instructions are in English.',
+      'CRITICAL: Write the entire reply in clear French (français). Do not use English, Arabic, or Spanish for any student-facing sentences.',
       'If the output is JSON, keep every JSON key, field name, and identifier exactly as specified in English.',
       'Only write human-readable content values in French.',
     ].join(' ');
   }
 
-  if (lang === 'es') {
+  if (resolved === 'es') {
     return [
-      'Respond in clear Spanish (español), even though these instructions are in English.',
+      'CRITICAL: Write the entire reply in clear Spanish (español). Do not use English, Arabic, or French for any student-facing sentences.',
       'If the output is JSON, keep every JSON key, field name, and identifier exactly as specified in English.',
       'Only write human-readable content values in Spanish.',
     ].join(' ');
   }
 
-  return '';
+  return [
+    'CRITICAL: Write the entire reply in clear English. Do not use Arabic, French, or Spanish for any student-facing sentences.',
+    'If the output is JSON, keep every JSON key, field name, and identifier exactly as specified in English.',
+  ].join(' ');
 }
 
 export function withLanguageInstruction(
@@ -115,5 +120,21 @@ export function withLanguageInstruction(
   lang: ShiftStudyLanguage | null | undefined
 ): string {
   const extra = languageInstruction(lang);
-  return extra ? `${text}\n\n${extra}` : text;
+  // Put language first so multimodal models see it before image/content instructions.
+  return `${extra}\n\n${text}`;
+}
+
+/** Short human label for prompts / logs. */
+export function studyLanguageLabel(lang: ShiftStudyLanguage | null | undefined): string {
+  switch (lang) {
+    case 'ar':
+      return 'Arabic';
+    case 'fr':
+      return 'French';
+    case 'es':
+      return 'Spanish';
+    case 'en':
+    default:
+      return 'English';
+  }
 }

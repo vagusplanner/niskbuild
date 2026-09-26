@@ -170,52 +170,66 @@ export function checkSpeechSupport(): SpeechSupport {
 }
 
 let voicesReady = false;
-let currentAudio: HTMLAudioElement | null = null;
+let sharedAudio: HTMLAudioElement | null = null;
 let currentObjectUrl: string | null = null;
-let audioUnlocked = false;
+let audioPrimed = false;
 let speakGeneration = 0;
 
-/** Tiny silent MP3 — unlocks HTMLAudioElement playback inside a user gesture on iOS. */
+/**
+ * Minimal valid silent MP3 (very short). Used only to call play() inside a user gesture
+ * so the same HTMLAudioElement can later play OpenAI TTS after an async fetch.
+ */
 const SILENT_MP3_DATA_URL =
   'data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYoRwmHAAAAAAD/+1DEAAAGAAGn9AAAIuAQa/8AAAAAnQAAAAgAAAAAAExBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV';
 
+function getSharedAudio(): HTMLAudioElement {
+  if (!sharedAudio) {
+    sharedAudio = new Audio();
+    sharedAudio.setAttribute('playsinline', 'true');
+    sharedAudio.setAttribute('webkit-playsinline', 'true');
+    sharedAudio.preload = 'auto';
+  }
+  return sharedAudio;
+}
+
 /**
- * Call from a tap/click handler before any async TTS work.
- * iOS Safari blocks Audio.play() outside the gesture chain; unlocking here
- * lets OpenAI TTS play after the /api/shift-ai/tts fetch returns.
+ * Must be called synchronously from a click/touch handler (not after await).
+ * iOS Safari only allows later audio.play() on an element that was play()'d
+ * during the user gesture. Creating a new Audio() after the TTS fetch will be silent.
  */
-export async function unlockSpeechAudio(): Promise<void> {
-  if (typeof window === 'undefined' || audioUnlocked) return;
+export function primeSpeechAudio(): void {
+  if (typeof window === 'undefined') return;
 
+  const audio = getSharedAudio();
   try {
-    const AudioCtx =
-      window.AudioContext ||
-      (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (AudioCtx) {
-      const ctx = new AudioCtx();
-      if (ctx.state === 'suspended') {
-        await ctx.resume();
-      }
-      const buffer = ctx.createBuffer(1, 1, 22050);
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      source.connect(ctx.destination);
-      source.start(0);
+    audio.muted = false;
+    audio.volume = 1;
+    // Re-prime every gesture — iOS unlock is gesture-scoped.
+    audio.src = SILENT_MP3_DATA_URL;
+    const playResult = audio.play();
+    if (playResult && typeof playResult.then === 'function') {
+      void playResult
+        .then(() => {
+          try {
+            audio.pause();
+            audio.currentTime = 0;
+          } catch {
+            // ignore
+          }
+        })
+        .catch(() => {
+          // Gesture may still have unlocked the element for a later src swap
+        });
     }
+    audioPrimed = true;
   } catch {
-    // continue — try HTMLAudio unlock
+    // ignore — speak() will still try
   }
+}
 
-  try {
-    const silent = new Audio(SILENT_MP3_DATA_URL);
-    silent.volume = 0.01;
-    await silent.play();
-    silent.pause();
-    silent.src = '';
-    audioUnlocked = true;
-  } catch {
-    // Still try TTS later; unlock may succeed on a later gesture
-  }
+/** @deprecated Prefer primeSpeechAudio() called synchronously from the tap handler. */
+export async function unlockSpeechAudio(): Promise<void> {
+  primeSpeechAudio();
 }
 
 function ensureVoicesLoaded(): void {
@@ -254,10 +268,14 @@ export function stopSpeaking(): void {
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     window.speechSynthesis.cancel();
   }
-  if (currentAudio) {
-    currentAudio.pause();
-    currentAudio.src = '';
-    currentAudio = null;
+  if (sharedAudio) {
+    sharedAudio.onended = null;
+    sharedAudio.onerror = null;
+    try {
+      sharedAudio.pause();
+    } catch {
+      // ignore
+    }
   }
   if (currentObjectUrl) {
     URL.revokeObjectURL(currentObjectUrl);
@@ -314,7 +332,8 @@ function speakWithWebSpeechFallback(text: string, options: SpeakOptions): void {
 /**
  * Speak via OpenAI tts-1-hd (/api/shift-ai/tts).
  * Does not wait on speechSynthesis.getVoices().
- * Web Speech is a last-resort fallback (skipped on iOS when voices are empty).
+ * On iOS, call primeSpeechAudio() synchronously in the same tap handler before speak().
+ * Playback reuses that primed HTMLAudioElement — never creates a new Audio after fetch.
  */
 export function speak(text: string, options: SpeakOptions = {}): void {
   if (!text.trim()) {
@@ -329,6 +348,8 @@ export function speak(text: string, options: SpeakOptions = {}): void {
 
   stopSpeaking();
   const generation = speakGeneration;
+  // Keep using the primed element (created/play()'d during the user gesture).
+  const audio = getSharedAudio();
 
   void (async () => {
     let settled = false;
@@ -338,12 +359,9 @@ export function speak(text: string, options: SpeakOptions = {}): void {
       options.onEnd?.();
     };
 
-    // Always clear "Speaking…" / buddy-speaking even if audio never starts
     const safety = window.setTimeout(settle, 45000);
 
     try {
-      await unlockSpeechAudio();
-
       const res = await fetch('/api/shift-ai/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -361,7 +379,6 @@ export function speak(text: string, options: SpeakOptions = {}): void {
       }
 
       if (!res.ok) {
-        // Prefer not hanging on iOS Web Speech when neural TTS is down
         if (isIosSafari()) {
           window.clearTimeout(safety);
           settle();
@@ -378,17 +395,20 @@ export function speak(text: string, options: SpeakOptions = {}): void {
         return;
       }
 
+      if (currentObjectUrl) {
+        URL.revokeObjectURL(currentObjectUrl);
+        currentObjectUrl = null;
+      }
+
       const url = URL.createObjectURL(blob);
       currentObjectUrl = url;
-      const audio = new Audio(url);
-      currentAudio = audio;
+
       audio.onended = () => {
         window.clearTimeout(safety);
         if (currentObjectUrl === url) {
           URL.revokeObjectURL(url);
           currentObjectUrl = null;
         }
-        currentAudio = null;
         settle();
       };
       audio.onerror = () => {
@@ -397,7 +417,6 @@ export function speak(text: string, options: SpeakOptions = {}): void {
           URL.revokeObjectURL(url);
           currentObjectUrl = null;
         }
-        currentAudio = null;
         if (isIosSafari()) {
           settle();
           return;
@@ -405,21 +424,21 @@ export function speak(text: string, options: SpeakOptions = {}): void {
         speakWithWebSpeechFallback(text, { ...options, onEnd: settle });
       };
 
+      // Swap source on the primed element, then play — required iOS pattern.
+      audio.src = url;
+      audio.muted = false;
+      audio.volume = 1;
       try {
         await audio.play();
-      } catch {
-        // Retry once after another unlock attempt (common on iOS)
-        await unlockSpeechAudio();
-        try {
-          await audio.play();
-        } catch {
-          window.clearTimeout(safety);
-          if (isIosSafari()) {
-            settle();
-            return;
-          }
-          speakWithWebSpeechFallback(text, { ...options, onEnd: settle });
+        if (!audioPrimed) audioPrimed = true;
+      } catch (err) {
+        console.warn('[se8-tts] audio.play blocked', err);
+        window.clearTimeout(safety);
+        if (isIosSafari()) {
+          settle();
+          return;
         }
+        speakWithWebSpeechFallback(text, { ...options, onEnd: settle });
       }
     } catch {
       window.clearTimeout(safety);

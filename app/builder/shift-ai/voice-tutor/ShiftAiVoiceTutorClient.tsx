@@ -5,10 +5,10 @@ import { GraduationCap, Loader2, Mic, MicOff, RotateCcw, Volume2, VolumeX } from
 import {
   VOICE_TUTOR_SPEAK_OPTIONS,
   checkSpeechSupport,
+  primeSpeechAudio,
   speak,
   startListening,
   stopSpeaking,
-  unlockSpeechAudio,
 } from '@/lib/shift-ai/browser-speech';
 import { speechRecognitionLangForStudyLanguage, resolveOpenAiTtsVoice } from '@/lib/shift-ai/openai-tts-voices';
 import type { ShiftStudyLanguage } from '@/lib/shift-ai/constants';
@@ -76,8 +76,9 @@ export default function ShiftAiVoiceTutorClient({
   };
 
   const beginSession = () => {
-    // Unlock audio inside the tap gesture so iOS will play OpenAI TTS after fetch.
-    void unlockSpeechAudio();
+    stopSpeaking();
+    // Synchronous prime inside the tap handler — required for iOS Safari audio.
+    primeSpeechAudio();
     const label = subject || 'your subjects';
     const greeting = `Hi! I'm your ${label} tutor. What would you like to work on today?`;
     setMessages([{ role: 'assistant', content: greeting }]);
@@ -134,10 +135,11 @@ export default function ShiftAiVoiceTutorClient({
 
     if (!speechSupport.recognition || thinking || speaking) return;
 
-    void unlockSpeechAudio();
     setError('');
     stopSpeaking();
     setSpeaking(false);
+    // Prime AFTER stop, still inside the tap handler (iOS Safari requirement).
+    primeSpeechAudio();
 
     const session = startListening(
       (transcript) => {

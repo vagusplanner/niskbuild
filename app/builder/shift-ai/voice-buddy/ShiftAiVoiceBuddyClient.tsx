@@ -7,10 +7,10 @@ import {
   MIC_READY_DELAY_MS,
   VOICE_BUDDY_SPEAK_OPTIONS,
   checkSpeechSupport,
+  primeSpeechAudio,
   speak,
   startListening,
   stopSpeaking,
-  unlockSpeechAudio,
 } from '@/lib/shift-ai/browser-speech';
 import {
   resolveOpenAiTtsVoice,
@@ -164,9 +164,9 @@ export default function ShiftAiVoiceBuddyClient({
   };
 
   const startGame = async (selectedGame: BuddyGame) => {
-    // Unlock audio inside the tap gesture so iOS will play OpenAI TTS after fetch.
-    void unlockSpeechAudio();
     stopSpeaking();
+    // Synchronous prime inside the tap handler — required for iOS Safari audio.
+    primeSpeechAudio();
     setGame(selectedGame);
     setRound(0);
     setStars(0);
@@ -234,10 +234,11 @@ export default function ShiftAiVoiceBuddyClient({
 
     if (!speechSupport.recognition || micPhase !== 'ready') return;
 
-    void unlockSpeechAudio();
     setHeard('');
     setError('');
     stopSpeaking();
+    // Prime AFTER stop, still inside the tap handler (iOS Safari requirement).
+    primeSpeechAudio();
 
     const session = startListening(
       (transcript) => {

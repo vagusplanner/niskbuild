@@ -87,12 +87,19 @@ export async function POST(request: NextRequest) {
       normalized.contentType
     );
 
+    const studyLanguage = await getStudentLanguage(auth.student.id);
+    console.info('[homework-analyze] study language', {
+      studentId: auth.student.id,
+      studyLanguage,
+      uploadId,
+    });
+
     // Prefer inline data URL — Groq cannot always fetch private Supabase signed URLs.
     const visionInput = homeworkImageDataUrl(normalized.buffer, normalized.contentType);
     const vision = await analyzeHomeworkPhotoDetailed(
       visionInput,
       yearGroup,
-      await getStudentLanguage(auth.student.id)
+      studyLanguage
     );
 
     if (!vision.ok) {
