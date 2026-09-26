@@ -515,6 +515,65 @@
   color: var(--se8-muted);
 }
 
+.se8-contact-wrap {
+  margin-top: 1.75rem;
+  text-align: left;
+}
+
+.se8-contact-form {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.se8-contact-grid {
+  display: grid;
+  gap: 0.85rem;
+}
+
+@media (min-width: 640px) {
+  .se8-contact-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.se8-contact-field {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--se8-navy);
+}
+
+.se8-contact-field input,
+.se8-contact-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--se8-border);
+  border-radius: 0.65rem;
+  padding: 0.7rem 0.85rem;
+  font: inherit;
+  font-weight: 400;
+  color: var(--se8-navy);
+  background: #fff;
+}
+
+.se8-contact-field textarea {
+  resize: vertical;
+  min-height: 7rem;
+}
+
+.se8-contact-error {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #b42318;
+}
+
+.se8-contact-success {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #027a48;
+}
+
 .se8-sr-only {
   position: absolute;
   width: 1px;

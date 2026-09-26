@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import SuperEduc8Logo from '@/app/components/SuperEduc8Logo';
+import SuperEduc8LandingContactForm from '@/app/components/SuperEduc8LandingContactForm';
 import './supereduc8-landing.css';
 
 const SIGNUP_HREF = '/signup';
@@ -349,18 +350,19 @@ export default function SuperEduc8LandingPage() {
           </div>
         </section>
 
-        {/* ── Contact anchor ───────────────────────────────────── */}
+        {/* ── Contact / schools ────────────────────────────────── */}
         <section id="contact" className="se8-section se8-section-compact" aria-labelledby="se8-contact-heading">
           <div className="se8-wrap se8-narrow se8-center">
             <h2 id="se8-contact-heading" className="se8-h3">
               Contact &amp; schools
             </h2>
             <p className="se8-body">
-              Questions about your child&apos;s data, support after signup, or classroom and school
-              pricing — start a free trial and reach us from your account, or use the Teacher/School
-              option above. We&apos;re building school packages carefully and will follow up with
-              anyone who gets in touch.
+              Questions about your child&apos;s data, classroom licensing, or school pricing —
+              send a message below. We read every inquiry and follow up carefully.
             </p>
+            <div className="se8-contact-wrap">
+              <SuperEduc8LandingContactForm />
+            </div>
           </div>
         </section>
       </main>

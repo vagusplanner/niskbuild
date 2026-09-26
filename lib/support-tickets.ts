@@ -4,7 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { resolveEmailFrom, sendEmail } from '@/lib/send-email';
 import { getSupportInboxEmail, getVpSupportInboxEmail } from '@/lib/admin-auth';
 
-export type SupportProduct = 'niskbuild' | 'vagus-planner';
+export type SupportProduct = 'niskbuild' | 'vagus-planner' | 'supereduc8';
 
 export type CreateTicketInput = {
   userId?: string | null;
@@ -61,15 +61,35 @@ export async function notifyAdminNewTicket(params: {
   /** Defaults to NiskBuild inbox + [NiskBuild] subject. */
   product?: SupportProduct;
 }): Promise<{ ok: boolean; error?: string }> {
-  const product: SupportProduct = params.product === 'vagus-planner' ? 'vagus-planner' : 'niskbuild';
-  const inbox = product === 'vagus-planner' ? getVpSupportInboxEmail() : getSupportInboxEmail();
-  const brand = product === 'vagus-planner' ? 'Vagus Planner' : 'NiskBuild';
-  const subjectPrefix = product === 'vagus-planner' ? '[Vagus Planner]' : '[NiskBuild]';
-  const from = resolveEmailFrom(product === 'vagus-planner' ? 'vagus-planner' : 'niskbuild');
+  const product: SupportProduct =
+    params.product === 'vagus-planner'
+      ? 'vagus-planner'
+      : params.product === 'supereduc8'
+        ? 'supereduc8'
+        : 'niskbuild';
+  const inbox =
+    product === 'vagus-planner' ? getVpSupportInboxEmail() : getSupportInboxEmail();
+  const brand =
+    product === 'vagus-planner'
+      ? 'Vagus Planner'
+      : product === 'supereduc8'
+        ? 'SuperEduc8'
+        : 'NiskBuild';
+  const subjectPrefix =
+    product === 'vagus-planner'
+      ? '[Vagus Planner]'
+      : product === 'supereduc8'
+        ? '[SuperEduc8]'
+        : '[NiskBuild]';
+  const from = resolveEmailFrom(
+    product === 'vagus-planner' ? 'vagus-planner' : 'niskbuild'
+  );
   const panelHint =
     product === 'vagus-planner'
       ? 'Reply from the NiskBuild admin support panel (filter source: vp_contact_form).'
-      : 'Reply from the NiskBuild admin support panel.';
+      : product === 'supereduc8'
+        ? 'Reply from the NiskBuild admin support panel (source: supereduc8_landing).'
+        : 'Reply from the NiskBuild admin support panel.';
 
   const html = `
     <div style="font-family:system-ui,sans-serif;max-width:560px;color:#111;">

@@ -3,19 +3,22 @@
 import { usePathname } from 'next/navigation';
 import ShiftAiShell from '@/app/builder/shift-ai/ShiftAiShell';
 import type { ShiftStudyLanguage } from '@/lib/shift-ai/constants';
+import { shiftAiPublicPathname } from '@/lib/supereduc8-host';
 
-const STANDALONE_PREFIXES = [
-  '/builder/shift-ai/studio',
-  '/builder/shift-ai/parent',
-  '/builder/shift-ai/mentor',
-  '/builder/shift-ai/signup',
-  '/builder/shift-ai/login',
-  '/builder/shift-ai/onboarding',
-];
+/** Internal + public (SuperEduc8 clean URL) prefixes that skip app chrome. */
+const STANDALONE_PUBLIC_PREFIXES = [
+  '/signup',
+  '/login',
+  '/onboarding',
+  '/parent',
+  '/mentor',
+  '/studio',
+] as const;
 
 function isStandaloneRoute(pathname: string): boolean {
-  return STANDALONE_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  const publicPath = shiftAiPublicPathname(pathname);
+  return STANDALONE_PUBLIC_PREFIXES.some(
+    (prefix) => publicPath === prefix || publicPath.startsWith(`${prefix}/`)
   );
 }
 

@@ -11,6 +11,11 @@ interface EmailAuthFormProps {
   onSuccess?: () => void;
   /** Product name used in age-gate / legal copy. Defaults to NiskBuild. */
   productName?: string;
+  /**
+   * When set, "Sign Up" navigates here instead of the inline DOB form
+   * (SuperEduc8 uses /signup with parental-consent paths).
+   */
+  dedicatedSignupHref?: string | null;
 }
 
 function PasswordInput({
@@ -76,6 +81,7 @@ export default function EmailAuthForm({
   nextPath = '/pricing',
   onSuccess,
   productName = 'NiskBuild',
+  dedicatedSignupHref = null,
 }: EmailAuthFormProps) {
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signin');
   const [email, setEmail] = useState('');
@@ -113,7 +119,7 @@ export default function EmailAuthForm({
         }
         if (!meetsMinimumAge(dateOfBirth)) {
           throw new Error(
-            `[LEGAL REVIEW NEEDED] You must be at least ${NISK_MINIMUM_AGE} years old to use ${productName}.`
+            `You must be at least ${NISK_MINIMUM_AGE} years old to create a ${productName} account.`
           );
         }
 
@@ -171,7 +177,15 @@ export default function EmailAuthForm({
           </button>
           <button
             type="button"
-            onClick={() => { setMode('signup'); setError(''); setMessage(''); }}
+            onClick={() => {
+              if (dedicatedSignupHref) {
+                window.location.href = dedicatedSignupHref;
+                return;
+              }
+              setMode('signup');
+              setError('');
+              setMessage('');
+            }}
             className={`flex-1 py-2 transition-colors ${mode === 'signup' ? 'bg-[var(--primary)] text-white' : 'text-nisk-muted hover:text-[var(--foreground)]'}`}
           >
             Sign Up
@@ -236,8 +250,8 @@ export default function EmailAuthForm({
               className="w-full px-4 py-2.5 rounded-lg glass-input text-sm"
             />
             <p className="text-[10px] text-nisk-muted mt-1 leading-snug">
-              [LEGAL REVIEW NEEDED] You must be at least {NISK_MINIMUM_AGE}. We check your date of
-              birth to enforce this and do not store your exact birthdate.
+              You must be at least {NISK_MINIMUM_AGE}. We check your date of birth to enforce this
+              and do not store your exact birthdate — only that you met the minimum age.
             </p>
           </div>
           <div>

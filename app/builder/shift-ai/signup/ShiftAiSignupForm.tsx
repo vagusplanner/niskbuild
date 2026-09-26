@@ -12,6 +12,7 @@ import {
   type ShiftCurriculum,
 } from '@/lib/shift-ai/constants';
 import { SA } from '@/lib/shift-ai/theme';
+import { shiftAiAppPath } from '@/lib/supereduc8-host';
 
 type SignupPath = 'choose' | 'self' | 'supervised' | 'family';
 
@@ -66,7 +67,7 @@ export default function ShiftAiSignupForm() {
         throw new Error(data.error || t('createProfileFailed'));
       }
 
-      router.replace('/builder/shift-ai');
+      router.replace(shiftAiAppPath('/dashboard'));
     } catch (err) {
       setError(err instanceof Error ? err.message : t('signupFailed'));
     } finally {

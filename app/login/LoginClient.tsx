@@ -99,7 +99,11 @@ function LoginContent({ brand }: { brand: AuthProductBrand }) {
           <div className="flex-1 h-px bg-[var(--border)]" />
         </div>
 
-        <EmailAuthForm nextPath={next} productName={copy.productName} />
+        <EmailAuthForm
+          nextPath={next}
+          productName={copy.productName}
+          dedicatedSignupHref={copy.dedicatedSignupHref}
+        />
 
         <p className="mt-6 text-center text-xs text-nisk-muted">
           By signing in, you agree to our{' '}

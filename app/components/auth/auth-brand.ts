@@ -14,6 +14,11 @@ export type AuthBrandCopy = {
   privacyHref: string;
   defaultNext: string;
   postVerifyPath: string;
+  /**
+   * When set, the shared login form's "Sign Up" tab redirects here instead of
+   * showing the NiskBuild DOB-gated signup (used by SuperEduc8).
+   */
+  dedicatedSignupHref: string | null;
 };
 
 export const AUTH_BRAND_COPY: Record<AuthProductBrand, AuthBrandCopy> = {
@@ -33,16 +38,17 @@ export const AUTH_BRAND_COPY: Record<AuthProductBrand, AuthBrandCopy> = {
     privacyHref: '/privacy',
     defaultNext: '/pricing',
     postVerifyPath: '/builder?welcome=1',
+    dedicatedSignupHref: null,
   },
   supereduc8: {
     productName: 'SuperEduc8',
     signInTitle: 'Sign in to SuperEduc8',
     signInSubtitle:
-      'Sign in or create an account to continue studying with your AI study companion.',
+      'Sign in to continue studying — or create an account via SuperEduc8 signup (self-serve 13+, or parent consent for under 13).',
     resetSubtitle: 'Choose a new password for your SuperEduc8 account.',
-    verifyTitle: 'Verify your phone',
+    verifyTitle: 'Continue to SuperEduc8',
     verifySubtitle:
-      'Please verify your phone number to finish setting up your SuperEduc8 account.',
+      'Phone verification is not required for SuperEduc8. Redirecting you to your study dashboard…',
     verifySkipHint: null,
     backHref: null,
     backLabel: null,
@@ -52,5 +58,7 @@ export const AUTH_BRAND_COPY: Record<AuthProductBrand, AuthBrandCopy> = {
     privacyHref: '/privacy',
     defaultNext: '/dashboard',
     postVerifyPath: '/dashboard',
+    /** Dedicated age/parental-consent signup — shared DOB form must not be used. */
+    dedicatedSignupHref: '/signup',
   },
 };

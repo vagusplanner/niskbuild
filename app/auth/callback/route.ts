@@ -2,7 +2,10 @@ import { NextResponse } from 'next/server';
 import type { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { resolvePostAuthPath } from '@/lib/post-auth-redirect';
+import {
+  resolvePostAuthPath,
+  resolvePostAuthProduct,
+} from '@/lib/post-auth-redirect';
 import { isPlatformOwner } from '@/lib/platform-owner-auth';
 import { recordSignupIfNewUser } from '@/lib/usage-events';
 import { sendWelcomeEmail } from '@/lib/email/lifecycle';
@@ -81,8 +84,10 @@ export async function GET(request: Request) {
 
     const platformOwner = await isPlatformOwner(userId);
 
+    const product = resolvePostAuthProduct(origin);
     let destinationPath = resolvePostAuthPath(profile ?? {}, next, {
       isPlatformOwner: platformOwner,
+      product,
     });
     const destination = new URL(destinationPath, origin);
 
@@ -128,6 +133,9 @@ export async function GET(request: Request) {
     return NextResponse.redirect(destination);
   }
 
-  const fallback = new URL(resolvePostAuthPath({}, next), origin);
+  const fallback = new URL(
+    resolvePostAuthPath({}, next, { product: resolvePostAuthProduct(origin) }),
+    origin
+  );
   return NextResponse.redirect(fallback);
 }

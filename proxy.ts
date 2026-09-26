@@ -198,29 +198,9 @@ export async function proxy(request: NextRequest) {
         return NextResponse.redirect(url);
       }
 
-      // Platform owners skip phone / tier gates (same as NiskBuild).
-      const { data: isOwner } = await supabase.rpc('is_platform_owner').single();
-      if (isOwner) {
-        const url = request.nextUrl.clone();
-        url.pathname = internalPath;
-        return NextResponse.rewrite(url, { headers: supabaseResponse.headers });
-      }
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('subscription_tier, subscription_status, phone_verified')
-        .eq('id', user.id)
-        .single();
-
-      const tier = profile?.subscription_tier ?? 'free';
-      const paid = hasPaidTier(tier) && profile?.subscription_status === 'active';
-
-      if (!paid && !profile?.phone_verified && !isPhoneVerifyExemptPath(internalPath)) {
-        const url = request.nextUrl.clone();
-        url.pathname = '/verify-phone';
-        return NextResponse.redirect(url);
-      }
-
+      // SuperEduc8: do NOT apply NiskBuild Sandbox phone verification or
+      // NiskBuild paid-tier gates. Age / parental consent is enforced by SE8
+      // signup (self 13+, supervised/family under-13).
       const url = request.nextUrl.clone();
       url.pathname = internalPath;
       return NextResponse.rewrite(url, { headers: supabaseResponse.headers });

@@ -23,6 +23,13 @@ function VerifyPhoneContent({ brand }: { brand: AuthProductBrand }) {
 
   useEffect(() => {
     const check = async () => {
+      // SuperEduc8 never uses NiskBuild Sandbox phone verification — parental
+      // consent / age bands are the product gate. Bounce anyone who lands here.
+      if (brand === 'supereduc8') {
+        window.location.replace(copy.postVerifyPath);
+        return;
+      }
+
       const session = await getSafeSession();
       if (!session?.user) {
         router.replace('/login?next=/verify-phone');
@@ -50,7 +57,7 @@ function VerifyPhoneContent({ brand }: { brand: AuthProductBrand }) {
       setChecking(false);
     };
     check();
-  }, [router, brand]);
+  }, [router, brand, copy.postVerifyPath]);
 
   if (checking) {
     return (

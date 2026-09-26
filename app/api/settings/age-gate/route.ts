@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
   if (!meetsMinimumAge(dateOfBirth, NISK_MINIMUM_AGE)) {
     return NextResponse.json(
       {
-        error: `[LEGAL REVIEW NEEDED] You must be at least ${NISK_MINIMUM_AGE} years old to use NiskBuild.`,
+        error: `You must be at least ${NISK_MINIMUM_AGE} years old to use NiskBuild.`,
         underage: true,
       },
       { status: 403 }

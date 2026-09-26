@@ -28,9 +28,7 @@ export default function AgeGateModal({ open, onComplete }: AgeGateModalProps) {
       return;
     }
     if (!meetsMinimumAge(dateOfBirth)) {
-      setError(
-        `[LEGAL REVIEW NEEDED] NiskBuild is only for users aged ${NISK_MINIMUM_AGE} and over.`
-      );
+      setError(`NiskBuild is only for users aged ${NISK_MINIMUM_AGE} and over.`);
       return;
     }
 
@@ -61,9 +59,8 @@ export default function AgeGateModal({ open, onComplete }: AgeGateModalProps) {
       <div className="w-full max-w-md bg-nisk-card border border-nisk rounded-2xl p-6 shadow-2xl">
         <h2 className="text-xl font-bold text-white mb-2">Confirm your age</h2>
         <p className="text-sm text-nisk-muted mb-4 leading-relaxed">
-          [LEGAL REVIEW NEEDED] You must be at least {NISK_MINIMUM_AGE} years old to use
-          NiskBuild. We use your date of birth only to check this requirement — we do not
-          store your exact birthdate.
+          You must be at least {NISK_MINIMUM_AGE} years old to use NiskBuild. We use your date of
+          birth only to check this requirement — we do not store your exact birthdate.
         </p>
         <form onSubmit={(e) => void handleSubmit(e)} className="space-y-3">
           <div>

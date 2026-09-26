@@ -14,6 +14,9 @@ function resolveProduct(body: Record<string, unknown>): SupportProduct {
   if (body.product === 'vagus-planner' || body.source === 'vp_contact_form') {
     return 'vagus-planner';
   }
+  if (body.product === 'supereduc8' || body.source === 'supereduc8_landing') {
+    return 'supereduc8';
+  }
   return 'niskbuild';
 }
 
@@ -32,7 +35,12 @@ export async function POST(request: NextRequest) {
         ? body.category
         : 'general';
     const product = resolveProduct(body);
-    const source = product === 'vagus-planner' ? 'vp_contact_form' : 'contact_form';
+    const source =
+      product === 'vagus-planner'
+        ? 'vp_contact_form'
+        : product === 'supereduc8'
+          ? 'supereduc8_landing'
+          : 'contact_form';
 
     if (!name || name.length < 2) {
       return NextResponse.json({ error: 'Please enter your name' }, { status: 400 });
