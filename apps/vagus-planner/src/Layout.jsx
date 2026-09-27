@@ -610,7 +610,16 @@ export default function Layout({ children, currentPageName }) {
           />
         </div>
 
-        <div className="p-3 pt-1">
+        <div className="p-3 pt-1 space-y-2">
+          <a
+            href="https://www.niskbuild.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block text-center text-[10px] tracking-wide hover:underline"
+            style={{ color: 'rgba(168,200,232,0.55)' }}
+          >
+            Built with NiskBuild
+          </a>
           <button
             type="button"
             onClick={() => { void logout(); }}

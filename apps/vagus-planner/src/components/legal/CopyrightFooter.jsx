@@ -98,7 +98,15 @@ export default function CopyrightFooter() {
             <p className="text-sm text-slate-400">
               © {currentYear} MyAssistant. All rights reserved.
             </p>
-            <div className="flex items-center gap-4 text-sm">
+            <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 text-sm">
+              <a
+                href="https://www.niskbuild.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-slate-500 hover:text-teal-400 transition-colors"
+              >
+                Built with NiskBuild
+              </a>
               <span className="text-slate-500">Made with ❤️ for the Muslim community</span>
               <Badge variant="outline" className="border-teal-400 text-teal-400">
                 GDPR Compliant

@@ -46,12 +46,15 @@ function LoginContent({ brand }: { brand: AuthProductBrand }) {
   useEffect(() => {
     getSafeSession().then((session) => {
       if (session?.user) {
-        router.replace(next);
+        // Same resolve path as email/OAuth — never dump owners/paid users on /pricing.
+        const params = new URLSearchParams({ next });
+        if (brand === 'supereduc8') params.set('product', 'supereduc8');
+        router.replace(`/auth/continue?${params.toString()}`);
       } else {
         setChecking(false);
       }
     });
-  }, [router, next]);
+  }, [router, next, brand]);
 
   const handleGoogleSignIn = async () => {
     setLoading(true);

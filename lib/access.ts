@@ -43,6 +43,7 @@ export const PUBLIC_PATHS = [
   '/signup',
   '/reset-password',
   '/auth/callback',
+  '/auth/continue',
   '/pricing',
   '/privacy',
   '/terms',
@@ -86,6 +87,7 @@ export const PHONE_VERIFY_EXEMPT_PATHS = [
   '/pricing',
   '/login',
   '/auth/callback',
+  '/auth/continue',
   ...PUBLIC_PATHS,
 ];
 

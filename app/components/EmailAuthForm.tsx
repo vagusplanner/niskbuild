@@ -7,6 +7,7 @@ import { meetsMinimumAge, NISK_MINIMUM_AGE } from '@/lib/age-gate';
 import { getAuthRedirectOrigin } from '@/lib/canonical-url';
 import {
   resolvePostAuthProduct,
+  sanitizeNextPath,
   sanitizeSuperEduc8NextPath,
 } from '@/lib/post-auth-redirect';
 
@@ -71,22 +72,30 @@ function PasswordInput({
   );
 }
 
-function navigateAfterAuth(nextPath: string) {
-  const path = nextPath.startsWith('/') ? nextPath : `/${nextPath}`;
+/**
+ * Hand off to /auth/continue so destination matches OAuth callback
+ * (platform-owner bypass, paid → dashboard, unpaid → verify/pricing).
+ */
+function navigateAfterAuth(requestedNext: string) {
   const origin = getAuthRedirectOrigin(window.location.origin);
   const product = resolvePostAuthProduct(origin);
-  const safePath =
-    product === 'supereduc8' ? sanitizeSuperEduc8NextPath(path) : path;
+  const safeNext =
+    product === 'supereduc8'
+      ? sanitizeSuperEduc8NextPath(requestedNext)
+      : sanitizeNextPath(requestedNext) || '/dashboard';
 
-  // SuperEduc8 must never leave its origin for NiskBuild pricing/dashboard.
+  const params = new URLSearchParams({ next: safeNext });
+  if (product === 'supereduc8') params.set('product', 'supereduc8');
+
+  const continuePath = `/auth/continue?${params.toString()}`;
   window.location.href =
     product === 'supereduc8' || origin !== window.location.origin
-      ? `${origin}${safePath}`
-      : safePath;
+      ? `${origin}${continuePath}`
+      : continuePath;
 }
 
 export default function EmailAuthForm({
-  nextPath = '/pricing',
+  nextPath = '/dashboard',
   onSuccess,
   productName = 'NiskBuild',
   dedicatedSignupHref = null,

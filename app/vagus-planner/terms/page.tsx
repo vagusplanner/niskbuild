@@ -164,6 +164,14 @@ export default function VagusPlannerPublicTermsPage() {
           <Link href="/" className="hover:text-white/70 underline">
             NiskBuild home
           </Link>
+          <a
+            href="https://www.niskbuild.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-white/70 underline"
+          >
+            Built with NiskBuild
+          </a>
         </footer>
       </article>
     </main>

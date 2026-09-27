@@ -18,7 +18,7 @@ interface AuthModalProps {
 export default function AuthModal({
   open,
   onClose,
-  nextPath = '/pricing',
+  nextPath = '/dashboard',
   title = 'Sign in to NiskBuild',
   subtitle = 'Sign in or create an account, then choose a plan to access the builder.',
 }: AuthModalProps) {

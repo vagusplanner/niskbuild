@@ -21,7 +21,7 @@ function buildAuthCallbackUrl(nextPath: string, extra?: Record<string, string>):
   const safeNext =
     product === 'supereduc8'
       ? sanitizeSuperEduc8NextPath(nextPath)
-      : sanitizeNextPath(nextPath) || '/pricing';
+      : sanitizeNextPath(nextPath) || '/dashboard';
   const params = new URLSearchParams({ next: safeNext, ...extra });
   if (product === 'supereduc8') {
     // Survives Supabase Site URL fallback onto niskbuild.com so the callback
@@ -31,7 +31,7 @@ function buildAuthCallbackUrl(nextPath: string, extra?: Record<string, string>):
   return `${origin}/auth/callback?${params.toString()}`;
 }
 
-export async function signInWithGoogle(nextPath = '/pricing') {
+export async function signInWithGoogle(nextPath = '/dashboard') {
   const supabase = createClient();
   const callbackUrl = buildAuthCallbackUrl(nextPath);
 
@@ -84,14 +84,11 @@ export async function signInWithEmail(email: string, password: string) {
 
 export async function signUpWithEmail(email: string, password: string) {
   const supabase = createClient();
-  const product = resolvePostAuthProduct(getOrigin());
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      emailRedirectTo: buildAuthCallbackUrl(
-        product === 'supereduc8' ? '/dashboard' : '/pricing'
-      ),
+      emailRedirectTo: buildAuthCallbackUrl('/dashboard'),
     },
   });
   if (error) throw error;

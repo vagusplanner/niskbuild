@@ -26,6 +26,21 @@ assert(
   resolvePostAuthPath(freePhoneOk, '/dashboard') === '/pricing?welcome=1',
   'NB free+phone → pricing (the bug class that hit SE8 via wrong product)'
 );
+assert(
+  resolvePostAuthPath(freePhoneOk, '/pricing', { isPlatformOwner: true }) === '/dashboard',
+  'NB platform owner + pricing next → dashboard (not pricing)'
+);
+assert(
+  resolvePostAuthPath(
+    { subscription_tier: 'pro', subscription_status: 'active', phone_verified: true },
+    '/pricing'
+  ) === '/dashboard',
+  'NB paid + public next=/pricing → dashboard'
+);
+assert(
+  resolvePostAuthPath(freePhoneOk, '/pricing') === '/pricing',
+  'NB unpaid non-owner with next=/pricing stays on pricing'
+);
 
 assert(
   resolvePostAuthPath(free, '/dashboard', { product: 'supereduc8' }) === '/dashboard',

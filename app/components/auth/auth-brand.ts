@@ -36,7 +36,7 @@ export const AUTH_BRAND_COPY: Record<AuthProductBrand, AuthBrandCopy> = {
     backLabel: '← Back to Landing',
     termsHref: '/terms',
     privacyHref: '/privacy',
-    defaultNext: '/pricing',
+    defaultNext: '/dashboard',
     postVerifyPath: '/builder?welcome=1',
     dedicatedSignupHref: null,
   },

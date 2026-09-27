@@ -90,6 +90,18 @@ export default function ShiftAiShell({
         </div>
 
         <main className="flex-1 overflow-y-auto">{children}</main>
+        <footer className="flex-shrink-0 border-t border-[var(--sa-navy-100)] bg-white px-3 py-2">
+          <p className="text-center text-[10px] text-[var(--sa-navy-800)]/45">
+            <a
+              href="https://www.niskbuild.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline-offset-2 hover:underline"
+            >
+              Built with NiskBuild
+            </a>
+          </p>
+        </footer>
         <ShiftAiEightAssistant />
       </div>
     </div>

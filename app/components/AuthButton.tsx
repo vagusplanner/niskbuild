@@ -11,7 +11,7 @@ interface AuthButtonProps {
   nextPath?: string;
 }
 
-export default function AuthButton({ user, variant = 'pill', nextPath = '/pricing' }: AuthButtonProps) {
+export default function AuthButton({ user, variant = 'pill', nextPath = '/dashboard' }: AuthButtonProps) {
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
 
