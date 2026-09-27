@@ -773,7 +773,20 @@ function LandingFooter({ onSignIn }) {
           </div>
         </div>
         <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="text-white/30 text-xs font-medium">© 2026 Vagus Planner. All rights reserved.</div>
+          <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 text-white/30 text-xs font-medium">
+            <span>© 2026 Vagus Planner. All rights reserved.</span>
+            <span className="hidden sm:inline text-white/15" aria-hidden>
+              ·
+            </span>
+            <a
+              href="https://www.niskbuild.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-white/50 transition-colors"
+            >
+              Built with NiskBuild
+            </a>
+          </div>
           <div className="flex gap-4 text-white/25 text-xs">
             <Link to="/privacy" className="hover:text-white/50 transition-colors">Privacy</Link>
             <Link to="/TermsOfService" className="hover:text-white/50 transition-colors">Terms</Link>

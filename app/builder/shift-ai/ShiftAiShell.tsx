@@ -91,7 +91,9 @@ export default function ShiftAiShell({
 
         <main className="flex-1 overflow-y-auto">{children}</main>
         <footer className="flex-shrink-0 border-t border-[var(--sa-navy-100)] bg-white px-3 py-2">
-          <p className="text-center text-[10px] text-[var(--sa-navy-800)]/45">
+          <p className="text-center text-[10px] leading-relaxed text-[var(--sa-navy-800)]/45">
+            © {new Date().getFullYear()} SuperEduc8. All rights reserved.
+            {' · '}
             <a
               href="https://www.niskbuild.com"
               target="_blank"

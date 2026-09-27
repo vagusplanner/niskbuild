@@ -522,8 +522,10 @@ export default function SuperEduc8LandingPage() {
             <a href="#contact">Contact/Support</a>
             <a href="#pricing">For Teachers &amp; Schools</a>
           </nav>
-          <p className="se8-footer-copy">© {new Date().getFullYear()} SuperEduc8</p>
-          <p className="se8-footer-copy" style={{ opacity: 0.7, marginTop: '0.35rem' }}>
+          <p className="se8-footer-copy">
+            © {new Date().getFullYear()} SuperEduc8. All rights reserved.
+          </p>
+          <p className="se8-footer-copy" style={{ opacity: 0.7, marginTop: '0.15rem' }}>
             <a href="https://www.niskbuild.com" target="_blank" rel="noopener noreferrer">
               Built with NiskBuild
             </a>
