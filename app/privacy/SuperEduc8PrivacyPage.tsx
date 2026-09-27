@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import AuthProductShell from '@/app/components/auth/AuthProductShell';
 
-const LAST_UPDATED = 'September 20, 2026';
+const LAST_UPDATED = 'September 27, 2026';
 
 /**
  * SuperEduc8 Privacy Policy — accurate draft pending formal legal review (exact text).
@@ -28,7 +28,7 @@ export default function SuperEduc8PrivacyPage() {
                 <strong>Important note before you read further:</strong> This policy accurately
                 describes what SuperEduc8 actually collects, stores, and does with data today, based
                 on a full technical review of our systems. However, because SuperEduc8 serves children
-                as young as 7, this policy — and in particular our parental consent process — is
+                as young as 7, this policy - and in particular our parental consent process - is
                 currently undergoing formal legal review to ensure it meets all requirements under
                 laws like the U.S. Children&apos;s Online Privacy Protection Act (COPPA) and
                 applicable data protection law for minors. We are publishing this accurate draft now
@@ -82,8 +82,8 @@ export default function SuperEduc8PrivacyPage() {
                   Age band (a range like &quot;7-8&quot; or &quot;13-14,&quot; not an exact birthdate)
                 </li>
                 <li>
-                  School-related info: year group, curriculum followed, preferred study language,
-                  favorite subjects
+                  School-related info: year group, curriculum followed, preferred study language
+                  (English, Arabic, French, or Spanish), favorite subjects
                 </li>
                 <li>
                   Homework photos - if a student uses homework scanning, we temporarily store the
@@ -92,9 +92,29 @@ export default function SuperEduc8PrivacyPage() {
                   feedback
                 </li>
                 <li>
-                  Voice input - if a student uses Voice Buddy or Voice Tutor, their spoken words are
-                  converted to text directly in their browser; we do not send audio recordings to our
-                  servers, only the resulting text
+                  Voice input - how this works depends on the student&apos;s device:
+                  <ul className="mt-2 list-disc space-y-2 pl-6">
+                    <li>
+                      On an iPhone/iPad, or any browser that doesn&apos;t support built-in speech
+                      recognition, a student&apos;s recorded voice is sent to our servers and
+                      forwarded to our AI provider (Groq) to be converted into text. That audio
+                      recording is not saved anywhere - it&apos;s used only to produce the text, then
+                      discarded.
+                    </li>
+                    <li>
+                      On most desktop browsers (like Chrome), speech is converted to text directly
+                      in the browser, and no audio ever leaves the device.
+                    </li>
+                    <li>
+                      Either way, only the resulting text is used in the tutoring conversation
+                      itself.
+                    </li>
+                  </ul>
+                </li>
+                <li>
+                  Voice output - when the AI tutor or Voice Buddy speaks back, the text of its reply
+                  is sent to OpenAI to generate the spoken audio. We don&apos;t save that audio file;
+                  it&apos;s played back and then discarded.
                 </li>
                 <li>
                   Conversations with the AI tutor - we keep a record of these so a student can pick
@@ -103,6 +123,12 @@ export default function SuperEduc8PrivacyPage() {
                   currently see the full content of these conversations - they see summaries of
                   learning progress (like topics covered and time spent), not the actual conversation
                   text.
+                </li>
+                <li>
+                  Conversations with &quot;8,&quot; our in-app help assistant for questions about
+                  using the platform (not learning/tutoring) - unlike AI tutor conversations, these
+                  are not saved. They exist only in your browser while the chat is open and are
+                  cleared when you close it or refresh the page.
                 </li>
                 <li>
                   Essays and written work a student submits, along with AI-generated feedback
@@ -127,6 +153,12 @@ export default function SuperEduc8PrivacyPage() {
                 <li>
                   Access to your child&apos;s learning progress through a secure parent dashboard
                   link
+                </li>
+                <li>
+                  If you subscribe to a paid plan: your subscription status, plan type, billing
+                  interval, and (for family plans) how many children are covered. Payment card
+                  details are handled entirely by our payment processor, Stripe - we never see or
+                  store your full card number.
                 </li>
               </ul>
             </div>
@@ -185,8 +217,18 @@ export default function SuperEduc8PrivacyPage() {
               <li>Supabase - our core database, authentication, and file storage</li>
               <li>
                 Groq - our AI provider for tutoring conversations, essay feedback, homework photo
-                analysis, and all other AI-powered features. This means homework photos and written
-                content are sent to Groq to generate feedback.
+                analysis, voice-to-text conversion (on devices where this happens server-side, see
+                Section 3), and our &quot;8&quot; help assistant. This means homework photos and
+                written content are sent to Groq to generate feedback.
+              </li>
+              <li>
+                OpenAI - converts the AI tutor&apos;s and Voice Buddy&apos;s text replies into spoken
+                audio. Only the reply text and a voice selection are sent; no student audio, photos,
+                or account details are shared with OpenAI.
+              </li>
+              <li>
+                Stripe - processes subscription payments for paid plans. We never see or store your
+                full card number.
               </li>
               <li>
                 Resend - sending parental consent emails, welcome emails, and progress notifications
@@ -207,6 +249,19 @@ export default function SuperEduc8PrivacyPage() {
               <li>
                 Homework photos: automatically deleted after 48 hours by default, or up to 30 days if
                 a student chooses to extend that.
+              </li>
+              <li>
+                Voice recordings sent for server-side transcription (see Section 3): never saved -
+                used only in the moment to produce text, then discarded.
+              </li>
+              <li>
+                &quot;8&quot; help-assistant conversations: never saved - exist only in your browser
+                for the current session.
+              </li>
+              <li>
+                Subscription and billing status: kept for as long as your account is active, so we
+                can correctly apply your plan; removed when your account is deleted (Stripe retains
+                its own payment records separately, as required for financial recordkeeping).
               </li>
               <li>
                 Everything else (chat history, essays, learning progress, planner data): currently
