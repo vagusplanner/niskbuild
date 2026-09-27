@@ -10,6 +10,13 @@ import {
   startListening,
   stopSpeaking,
 } from '@/lib/shift-ai/browser-speech';
+import {
+  canUseMediaRecorder,
+  prefersServerSpeechRecognition,
+  startVoiceRecording,
+  transcribeVoiceBlob,
+  type VoiceRecordingSession,
+} from '@/lib/shift-ai/voice-recorder';
 import { speechRecognitionLangForStudyLanguage, resolveOpenAiTtsVoice } from '@/lib/shift-ai/openai-tts-voices';
 import type { ShiftStudyLanguage } from '@/lib/shift-ai/constants';
 import { SA } from '@/lib/shift-ai/theme';
@@ -33,17 +40,25 @@ export default function ShiftAiVoiceTutorClient({
   voiceEnabled?: boolean;
 }) {
   const [speechSupport] = useState(() => checkSpeechSupport());
+  const [useServerStt] = useState(
+    () => prefersServerSpeechRecognition() && canUseMediaRecorder()
+  );
   const [subject, setSubject] = useState(subjectOptions[0] ?? '');
   const [started, setStarted] = useState(false);
   const [messages, setMessages] = useState<VoiceMessage[]>([]);
   const [liveTranscript, setLiveTranscript] = useState('');
   const [listening, setListening] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [thinking, setThinking] = useState(false);
   const [muted, setMuted] = useState(!voiceEnabled);
   const [error, setError] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
   const sessionRef = useRef<ReturnType<typeof startListening> | null>(null);
+  const recordingRef = useRef<VoiceRecordingSession | null>(null);
+
+  const micAvailable = useServerStt || speechSupport.recognition;
 
   const ttsVoice = resolveOpenAiTtsVoice({
     preferredVoice,
@@ -59,6 +74,7 @@ export default function ShiftAiVoiceTutorClient({
   useEffect(() => {
     return () => {
       sessionRef.current?.stop();
+      recordingRef.current?.cancel();
       stopSpeaking();
     };
   }, []);
@@ -126,7 +142,61 @@ export default function ShiftAiVoiceTutorClient({
     }
   };
 
+  const stopServerRecordingAndTranscribe = async () => {
+    const session = recordingRef.current;
+    recordingRef.current = null;
+    setRecording(false);
+    setListening(false);
+    if (!session) return;
+
+    setTranscribing(true);
+    setError('');
+    try {
+      const blob = await session.stop();
+      if (!blob || blob.size < 200) {
+        throw new Error("I didn't catch that — hold a bit longer, or type your answer.");
+      }
+      const transcript = await transcribeVoiceBlob(blob, { language: studyLanguage });
+      setLiveTranscript(transcript);
+      void sendTranscript(transcript);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not transcribe your voice');
+    } finally {
+      setTranscribing(false);
+    }
+  };
+
   const handleListen = () => {
+    if (useServerStt) {
+      if (recording) {
+        void stopServerRecordingAndTranscribe();
+        return;
+      }
+      if (thinking || speaking || transcribing) return;
+
+      setError('');
+      stopSpeaking();
+      setSpeaking(false);
+      primeSpeechAudio();
+      setLiveTranscript('');
+      setListening(true);
+      setRecording(true);
+
+      void (async () => {
+        try {
+          recordingRef.current = await startVoiceRecording();
+        } catch {
+          recordingRef.current = null;
+          setRecording(false);
+          setListening(false);
+          setError(
+            'Microphone access was denied. Allow the microphone, or type your answer below.'
+          );
+        }
+      })();
+      return;
+    }
+
     if (listening) {
       sessionRef.current?.stop();
       setListening(false);
@@ -138,7 +208,6 @@ export default function ShiftAiVoiceTutorClient({
     setError('');
     stopSpeaking();
     setSpeaking(false);
-    // Prime AFTER stop, still inside the tap handler (iOS Safari requirement).
     primeSpeechAudio();
 
     const session = startListening(
@@ -166,9 +235,13 @@ export default function ShiftAiVoiceTutorClient({
   const reset = () => {
     stopSpeaking();
     sessionRef.current?.stop();
+    recordingRef.current?.cancel();
+    recordingRef.current = null;
     setMessages([]);
     setLiveTranscript('');
     setListening(false);
+    setRecording(false);
+    setTranscribing(false);
     setSpeaking(false);
     setThinking(false);
     setStarted(false);
@@ -177,11 +250,15 @@ export default function ShiftAiVoiceTutorClient({
 
   const statusLabel = speaking
     ? 'Speaking…'
-    : listening
-      ? 'Listening…'
-      : thinking
-        ? 'Thinking…'
-        : 'Ready';
+    : recording
+      ? 'Recording…'
+      : transcribing
+        ? 'Transcribing…'
+        : listening
+          ? 'Listening…'
+          : thinking
+            ? 'Thinking…'
+            : 'Ready';
 
   if (!started) {
     return (
@@ -200,9 +277,16 @@ export default function ShiftAiVoiceTutorClient({
           </div>
         </div>
 
-        {speechSupport.message ? (
+        {speechSupport.message && !useServerStt ? (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             {speechSupport.message}
+          </div>
+        ) : null}
+
+        {useServerStt ? (
+          <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950">
+            On this device, tap the mic to start recording, speak, then tap again to send. Your
+            recording is transcribed securely so the tutor can hear you reliably.
           </div>
         ) : null}
 
@@ -231,11 +315,16 @@ export default function ShiftAiVoiceTutorClient({
         </button>
 
         <p className={`text-center text-xs ${SA.muted}`}>
-          Tap to talk — audio never leaves your device; only transcribed text is sent
+          {useServerStt
+            ? 'Push-to-talk recording — audio is transcribed then discarded'
+            : 'Tap to talk — only transcribed text is sent to your tutor'}
         </p>
       </div>
     );
   }
+
+  const micBusy = thinking || speaking || transcribing;
+  const micActive = listening || recording;
 
   return (
     <div className={`${SA.contentNarrow} flex min-h-[calc(100vh-4rem)] flex-col`}>
@@ -267,8 +356,8 @@ export default function ShiftAiVoiceTutorClient({
 
       {error ? <div className={`mb-4 ${SA.error}`}>{error}</div> : null}
 
-      <div className={`${SA.chatPanel} mb-4 min-h-[360px] flex-1`}>
-        <div className="flex-1 space-y-3 overflow-y-auto p-5">
+      <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-[var(--sa-navy-100)] bg-white p-4">
+        <div className="space-y-4">
           {messages.map((msg, index) => (
             <div
               key={`${msg.role}-${index}`}
@@ -293,14 +382,16 @@ export default function ShiftAiVoiceTutorClient({
             </div>
           ) : null}
 
-          {thinking ? (
+          {thinking || transcribing ? (
             <div className="flex justify-start">
               <div className={`${SA.avatar} mr-2 mt-1`}>
                 <GraduationCap className="h-3.5 w-3.5" />
               </div>
               <div className={`${SA.assistBubble} flex items-center gap-1`}>
                 <Loader2 className="h-4 w-4 animate-spin opacity-60" />
-                <span className="text-[var(--sa-muted)]">Thinking…</span>
+                <span className="text-[var(--sa-muted)]">
+                  {transcribing ? 'Transcribing…' : 'Thinking…'}
+                </span>
               </div>
             </div>
           ) : null}
@@ -313,26 +404,34 @@ export default function ShiftAiVoiceTutorClient({
         <button
           type="button"
           onClick={handleListen}
-          disabled={!speechSupport.recognition || thinking || speaking}
+          disabled={!micAvailable || (micBusy && !recording)}
           className={`flex h-20 w-20 items-center justify-center rounded-full shadow-2xl transition-all ${
-            listening
+            micActive
               ? 'bg-red-500 text-white ring-4 ring-red-300 ring-offset-2'
-              : thinking || speaking || !speechSupport.recognition
+              : micBusy || !micAvailable
                 ? 'cursor-not-allowed bg-gray-200 text-gray-500 opacity-60'
                 : 'bg-[var(--sa-navy-800)] text-white hover:bg-[var(--sa-navy-700)]'
           }`}
-          aria-label={listening ? 'Stop recording' : 'Tap to speak'}
+          aria-label={
+            recording ? 'Stop recording and send' : listening ? 'Stop listening' : 'Tap to speak'
+          }
         >
-          {listening ? <MicOff className="h-8 w-8" /> : <Mic className="h-8 w-8" />}
+          {micActive ? <MicOff className="h-8 w-8" /> : <Mic className="h-8 w-8" />}
         </button>
         <p className={`text-xs ${SA.muted}`}>
-          {listening
-            ? 'Tap to stop recording'
-            : speaking
-              ? 'Tutor is speaking…'
-              : thinking
-                ? 'Processing…'
-                : 'Tap to speak'}
+          {recording
+            ? 'Tap to stop & send'
+            : listening
+              ? 'Tap to stop recording'
+              : speaking
+                ? 'Tutor is speaking…'
+                : transcribing
+                  ? 'Transcribing…'
+                  : thinking
+                    ? 'Processing…'
+                    : useServerStt
+                      ? 'Tap to record · tap again to send'
+                      : 'Tap to speak'}
         </p>
       </div>
     </div>

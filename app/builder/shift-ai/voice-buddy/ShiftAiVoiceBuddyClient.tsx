@@ -13,6 +13,13 @@ import {
   stopSpeaking,
 } from '@/lib/shift-ai/browser-speech';
 import {
+  canUseMediaRecorder,
+  prefersServerSpeechRecognition,
+  startVoiceRecording,
+  transcribeVoiceBlob,
+  type VoiceRecordingSession,
+} from '@/lib/shift-ai/voice-recorder';
+import {
   resolveOpenAiTtsVoice,
   speechRecognitionLangForStudyLanguage,
 } from '@/lib/shift-ai/openai-tts-voices';
@@ -53,7 +60,11 @@ export default function ShiftAiVoiceBuddyClient({
   voiceEnabled?: boolean;
 }) {
   const [speechSupport] = useState(() => checkSpeechSupport());
+  const [useServerStt] = useState(
+    () => prefersServerSpeechRecognition() && canUseMediaRecorder()
+  );
   const showTypeFallback =
+    useServerStt ||
     speechSupport.level === 'partial-ios' ||
     speechSupport.level === 'synthesis-only' ||
     speechSupport.level === 'none';
@@ -67,10 +78,12 @@ export default function ShiftAiVoiceBuddyClient({
   const [typedAnswer, setTypedAnswer] = useState('');
   const [feedback, setFeedback] = useState<BuddyEvaluation | null>(null);
   const [loading, setLoading] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
   const [micPhase, setMicPhase] = useState<MicPhase>('idle');
   const [muted, setMuted] = useState(!voiceEnabled);
   const [error, setError] = useState('');
   const sessionRef = useRef<ReturnType<typeof startListening> | null>(null);
+  const recordingRef = useRef<VoiceRecordingSession | null>(null);
   const readyDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const ttsVoice = resolveOpenAiTtsVoice({
@@ -98,6 +111,7 @@ export default function ShiftAiVoiceBuddyClient({
   useEffect(() => {
     return () => {
       sessionRef.current?.stop();
+      recordingRef.current?.cancel();
       clearReadyDelay();
       stopSpeaking();
     };
@@ -224,7 +238,59 @@ export default function ShiftAiVoiceBuddyClient({
     sessionRef.current = null;
   };
 
+  const stopServerRecordingAndTranscribe = async () => {
+    const session = recordingRef.current;
+    recordingRef.current = null;
+    setMicPhase('ready');
+    if (!session) return;
+
+    setTranscribing(true);
+    setError('');
+    try {
+      const blob = await session.stop();
+      if (!blob || blob.size < 200) {
+        throw new Error("I didn't catch that — hold a bit longer, or type your answer.");
+      }
+      const transcript = await transcribeVoiceBlob(blob, { language: studyLanguage });
+      setHeard(transcript);
+      void evaluateAnswer(transcript);
+    } catch (err) {
+      handleListenError(
+        err instanceof Error ? err.message : 'Could not transcribe your voice'
+      );
+    } finally {
+      setTranscribing(false);
+    }
+  };
+
   const handleListen = () => {
+    if (useServerStt) {
+      if (micPhase === 'listening') {
+        void stopServerRecordingAndTranscribe();
+        return;
+      }
+      if (micPhase !== 'ready' || loading || transcribing) return;
+
+      setHeard('');
+      setError('');
+      stopSpeaking();
+      primeSpeechAudio();
+      setMicPhase('listening');
+
+      void (async () => {
+        try {
+          recordingRef.current = await startVoiceRecording();
+        } catch {
+          recordingRef.current = null;
+          setMicPhase('ready');
+          handleListenError(
+            'Microphone access was denied. Allow the microphone, or type your answer below.'
+          );
+        }
+      })();
+      return;
+    }
+
     if (micPhase === 'listening') {
       sessionRef.current?.stop();
       setMicPhase('ready');
@@ -285,22 +351,31 @@ export default function ShiftAiVoiceBuddyClient({
   const quitGame = () => {
     stopSpeaking();
     sessionRef.current?.stop();
+    recordingRef.current?.cancel();
+    recordingRef.current = null;
     clearReadyDelay();
     setGame(null);
     setFeedback(null);
     setMicPhase('idle');
     setTypedAnswer('');
+    setTranscribing(false);
   };
 
   const micStatusLabel = (() => {
     if (micPhase === 'buddy-speaking') return `${friendName} is talking…`;
     if (micPhase === 'get-ready') return 'Get ready…';
-    if (micPhase === 'listening') return 'Listening… talk to me!';
-    if (micPhase === 'ready') return 'Tap and say your answer';
+    if (micPhase === 'listening') {
+      return useServerStt ? 'Recording… tap to send!' : 'Listening… talk to me!';
+    }
+    if (transcribing) return 'Hearing you…';
+    if (micPhase === 'ready') {
+      return useServerStt ? 'Tap to record · tap again to send' : 'Tap and say your answer';
+    }
     return 'Waiting…';
   })();
 
-  const micEnabled = speechSupport.recognition && micPhase === 'ready';
+  const micAvailable = useServerStt || speechSupport.recognition;
+  const micEnabled = micAvailable && micPhase === 'ready' && !transcribing;
 
   if (!game) {
     return (
@@ -317,9 +392,16 @@ export default function ShiftAiVoiceBuddyClient({
           </p>
         </div>
 
-        {speechSupport.message ? (
+        {speechSupport.message && !useServerStt ? (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
             {speechSupport.message}
+          </div>
+        ) : null}
+
+        {useServerStt ? (
+          <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-medium text-sky-950">
+            On iPhone, tap the mic to record, speak your answer, then tap again to send. Typing
+            still works too!
           </div>
         ) : null}
 
@@ -361,7 +443,10 @@ export default function ShiftAiVoiceBuddyClient({
         </div>
 
         <p className="text-center text-xs text-[var(--sa-muted)]">
-          Ages 7–8 · your voice stays on your device — only text is sent to help you learn
+          Ages 7–8 ·{' '}
+          {useServerStt
+            ? 'push-to-talk recording is transcribed for your buddy'
+            : 'your voice stays on your device — only text is sent to help you learn'}
         </p>
       </div>
     );
@@ -445,9 +530,9 @@ export default function ShiftAiVoiceBuddyClient({
         </div>
       ) : null}
 
-      {!feedback && !loading ? (
+      {!feedback && !loading && !transcribing ? (
         <div className="space-y-4">
-          {speechSupport.recognition ? (
+          {micAvailable ? (
             <div className="flex flex-col items-center gap-3">
               <button
                 type="button"
@@ -460,7 +545,13 @@ export default function ShiftAiVoiceBuddyClient({
                       ? 'bg-pink-500 shadow-pink-500/40'
                       : 'cursor-not-allowed bg-gray-300 opacity-60'
                 }`}
-                aria-label={micPhase === 'listening' ? 'Stop listening' : 'Tap and say your answer'}
+                aria-label={
+                  micPhase === 'listening'
+                    ? useServerStt
+                      ? 'Stop recording and send'
+                      : 'Stop listening'
+                    : 'Tap and say your answer'
+                }
               >
                 {micPhase === 'listening' ? (
                   <MicOff className="h-10 w-10 text-white" />
@@ -484,7 +575,7 @@ export default function ShiftAiVoiceBuddyClient({
             </div>
           )}
 
-          {showTypeFallback || !speechSupport.recognition ? (
+          {showTypeFallback || !micAvailable ? (
             <div className="rounded-2xl border-2 border-[var(--sa-navy-100)] bg-white p-4">
               <label
                 htmlFor="voice-buddy-answer"
@@ -503,12 +594,17 @@ export default function ShiftAiVoiceBuddyClient({
                   }}
                   placeholder="e.g. A, 3, cat…"
                   className="flex-1 rounded-xl border border-[var(--sa-navy-100)] px-4 py-3 text-lg text-[var(--sa-navy-900)]"
-                  disabled={loading || micPhase === 'listening'}
+                  disabled={loading || micPhase === 'listening' || transcribing}
                 />
                 <button
                   type="button"
                   onClick={handleSubmitTyped}
-                  disabled={!typedAnswer.trim() || loading || micPhase === 'listening'}
+                  disabled={
+                    !typedAnswer.trim() ||
+                    loading ||
+                    micPhase === 'listening' ||
+                    transcribing
+                  }
                   className="flex items-center justify-center rounded-xl bg-pink-500 px-4 py-3 text-white disabled:opacity-50"
                   aria-label="Send typed answer"
                 >
@@ -517,6 +613,13 @@ export default function ShiftAiVoiceBuddyClient({
               </div>
             </div>
           ) : null}
+        </div>
+      ) : null}
+
+      {transcribing ? (
+        <div className="flex items-center justify-center gap-2 rounded-2xl border border-pink-200 bg-pink-50 px-4 py-3 text-sm text-pink-900">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Hearing what you said…
         </div>
       ) : null}
 
