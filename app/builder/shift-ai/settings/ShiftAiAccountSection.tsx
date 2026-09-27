@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
 import { updatePassword } from '@/lib/auth';
 import type { ShiftPlanAccess } from '@/lib/shift-ai/plan-access';
+import { useShiftAiAppPath } from '@/lib/shift-ai/host-context';
 import { SA } from '@/lib/shift-ai/theme';
-import { shiftAiAppPath } from '@/lib/supereduc8-host';
 import ShiftAiPasswordField from '@/app/components/shift-ai/ShiftAiPasswordField';
 
 type Props = {
@@ -28,6 +28,8 @@ export default function ShiftAiAccountSection({
   initialAccess,
 }: Props) {
   const [fullName, setFullName] = useState(initialName);
+  const settingsHref = useShiftAiAppPath('/settings');
+  const billingHref = useShiftAiAppPath('/billing');
   const [nameSaving, setNameSaving] = useState(false);
   const [nameMsg, setNameMsg] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState('');
@@ -93,7 +95,7 @@ export default function ShiftAiAccountSection({
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          returnUrl: `${window.location.origin}${shiftAiAppPath('/settings')}`,
+          returnUrl: `${window.location.origin}${settingsHref}`,
         }),
       });
       const data = (await res.json()) as { url?: string; error?: string };
@@ -237,7 +239,7 @@ export default function ShiftAiAccountSection({
         <p className={`text-xs font-medium ${SA.muted}`}>Subscription</p>
         <p className={`text-sm font-semibold capitalize ${SA.text}`}>{planLabel}</p>
         <div className="flex flex-wrap gap-2">
-          <Link href={shiftAiAppPath('/billing')} className={SA.btnPrimary}>
+          <Link href={billingHref} className={SA.btnPrimary}>
             Billing & subscribe
           </Link>
           {initialAccess.isPaid ? (

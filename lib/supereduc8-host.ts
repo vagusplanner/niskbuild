@@ -74,13 +74,18 @@ export function mapSuperEduc8PathToInternal(pathname: string): string {
  * Build an in-app href. On SuperEduc8 hosts use clean public paths;
  * on NiskBuild keep `/builder/shift-ai/...`.
  *
+ * Prefer passing `hostname` from the request (`headers().get('host')`) or from
+ * `useShiftAiHostname()` — during SSR `window` is unavailable, so omitting host
+ * incorrectly emits internal `/builder/shift-ai/...` paths on supereduc8.com.
+ *
  * @param subpath e.g. `/dashboard`, `/flashcards`, `/`
  */
 export function shiftAiAppPath(subpath: string, hostname?: string): string {
   const clean = !subpath || subpath === '/' ? '/' : subpath.startsWith('/') ? subpath : `/${subpath}`;
-  const host =
-    hostname ??
-    (typeof window !== 'undefined' ? window.location.hostname : '');
+  const host = (hostname ?? (typeof window !== 'undefined' ? window.location.hostname : ''))
+    .split(':')[0]
+    .trim()
+    .toLowerCase();
 
   if (host && isSuperEduc8Host(host)) {
     return clean;
@@ -88,6 +93,12 @@ export function shiftAiAppPath(subpath: string, hostname?: string): string {
 
   if (clean === '/') return SHIFT_AI_INTERNAL_PREFIX;
   return `${SHIFT_AI_INTERNAL_PREFIX}${clean}`;
+}
+
+/** Resolve request hostname for server components / layouts. */
+export function hostnameFromHeaderValue(raw: string | null | undefined): string {
+  if (!raw) return '';
+  return raw.split(',')[0]?.trim().split(':')[0]?.trim().toLowerCase() || '';
 }
 
 /** Strip internal prefix for comparisons when needed. */

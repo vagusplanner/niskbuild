@@ -7,8 +7,8 @@ import {
   type Se8CheckoutInterval,
   type Se8CheckoutPlan,
 } from '@/lib/shift-ai/checkout-client';
+import { useShiftAiAppPath } from '@/lib/shift-ai/host-context';
 import { SA } from '@/lib/shift-ai/theme';
-import { shiftAiAppPath } from '@/lib/supereduc8-host';
 
 type Props = {
   defaultPlan?: Se8CheckoutPlan;
@@ -35,13 +35,13 @@ export default function ShiftAiSubscribePanel({
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const billingPath = useShiftAiAppPath('/billing');
 
   const subscribe = async () => {
     setLoading(true);
     setError(null);
     try {
       const origin = typeof window !== 'undefined' ? window.location.origin : '';
-      const billingPath = shiftAiAppPath('/billing');
       const result = await startSe8Checkout({
         plan: plan === 'family' || childQuantity > 0 ? 'family' : 'student',
         interval,

@@ -7,7 +7,7 @@ import { CheckCircle2, Loader2, XCircle } from 'lucide-react';
 import ShiftAiSubscribePanel from '@/app/components/shift-ai/ShiftAiSubscribePanel';
 import type { ShiftPlanAccess } from '@/lib/shift-ai/plan-access';
 import { SA } from '@/lib/shift-ai/theme';
-import { shiftAiAppPath } from '@/lib/supereduc8-host';
+import { useShiftAiAppPath } from '@/lib/shift-ai/host-context';
 
 type Props = {
   initialAccess: ShiftPlanAccess | null;
@@ -21,6 +21,8 @@ export default function ShiftAiBillingClient({
   defaultChildQuantity = 0,
 }: Props) {
   const searchParams = useSearchParams();
+  const dashboardHref = useShiftAiAppPath('/dashboard');
+  const billingHref = useShiftAiAppPath('/billing');
   const checkoutState = searchParams.get('checkout');
   const [access, setAccess] = useState<ShiftPlanAccess | null>(initialAccess);
   const [portalLoading, setPortalLoading] = useState(false);
@@ -67,7 +69,7 @@ export default function ShiftAiBillingClient({
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          returnUrl: `${window.location.origin}${shiftAiAppPath('/billing')}`,
+          returnUrl: `${window.location.origin}${billingHref}`,
         }),
       });
       const data = (await res.json()) as { url?: string; error?: string };
@@ -91,7 +93,7 @@ export default function ShiftAiBillingClient({
           Sign in to view your plan or subscribe to Student / Family.
         </p>
         <Link
-          href={`/login?next=${encodeURIComponent(shiftAiAppPath('/billing'))}`}
+          href={`/login?next=${encodeURIComponent(billingHref)}`}
           className={`${SA.btnPrimary} mt-6 inline-flex`}
         >
           Sign in to subscribe
@@ -174,7 +176,7 @@ export default function ShiftAiBillingClient({
       )}
 
       <p className={`mt-6 text-center text-sm ${SA.muted}`}>
-        <Link href={shiftAiAppPath('/dashboard')} className={SA.link}>
+        <Link href={dashboardHref} className={SA.link}>
           Back to dashboard
         </Link>
       </p>

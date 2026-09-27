@@ -1,8 +1,11 @@
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import ShiftAiIntlProvider from '@/app/builder/shift-ai/ShiftAiIntlProvider';
 import ShiftAiLayoutGate from '@/app/builder/shift-ai/ShiftAiLayoutGate';
+import { ShiftAiHostnameProvider } from '@/lib/shift-ai/host-context';
 import { getShiftAiMessages, shiftAiTextDirection } from '@/lib/shift-ai/i18n';
 import { getRequestStudyLanguage } from '@/lib/shift-ai/study-language';
+import { hostnameFromHeaderValue } from '@/lib/supereduc8-host';
 import './shift-ai.css';
 
 export const metadata: Metadata = {
@@ -38,6 +41,10 @@ export default async function ShiftAiLayout({ children }: { children: React.Reac
   const locale = await getRequestStudyLanguage();
   const messages = getShiftAiMessages(locale);
   const dir = shiftAiTextDirection(locale);
+  const headerStore = await headers();
+  const hostname = hostnameFromHeaderValue(
+    headerStore.get('x-forwarded-host') || headerStore.get('host')
+  );
 
   return (
     <>
@@ -45,11 +52,13 @@ export default async function ShiftAiLayout({ children }: { children: React.Reac
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       <link rel="stylesheet" href={ARABIC_FONTS_HREF} />
       <div className="sa-arabic-font-scope">
-        <ShiftAiIntlProvider locale={locale} messages={messages}>
-          <ShiftAiLayoutGate dir={dir} locale={locale}>
-            {children}
-          </ShiftAiLayoutGate>
-        </ShiftAiIntlProvider>
+        <ShiftAiHostnameProvider hostname={hostname}>
+          <ShiftAiIntlProvider locale={locale} messages={messages}>
+            <ShiftAiLayoutGate dir={dir} locale={locale}>
+              {children}
+            </ShiftAiLayoutGate>
+          </ShiftAiIntlProvider>
+        </ShiftAiHostnameProvider>
       </div>
     </>
   );

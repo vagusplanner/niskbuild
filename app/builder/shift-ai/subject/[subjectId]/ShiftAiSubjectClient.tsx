@@ -16,7 +16,9 @@ import {
 } from 'lucide-react';
 import type { ShiftChatMessage } from '@/lib/shift-ai/assistant';
 import type { ShiftCurriculum } from '@/lib/shift-ai/constants';
+import { useShiftAiHostname } from '@/lib/shift-ai/host-context';
 import { SA } from '@/lib/shift-ai/theme';
+import { shiftAiAppPath } from '@/lib/supereduc8-host';
 
 type SubjectTab = 'notes' | 'ai' | 'flashcards' | 'quiz' | 'videos' | 'pastpaper';
 
@@ -325,6 +327,7 @@ export default function ShiftAiSubjectClient({
   const t = useTranslations('subject');
   const tDash = useTranslations('dashboard');
   const [tab, setTab] = useState<SubjectTab>('notes');
+  const hostname = useShiftAiHostname();
 
   const tabs: {
     id: SubjectTab;
@@ -340,13 +343,15 @@ export default function ShiftAiSubjectClient({
       id: 'flashcards',
       label: t('tabFlashcards'),
       icon: Layers,
-      href: (name) => `/builder/shift-ai/flashcards?subject=${encodeURIComponent(name)}`,
+      href: (name) =>
+        `${shiftAiAppPath('/flashcards', hostname)}?subject=${encodeURIComponent(name)}`,
     },
     {
       id: 'quiz',
       label: t('tabQuizzes'),
       icon: Gamepad2,
-      href: (name) => `/builder/shift-ai/arcade?subject=${encodeURIComponent(name)}`,
+      href: (name) =>
+        `${shiftAiAppPath('/arcade', hostname)}?subject=${encodeURIComponent(name)}`,
     },
     { id: 'pastpaper', label: t('tabPastPapers'), icon: FileText, comingSoon: true },
   ];
@@ -411,7 +416,7 @@ export default function ShiftAiSubjectClient({
         {tab === 'pastpaper' ? (
           <ComingSoonCard title={t('tabPastPapers')} description={t('pastPapersSoon')}>
             <Link
-              href={`/builder/shift-ai/content-generator?subject=${encodeURIComponent(subject.name)}&type=practice_questions`}
+              href={`${shiftAiAppPath('/content-generator', hostname)}?subject=${encodeURIComponent(subject.name)}&type=practice_questions`}
               className={`${SA.btnPrimary} mt-4 inline-flex`}
             >
               {t('tryPractice')}

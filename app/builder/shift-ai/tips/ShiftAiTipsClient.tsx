@@ -12,10 +12,10 @@ import {
   type Se8TipCard,
 } from '@/lib/shift-ai/tips-data';
 import { SA } from '@/lib/shift-ai/theme';
-import { shiftAiAppPath } from '@/lib/supereduc8-host';
+import { useShiftAiAppPath } from '@/lib/shift-ai/host-context';
 
 function TipCardView({ tip, featured = false }: { tip: Se8TipCard; featured?: boolean }) {
-  const href = shiftAiAppPath(tip.subpath);
+  const href = useShiftAiAppPath(tip.subpath);
   const sectionLabel = SE8_TIP_SECTIONS.find((s) => s.id === tip.section)?.label;
 
   return (
@@ -111,12 +111,15 @@ export default function ShiftAiTipsClient() {
             <TipCardView tip={tipOfDay} featured />
           </section>
 
-          <nav className="mb-8 flex flex-wrap gap-2" aria-label="Tip sections">
+          <nav
+            className="mb-8 flex max-w-full flex-wrap gap-2"
+            aria-label="Tip sections"
+          >
             {SE8_TIP_SECTIONS.map((s) => (
               <a
                 key={s.id}
                 href={`#${s.id}`}
-                className="rounded-xl border border-[var(--sa-navy-100)] px-3 py-1.5 text-xs font-semibold hover:border-[var(--sa-navy-800)]"
+                className="shrink-0 whitespace-nowrap rounded-xl border border-[var(--sa-navy-100)] px-3 py-1.5 text-xs font-semibold hover:border-[var(--sa-navy-800)]"
               >
                 {s.label}
               </a>

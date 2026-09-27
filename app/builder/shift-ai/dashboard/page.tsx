@@ -16,6 +16,8 @@ import {
 import { getSafeSession } from '@/lib/supabaseSession.server';
 import { needsSubjectOnboarding } from '@/lib/shift-ai/onboarding';
 import { SA } from '@/lib/shift-ai/theme';
+import { headers } from 'next/headers';
+import { hostnameFromHeaderValue } from '@/lib/supereduc8-host';
 
 type PlannerItem = {
   id: string;
@@ -96,6 +98,10 @@ function endOfTodayUtc(): string {
 
 export default async function ShiftAiDashboardPage() {
   const session = await getSafeSession();
+  const headerStore = await headers();
+  const hostname = hostnameFromHeaderValue(
+    headerStore.get('x-forwarded-host') || headerStore.get('host')
+  );
 
   if (!session?.user) {
     redirect('/builder/shift-ai/login');
@@ -227,7 +233,7 @@ export default async function ShiftAiDashboardPage() {
               {subjects.map((subject) => (
                 <Link
                   key={subject.name}
-                  href={subjectPagePath(subject)}
+                  href={subjectPagePath(subject, hostname)}
                   className={`relative ${SA.cardHover} p-5 text-center`}
                 >
                   {subject.isFavourite ? (

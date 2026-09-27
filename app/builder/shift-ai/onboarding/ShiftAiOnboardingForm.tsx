@@ -9,6 +9,7 @@ import {
   type ShiftAgeRange,
   type ShiftCurriculum,
 } from '@/lib/shift-ai/constants';
+import { useShiftAiAppPath } from '@/lib/shift-ai/host-context';
 import { SA } from '@/lib/shift-ai/theme';
 
 type OnboardingProfile = {
@@ -28,6 +29,7 @@ export default function ShiftAiOnboardingForm({
   const t = useTranslations('onboarding');
   const tDash = useTranslations('dashboard');
   const router = useRouter();
+  const homeHref = useShiftAiAppPath('/');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -64,7 +66,7 @@ export default function ShiftAiOnboardingForm({
         throw new Error(data.error || t('saveFailed'));
       }
 
-      router.replace('/builder/shift-ai');
+      router.replace(homeHref);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('genericError'));
     } finally {

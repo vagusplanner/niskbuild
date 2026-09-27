@@ -27,6 +27,7 @@ import {
   Users,
 } from 'lucide-react';
 import { signOut } from '@/lib/auth';
+import { useShiftAiAppPath, useShiftAiHostname } from '@/lib/shift-ai/host-context';
 import { shiftAiAppPath, shiftAiPublicPathname } from '@/lib/supereduc8-host';
 
 const NAV_GROUPS = [
@@ -121,14 +122,47 @@ function isActive(pathname: string, href: string, subpath: string): boolean {
   );
 }
 
+function SidebarNavLink({
+  subpath,
+  emoji,
+  label,
+  pathname,
+  onNavigate,
+}: {
+  subpath: string;
+  emoji: string;
+  label: string;
+  pathname: string;
+  onNavigate?: () => void;
+}) {
+  const href = useShiftAiAppPath(subpath);
+  const active = isActive(pathname, href, subpath);
+  return (
+    <Link
+      href={href}
+      onClick={onNavigate}
+      className={`sa-sidebar-item flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-start text-sm font-medium ${
+        active ? 'sa-sidebar-item-active shadow-sm' : ''
+      }`}
+    >
+      <span className="w-5 text-center text-base leading-none">{emoji}</span>
+      <span className="truncate">{label}</span>
+      {active ? (
+        <ChevronRight className="sa-sidebar-chevron ms-auto h-3.5 w-3.5 flex-shrink-0 rtl:-scale-x-100" />
+      ) : null}
+    </Link>
+  );
+}
+
 export default function ShiftAiSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const hostname = useShiftAiHostname();
   const t = useTranslations('sidebar');
   const tBrand = useTranslations('brand');
 
   const handleSignOut = async () => {
     await signOut();
-    window.location.href = `/login?next=${encodeURIComponent(shiftAiAppPath('/dashboard'))}`;
+    window.location.href = `/login?next=${encodeURIComponent(shiftAiAppPath('/dashboard', hostname))}`;
   };
 
   return (
@@ -161,26 +195,16 @@ export default function ShiftAiSidebar({ onNavigate }: { onNavigate?: () => void
               {t(`groups.${group.groupKey}`)}
             </p>
             <div className="space-y-0.5">
-              {group.items.map((item) => {
-                const href = shiftAiAppPath(item.subpath);
-                const active = isActive(pathname, href, item.subpath);
-                return (
-                  <Link
-                    key={item.subpath}
-                    href={href}
-                    onClick={onNavigate}
-                    className={`sa-sidebar-item flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-start text-sm font-medium ${
-                      active ? 'sa-sidebar-item-active shadow-sm' : ''
-                    }`}
-                  >
-                    <span className="w-5 text-center text-base leading-none">{item.emoji}</span>
-                    <span className="truncate">{t(`items.${item.itemKey}`)}</span>
-                    {active ? (
-                      <ChevronRight className="sa-sidebar-chevron ms-auto h-3.5 w-3.5 flex-shrink-0 rtl:-scale-x-100" />
-                    ) : null}
-                  </Link>
-                );
-              })}
+              {group.items.map((item) => (
+                <SidebarNavLink
+                  key={item.subpath}
+                  subpath={item.subpath}
+                  emoji={item.emoji}
+                  label={t(`items.${item.itemKey}`)}
+                  pathname={pathname}
+                  onNavigate={onNavigate}
+                />
+              ))}
             </div>
           </div>
         ))}

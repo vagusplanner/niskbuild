@@ -7,6 +7,8 @@ import { useTranslations } from 'next-intl';
 import { ArrowRight, Hash, Loader2, LogIn, Plus, Users } from 'lucide-react';
 import type { StudyGroup } from '@/lib/shift-ai/groups-shared';
 import { SA } from '@/lib/shift-ai/theme';
+import { useShiftAiAppPath, useShiftAiHostname } from '@/lib/shift-ai/host-context';
+import { shiftAiAppPath } from '@/lib/supereduc8-host';
 
 type Tab = 'my' | 'create' | 'join';
 
@@ -19,6 +21,8 @@ export default function ShiftAiGroupsClient({
 }) {
   const t = useTranslations('groups');
   const router = useRouter();
+  const hostname = useShiftAiHostname();
+  const groupsHref = useShiftAiAppPath('/groups');
   const groups = initialGroups;
   const [tab, setTab] = useState<Tab>('my');
   const [saving, setSaving] = useState(false);
@@ -45,7 +49,7 @@ export default function ShiftAiGroupsClient({
         return;
       }
       if (data.group) {
-        router.push(`/builder/shift-ai/groups/${data.group.id}`);
+        router.push(`${shiftAiAppPath('/groups', hostname)}/${data.group.id}`);
       }
     } catch {
       setError(t('createFailed'));
@@ -70,7 +74,7 @@ export default function ShiftAiGroupsClient({
         return;
       }
       if (data.group) {
-        router.push(`/builder/shift-ai/groups/${data.group.id}`);
+        router.push(`${shiftAiAppPath('/groups', hostname)}/${data.group.id}`);
       }
     } catch {
       setError(t('joinFailed'));
@@ -132,7 +136,7 @@ export default function ShiftAiGroupsClient({
             groups.map((group) => (
               <Link
                 key={group.id}
-                href={`/builder/shift-ai/groups/${group.id}`}
+                href={`${groupsHref}/${group.id}`}
                 className={`${SA.cardHover} flex items-center justify-between gap-4 p-5`}
               >
                 <div>

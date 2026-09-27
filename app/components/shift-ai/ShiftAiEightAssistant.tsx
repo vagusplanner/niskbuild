@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Loader2, MessageCircleQuestion, X } from 'lucide-react';
-import { shiftAiAppPath, shiftAiPublicPathname } from '@/lib/supereduc8-host';
+import { useShiftAiAppPath } from '@/lib/shift-ai/host-context';
+import { shiftAiPublicPathname } from '@/lib/supereduc8-host';
 
 type Citation = { type: string; href: string; title: string };
 
@@ -37,6 +38,8 @@ function welcomeMessage(): ChatMessage {
 export default function ShiftAiEightAssistant() {
   const pathname = usePathname() || '/';
   const publicPath = shiftAiPublicPathname(pathname);
+  const tipsHref = useShiftAiAppPath('/tips');
+  const assistantHref = useShiftAiAppPath('/assistant');
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -174,11 +177,11 @@ export default function ShiftAiEightAssistant() {
             On this page:{' '}
             <span className="font-semibold">{publicPath || '/'}</span>
             {' · '}
-            <Link href={shiftAiAppPath('/tips')} className="font-semibold underline">
+            <Link href={tipsHref} className="font-semibold underline">
               Tips &amp; Help
             </Link>
             {' · '}
-            <Link href={shiftAiAppPath('/assistant')} className="font-semibold underline">
+            <Link href={assistantHref} className="font-semibold underline">
               AI Tutor
             </Link>
           </p>

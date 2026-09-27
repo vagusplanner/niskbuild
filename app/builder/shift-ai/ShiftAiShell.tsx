@@ -8,7 +8,7 @@ import { Lightbulb, Menu, X } from 'lucide-react';
 import ShiftAiSidebar from '@/app/builder/shift-ai/ShiftAiSidebar';
 import ShiftAiEightAssistant from '@/app/components/shift-ai/ShiftAiEightAssistant';
 import type { ShiftStudyLanguage } from '@/lib/shift-ai/constants';
-import { shiftAiAppPath } from '@/lib/supereduc8-host';
+import { useShiftAiAppPath } from '@/lib/shift-ai/host-context';
 
 export default function ShiftAiShell({
   children,
@@ -22,6 +22,7 @@ export default function ShiftAiShell({
   const [mobileOpen, setMobileOpen] = useState(false);
   const tBrand = useTranslations('brand');
   const tSidebar = useTranslations('sidebar');
+  const tipsHref = useShiftAiAppPath('/tips');
 
   return (
     <div className="shift-ai-app flex h-screen overflow-hidden" dir={dir} lang={locale}>
@@ -79,7 +80,7 @@ export default function ShiftAiShell({
             </div>
           </div>
           <Link
-            href={shiftAiAppPath('/tips')}
+            href={tipsHref}
             className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-semibold text-[var(--sa-navy-800)] hover:bg-[var(--sa-secondary)]"
             aria-label={tSidebar('items.tips')}
           >

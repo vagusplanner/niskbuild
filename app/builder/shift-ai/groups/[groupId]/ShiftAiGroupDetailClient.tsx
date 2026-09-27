@@ -22,6 +22,7 @@ import type {
   StudyGroup,
 } from '@/lib/shift-ai/groups-shared';
 import { SA } from '@/lib/shift-ai/theme';
+import { useShiftAiAppPath } from '@/lib/shift-ai/host-context';
 
 type Tab = 'notes' | 'flashcards' | 'leaderboard';
 
@@ -101,6 +102,7 @@ export default function ShiftAiGroupDetailClient({
   leaderboard: GroupLeaderboardEntry[];
 }) {
   const t = useTranslations('groups');
+  const groupsHref = useShiftAiAppPath('/groups');
   const [tab, setTab] = useState<Tab>('notes');
   const [copied, setCopied] = useState(false);
   const [notes, setNotes] = useState(initialNotes);
@@ -185,7 +187,7 @@ export default function ShiftAiGroupDetailClient({
   return (
     <div className={SA.content}>
       <Link
-        href="/builder/shift-ai/groups"
+        href={groupsHref}
         className={`mb-4 inline-flex items-center gap-1 text-sm ${SA.muted} hover:underline`}
       >
         <ChevronLeft className="h-4 w-4 rtl:-scale-x-100" />

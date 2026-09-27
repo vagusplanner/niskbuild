@@ -2,6 +2,7 @@ import 'server-only';
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { SHIFT_CURRICULUM_LABELS, type ShiftCurriculum } from '@/lib/shift-ai/constants';
+import { shiftAiAppPath } from '@/lib/supereduc8-host';
 
 export type ShiftSubjectRow = {
   id: string;
@@ -125,8 +126,8 @@ export function resolveSubjectByParam(
   return subjects.find((subject) => subject.slug === slug || subject.id === trimmed) ?? null;
 }
 
-export function subjectPagePath(subject: ShiftSubject): string {
-  return `/builder/shift-ai/subject/${subject.dbId ?? subject.slug}`;
+export function subjectPagePath(subject: ShiftSubject, hostname?: string): string {
+  return shiftAiAppPath(`/subject/${subject.dbId ?? subject.slug}`, hostname);
 }
 
 export async function ensureSubjectRecord(

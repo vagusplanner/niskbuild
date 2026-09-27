@@ -142,6 +142,14 @@ export async function POST(request: NextRequest) {
       success_url: successUrl,
       cancel_url: cancelUrl,
       metadata,
+      // Checkout page header shows account business name (NISKBUILD) by default —
+      // override so parents clearly see SuperEduc8. Product line items already say
+      // "SuperEduc8 Student". (statement_descriptor_suffix via payment_intent_data
+      // is not allowed in subscription mode — set on the Stripe Product instead.)
+      branding_settings: {
+        display_name: 'SuperEduc8',
+        button_color: '#e05a25',
+      },
       subscription_data: {
         metadata,
       },
