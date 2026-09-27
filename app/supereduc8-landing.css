@@ -126,16 +126,46 @@
 .se8-hero {
   position: relative;
   overflow: hidden;
-  padding: 4.5rem 1.25rem 3.5rem;
+  min-height: min(92vh, 760px);
+  display: flex;
+  align-items: flex-end;
+  padding: 5.5rem 1.25rem 3.75rem;
+  color: #fff;
+}
+
+.se8-hero-media {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.se8-hero-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 28%;
+  transform: scale(1.04);
+  animation: se8-hero-ken 22s ease-in-out infinite alternate;
+}
+
+.se8-hero-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(180deg, rgba(10, 47, 99, 0.55) 0%, rgba(10, 47, 99, 0.72) 48%, rgba(8, 32, 68, 0.88) 100%),
+    radial-gradient(ellipse at 70% 20%, rgba(255, 130, 77, 0.22), transparent 55%);
+  pointer-events: none;
 }
 
 .se8-hero-glow {
   position: absolute;
   inset: -20% 10% auto;
   height: 70%;
+  z-index: 1;
   background:
-    radial-gradient(ellipse at 30% 20%, rgba(43, 125, 232, 0.22), transparent 55%),
-    radial-gradient(ellipse at 75% 10%, rgba(255, 130, 77, 0.18), transparent 50%);
+    radial-gradient(ellipse at 30% 20%, rgba(43, 125, 232, 0.28), transparent 55%),
+    radial-gradient(ellipse at 75% 10%, rgba(255, 130, 77, 0.2), transparent 50%);
   pointer-events: none;
   animation: se8-glow-drift 12s ease-in-out infinite alternate;
 }
@@ -149,44 +179,55 @@
   }
 }
 
+@keyframes se8-hero-ken {
+  from {
+    transform: scale(1.04) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.1) translate3d(-1.5%, 1%, 0);
+  }
+}
+
 .se8-hero-inner {
   position: relative;
+  z-index: 2;
   max-width: 820px;
   margin: 0 auto;
   text-align: center;
 }
 
 .se8-brand-mark {
-  font-size: clamp(2rem, 5vw, 2.75rem);
+  font-size: clamp(2.35rem, 6vw, 3.35rem);
   font-weight: 800;
   letter-spacing: -0.03em;
-  line-height: 1.1;
-  margin: 0 0 1.25rem;
+  line-height: 1.05;
+  margin: 0 0 1.15rem;
   animation: se8-rise 0.7s ease both;
+  text-shadow: 0 2px 24px rgba(8, 32, 68, 0.35);
 }
 
 .se8-brand-super {
-  color: var(--se8-coral-deep);
+  color: #ffb08a;
 }
 
 .se8-brand-educ {
-  color: var(--se8-navy-soft);
+  color: #fff;
 }
 
 .se8-hero-title {
-  font-size: clamp(1.65rem, 4.2vw, 2.55rem);
+  font-size: clamp(1.55rem, 3.8vw, 2.35rem);
   font-weight: 700;
   letter-spacing: -0.025em;
-  line-height: 1.2;
+  line-height: 1.22;
   margin: 0 0 1.15rem;
-  color: var(--se8-navy);
+  color: #fff;
   animation: se8-rise 0.75s ease 0.08s both;
 }
 
 .se8-hero-sub {
   font-size: clamp(1rem, 2.2vw, 1.125rem);
   line-height: 1.65;
-  color: var(--se8-muted);
+  color: rgba(255, 255, 255, 0.9);
   margin: 0 auto 1.75rem;
   max-width: 42rem;
   animation: se8-rise 0.75s ease 0.16s both;
@@ -201,10 +242,23 @@
   animation: se8-rise 0.75s ease 0.24s both;
 }
 
+.se8-hero .se8-btn-secondary {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(6px);
+}
+
+.se8-hero .se8-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #fff;
+  color: #fff;
+}
+
 .se8-trust {
   font-size: 0.8125rem;
   line-height: 1.55;
-  color: var(--se8-muted);
+  color: rgba(255, 255, 255, 0.78);
   max-width: 38rem;
   margin: 0 auto;
   animation: se8-rise 0.75s ease 0.32s both;
@@ -347,6 +401,145 @@
   font-size: 0.95rem;
   line-height: 1.55;
   color: var(--se8-muted);
+}
+
+/* Photo story bands — natural placement beside matching copy */
+.se8-story {
+  padding: 0;
+  overflow: hidden;
+}
+
+.se8-story-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  gap: 0;
+}
+
+@media (min-width: 860px) {
+  .se8-story-inner {
+    grid-template-columns: 1.05fr 0.95fr;
+    align-items: stretch;
+    min-height: 420px;
+  }
+
+  .se8-story-reverse .se8-story-inner {
+    grid-template-columns: 0.95fr 1.05fr;
+  }
+
+  .se8-story-reverse .se8-story-media {
+    order: 2;
+  }
+
+  .se8-story-reverse .se8-story-copy {
+    order: 1;
+  }
+}
+
+.se8-story-media {
+  position: relative;
+  min-height: 260px;
+  overflow: hidden;
+  background: #d6e5f8;
+}
+
+.se8-story-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  animation: se8-media-in 1s ease both;
+}
+
+.se8-story-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 2.75rem 1.5rem;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.se8-story-alt .se8-story-copy {
+  background: #eef4fc;
+}
+
+.se8-story-kicker {
+  margin: 0 0 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--se8-coral-deep);
+}
+
+.se8-story-copy .se8-h2 {
+  margin-bottom: 0.85rem;
+}
+
+.se8-story-copy .se8-body {
+  margin-bottom: 1.25rem;
+}
+
+.se8-classroom-band {
+  position: relative;
+  min-height: 320px;
+  overflow: hidden;
+}
+
+.se8-classroom-band picture,
+.se8-hero-media picture {
+  display: contents;
+}
+
+.se8-classroom-band img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 40%;
+  animation: se8-hero-ken 28s ease-in-out infinite alternate;
+}
+
+.se8-classroom-band-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(10, 47, 99, 0.88) 0%,
+    rgba(10, 47, 99, 0.72) 42%,
+    rgba(10, 47, 99, 0.35) 100%
+  );
+}
+
+.se8-classroom-band-copy {
+  position: relative;
+  z-index: 1;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 3.5rem 1.25rem;
+  color: #fff;
+}
+
+.se8-classroom-band-copy .se8-h2 {
+  color: #fff;
+  max-width: 22rem;
+}
+
+.se8-classroom-band-copy .se8-body {
+  color: rgba(255, 255, 255, 0.9);
+  max-width: 28rem;
+}
+
+@keyframes se8-media-in {
+  from {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .se8-pricing-table-wrap {
@@ -598,12 +791,30 @@
   }
 
   .se8-hero {
-    padding-top: 3rem;
+    min-height: min(88vh, 680px);
+    padding-top: 4rem;
+    padding-bottom: 3rem;
+    align-items: flex-end;
+  }
+
+  .se8-classroom-band {
+    min-height: 280px;
+  }
+
+  .se8-classroom-band-scrim {
+    background: linear-gradient(
+      180deg,
+      rgba(10, 47, 99, 0.55) 0%,
+      rgba(10, 47, 99, 0.88) 100%
+    );
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .se8-hero-glow,
+  .se8-hero-media img,
+  .se8-classroom-band img,
+  .se8-story-media img,
   .se8-brand-mark,
   .se8-hero-title,
   .se8-hero-sub,
@@ -612,5 +823,10 @@
   .se8-btn {
     animation: none;
     transition: none;
+  }
+
+  .se8-hero-media img,
+  .se8-classroom-band img {
+    transform: none;
   }
 }

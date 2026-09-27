@@ -6,6 +6,30 @@ import SuperEduc8LandingContactForm from '@/app/components/SuperEduc8LandingCont
 import SuperEduc8PricingCta from '@/app/components/SuperEduc8PricingCta';
 import './supereduc8-landing.css';
 
+/** Real photos — Pexels License (free commercial use). See public/images/supereduc8/CREDITS.md */
+const PHOTO = {
+  youngTablet: {
+    src: '/images/supereduc8/young-student-tablet.webp',
+    fallback: '/images/supereduc8/young-student-tablet.jpg',
+    alt: 'A young student happily using a tablet independently at home',
+  },
+  classroom: {
+    src: '/images/supereduc8/classroom-computers.webp',
+    fallback: '/images/supereduc8/classroom-computers.jpg',
+    alt: 'Elementary-age students working at computers in a school classroom',
+  },
+  teacher: {
+    src: '/images/supereduc8/teacher-helping-student.webp',
+    fallback: '/images/supereduc8/teacher-helping-student.jpg',
+    alt: 'A teacher helping a student at a computer in a classroom',
+  },
+  parent: {
+    src: '/images/supereduc8/parent-child-computer.webp',
+    fallback: '/images/supereduc8/parent-child-computer.jpg',
+    alt: 'A parent and child learning together at a laptop at home',
+  },
+} as const;
+
 const SIGNUP_HREF = '/signup';
 const LOGIN_HREF = '/login?next=/dashboard';
 const PRIVACY_HREF = '/privacy';
@@ -143,6 +167,30 @@ export default function SuperEduc8LandingPage() {
       <main>
         {/* ── Hero ─────────────────────────────────────────────── */}
         <section className="se8-hero" aria-labelledby="se8-hero-heading">
+          <div className="se8-hero-media" aria-hidden>
+            <picture>
+              <source
+                media="(max-width: 720px)"
+                srcSet="/images/supereduc8/young-student-tablet-960.webp"
+                type="image/webp"
+              />
+              <source
+                media="(max-width: 720px)"
+                srcSet="/images/supereduc8/young-student-tablet-960.jpg"
+                type="image/jpeg"
+              />
+              <source srcSet={PHOTO.youngTablet.src} type="image/webp" />
+              <img
+                src={PHOTO.youngTablet.fallback}
+                alt=""
+                width={1920}
+                height={1282}
+                decoding="async"
+                fetchPriority="high"
+              />
+            </picture>
+          </div>
+          <div className="se8-hero-scrim" aria-hidden />
           <div className="se8-hero-glow" aria-hidden />
           <div className="se8-hero-inner">
             <p className="se8-brand-mark">
@@ -214,6 +262,35 @@ export default function SuperEduc8LandingPage() {
           </div>
         </section>
 
+        {/* ── Classroom / curricula visual ─────────────────────── */}
+        <section
+          className="se8-classroom-band"
+          aria-labelledby="se8-classroom-heading"
+        >
+          <picture>
+            <source srcSet={PHOTO.classroom.src} type="image/webp" />
+            <img
+              src={PHOTO.classroom.fallback}
+              alt={PHOTO.classroom.alt}
+              width={1600}
+              height={1067}
+              loading="lazy"
+              decoding="async"
+            />
+          </picture>
+          <div className="se8-classroom-band-scrim" aria-hidden />
+          <div className="se8-classroom-band-copy">
+            <h2 id="se8-classroom-heading" className="se8-h2">
+              Matched to the curricula kids actually follow in class
+            </h2>
+            <p className="se8-body">
+              Whether your child is learning under the UK, French, US, or Saudi curriculum — or more
+              than one at once — SuperEduc8 adapts explanations and practice to their real
+              coursework, not a one-size-fits-all worksheet.
+            </p>
+          </div>
+        </section>
+
         {/* ── Features ─────────────────────────────────────────── */}
         <section
           id="features"
@@ -231,6 +308,42 @@ export default function SuperEduc8LandingPage() {
                   <p className="se8-feature-body">{f.body}</p>
                 </div>
               ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Parent dashboard story ───────────────────────────── */}
+        <section
+          className="se8-story se8-story-alt"
+          aria-labelledby="se8-parents-heading"
+        >
+          <div className="se8-story-inner">
+            <div className="se8-story-media">
+              <picture>
+                <source srcSet={PHOTO.parent.src} type="image/webp" />
+                <img
+                  src={PHOTO.parent.fallback}
+                  alt={PHOTO.parent.alt}
+                  width={1400}
+                  height={935}
+                  loading="lazy"
+                  decoding="async"
+                />
+              </picture>
+            </div>
+            <div className="se8-story-copy">
+              <p className="se8-story-kicker">For parents</p>
+              <h2 id="se8-parents-heading" className="se8-h2">
+                Stay involved without hovering over every chat
+              </h2>
+              <p className="se8-body">
+                The parent dashboard shows real learning progress — topics covered, time spent, and
+                what still needs work — so you can support your child at home without reading their
+                private tutor conversations.
+              </p>
+              <Link href={SIGNUP_HREF} className="se8-btn se8-btn-primary se8-btn-sm">
+                Start Free Trial
+              </Link>
             </div>
           </div>
         </section>
@@ -288,6 +401,42 @@ export default function SuperEduc8LandingPage() {
               Cancel anytime. Your child&apos;s learning data is never deleted just because a
               subscription lapses — only premium features pause.
             </p>
+          </div>
+        </section>
+
+        {/* ── Teachers / schools story ─────────────────────────── */}
+        <section
+          className="se8-story se8-story-reverse"
+          aria-labelledby="se8-teachers-heading"
+        >
+          <div className="se8-story-inner">
+            <div className="se8-story-media">
+              <picture>
+                <source srcSet={PHOTO.teacher.src} type="image/webp" />
+                <img
+                  src={PHOTO.teacher.fallback}
+                  alt={PHOTO.teacher.alt}
+                  width={1400}
+                  height={933}
+                  loading="lazy"
+                  decoding="async"
+                />
+              </picture>
+            </div>
+            <div className="se8-story-copy">
+              <p className="se8-story-kicker">For teachers &amp; schools</p>
+              <h2 id="se8-teachers-heading" className="se8-h2">
+                Classroom support that respects how teachers actually work
+              </h2>
+              <p className="se8-body">
+                Teachers get aggregate class and student progress — not individual chat or essay
+                content — so you can spot who needs help while keeping student conversations
+                private. Classroom and school licensing is available on request.
+              </p>
+              <a href="#contact" className="se8-btn se8-btn-ghost se8-btn-sm">
+                Talk to us about schools
+              </a>
+            </div>
           </div>
         </section>
 
