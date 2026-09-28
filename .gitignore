@@ -60,3 +60,7 @@ yarn-error.log*
 next-env.d.ts
 apps/shift-ai-reference/
 .env*
+
+# North South Base44 CSV imports (never commit)
+apps/north-south/private/
+**/base44-export/

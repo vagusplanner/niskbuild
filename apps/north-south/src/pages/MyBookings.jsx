@@ -1,0 +1,201 @@
+import { useState, useEffect } from "react";
+import { base44 } from "@/api/base44Client";
+import Navbar from "../components/Navbar";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Calendar, Clock, Video, RefreshCw, X, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { Link } from "react-router-dom";
+
+const statusColors = {
+  pending: "bg-amber-100 text-amber-700",
+  confirmed: "bg-green-100 text-green-700",
+  completed: "bg-blue-100 text-blue-700",
+  cancelled: "bg-red-100 text-red-700",
+};
+
+export default function MyBookings() {
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(null);
+  const [rescheduleId, setRescheduleId] = useState(null);
+  const [newDate, setNewDate] = useState("");
+  const [newTime, setNewTime] = useState("");
+  const [toast, setToast] = useState(null);
+
+  const showToast = (msg, type = "success") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 4000);
+  };
+
+  const load = async () => {
+    setLoading(true);
+    const data = await base44.entities.Booking.list("-created_date", 50);
+    setBookings(data.filter(b => b.status !== "cancelled"));
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const handleConfirm = async (booking) => {
+    setActionLoading(booking.id);
+    const res = await base44.functions.invoke("manageCalendarEvent", { action: "create", bookingId: booking.id });
+    if (res.data?.success) {
+      showToast("Session confirmed! Calendar invite sent.");
+      load();
+    } else {
+      showToast(res.data?.error || "Failed to confirm session.", "error");
+    }
+    setActionLoading(null);
+  };
+
+  const handleReschedule = async (booking) => {
+    if (!newDate || !newTime) return;
+    setActionLoading(booking.id);
+    const res = await base44.functions.invoke("manageCalendarEvent", {
+      action: "reschedule", bookingId: booking.id, newDate, newTime
+    });
+    if (res.data?.success) {
+      showToast("Session rescheduled! Calendar invite updated.");
+      setRescheduleId(null);
+      load();
+    } else {
+      showToast(res.data?.error || "Failed to reschedule.", "error");
+    }
+    setActionLoading(null);
+  };
+
+  const handleCancel = async (booking) => {
+    if (!confirm(`Cancel session: ${booking.session_type}?`)) return;
+    setActionLoading(booking.id);
+    const res = await base44.functions.invoke("manageCalendarEvent", { action: "cancel", bookingId: booking.id });
+    if (res.data?.success) {
+      showToast("Session cancelled.");
+      load();
+    } else {
+      showToast(res.data?.error || "Failed to cancel.", "error");
+    }
+    setActionLoading(null);
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <div className="max-w-4xl mx-auto px-6 py-28">
+        <div className="mb-10 space-y-2">
+          <h1 className="font-cormorant text-4xl md:text-5xl font-light text-foreground">My Sessions</h1>
+          <p className="font-inter text-sm text-muted-foreground">Manage your upcoming coaching sessions.</p>
+        </div>
+
+        {/* Toast */}
+        {toast && (
+          <div className={`fixed top-6 right-6 z-50 flex items-center gap-2 px-5 py-3 rounded-2xl shadow-lg font-inter text-sm ${toast.type === "error" ? "bg-red-50 text-red-700 border border-red-200" : "bg-green-50 text-green-700 border border-green-200"}`}>
+            {toast.type === "error" ? <AlertCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+            {toast.msg}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : bookings.length === 0 ? (
+          <div className="text-center py-20 space-y-4">
+            <Calendar className="w-12 h-12 text-muted-foreground mx-auto" />
+            <p className="font-cormorant text-2xl text-foreground">No upcoming sessions</p>
+            <p className="font-inter text-sm text-muted-foreground">Book a session to get started.</p>
+            <Link to="/book"><Button className="rounded-full px-8 mt-2">Book a Session</Button></Link>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {bookings.map(b => (
+              <div key={b.id} className="bg-card rounded-2xl border border-border p-6 space-y-4">
+                <div className="flex items-start justify-between flex-wrap gap-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-cormorant text-xl font-medium text-foreground">{b.session_type}</h3>
+                      <span className={`text-xs font-inter px-2.5 py-1 rounded-full ${statusColors[b.status] || "bg-secondary text-muted-foreground"}`}>
+                        {b.status}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 font-inter text-sm text-muted-foreground flex-wrap">
+                      {b.preferred_date && (
+                        <span className="flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5" />
+                          {new Date(b.preferred_date).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+                        </span>
+                      )}
+                      {b.preferred_time && (
+                        <span className="flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5" />
+                          {b.preferred_time} {b.timezone || "UTC"}
+                        </span>
+                      )}
+                    </div>
+                    {b.meet_link && (
+                      <a href={b.meet_link} target="_blank" rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 font-inter text-sm text-primary hover:underline">
+                        <Video className="w-3.5 h-3.5" /> Join Google Meet
+                      </a>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {b.status === "pending" && (
+                      <Button size="sm" className="rounded-full gap-1.5" onClick={() => handleConfirm(b)} disabled={actionLoading === b.id}>
+                        {actionLoading === b.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+                        Confirm & Send Invite
+                      </Button>
+                    )}
+                    {b.status !== "cancelled" && b.status !== "completed" && (
+                      <>
+                        <Button size="sm" variant="outline" className="rounded-full gap-1.5"
+                          onClick={() => { setRescheduleId(rescheduleId === b.id ? null : b.id); setNewDate(b.preferred_date || ""); setNewTime(b.preferred_time || ""); }}
+                          disabled={actionLoading === b.id}>
+                          <RefreshCw className="w-3.5 h-3.5" /> Reschedule
+                        </Button>
+                        <Button size="sm" variant="ghost" className="rounded-full gap-1.5 text-red-500 hover:text-red-600 hover:bg-red-50"
+                          onClick={() => handleCancel(b)} disabled={actionLoading === b.id}>
+                          <X className="w-3.5 h-3.5" /> Cancel
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Reschedule panel */}
+                {rescheduleId === b.id && (
+                  <div className="bg-secondary/40 rounded-xl p-5 space-y-4 border border-border">
+                    <p className="font-inter text-sm font-medium text-foreground">Select a new date & time</p>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="font-inter text-xs text-muted-foreground">New Date</label>
+                        <Input type="date" value={newDate} onChange={e => setNewDate(e.target.value)} className="rounded-xl" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="font-inter text-xs text-muted-foreground">New Time</label>
+                        <Input type="time" value={newTime} onChange={e => setNewTime(e.target.value)} className="rounded-xl" />
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" className="rounded-full" onClick={() => handleReschedule(b)} disabled={!newDate || !newTime || actionLoading === b.id}>
+                        {actionLoading === b.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                        Confirm Reschedule
+                      </Button>
+                      <Button size="sm" variant="ghost" className="rounded-full" onClick={() => setRescheduleId(null)}>Cancel</Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-10 text-center">
+          <Link to="/book">
+            <Button variant="outline" className="rounded-full px-8">+ Book Another Session</Button>
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}

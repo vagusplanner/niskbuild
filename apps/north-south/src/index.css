@@ -1,0 +1,108 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Inter:wght@300;400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /*
+      Logo Palette (from NSC logo):
+      Cream/Ivory:        #F5F0E0  — background
+      Forest Green:       #2C3B2D  — primary / NORTH text
+      Dark Olive:         #3D4A2F  — banner / deep green
+      Warm Gold:          #B8952A  — accent / SOUTH text / compass
+      Light Gold:         #C9A84C  — hover / lighter gold tones
+      Muted Sage:         #8A9A7A  — subtle text / borders
+    */
+
+    --background: 42 40% 92%;        /* #F5F0E0 cream */
+    --foreground: 125 14% 20%;       /* #2C3B2D forest green */
+
+    --card: 42 35% 95%;              /* slightly lighter cream */
+    --card-foreground: 125 14% 20%;
+
+    --popover: 42 40% 97%;
+    --popover-foreground: 125 14% 20%;
+
+    --primary: 125 14% 20%;          /* #2C3B2D — forest green */
+    --primary-foreground: 42 40% 92%;
+
+    --secondary: 42 30% 86%;         /* warm light parchment */
+    --secondary-foreground: 125 14% 20%;
+
+    --muted: 42 25% 85%;
+    --muted-foreground: 125 8% 40%;  /* muted sage */
+
+    --accent: 42 63% 44%;            /* #B8952A warm gold */
+    --accent-foreground: 42 40% 95%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 42 20% 80%;
+    --input: 42 20% 80%;
+    --ring: 42 63% 44%;              /* gold ring */
+
+    --radius: 0.75rem;
+    --font-cormorant: 'Cormorant Garamond', serif;
+    --font-inter: 'Inter', sans-serif;
+
+    --chart-1: 125 14% 20%;
+    --chart-2: 42 63% 44%;
+    --chart-3: 125 10% 35%;
+    --chart-4: 42 45% 55%;
+    --chart-5: 42 25% 65%;
+
+    --sidebar-background: 42 30% 88%;
+    --sidebar-foreground: 125 14% 20%;
+    --sidebar-primary: 125 14% 20%;
+    --sidebar-primary-foreground: 42 40% 92%;
+    --sidebar-accent: 42 35% 90%;
+    --sidebar-accent-foreground: 125 14% 20%;
+    --sidebar-border: 42 20% 80%;
+    --sidebar-ring: 42 63% 44%;
+  }
+
+  .dark {
+    --background: 125 16% 12%;
+    --foreground: 42 35% 88%;
+    --card: 125 14% 16%;
+    --card-foreground: 42 35% 88%;
+    --popover: 125 14% 16%;
+    --popover-foreground: 42 35% 88%;
+    --primary: 42 63% 44%;
+    --primary-foreground: 125 16% 12%;
+    --secondary: 125 12% 22%;
+    --secondary-foreground: 42 35% 88%;
+    --muted: 125 12% 22%;
+    --muted-foreground: 42 20% 58%;
+    --accent: 42 63% 44%;
+    --accent-foreground: 125 16% 12%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 125 12% 26%;
+    --input: 125 12% 26%;
+    --ring: 42 63% 44%;
+    --sidebar-background: 125 16% 12%;
+    --sidebar-foreground: 42 35% 88%;
+    --sidebar-primary: 42 63% 44%;
+    --sidebar-primary-foreground: 125 16% 12%;
+    --sidebar-accent: 125 12% 22%;
+    --sidebar-accent-foreground: 42 35% 88%;
+    --sidebar-border: 125 12% 26%;
+    --sidebar-ring: 42 63% 44%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-inter;
+  }
+  h1, h2, h3 {
+    @apply font-cormorant;
+  }
+}
