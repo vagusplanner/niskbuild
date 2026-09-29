@@ -1,5 +1,6 @@
 /**
- * Phase 1 auth — Supabase; entities still stubbed until later Phase 2 milestones.
+ * Phase 1 auth — Supabase.
+ * Entities: LeadershipGoal live; others stubbed until later milestones.
  */
 import {
   getNsMe,
@@ -8,6 +9,8 @@ import {
   nsRedirectToLogin,
   updateNsMe,
 } from '@/lib/ns-auth'
+import { createLeadershipGoalEntity } from '@/lib/ns-entities/leadership-goal'
+import { supabase } from '@/lib/supabase'
 
 function notMigrated(op) {
   return Promise.reject(
@@ -45,7 +48,7 @@ export const base44 = {
     CoachingSession: entityStub('CoachingSession'),
     Commitment: entityStub('Commitment'),
     GoalCheckIn: entityStub('GoalCheckIn'),
-    LeadershipGoal: entityStub('LeadershipGoal'),
+    LeadershipGoal: createLeadershipGoalEntity(supabase),
     LearningPath: entityStub('LearningPath'),
     Subscriber: entityStub('Subscriber'),
     Testimonial: entityStub('Testimonial'),
