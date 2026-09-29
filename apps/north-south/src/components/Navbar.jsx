@@ -30,7 +30,7 @@ export default function Navbar() {
     { label: t("clientPortal"), href: "/portal" },
     { label: t("aiCoach"), href: "/ai-coach" },
     { label: t("leadershipGoals"), href: "/goals" },
-    { label: t("performanceInsights"), href: "/insights" },
+    { label: t("performanceInsights"), href: "/performance-insights" },
     { label: t("mySessions"), href: "/my-bookings" },
     { label: t("dashboard"), href: "/dashboard" },
     { label: "Learning Paths", href: "/learning" },

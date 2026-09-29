@@ -1,6 +1,8 @@
 /**
  * Phase 1 auth — Supabase.
- * Entities: LeadershipGoal + GoalCheckIn live; others stubbed until later milestones.
+ * Live entities: LeadershipGoal, GoalCheckIn, CoachingSession.
+ * Remaining entities: list/filter/get return empty until their milestones;
+ * create/update/delete still reject so writes aren't silently dropped.
  */
 import {
   getNsMe,
@@ -9,6 +11,7 @@ import {
   nsRedirectToLogin,
   updateNsMe,
 } from '@/lib/ns-auth'
+import { createCoachingSessionEntity } from '@/lib/ns-entities/coaching-session'
 import { createGoalCheckInEntity } from '@/lib/ns-entities/goal-check-in'
 import { createLeadershipGoalEntity } from '@/lib/ns-entities/leadership-goal'
 import { supabase } from '@/lib/supabase'
@@ -23,9 +26,10 @@ function notMigrated(op) {
 
 function entityStub(name) {
   return {
-    list: (..._a) => notMigrated(`entities.${name}.list`),
-    filter: (..._a) => notMigrated(`entities.${name}.filter`),
-    get: (..._a) => notMigrated(`entities.${name}.get`),
+    // Soft reads so multi-entity Promise.all pages can load while entities are ported incrementally.
+    list: async (..._a) => [],
+    filter: async (..._a) => [],
+    get: async (..._a) => null,
     create: (..._a) => notMigrated(`entities.${name}.create`),
     update: (..._a) => notMigrated(`entities.${name}.update`),
     delete: (..._a) => notMigrated(`entities.${name}.delete`),
@@ -46,7 +50,7 @@ export const base44 = {
   },
   entities: {
     Booking: entityStub('Booking'),
-    CoachingSession: entityStub('CoachingSession'),
+    CoachingSession: createCoachingSessionEntity(supabase),
     Commitment: entityStub('Commitment'),
     GoalCheckIn: createGoalCheckInEntity(supabase),
     LeadershipGoal: createLeadershipGoalEntity(supabase),
