@@ -1,6 +1,6 @@
 /**
  * Phase 1 auth — Supabase.
- * Live entities: LeadershipGoal, GoalCheckIn, CoachingSession, Commitment.
+ * Live entities: LeadershipGoal, GoalCheckIn, CoachingSession, Commitment, LearningPath.
  * Remaining entities: list/filter/get return empty until their milestones;
  * create/update/delete still reject so writes aren't silently dropped.
  */
@@ -15,6 +15,7 @@ import { createCoachingSessionEntity } from '@/lib/ns-entities/coaching-session'
 import { createCommitmentEntity } from '@/lib/ns-entities/commitment'
 import { createGoalCheckInEntity } from '@/lib/ns-entities/goal-check-in'
 import { createLeadershipGoalEntity } from '@/lib/ns-entities/leadership-goal'
+import { createLearningPathEntity } from '@/lib/ns-entities/learning-path'
 import { supabase } from '@/lib/supabase'
 
 function notMigrated(op) {
@@ -55,7 +56,7 @@ export const base44 = {
     Commitment: createCommitmentEntity(supabase),
     GoalCheckIn: createGoalCheckInEntity(supabase),
     LeadershipGoal: createLeadershipGoalEntity(supabase),
-    LearningPath: entityStub('LearningPath'),
+    LearningPath: createLearningPathEntity(supabase),
     Subscriber: entityStub('Subscriber'),
     Testimonial: entityStub('Testimonial'),
     User: entityStub('User'),
