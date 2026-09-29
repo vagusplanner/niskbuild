@@ -17,15 +17,25 @@ export default function BookSession() {
   const [form, setForm] = useState({ client_name: "", client_email: "", client_company: "", service_tier: "", session_type: "", preferred_date: "", preferred_time: "", timezone: "UTC", message: "" });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
 
   const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    await base44.entities.Booking.create({ ...form, status: "pending" });
-    setSubmitted(true);
-    setLoading(false);
+    setSubmitError(null);
+    try {
+      await base44.entities.Booking.create({ ...form, status: "pending" });
+      setSubmitted(true);
+    } catch (err) {
+      setSubmitError(
+        err?.message ||
+          "Booking requests are not available yet. Online booking will return once the secure server handler is live."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (submitted) return (
@@ -134,6 +144,12 @@ export default function BookSession() {
               <label className="font-inter text-xs font-medium text-muted-foreground">Message / Goals</label>
               <Textarea value={form.message} onChange={e => set("message", e.target.value)} placeholder="Tell me about your communication goals and what you'd like to achieve..." rows={4} className="rounded-xl resize-none" />
             </div>
+
+            {submitError && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 font-inter text-sm text-amber-900">
+                {submitError}
+              </div>
+            )}
 
             <Button type="submit" className="w-full rounded-full" size="lg" disabled={loading || !form.client_name || !form.client_email || !form.service_tier || !form.session_type}>
               {loading ? "Submitting..." : "Request Booking"}
