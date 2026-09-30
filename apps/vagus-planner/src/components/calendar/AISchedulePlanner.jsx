@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import UpgradeGate from '@/components/billing/UpgradeGate';
 import { usePlanAccess } from '@/hooks/usePlanAccess';
+import { canUseStripePurchases } from '@/lib/vp-platform';
 
 const PERIOD_OPTIONS = [
   { id: 'day',   label: 'Today',      icon: Calendar,     desc: 'Plan just today' },
@@ -185,7 +186,7 @@ export default function AISchedulePlanner({ isOpen, onClose, onEventsCreated }) 
       const message = err?.message ?? String(err);
       if (/limit|upgrade|402|quota|paid plan/i.test(message)) {
         setQuotaBlocked(true);
-        toast.error(message);
+        toast.error(canUseStripePurchases() ? message : 'This is a premium feature.');
         queryClient.invalidateQueries({ queryKey: ['planAccess'] });
       } else {
         toast.error('Failed to generate schedule — please try again');

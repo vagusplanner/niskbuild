@@ -14,8 +14,8 @@ import IosWebSubscriptionNotice from '@/components/billing/IosWebSubscriptionNot
  * This component is NOT authorization — enforce paid actions in
  * VP functions / LLM / plan-access APIs.
  *
- * On iOS native (Guideline 3.1.1): Upgrade buttons are replaced with
- * informational text pointing users to vagusplanner.com — no purchase CTA.
+ * On iOS native (Guideline 3.1.1): Upgrade CTAs are hidden; only a generic
+ * premium message is shown — no website, no purchase path.
  */
 export default function UpgradeGate({
   locked,
@@ -38,14 +38,17 @@ export default function UpgradeGate({
             <Zap className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
-              {feature} requires {requiredPlan}
-            </p>
-            {description && (
-              <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">{description}</p>
-            )}
-            {!allowStripePurchases && (
-              <IosWebSubscriptionNotice compact className="mt-1.5 text-amber-700 dark:text-amber-400" />
+            {allowStripePurchases ? (
+              <>
+                <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                  {feature} requires {requiredPlan}
+                </p>
+                {description && (
+                  <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">{description}</p>
+                )}
+              </>
+            ) : (
+              <IosWebSubscriptionNotice compact className="text-amber-700 dark:text-amber-400" />
             )}
           </div>
           {allowStripePurchases && (
@@ -79,11 +82,11 @@ export default function UpgradeGate({
           <h3 className="font-bold text-slate-900 dark:text-slate-100 text-base mb-1">
             {feature}
           </h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-            {description || `Unlock ${feature} by upgrading to the ${requiredPlan} plan.`}
-          </p>
           {allowStripePurchases ? (
             <>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                {description || `Unlock ${feature} by upgrading to the ${requiredPlan} plan.`}
+              </p>
               <Link to={createPageUrl('Billing')}>
                 <Button className="w-full bg-teal-600 hover:bg-teal-700 text-white gap-2">
                   <Zap className="w-4 h-4" />
@@ -93,7 +96,7 @@ export default function UpgradeGate({
               <p className="text-xs text-slate-400 mt-2">14-day free trial • No credit card needed</p>
             </>
           ) : (
-            <IosWebSubscriptionNotice className="text-left" />
+            <IosWebSubscriptionNotice className="mt-2 text-left" />
           )}
         </div>
       </div>

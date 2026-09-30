@@ -830,9 +830,7 @@ export default function Landing() {
   const handleGetStarted = () => isAuthenticated ? navigate('/dashboard') : goToSignup('/dashboard');
   const handleSelectPlan = (planName) => {
     if (!canUseStripePurchases()) {
-      toast.info(
-        "Subscriptions can't be purchased in the iOS app. Manage your subscription at vagusplanner.com."
-      );
+      toast.info('This is a premium feature.');
       return;
     }
     if (planName?.includes('Enterprise')) { navigate('/support'); return; }

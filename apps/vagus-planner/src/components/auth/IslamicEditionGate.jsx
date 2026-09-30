@@ -43,10 +43,13 @@ function UpgradePrompt({ compact = false }) {
           <Moon className="w-4 h-4 text-amber-600 dark:text-amber-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-amber-800 dark:text-amber-200">Islamic Edition Required</p>
-          <p className="text-xs text-amber-600 dark:text-amber-400">Upgrade to access prayer, Quran, Zakat & more.</p>
-          {!allowStripePurchases && (
-            <IosWebSubscriptionNotice compact className="mt-1.5 text-amber-700 dark:text-amber-400" />
+          {allowStripePurchases ? (
+            <>
+              <p className="text-sm font-bold text-amber-800 dark:text-amber-200">Islamic Edition Required</p>
+              <p className="text-xs text-amber-600 dark:text-amber-400">Upgrade to access prayer, Quran, Zakat & more.</p>
+            </>
+          ) : (
+            <IosWebSubscriptionNotice compact className="text-amber-700 dark:text-amber-400" />
           )}
         </div>
         {allowStripePurchases && (
@@ -100,22 +103,22 @@ function UpgradePrompt({ compact = false }) {
           ))}
         </div>
 
-        {allowStripePurchases && (
+        {allowStripePurchases ? (
           <p className="text-xs text-slate-400">
             Starting from <span className="text-amber-600 dark:text-amber-400 font-bold">$9.99/month</span> · 14-day free trial · Cancel anytime
           </p>
+        ) : (
+          <IosWebSubscriptionNotice />
         )}
 
         <div className="flex flex-col gap-2">
-          {allowStripePurchases ? (
+          {allowStripePurchases && (
             <Button
               className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold h-11 hover:opacity-90 shadow-lg shadow-amber-400/20"
               onClick={() => navigate('/Billing')}
             >
               Upgrade to Islamic Edition <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
-          ) : (
-            <IosWebSubscriptionNotice />
           )}
           <Button variant="outline" className="w-full h-11 text-slate-500" onClick={() => navigate('/dashboard')}>
             Back to Dashboard

@@ -75,7 +75,7 @@ export default function BillingPage() {
   const upgradeMutation = useMutation({
     mutationFn: async ({ planId, planName, billingCycle, overridePriceId }) => {
       if (!canUseStripePurchases()) {
-        toast.info("Subscriptions can't be purchased in the iOS app. Manage your subscription at vagusplanner.com.");
+        toast.info('This is a premium feature.');
         return;
       }
 
@@ -165,7 +165,7 @@ export default function BillingPage() {
   // Customer Portal
   const handleManageSubscription = async () => {
     if (!canUseStripePurchases()) {
-      toast.info("Subscriptions can't be purchased in the iOS app. Manage your subscription at vagusplanner.com.");
+      toast.info('This is a premium feature.');
       return;
     }
 

@@ -3,14 +3,13 @@ import { cn } from '@/lib/utils';
 
 /**
  * Informational-only notice for iOS native (Guideline 3.1.1).
- * No button, no link that opens a purchase flow — plain text only.
+ * No button, no link, no website, no purchase guidance — plain text only.
  */
 export default function IosWebSubscriptionNotice({ className, compact = false }) {
   if (compact) {
     return (
       <p className={cn('text-xs text-slate-500 dark:text-slate-400 leading-snug', className)}>
-        Subscriptions can&apos;t be purchased in the iOS app. Manage your subscription at
-        vagusplanner.com.
+        This is a premium feature.
       </p>
     );
   }
@@ -24,8 +23,7 @@ export default function IosWebSubscriptionNotice({ className, compact = false })
       role="status"
     >
       <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-        Subscriptions can&apos;t be purchased in the iOS app. Manage your subscription at
-        vagusplanner.com.
+        This is a premium feature.
       </p>
     </div>
   );

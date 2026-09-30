@@ -241,9 +241,7 @@ export default function Account() {
     const edition = checked ? 'islamic' : 'standard';
     if (edition === 'islamic' && !hasPaidIslamicAccess) {
       if (!canUseStripePurchases()) {
-        toast.info(
-          "Subscriptions can't be purchased in the iOS app. Manage your subscription at vagusplanner.com."
-        );
+        toast.info('This is a premium feature.');
         return;
       }
       toast.error('Islamic Edition requires an active Islamic plan. Upgrade in Billing.');
@@ -589,9 +587,7 @@ export default function Account() {
                     platformOwnerBypass={platformOwnerBypass}
                     onManage={async () => {
                       if (!canUseStripePurchases()) {
-                        toast.info(
-                          "Subscriptions can't be purchased in the iOS app. Manage your subscription at vagusplanner.com."
-                        );
+                        toast.info('This is a premium feature.');
                         return;
                       }
                       try {

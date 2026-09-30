@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek } from 'date-fns';
 import { usePlanAccess } from '@/hooks/usePlanAccess';
 import { useQueryClient } from '@tanstack/react-query';
+import { canUseStripePurchases } from '@/lib/vp-platform';
 
 export default function AICalendarSummaryCard() {
   const queryClient = useQueryClient();
@@ -52,7 +53,11 @@ export default function AICalendarSummaryCard() {
       const message = error?.message ?? String(error);
       if (/limit|upgrade|402|quota/i.test(message)) {
         setQuotaBlocked(true);
-        toast.error(message || 'Free AI summary limit reached — upgrade for unlimited refreshes.');
+        toast.error(
+          canUseStripePurchases()
+            ? (message || 'Free AI summary limit reached — upgrade for unlimited refreshes.')
+            : 'This is a premium feature.'
+        );
         queryClient.invalidateQueries({ queryKey: ['planAccess'] });
       } else {
         toast.error('Failed to generate summary');
