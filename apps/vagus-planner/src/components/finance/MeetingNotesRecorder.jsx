@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, Square, Loader2, FileText, Copy, Check, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { canUseMediaRecorder, createMediaRecorder } from '@/lib/vp-media-recorder';
 
 export default function MeetingNotesRecorder({ compact = false }) {
   const [phase, setPhase] = useState('idle'); // idle | recording | processing | done
@@ -35,16 +36,31 @@ export default function MeetingNotesRecorder({ compact = false }) {
   });
 
   const startRecording = async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch(() => null);
+    if (!canUseMediaRecorder()) {
+      toast.error('Voice recording is not available on this device.');
+      return;
+    }
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch((err) => {
+      console.error('MeetingNotesRecorder getUserMedia failed:', err);
+      return null;
+    });
     if (!stream) { toast.error('Microphone access denied'); return; }
-    const mr = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4' });
+    let mr;
+    try {
+      mr = createMediaRecorder(stream);
+    } catch (err) {
+      console.error('MeetingNotesRecorder MediaRecorder failed:', err);
+      stream.getTracks().forEach((t) => t.stop());
+      toast.error('Could not start recording on this device.');
+      return;
+    }
     chunksRef.current = [];
     mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
     mr.onstop = async () => {
       stream.getTracks().forEach(t => t.stop());
-      await processAudio(new Blob(chunksRef.current, { type: mr.mimeType }));
+      await processAudio(new Blob(chunksRef.current, { type: mr.mimeType || 'audio/mp4' }));
     };
-    mr.start(250);
+    mr.start(1000);
     mediaRecorderRef.current = mr;
     setPhase('recording');
     setSeconds(0);

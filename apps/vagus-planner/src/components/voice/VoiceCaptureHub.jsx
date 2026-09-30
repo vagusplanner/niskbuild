@@ -17,6 +17,11 @@ import { base44 } from '@/api/base44Client';
 import { useQueryClient } from '@tanstack/react-query';
 import { format, addDays } from 'date-fns';
 import { cn } from '@/lib/utils';
+import {
+  canUseMediaRecorder,
+  createMediaRecorder,
+  extensionForRecorderMime,
+} from '@/lib/vp-media-recorder';
 
 // ── Entity routing config ────────────────────────────────────────────────────
 const CATEGORIES = {
@@ -211,26 +216,51 @@ export default function VoiceCaptureHub({ onClose }) {
   }, []);
 
   const startRecording = async () => {
+    if (!canUseMediaRecorder()) {
+      toast.error('Voice recording is not available on this device. Type your note instead.');
+      return;
+    }
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4' });
+      // Must run from a user gesture so iOS WKWebView shows the mic permission prompt.
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+
+      // Do not force audio/webm→audio/mp4: unsupported mimeType throws before UI updates
+      // (Apple review: "Microphone does nothing" on iPadOS Capacitor WKWebView).
+      const recorder = createMediaRecorder(stream);
       chunksRef.current = [];
 
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       recorder.onstop = async () => {
         stream.getTracks().forEach(t => t.stop());
-        const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
+        const mime = recorder.mimeType || 'audio/mp4';
+        const blob = new Blob(chunksRef.current, { type: mime });
         setAudioBlob(blob);
         await processAudio(blob);
       };
 
-      recorder.start(250);
+      // Longer timeslice helps Safari/iOS emit usable chunks before stop.
+      recorder.start(1000);
       mediaRecorderRef.current = recorder;
       setPhase('recording');
       setRecordingTime(0);
       timerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000);
     } catch (e) {
-      toast.error('Microphone access denied. Please allow microphone permissions.');
+      console.error('VoiceCaptureHub startRecording failed:', e);
+      const name = e?.name || '';
+      if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+        toast.error('Microphone access denied. Enable Microphone for Vagus Planner in iPad Settings → Privacy.');
+      } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+        toast.error('No microphone found on this device.');
+      } else {
+        toast.error('Could not start recording. Please try again.');
+      }
     }
   };
 
@@ -245,7 +275,14 @@ export default function VoiceCaptureHub({ onClose }) {
   const processAudio = async (blob) => {
     setPhase('processing');
     try {
-      const { file_url, storage_path } = await base44.integrations.Core.UploadFile({ file: blob });
+      if (!blob || blob.size === 0) {
+        throw new Error('Recording was empty — hold the mic a bit longer and try again.');
+      }
+
+      const mime = blob.type || 'audio/mp4';
+      const ext = extensionForRecorderMime(mime);
+      const file = new File([blob], `voice_capture_${Date.now()}.${ext}`, { type: mime });
+      const { file_url, storage_path } = await base44.integrations.Core.UploadFile({ file });
 
       const transcribeRes = await base44.functions.invoke('transcribeAudio', {
         file_url,
