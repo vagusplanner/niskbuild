@@ -4,7 +4,7 @@
  */
 import { useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
-import { isIosNativeApp } from '@/lib/vp-platform';
+import { ensureCapacitorReady, isIosNativeApp } from '@/lib/vp-platform';
 import {
   configureRevenueCat,
   revenueCatLogIn,
@@ -19,10 +19,20 @@ export default function CapacitorRevenueCatAuth() {
     let cancelled = false;
 
     (async () => {
-      await configureRevenueCat(user?.id);
-      if (cancelled) return;
-      if (isAuthenticated && user?.id) {
-        await revenueCatLogIn(user.id);
+      try {
+        await ensureCapacitorReady();
+        if (cancelled) return;
+        const result = await configureRevenueCat(user?.id);
+        if (cancelled) return;
+        if (!result?.ok) {
+          console.error('[CapacitorRevenueCatAuth] configure not ready:', result?.reason);
+          return;
+        }
+        if (isAuthenticated && user?.id) {
+          await revenueCatLogIn(user.id);
+        }
+      } catch (err) {
+        console.error('[CapacitorRevenueCatAuth] init failed:', err);
       }
     })();
 

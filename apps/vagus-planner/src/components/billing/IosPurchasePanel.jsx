@@ -9,7 +9,12 @@ import { Zap, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { createPageUrl } from '@/utils';
-import { canUseAppleIap, findPackageForPlan, purchasePackage } from '@/lib/revenuecat';
+import {
+  canUseAppleIap,
+  ensureRevenueCatReady,
+  findPackageForPlan,
+  purchasePackage,
+} from '@/lib/revenuecat';
 import {
   WEB_SUB_MANAGE_MESSAGE,
   isEqualOrHigherPlan,
@@ -22,30 +27,85 @@ function apiBase() {
   return (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 }
 
-async function assertNoBlockingWebSub(requestedPlan) {
-  try {
-    const res = await fetch(`${apiBase()}/api/vagus-planner/billing-status`, {
-      credentials: 'include',
-      headers: await getVpApiFetchHeaders(),
-    });
-    if (!res.ok) return;
-    const data = await res.json();
-    const sub = data?.subscription;
-    const provider = String(sub?.provider || '').toLowerCase();
-    const plan = normalizePlanId(data?.plan || sub?.plan || 'free');
-    const status = String(sub?.status || data?.status || '').toLowerCase();
-    const entitled = ['active', 'trialing', 'past_due'].includes(status);
-    const isStripe =
-      provider === 'stripe' ||
-      (!provider && Boolean(sub?.stripe_subscription_id)) ||
-      data?.source === 'profiles';
+const DUAL_PURCHASE_CHECK_MS = 5000;
 
-    if (entitled && plan && plan !== 'free' && isStripe && isEqualOrHigherPlan(plan, requestedPlan)) {
-      throw new Error(WEB_SUB_MANAGE_MESSAGE);
+function stripeBlocksRequestedPlan(data, requestedPlan) {
+  if (!data) return false;
+  const sub = data?.subscription;
+  const provider = String(sub?.provider || '').toLowerCase();
+  const plan = normalizePlanId(data?.plan || sub?.plan || 'free');
+  const status = String(sub?.status || data?.status || '').toLowerCase();
+  const entitled = ['active', 'trialing', 'past_due'].includes(status);
+  const isStripe =
+    provider === 'stripe' ||
+    (!provider && Boolean(sub?.stripe_subscription_id)) ||
+    data?.source === 'profiles';
+  return Boolean(
+    entitled && plan && plan !== 'free' && isStripe && isEqualOrHigherPlan(plan, requestedPlan)
+  );
+}
+
+/**
+ * Soft dual-purchase guard. MUST NOT hang the IAP path — Cap devices can stall
+ * forever on billing-status / getSession without ever reaching Purchases.purchasePackage.
+ * Pass cachedStatus from useBillingStatus when available.
+ */
+export async function assertNoBlockingWebSub(requestedPlan, cachedStatus = null) {
+  if (stripeBlocksRequestedPlan(cachedStatus, requestedPlan)) {
+    throw new Error(WEB_SUB_MANAGE_MESSAGE);
+  }
+
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  let timedOut = false;
+  let timer;
+
+  const checkPromise = (async () => {
+    try {
+      const res = await fetch(`${apiBase()}/api/vagus-planner/billing-status`, {
+        credentials: 'include',
+        headers: await getVpApiFetchHeaders(),
+        signal: controller?.signal,
+      });
+      if (timedOut) return 'skip';
+      if (!res.ok) return 'ok';
+      const data = await res.json();
+      if (timedOut) return 'skip';
+      if (stripeBlocksRequestedPlan(data, requestedPlan)) {
+        throw new Error(WEB_SUB_MANAGE_MESSAGE);
+      }
+      return 'ok';
+    } catch (err) {
+      if (err instanceof Error && err.message === WEB_SUB_MANAGE_MESSAGE) throw err;
+      if (timedOut) return 'skip';
+      console.warn('[IAP] dual-purchase check skipped:', err?.message || err);
+      return 'skip';
+    }
+  })();
+
+  const timeoutPromise = new Promise((resolve) => {
+    timer = setTimeout(() => {
+      timedOut = true;
+      try {
+        controller?.abort();
+      } catch {
+        /* ignore */
+      }
+      resolve('timeout');
+    }, DUAL_PURCHASE_CHECK_MS);
+  });
+
+  try {
+    const outcome = await Promise.race([checkPromise, timeoutPromise]);
+    if (outcome === 'timeout') {
+      console.warn('[IAP] dual-purchase check timed out — continuing to App Store purchase');
     }
   } catch (err) {
     if (err instanceof Error && err.message === WEB_SUB_MANAGE_MESSAGE) throw err;
-    // Network errors: allow purchase attempt; server webhook still authoritative.
+    console.warn('[IAP] dual-purchase check skipped:', err?.message || err);
+  } finally {
+    if (timer) clearTimeout(timer);
+    // Swallow late rejections after timeout won the race (avoid unhandledrejection).
+    void checkPromise.catch(() => {});
   }
 }
 
@@ -70,14 +130,17 @@ export function IosUpgradeButton({
   const onPurchase = async () => {
     setBusy(true);
     try {
+      console.log('[IosUpgradeButton] purchase start', { planId, billingCycle });
       await assertNoBlockingWebSub(planId);
+      await ensureRevenueCatReady();
       const { pkg, error } = await findPackageForPlan({
         planId,
         billingCycle,
         editionPreference: planId.includes('islamic') ? 'islamic' : editionPreference,
       });
       if (error || !pkg) {
-        toast.info('Opening plans…');
+        console.error('[IosUpgradeButton] no package', { planId, billingCycle, error });
+        toast.error(error || 'No App Store package found for this plan');
         navigate(createPageUrl('Billing'));
         return;
       }
@@ -97,7 +160,7 @@ export function IosUpgradeButton({
       } else if (msg === WEB_SUB_MANAGE_MESSAGE) {
         toast.error(WEB_SUB_MANAGE_MESSAGE);
       } else {
-        console.warn('[IosUpgradeButton]', err);
+        console.error('[IosUpgradeButton] purchase failed:', err);
         toast.error(msg || 'Purchase failed');
       }
     } finally {

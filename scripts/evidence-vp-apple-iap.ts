@@ -296,6 +296,25 @@ async function main() {
   assert(revenuecatSrc.includes('purchasePackage'), 'purchase code path', 'revenuecat.js exports purchase', rows);
   assert(revenuecatSrc.includes('logIn'), 'auth login path', 'revenuecat.js logIn', rows);
   assert(revenuecatSrc.includes('logOut'), 'auth logout path', 'revenuecat.js logOut', rows);
+  assert(
+    revenuecatSrc.includes('unwrapOfferingsResult'),
+    'offerings unwrap',
+    'handles Cap PurchasesOfferings { all, current }',
+    rows
+  );
+  assert(
+    revenuecatSrc.includes('ensureRevenueCatReady'),
+    'ready gate',
+    'purchase waits for configure',
+    rows
+  );
+  assert(
+    !/\$\{\s*offerings\s*\}\s*=\s*await\s*Purchases\.getOfferings/.test(revenuecatSrc) &&
+      !/const\s*\{\s*offerings\s*\}\s*=\s*await\s*Purchases\.getOfferings/.test(revenuecatSrc),
+    'no bad offerings destructure',
+    'does not destructure { offerings } from Cap getOfferings()',
+    rows
+  );
 
   const pkgApps = JSON.parse(
     readFileSync(resolve('apps/vagus-planner/package.json'), 'utf8')

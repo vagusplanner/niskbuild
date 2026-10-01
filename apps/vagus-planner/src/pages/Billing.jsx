@@ -16,12 +16,18 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import AIBusinessInsights from '@/components/analytics/AIBusinessInsights';
 import AIPlanRecommendation from '@/components/billing/AIPlanRecommendation';
 import IosWebSubscriptionNotice from '@/components/billing/IosWebSubscriptionNotice';
-import IosPurchasePanel, { IosRestorePurchasesButton } from '@/components/billing/IosPurchasePanel';
+import IosPurchasePanel, {
+  IosRestorePurchasesButton,
+  assertNoBlockingWebSub,
+} from '@/components/billing/IosPurchasePanel';
 import { useBillingStatus } from '@/hooks/useBillingStatus';
 import { canUseStripePurchases, useVpPlatform } from '@/lib/vp-platform';
-import { canUseAppleIap, findPackageForPlan, purchasePackage } from '@/lib/revenuecat';
-import { WEB_SUB_MANAGE_MESSAGE, isEqualOrHigherPlan, normalizePlanId } from '@/lib/vp-plan-rank';
-import { getVpApiFetchHeaders } from '@/api/base44Client';
+import {
+  canUseAppleIap,
+  ensureRevenueCatReady,
+  findPackageForPlan,
+  purchasePackage,
+} from '@/lib/revenuecat';
 
 export default function BillingPage() {
   const queryClient = useQueryClient();
@@ -39,6 +45,9 @@ export default function BillingPage() {
     subscription: billingSubscription,
     invoices = [],
     platformOwnerBypass = false,
+    plan: billingPlan,
+    status: billingStatus,
+    source: billingSource,
   } = useBillingStatus();
 
   // Handle Stripe redirect back
@@ -85,31 +94,17 @@ export default function BillingPage() {
         setIsProcessingCheckout(true);
         const loadingToast = toast.loading('Starting App Store purchase…');
         try {
-          // Dual-purchase: block if web Stripe sub is equal/higher
-          const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
-          const statusRes = await fetch(`${apiBase}/api/vagus-planner/billing-status`, {
-            credentials: 'include',
-            headers: await getVpApiFetchHeaders(),
+          console.log('[Billing] Apple IAP purchase start', { planId, billingCycle });
+
+          // Soft dual-purchase guard (5s cap) — never block forever before RC native.
+          await assertNoBlockingWebSub(planId, {
+            plan: billingPlan,
+            status: billingStatus,
+            source: billingSource,
+            subscription: billingSubscription,
           });
-          if (statusRes.ok) {
-            const statusData = await statusRes.json();
-            const existingPlan = normalizePlanId(statusData?.plan || 'free');
-            const existingProvider = String(statusData?.subscription?.provider || '').toLowerCase();
-            const existingStatus = String(statusData?.subscription?.status || statusData?.status || '').toLowerCase();
-            const entitled = ['active', 'trialing', 'past_due'].includes(existingStatus);
-            const isStripe =
-              existingProvider === 'stripe' ||
-              Boolean(statusData?.subscription?.stripe_subscription_id) ||
-              statusData?.source === 'profiles';
-            if (
-              entitled &&
-              existingPlan !== 'free' &&
-              isStripe &&
-              isEqualOrHigherPlan(existingPlan, planId)
-            ) {
-              throw new Error(WEB_SUB_MANAGE_MESSAGE);
-            }
-          }
+
+          await ensureRevenueCatReady();
 
           const { pkg, error } = await findPackageForPlan({
             planId,
@@ -117,6 +112,7 @@ export default function BillingPage() {
             editionPreference: String(planId).includes('islamic') ? 'islamic' : 'standard',
           });
           if (error || !pkg) {
+            console.error('[Billing] Apple IAP no package', { planId, billingCycle, error });
             throw new Error(error || 'No App Store package found for this plan');
           }
           await purchasePackage(pkg);
@@ -131,6 +127,7 @@ export default function BillingPage() {
             queryClient.invalidateQueries({ queryKey: ['planAccess'] });
           }, 2500);
         } catch (error) {
+          console.error('[Billing] Apple IAP purchase failed:', error);
           toast.dismiss(loadingToast);
           throw error;
         } finally {
