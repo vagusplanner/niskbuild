@@ -35,14 +35,26 @@ let purchasesPlugin = null;
 
 function iosApiKey() {
   try {
-    return (
-      (typeof import.meta !== 'undefined' &&
-        import.meta.env?.VITE_REVENUECAT_IOS_API_KEY?.trim()) ||
-      ''
-    );
+    const raw =
+      typeof import.meta !== 'undefined'
+        ? import.meta.env?.VITE_REVENUECAT_IOS_API_KEY
+        : undefined;
+    const key = typeof raw === 'string' ? raw.trim() : '';
+    return key;
   } catch {
     return '';
   }
+}
+
+/** Safe apiKey summary for logs — never dump the full key. */
+function apiKeyLogShape(apiKey) {
+  const key = typeof apiKey === 'string' ? apiKey : '';
+  return {
+    present: Boolean(key),
+    startsWithAppl: key.startsWith('appl_'),
+    prefix: key ? key.slice(0, 5) : '',
+    length: key.length,
+  };
 }
 
 function withTimeout(promise, ms, label) {
@@ -52,13 +64,54 @@ function withTimeout(promise, ms, label) {
       reject(new Error(`${label} timed out after ${ms}ms`));
     }, ms);
   });
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+  // Promise.resolve so a non-thenable return still races the timer.
+  return Promise.race([Promise.resolve(promise), timeout]).finally(() =>
+    clearTimeout(timer)
+  );
 }
 
 function logErr(label, err) {
   const msg = err instanceof Error ? err.message : String(err);
   const stack = err instanceof Error ? err.stack : undefined;
   console.error(label, msg, stack || err);
+}
+
+function getWindowCapacitor() {
+  try {
+    return typeof window !== 'undefined' ? window.Capacitor ?? null : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Cap plugin declares configure as CAPPluginReturnNone, so the registerPlugin
+ * proxy uses nativeCallback (does not await call.resolve) and may first await a
+ * web impl load if platform was captured as "web". Prefer nativePromise — it
+ * always posts To Native and waits for the native resolve.
+ */
+function invokePurchasesConfigure(Purchases, config) {
+  const cap = getWindowCapacitor();
+  // nativePromise is injected by Cap's native bridge only. Prefer it over the
+  // registerPlugin proxy: configure is CAPPluginReturnNone (nativeCallback, no
+  // await of call.resolve), and the proxy may await a web-impl import first if
+  // platform was captured as "web" at registerPlugin time — hanging with no
+  // "To Native -> Purchases.configure".
+  if (typeof cap?.nativePromise === 'function') {
+    console.log(
+      '[RevenueCat] configure invoke via Capacitor.nativePromise(Purchases, configure)'
+    );
+    return {
+      path: 'nativePromise',
+      pending: cap.nativePromise('Purchases', 'configure', config),
+    };
+  }
+
+  console.log('[RevenueCat] configure invoke via Purchases.configure(config) proxy');
+  return {
+    path: 'pluginProxy',
+    pending: Purchases.configure(config),
+  };
 }
 
 async function getPurchases() {
@@ -73,11 +126,27 @@ async function getPurchases() {
       IMPORT_TIMEOUT_MS,
       'Purchases plugin import'
     );
-    if (!mod?.Purchases) {
-      throw new Error('RevenueCat Purchases plugin failed to load');
+    const resolved =
+      mod?.Purchases ||
+      mod?.default?.Purchases ||
+      (typeof mod?.default?.configure === 'function' ? mod.default : null);
+    if (!resolved) {
+      throw new Error(
+        `RevenueCat Purchases plugin failed to load (module keys: ${Object.keys(mod || {}).join(',') || 'none'})`
+      );
     }
-    purchasesPlugin = mod.Purchases;
-    console.log('[RevenueCat] Purchases plugin import ✓');
+    purchasesPlugin = resolved;
+    // Cap registerPlugin proxy has empty Object.keys — also probe known methods.
+    const probe = ['configure', 'getOfferings', 'purchasePackage', 'logIn', 'logOut'];
+    console.log('[RevenueCat] Purchases plugin import ✓', {
+      typeofConfigure: typeof purchasesPlugin.configure,
+      configureIsFunction: typeof purchasesPlugin.configure === 'function',
+      moduleKeys: Object.keys(mod || {}),
+      purchasesKeys: Object.keys(purchasesPlugin || {}),
+      methodTypes: Object.fromEntries(
+        probe.map((k) => [k, typeof purchasesPlugin?.[k]])
+      ),
+    });
     return purchasesPlugin;
   } catch (err) {
     logErr('[RevenueCat] Purchases plugin import failed:', err);
@@ -102,9 +171,13 @@ export async function configureRevenueCat(appUserId) {
   if (!isIosNativeApp()) return { ok: false, reason: 'not_ios' };
   const apiKey = iosApiKey();
   if (!apiKey) {
+    const shape = apiKeyLogShape(apiKey);
     console.error(
-      '[RevenueCat] Missing VITE_REVENUECAT_IOS_API_KEY — set it for Capacitor builds (see docs/production-deployment.md)'
+      '[RevenueCat] Missing VITE_REVENUECAT_IOS_API_KEY — Apple IAP cannot configure.',
+      shape,
+      'Set it for Capacitor builds (see docs/production-deployment.md)'
     );
+    lastConfigureError = new Error('missing_api_key');
     return { ok: false, reason: 'missing_api_key' };
   }
 
@@ -152,25 +225,77 @@ export async function configureRevenueCat(appUserId) {
         console.warn('[RevenueCat] configure abandoned after Purchases import');
         return { ok: false, reason: 'abandoned' };
       }
-      const config = { apiKey };
+
+      // Re-resolve at call site — catch empty key even if an earlier check passed.
+      const apiKeyNow = iosApiKey();
+      if (!apiKeyNow) {
+        const err = new Error(
+          'VITE_REVENUECAT_IOS_API_KEY empty at configure invoke (was present at entry?)'
+        );
+        console.error('[RevenueCat] apiKey missing at invoke', apiKeyLogShape(apiKeyNow));
+        throw err;
+      }
+
+      const config = { apiKey: apiKeyNow };
       if (typeof appUserId === 'string' && appUserId.trim()) {
         config.appUserID = appUserId.trim();
       }
-      console.log('[RevenueCat] configure → native', {
-        hasAppUserId: Boolean(config.appUserID),
+
+      const cap = getWindowCapacitor();
+      console.log('[RevenueCat] about to call Purchases.configure', {
+        apiKey: apiKeyLogShape(apiKeyNow),
+        optionKeys: Object.keys(config),
+        typeofConfigure: typeof Purchases?.configure,
+        configureIsFunction: typeof Purchases?.configure === 'function',
+        purchasesKeys: Object.keys(Purchases || {}),
+        capPlatform: cap?.getPlatform?.(),
+        capIsNative: cap?.isNativePlatform?.(),
+        purchasesPluginAvailable: cap?.isPluginAvailable?.('Purchases'),
+        hasNativePromise: typeof cap?.nativePromise === 'function',
       });
-      await withTimeout(
-        Purchases.configure(config),
-        CONFIGURE_TIMEOUT_MS,
-        'Purchases.configure'
-      );
+
+      if (typeof Purchases?.configure !== 'function' && typeof cap?.nativePromise !== 'function') {
+        throw new Error(
+          `Purchases.configure is not a function (typeof=${typeof Purchases?.configure}) and Capacitor.nativePromise is unavailable`
+        );
+      }
+
+      // Soft timeout wraps the configure AWAIT specifically so "never called"
+      // vs "called but native never returned" are distinct in logs/errors.
+      let configureInvoked = false;
+      let invokePath = 'none';
+      try {
+        const { path, pending } = invokePurchasesConfigure(Purchases, config);
+        invokePath = path;
+        configureInvoked = true;
+        console.log('[RevenueCat] configure() invoked — awaiting native result', {
+          path: invokePath,
+          isThenable: typeof pending?.then === 'function',
+        });
+        await withTimeout(
+          pending,
+          CONFIGURE_TIMEOUT_MS,
+          'Purchases.configure (native await)'
+        );
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : String(err);
+        if (!configureInvoked) {
+          throw new Error(
+            `Purchases.configure was NEVER invoked (${detail})`
+          );
+        }
+        throw new Error(
+          `Purchases.configure was invoked via ${invokePath} but did not complete (${detail})`
+        );
+      }
+
       if (gen !== configureGeneration) {
         console.warn('[RevenueCat] configure abandoned after Purchases.configure');
         return { ok: false, reason: 'abandoned' };
       }
       configured = true;
       lastConfigureError = null;
-      console.log('[RevenueCat] configure ✓');
+      console.log('[RevenueCat] configure ✓', { path: invokePath });
       return { ok: true };
     } catch (err) {
       if (gen !== configureGeneration) {
