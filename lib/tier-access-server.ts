@@ -1,6 +1,8 @@
 import 'server-only';
 
 import {
+  getAdminCompedGrantTier,
+  isPlatformOwnerGatingActive,
   isProductGatingBypassActive,
   resolveProductGatingBypass,
 } from '@/lib/platform-owner-bypass';
@@ -20,14 +22,32 @@ import { canUseSupportTickets as baseCanUseSupportTickets } from '@/lib/support-
  * Explicit owner-bypass flag for sync tier helpers.
  * Prefer: `const bypass = await resolveProductGatingBypass(userId)` after auth,
  * then pass `bypass` into these helpers. Do not rely on ALS alone after awaits.
+ *
+ * `true` means platform owner OR active admin_comped. Feature helpers unlock
+ * sovereign only for platform owners; admin_comped uses access_grant_tier.
  */
 export type OwnerBypass = boolean | undefined;
 
 /** Re-export for call-site convenience (userId-aware; survives ALS loss). */
 export { resolveProductGatingBypass };
 
+/** Effective tier for limit/feature checks when admin_comped is active. */
+function effectiveTier(tier: string | null | undefined): string | null | undefined {
+  return getAdminCompedGrantTier() || tier;
+}
+
 function allow(allowed: boolean, bypass?: OwnerBypass): boolean {
+  if (isPlatformOwnerGatingActive()) return true;
+  // admin_comped: paid access via grant tier — do not unlock all sovereign features
+  if (getAdminCompedGrantTier()) return allowed;
   return bypass === true || isProductGatingBypassActive() || allowed;
+}
+
+function unlimitedOwner(_bypass?: OwnerBypass): boolean {
+  // Sovereign limits only for platform owners (ALS). Bare bypass=true also covers
+  // admin_comped — do NOT treat that as unlimited (would over-entitle grant tiers).
+  if (isPlatformOwnerGatingActive()) return true;
+  return false;
 }
 
 export {
@@ -47,32 +67,32 @@ export function getProjectLimit(
   tier: string | null | undefined,
   bypass?: OwnerBypass
 ): number {
-  if (bypass === true || isProductGatingBypassActive()) return PROJECT_LIMITS.sovereign;
-  return baseGetProjectLimit(tier);
+  if (unlimitedOwner(bypass)) return PROJECT_LIMITS.sovereign;
+  return baseGetProjectLimit(effectiveTier(tier));
 }
 
 export function isUnlimitedTier(
   tier: string | null | undefined,
   bypass?: OwnerBypass
 ): boolean {
-  if (bypass === true || isProductGatingBypassActive()) return true;
-  return baseIsUnlimitedTier(tier);
+  if (unlimitedOwner(bypass)) return true;
+  return baseIsUnlimitedTier(effectiveTier(tier));
 }
 
 export function getSessionLimit(
   tierName: string | null | undefined,
   bypass?: OwnerBypass
 ): number {
-  if (bypass === true || isProductGatingBypassActive()) return SESSION_LIMITS.sovereign;
-  return tierConfig.getSessionLimit(tierName);
+  if (unlimitedOwner(bypass)) return SESSION_LIMITS.sovereign;
+  return tierConfig.getSessionLimit(effectiveTier(tierName));
 }
 
 export function getTeamSeats(
   tierName: string | null | undefined,
   bypass?: OwnerBypass
 ): number {
-  if (bypass === true || isProductGatingBypassActive()) return TEAM_SEATS_BY_TIER.sovereign;
-  return tierConfig.getTeamSeats(tierName);
+  if (unlimitedOwner(bypass)) return TEAM_SEATS_BY_TIER.sovereign;
+  return tierConfig.getTeamSeats(effectiveTier(tierName));
 }
 
 export function canUseSupportTickets(
@@ -80,6 +100,10 @@ export function canUseSupportTickets(
   status?: string,
   bypass?: OwnerBypass
 ): boolean {
+  const t = effectiveTier(tier);
+  if (getAdminCompedGrantTier()) {
+    return baseCanUseSupportTickets(t, status ?? 'active');
+  }
   return allow(baseCanUseSupportTickets(tier, status), bypass);
 }
 
@@ -87,7 +111,7 @@ export function isSandboxTier(
   tier: string | null | undefined,
   bypass?: OwnerBypass
 ): boolean {
-  if (bypass === true || isProductGatingBypassActive()) return false;
+  if (unlimitedOwner(bypass) || getAdminCompedGrantTier()) return false;
   return tierConfig.isSandboxTier(tier);
 }
 
@@ -96,6 +120,8 @@ export function isPaidAndActive(
   status: string | null | undefined,
   bypass?: OwnerBypass
 ): boolean {
+  if (isPlatformOwnerGatingActive()) return true;
+  if (getAdminCompedGrantTier()) return true;
   return allow(tierConfig.isPaidAndActive(tier, status), bypass);
 }
 
@@ -104,7 +130,9 @@ export function isProWorkerOrAbove(
   status: string | null | undefined,
   bypass?: OwnerBypass
 ): boolean {
-  return allow(tierConfig.isProWorkerOrAbove(tier, status), bypass);
+  const t = effectiveTier(tier);
+  const s = getAdminCompedGrantTier() ? 'active' : status;
+  return allow(tierConfig.isProWorkerOrAbove(t, s), bypass);
 }
 
 export function isAgencyStudioOrAbove(
@@ -112,7 +140,9 @@ export function isAgencyStudioOrAbove(
   status: string | null | undefined,
   bypass?: OwnerBypass
 ): boolean {
-  return allow(tierConfig.isAgencyStudioOrAbove(tier, status), bypass);
+  const t = effectiveTier(tier);
+  const s = getAdminCompedGrantTier() ? 'active' : status;
+  return allow(tierConfig.isAgencyStudioOrAbove(t, s), bypass);
 }
 
 export function isWhiteLabelOrAbove(
@@ -120,7 +150,9 @@ export function isWhiteLabelOrAbove(
   status: string | null | undefined,
   bypass?: OwnerBypass
 ): boolean {
-  return allow(tierConfig.isWhiteLabelOrAbove(tier, status), bypass);
+  const t = effectiveTier(tier);
+  const s = getAdminCompedGrantTier() ? 'active' : status;
+  return allow(tierConfig.isWhiteLabelOrAbove(t, s), bypass);
 }
 
 export function isTeamEnterpriseOrAbove(
@@ -128,28 +160,31 @@ export function isTeamEnterpriseOrAbove(
   status: string | null | undefined,
   bypass?: OwnerBypass
 ): boolean {
-  return allow(tierConfig.isTeamEnterpriseOrAbove(tier, status), bypass);
+  const t = effectiveTier(tier);
+  const s = getAdminCompedGrantTier() ? 'active' : status;
+  return allow(tierConfig.isTeamEnterpriseOrAbove(t, s), bypass);
 }
 
 export function canUseOwnApiKeys(
   tier: string | null | undefined,
   bypass?: OwnerBypass
 ): boolean {
-  return allow(tierConfig.canUseOwnApiKeys(tier), bypass);
+  return allow(tierConfig.canUseOwnApiKeys(effectiveTier(tier)), bypass);
 }
 
 export function canUseLocalOllama(
   tier: string | null | undefined,
   bypass?: OwnerBypass
 ): boolean {
-  return allow(tierConfig.canUseLocalOllama(tier), bypass);
+  return allow(tierConfig.canUseLocalOllama(effectiveTier(tier)), bypass);
 }
 
 export function canUseSandboxLocalGenerate(
   tier: string | null | undefined,
   bypass?: OwnerBypass
 ): boolean {
-  if (bypass === true || isProductGatingBypassActive()) return true;
+  if (unlimitedOwner(bypass)) return true;
+  if (getAdminCompedGrantTier()) return true;
   return tierConfig.canUseSandboxLocalGenerate(tier);
 }
 
@@ -158,7 +193,9 @@ export function canExportCleanZip(
   status: string | null | undefined,
   bypass?: OwnerBypass
 ): boolean {
-  return allow(tierConfig.canExportCleanZip(tier, status), bypass);
+  const t = effectiveTier(tier);
+  const s = getAdminCompedGrantTier() ? 'active' : status;
+  return allow(tierConfig.canExportCleanZip(t, s), bypass);
 }
 
 export function canExportPwa(
@@ -166,7 +203,9 @@ export function canExportPwa(
   status: string | null | undefined,
   bypass?: OwnerBypass
 ): boolean {
-  return allow(tierConfig.canExportPwa(tier, status), bypass);
+  const t = effectiveTier(tier);
+  const s = getAdminCompedGrantTier() ? 'active' : status;
+  return allow(tierConfig.canExportPwa(t, s), bypass);
 }
 
 export function canImportGooglePlaces(
@@ -174,7 +213,9 @@ export function canImportGooglePlaces(
   status: string | null | undefined,
   bypass?: OwnerBypass
 ): boolean {
-  return allow(tierConfig.canImportGooglePlaces(tier, status), bypass);
+  const t = effectiveTier(tier);
+  const s = getAdminCompedGrantTier() ? 'active' : status;
+  return allow(tierConfig.canImportGooglePlaces(t, s), bypass);
 }
 
 export function canUseCompetitorIntel(
@@ -182,7 +223,9 @@ export function canUseCompetitorIntel(
   status: string | null | undefined,
   bypass?: OwnerBypass
 ): boolean {
-  return allow(tierConfig.canUseCompetitorIntel(tier, status), bypass);
+  const t = effectiveTier(tier);
+  const s = getAdminCompedGrantTier() ? 'active' : status;
+  return allow(tierConfig.canUseCompetitorIntel(t, s), bypass);
 }
 
 export function canUseSocialProofAggregator(
@@ -190,7 +233,9 @@ export function canUseSocialProofAggregator(
   status: string | null | undefined,
   bypass?: OwnerBypass
 ): boolean {
-  return allow(tierConfig.canUseSocialProofAggregator(tier, status), bypass);
+  const t = effectiveTier(tier);
+  const s = getAdminCompedGrantTier() ? 'active' : status;
+  return allow(tierConfig.canUseSocialProofAggregator(t, s), bypass);
 }
 
 export function canDirectPublishSocial(
@@ -199,7 +244,9 @@ export function canDirectPublishSocial(
   hasSocialProAddon = false,
   bypass?: OwnerBypass
 ): boolean {
-  return allow(tierConfig.canDirectPublishSocial(tier, status, hasSocialProAddon), bypass);
+  const t = effectiveTier(tier);
+  const s = getAdminCompedGrantTier() ? 'active' : status;
+  return allow(tierConfig.canDirectPublishSocial(t, s, hasSocialProAddon), bypass);
 }
 
 export function canScheduleSocialPosts(
@@ -208,7 +255,9 @@ export function canScheduleSocialPosts(
   hasSocialProAddon = false,
   bypass?: OwnerBypass
 ): boolean {
-  return allow(tierConfig.canScheduleSocialPosts(tier, status, hasSocialProAddon), bypass);
+  const t = effectiveTier(tier);
+  const s = getAdminCompedGrantTier() ? 'active' : status;
+  return allow(tierConfig.canScheduleSocialPosts(t, s, hasSocialProAddon), bypass);
 }
 
 export function canCopySocialPosts(): boolean {
@@ -220,7 +269,9 @@ export function canUseGameTemplates(
   status: string | null | undefined,
   bypass?: OwnerBypass
 ): boolean {
-  return allow(tierConfig.canUseGameTemplates(tier, status), bypass);
+  const t = effectiveTier(tier);
+  const s = getAdminCompedGrantTier() ? 'active' : status;
+  return allow(tierConfig.canUseGameTemplates(t, s), bypass);
 }
 
 export function canExportNative(
@@ -228,7 +279,9 @@ export function canExportNative(
   status: string | null | undefined,
   bypass?: OwnerBypass
 ): boolean {
-  return allow(tierConfig.canExportNative(tier, status), bypass);
+  const t = effectiveTier(tier);
+  const s = getAdminCompedGrantTier() ? 'active' : status;
+  return allow(tierConfig.canExportNative(t, s), bypass);
 }
 
 export function canExportMobileProject(
@@ -236,7 +289,9 @@ export function canExportMobileProject(
   status: string | null | undefined,
   bypass?: OwnerBypass
 ): boolean {
-  return allow(tierConfig.canExportMobileProject(tier, status), bypass);
+  const t = effectiveTier(tier);
+  const s = getAdminCompedGrantTier() ? 'active' : status;
+  return allow(tierConfig.canExportMobileProject(t, s), bypass);
 }
 
 export function canUseVisualEditor(
@@ -244,7 +299,9 @@ export function canUseVisualEditor(
   status?: string | null | undefined,
   bypass?: OwnerBypass
 ): boolean {
-  return allow(tierConfig.canUseVisualEditor(tier, status), bypass);
+  const t = effectiveTier(tier);
+  const s = getAdminCompedGrantTier() ? 'active' : status;
+  return allow(tierConfig.canUseVisualEditor(t, s), bypass);
 }
 
 export function canUseVisualEditorFull(
@@ -252,7 +309,9 @@ export function canUseVisualEditorFull(
   status: string | null | undefined,
   bypass?: OwnerBypass
 ): boolean {
-  return allow(tierConfig.canUseVisualEditorFull(tier, status), bypass);
+  const t = effectiveTier(tier);
+  const s = getAdminCompedGrantTier() ? 'active' : status;
+  return allow(tierConfig.canUseVisualEditorFull(t, s), bypass);
 }
 
 export function canSaveSeoSettings(
@@ -260,7 +319,9 @@ export function canSaveSeoSettings(
   status: string | null | undefined,
   bypass?: OwnerBypass
 ): boolean {
-  return allow(tierConfig.canSaveSeoSettings(tier, status), bypass);
+  const t = effectiveTier(tier);
+  const s = getAdminCompedGrantTier() ? 'active' : status;
+  return allow(tierConfig.canSaveSeoSettings(t, s), bypass);
 }
 
 export function canGenerateSeoAi(
@@ -268,7 +329,9 @@ export function canGenerateSeoAi(
   status: string | null | undefined,
   bypass?: OwnerBypass
 ): boolean {
-  return allow(tierConfig.canGenerateSeoAi(tier, status), bypass);
+  const t = effectiveTier(tier);
+  const s = getAdminCompedGrantTier() ? 'active' : status;
+  return allow(tierConfig.canGenerateSeoAi(t, s), bypass);
 }
 
 export function canUseSeoSchema(
@@ -276,7 +339,9 @@ export function canUseSeoSchema(
   status: string | null | undefined,
   bypass?: OwnerBypass
 ): boolean {
-  return allow(tierConfig.canUseSeoSchema(tier, status), bypass);
+  const t = effectiveTier(tier);
+  const s = getAdminCompedGrantTier() ? 'active' : status;
+  return allow(tierConfig.canUseSeoSchema(t, s), bypass);
 }
 
 export function canUseStripeInject(
@@ -284,7 +349,9 @@ export function canUseStripeInject(
   status: string | null | undefined,
   bypass?: OwnerBypass
 ): boolean {
-  return allow(tierConfig.canUseStripeInject(tier, status), bypass);
+  const t = effectiveTier(tier);
+  const s = getAdminCompedGrantTier() ? 'active' : status;
+  return allow(tierConfig.canUseStripeInject(t, s), bypass);
 }
 
 export function canUseCustomDomains(
@@ -292,7 +359,9 @@ export function canUseCustomDomains(
   status: string | null | undefined,
   bypass?: OwnerBypass
 ): boolean {
-  return allow(tierConfig.canUseCustomDomains(tier, status), bypass);
+  const t = effectiveTier(tier);
+  const s = getAdminCompedGrantTier() ? 'active' : status;
+  return allow(tierConfig.canUseCustomDomains(t, s), bypass);
 }
 
 export function canUseWhiteLabelBranding(
@@ -300,7 +369,9 @@ export function canUseWhiteLabelBranding(
   status: string | null | undefined,
   bypass?: OwnerBypass
 ): boolean {
-  return allow(tierConfig.canUseWhiteLabelBranding(tier, status), bypass);
+  const t = effectiveTier(tier);
+  const s = getAdminCompedGrantTier() ? 'active' : status;
+  return allow(tierConfig.canUseWhiteLabelBranding(t, s), bypass);
 }
 
 export function canUseOrgSso(
@@ -308,7 +379,9 @@ export function canUseOrgSso(
   status: string | null | undefined,
   bypass?: OwnerBypass
 ): boolean {
-  return allow(tierConfig.canUseOrgSso(tier, status), bypass);
+  const t = effectiveTier(tier);
+  const s = getAdminCompedGrantTier() ? 'active' : status;
+  return allow(tierConfig.canUseOrgSso(t, s), bypass);
 }
 
 export function canNotifyComingSoonIntegrations(
@@ -316,7 +389,9 @@ export function canNotifyComingSoonIntegrations(
   status: string | null | undefined,
   bypass?: OwnerBypass
 ): boolean {
-  return allow(tierConfig.canNotifyComingSoonIntegrations(tier, status), bypass);
+  const t = effectiveTier(tier);
+  const s = getAdminCompedGrantTier() ? 'active' : status;
+  return allow(tierConfig.canNotifyComingSoonIntegrations(t, s), bypass);
 }
 
 export function canViewStripeRevenue(
@@ -324,5 +399,7 @@ export function canViewStripeRevenue(
   status: string | null | undefined,
   bypass?: OwnerBypass
 ): boolean {
-  return allow(tierConfig.canViewStripeRevenue(tier, status), bypass);
+  const t = effectiveTier(tier);
+  const s = getAdminCompedGrantTier() ? 'active' : status;
+  return allow(tierConfig.canViewStripeRevenue(t, s), bypass);
 }

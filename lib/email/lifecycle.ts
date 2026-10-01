@@ -278,6 +278,14 @@ export async function sendWinback30dEmail(
 }
 
 export async function sendPaymentFailedEmail(userId: string, email: string): Promise<boolean> {
+  const { hasComplimentaryProductAccess } = await import('@/lib/access-grant');
+  if (await hasComplimentaryProductAccess(userId)) {
+    console.log(
+      `[lifecycle] Skipping payment-failed email for complimentary access user ${userId}`
+    );
+    return false;
+  }
+
   return sendLifecycle({
     userId,
     to: email,

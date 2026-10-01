@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const { data: profiles, error } = await admin
       .from('profiles')
       .select(
-        'id, email, subscription_tier, subscription_status, admin_discount_percent, admin_discount_note, created_at'
+        'id, email, subscription_tier, subscription_status, subscription_id, admin_discount_percent, admin_discount_note, access_grant, access_grant_tier, access_grant_notes, access_grant_granted_by, access_grant_expires_at, created_at'
       )
       .order('created_at', { ascending: false });
 

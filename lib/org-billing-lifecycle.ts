@@ -66,7 +66,9 @@ export async function notifyOrgsAfterBillingOwnerPlanChange(params: {
     }
 
     const seats = await getOrgSeatUsage(orgId);
-    if (seats.members > seats.limit) {
+    // Match payment-failed: never dunning seat-overage mail for platform owner /
+    // admin_comped (seat limits are bypassed for owners; see getOrgSeatUsage).
+    if (!bypass && seats.members > seats.limit) {
       await sendLifecycleEmail({
         userId: params.ownerId,
         to: params.ownerEmail,

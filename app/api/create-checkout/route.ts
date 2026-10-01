@@ -6,6 +6,7 @@ import { getAuthenticatedProfile } from '@/lib/server-profile';
 import { createClient } from '@/lib/supabase/server';
 import { getReloadPack } from '@/lib/reload-packs';
 import { isPaidAndActive, resolveProductGatingBypass } from '@/lib/tier-access-server';
+import { checkoutBlockedForComplimentaryAccess } from '@/lib/checkout-access-block';
 import {
   getPriceId,
   getReloadPriceId,
@@ -86,6 +87,12 @@ export async function POST(request: NextRequest) {
 
     const ownerBypass = await resolveProductGatingBypass(userId);
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+    // ── Subscription checkout (Steps 2 & 5) ──────────────────────────────
+    if (!isReload) {
+      const blocked = await checkoutBlockedForComplimentaryAccess(userId);
+      if (blocked) return blocked;
+    }
 
     // ── Reload pack checkout (Step 6) ──────────────────────────────────────
     if (isReload) {

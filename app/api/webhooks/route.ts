@@ -44,6 +44,7 @@ import {
   markSe8SubscriptionPastDue,
   syncSe8BillingFromSubscription,
 } from '@/lib/se8-stripe-billing-sync';
+import { hasComplimentaryProductAccess } from '@/lib/access-grant';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -524,38 +525,50 @@ async function processStripeEvent(
         await handleSubscriptionActivated(supabase, customer.email);
         notifyOrgPlanSideEffects(customer.email);
       } else if (status === 'past_due') {
-        await requireProfileUpdate(
-          supabase
-            .from('profiles')
-            .update({
-              subscription_tier: tier,
-              subscription_status: 'past_due',
-              stripe_customer_id: customerId,
-              subscription_id: subscription.id,
-              cancel_at_period_end: subscription.cancel_at_period_end ?? false,
-            })
-            .eq('email', customer.email)
-        );
-        console.log(`⚠️ Subscription past_due for ${customer.email} — tier kept, grace period active`);
+        if (syncProfile?.id && (await hasComplimentaryProductAccess(syncProfile.id))) {
+          console.log(
+            `⏭️ Skipping past_due profile overwrite for complimentary access ${customer.email}`
+          );
+        } else {
+          await requireProfileUpdate(
+            supabase
+              .from('profiles')
+              .update({
+                subscription_tier: tier,
+                subscription_status: 'past_due',
+                stripe_customer_id: customerId,
+                subscription_id: subscription.id,
+                cancel_at_period_end: subscription.cancel_at_period_end ?? false,
+              })
+              .eq('email', customer.email)
+          );
+          console.log(`⚠️ Subscription past_due for ${customer.email} — tier kept, grace period active`);
+        }
       } else if (TERMINAL_SUBSCRIPTION_STATUSES.has(status)) {
-        await requireProfileUpdate(
-          supabase
-            .from('profiles')
-            .update({
-              subscription_tier: 'free',
-              subscription_status: 'inactive',
-              cloud_credits_remaining: 0,
-              use_own_api_keys: false,
-              subscription_id: subscription.id,
-              stripe_customer_id: customerId,
-              cancel_at_period_end: false,
-              subscription_ended_at: new Date().toISOString(),
-            })
-            .eq('email', customer.email)
-        );
-        await handleSubscriptionEnded(supabase, customer.email);
-        console.log(`📉 Previews deactivated for ${customer.email} (subscription ${status})`);
-        notifyOrgPlanSideEffects(customer.email);
+        if (syncProfile?.id && (await hasComplimentaryProductAccess(syncProfile.id))) {
+          console.log(
+            `⏭️ Skipping terminal status profile overwrite for complimentary access ${customer.email}`
+          );
+        } else {
+          await requireProfileUpdate(
+            supabase
+              .from('profiles')
+              .update({
+                subscription_tier: 'free',
+                subscription_status: 'inactive',
+                cloud_credits_remaining: 0,
+                use_own_api_keys: false,
+                subscription_id: subscription.id,
+                stripe_customer_id: customerId,
+                cancel_at_period_end: false,
+                subscription_ended_at: new Date().toISOString(),
+              })
+              .eq('email', customer.email)
+          );
+          await handleSubscriptionEnded(supabase, customer.email);
+          console.log(`📉 Previews deactivated for ${customer.email} (subscription ${status})`);
+          notifyOrgPlanSideEffects(customer.email);
+        }
       }
 
       await syncVpBillingFromSubscription(supabase, {
@@ -770,11 +783,17 @@ async function processStripeEvent(
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('id, subscription_tier, subscription_id')
+      .select('id, subscription_tier, subscription_id, access_grant, access_grant_tier, access_grant_expires_at')
       .eq('email', customer.email)
       .single();
 
     if (profile?.id) {
+      if (await hasComplimentaryProductAccess(profile.id)) {
+        console.log(
+          `⏭️ Skipping payment-failed email/dunning for complimentary access ${customer.email}`
+        );
+        return;
+      }
       void sendPaymentFailedEmail(profile.id, customer.email);
     }
 

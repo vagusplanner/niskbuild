@@ -1,7 +1,10 @@
 import 'server-only';
 
 import { createAdminClient } from '@/lib/supabase/admin';
-import { resolveProductGatingBypass } from '@/lib/platform-owner-bypass';
+import {
+  isPlatformOwnerGatingActive,
+  resolveProductGatingBypass,
+} from '@/lib/platform-owner-bypass';
 import { maybeSendUsageAlert } from '@/lib/usage-alerts';
 import {
   canSpendCloudCredits,
@@ -17,7 +20,8 @@ export async function deductCloudCredit(
     return { ok: false, error: 'Unauthorized' };
   }
 
-  if (await resolveProductGatingBypass(userId)) {
+  // Platform owners only — admin_comped uses normal tier credits.
+  if ((await resolveProductGatingBypass(userId)) && isPlatformOwnerGatingActive()) {
     const profile = await loadCreditProfile(userId);
     return { ok: true, remaining: profile?.cloud_credits_remaining ?? 999999 };
   }
@@ -72,7 +76,7 @@ export async function deductCloudCredits(
     return { ok: false, error: 'Invalid credit amount' };
   }
 
-  if (await resolveProductGatingBypass(userId)) {
+  if ((await resolveProductGatingBypass(userId)) && isPlatformOwnerGatingActive()) {
     const profile = await loadCreditProfile(userId);
     return { ok: true, remaining: profile?.cloud_credits_remaining ?? 999999 };
   }

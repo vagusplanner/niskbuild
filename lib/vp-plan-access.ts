@@ -11,6 +11,8 @@ import {
   type IslamicAccessInput,
 } from '@/lib/vp-islamic-access';
 import {
+  getAdminCompedGrantTier,
+  isPlatformOwnerGatingActive,
   isProductGatingBypassActive,
   PLATFORM_OWNER_VP_PLAN_INFO,
   resolveProductGatingBypass,
@@ -33,6 +35,18 @@ export type EffectivePlanResult = {
  */
 export function resolveEffectivePlan(input: PlanAccessInput): EffectivePlanResult {
   if (isProductGatingBypassActive()) {
+    if (isPlatformOwnerGatingActive()) return PLATFORM_OWNER_VP_PLAN_INFO;
+    const grantTier = getAdminCompedGrantTier();
+    if (grantTier) {
+      const plan = normalizePlanId(grantTier) || grantTier;
+      return {
+        plan,
+        status: 'active',
+        source: null,
+        hasPaidIslamicAccess: isPaidIslamicPlan(plan),
+        isPaid: true,
+      };
+    }
     return PLATFORM_OWNER_VP_PLAN_INFO;
   }
 
@@ -81,11 +95,28 @@ export function resolveEffectivePlan(input: PlanAccessInput): EffectivePlanResul
  * Same as {@link resolveEffectivePlan}, but re-resolves platform-owner bypass
  * by userId when ALS is missing/lost.
  */
+function adminCompedVpPlanInfo(grantTier: string): EffectivePlanResult {
+  const plan = normalizePlanId(grantTier) || grantTier;
+  return {
+    plan,
+    status: 'active',
+    source: null,
+    hasPaidIslamicAccess: isPaidIslamicPlan(plan),
+    isPaid: true,
+  };
+}
+
 export async function resolveEffectivePlanForUser(
   userId: string | undefined,
   input: PlanAccessInput
 ): Promise<EffectivePlanResult> {
   if (await resolveProductGatingBypass(userId)) {
+    const { getAdminCompedGrantTier, isPlatformOwnerGatingActive } = await import(
+      '@/lib/platform-owner-bypass'
+    );
+    if (isPlatformOwnerGatingActive()) return PLATFORM_OWNER_VP_PLAN_INFO;
+    const grantTier = getAdminCompedGrantTier();
+    if (grantTier) return adminCompedVpPlanInfo(grantTier);
     return PLATFORM_OWNER_VP_PLAN_INFO;
   }
   return resolveEffectivePlan(input);

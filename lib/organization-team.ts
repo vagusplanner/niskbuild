@@ -8,11 +8,11 @@ import { EMAIL_TEMPLATE } from '@/lib/email/constants';
 import { teamInviteHtml } from '@/lib/email/templates';
 import { tierDisplayName } from '@/lib/tier-config';
 import {
+  getTeamSeats,
   isAgencyStudioOrAbove,
   resolveProductGatingBypass,
 } from '@/lib/tier-access-server';
 import {
-  getOrgSeatLimitForOwnerTier,
   listOrganizationsForUser,
   type OrgMemberRole,
   type OrganizationRow,
@@ -104,7 +104,10 @@ export async function getOrgSeatUsage(orgId: string): Promise<SeatUsage> {
   if (ownerErr) throw new Error(ownerErr.message);
 
   const tier = (owner?.subscription_tier as string) || 'free';
-  const limit = getOrgSeatLimitForOwnerTier(tier);
+  // Platform-owner / admin_comped must use getTeamSeats (bypass-aware). Raw
+  // TEAM_SEATS_BY_TIER[free|pro]=0 ignores owner bypass and false-alarms overage.
+  const bypass = await resolveProductGatingBypass(org.billing_owner_id as string);
+  const limit = getTeamSeats(tier, bypass);
 
   const { count: memberCount, error: memErr } = await admin
     .from('organization_members')

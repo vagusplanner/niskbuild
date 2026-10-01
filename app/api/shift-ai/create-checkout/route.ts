@@ -16,6 +16,10 @@ import {
   shiftAiApiCorsPreflightResponse,
   shiftAiApiJson,
 } from '@/lib/shift-ai-api-cors';
+import {
+  ALREADY_HAVE_ACCESS_MESSAGE,
+  checkoutBlockedForComplimentaryAccess,
+} from '@/lib/checkout-access-block';
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY?.trim();
 const stripe = stripeSecret ? new Stripe(stripeSecret) : null;
@@ -51,6 +55,15 @@ export async function POST(request: NextRequest) {
   const user = await resolveRequestUser(request);
   if (!user) {
     return shiftAiApiJson(request, { error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const complimentaryBlock = await checkoutBlockedForComplimentaryAccess(user.id);
+  if (complimentaryBlock) {
+    return shiftAiApiJson(
+      request,
+      { error: ALREADY_HAVE_ACCESS_MESSAGE, code: 'ALREADY_HAVE_ACCESS' },
+      { status: 403 }
+    );
   }
 
   let body: unknown;

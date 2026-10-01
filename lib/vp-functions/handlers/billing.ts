@@ -9,6 +9,8 @@ import {
   lifecycleProductFromSubscription,
   vagusPlannerCancelHadIslamic,
 } from '@/lib/stripe-subscription-product';
+import { hasComplimentaryProductAccess } from '@/lib/access-grant';
+import { ALREADY_HAVE_ACCESS_MESSAGE } from '@/lib/checkout-access-block';
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY?.trim();
 const stripe = stripeSecret ? new Stripe(stripeSecret) : null;
@@ -24,6 +26,10 @@ function mapPlanToTier(planName: unknown): string {
 }
 
 export const createStripeCheckout: VpFunctionHandler = async ({ request, user, payload }) => {
+  if (await hasComplimentaryProductAccess(user.id)) {
+    return { ok: false, error: ALREADY_HAVE_ACCESS_MESSAGE, status: 403 };
+  }
+
   const planName = payload.planName;
   const billingCycle = payload.billingCycle;
   const priceIdFromClient =

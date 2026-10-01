@@ -68,6 +68,17 @@ function asShiftPlan(raw: string | null | undefined): ShiftPlanId {
 /** Resolve SuperEduc8 entitlement for a verified auth user id. */
 export async function resolveShiftPlanAccess(userId: string): Promise<ShiftPlanAccess> {
   if (await resolveProductGatingBypass(userId)) {
+    const { getAdminCompedGrantTier, isPlatformOwnerGatingActive } = await import(
+      '@/lib/platform-owner-bypass'
+    );
+    if (isPlatformOwnerGatingActive()) return PLATFORM_OWNER_SHIFT_PLAN_ACCESS;
+    // Active admin_comped → full SuperEduc8 access (checkout is blocked separately).
+    if (getAdminCompedGrantTier()) {
+      return {
+        ...PLATFORM_OWNER_SHIFT_PLAN_ACCESS,
+        platformOwnerBypass: false,
+      };
+    }
     return PLATFORM_OWNER_SHIFT_PLAN_ACCESS;
   }
 

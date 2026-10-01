@@ -4,6 +4,8 @@
  */
 
 import {
+  getAdminCompedGrantTier,
+  isPlatformOwnerGatingActive,
   isProductGatingBypassActive,
   PLATFORM_OWNER_ISLAMIC_ACCESS,
   resolveProductGatingBypass,
@@ -69,7 +71,20 @@ export type IslamicAccessResult = {
  */
 export function resolvePaidIslamicAccess(input: IslamicAccessInput): IslamicAccessResult {
   if (isProductGatingBypassActive()) {
-    return PLATFORM_OWNER_ISLAMIC_ACCESS;
+    if (isPlatformOwnerGatingActive()) return PLATFORM_OWNER_ISLAMIC_ACCESS;
+    const grantTier = getAdminCompedGrantTier();
+    if (grantTier) {
+      // Fall through with grant tier as profile — do not unlock islamic via owner bypass.
+      input = {
+        ...input,
+        profile: {
+          subscription_tier: grantTier,
+          subscription_status: 'active',
+        },
+      };
+    } else {
+      return PLATFORM_OWNER_ISLAMIC_ACCESS;
+    }
   }
 
   const subs = input.subscriptions ?? [];
@@ -118,6 +133,17 @@ export async function resolvePaidIslamicAccessForUser(
   input: IslamicAccessInput
 ): Promise<IslamicAccessResult> {
   if (await resolveProductGatingBypass(userId)) {
+    if (isPlatformOwnerGatingActive()) return PLATFORM_OWNER_ISLAMIC_ACCESS;
+    const grantTier = getAdminCompedGrantTier();
+    if (grantTier) {
+      return resolvePaidIslamicAccess({
+        subscriptions: input.subscriptions,
+        profile: {
+          subscription_tier: grantTier,
+          subscription_status: 'active',
+        },
+      });
+    }
     return PLATFORM_OWNER_ISLAMIC_ACCESS;
   }
   return resolvePaidIslamicAccess(input);
