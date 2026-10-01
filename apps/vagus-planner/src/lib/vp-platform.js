@@ -5,9 +5,12 @@
  * `window.Capacitor` is fragile: `@capacitor/core` may not be evaluated yet,
  * and billing UI previously evaluated once then never re-checked (fail-open
  * to Stripe). Prefer Capacitor APIs + WK bridge / protocol / Cap-build flags.
+ *
+ * Do NOT statically import `@capacitor/core` here — that module must stay
+ * optional for pure web / Vite SSR-safe graphs. Detection fail-closes on Cap
+ * builds (VITE_CAPACITOR_BUILD) and fail-opens on public web.
  */
 
-import { Capacitor } from '@capacitor/core';
 import { useEffect, useState } from 'react';
 
 function isBrowser() {
@@ -52,11 +55,9 @@ function hasAndroidCapacitorBridge() {
 function getCapacitor() {
   if (!isBrowser()) return null;
   try {
-    // Prefer the live global (native bridge + core). Fall back to the static import
-    // which also initializes Capacitor on globalThis when this module loads.
-    return window.Capacitor ?? Capacitor ?? null;
+    return window.Capacitor ?? null;
   } catch {
-    return Capacitor ?? null;
+    return null;
   }
 }
 
@@ -82,12 +83,13 @@ function iosUserAgent() {
 /**
  * Ensure Capacitor core has run (idempotent). Useful after mount if a gate
  * evaluated before the bridge object was fully wired.
+ * Dynamic import keeps pure-web builds from hard-failing if the package is absent.
  */
 export async function ensureCapacitorReady() {
   if (!isBrowser()) return getCapacitor();
   try {
     const mod = await import('@capacitor/core');
-    return window.Capacitor ?? mod.Capacitor ?? Capacitor ?? null;
+    return window.Capacitor ?? mod.Capacitor ?? null;
   } catch {
     return getCapacitor();
   }
@@ -122,7 +124,7 @@ export function isIosNativeApp() {
   // 1) WKWebView Cap bridge — most reliable on real devices, no Cap JS needed
   if (hasIosCapacitorBridge()) return true;
 
-  // 2) Capacitor API (static import ensures methods exist once this module loads)
+  // 2) Capacitor API (after core has loaded onto window)
   const cap = getCapacitor();
   try {
     if (cap?.isNativePlatform?.() && cap.getPlatform?.() === 'ios') return true;
@@ -155,7 +157,9 @@ export function canUseStripePurchases() {
  */
 export function useVpPlatform() {
   const [snapshot, setSnapshot] = useState(() => ({
-    ready: typeof window === 'undefined' ? true : Boolean(getCapacitor()?.isNativePlatform),
+    // On Cap builds, wait for ensureCapacitorReady before treating platform as final.
+    // Pure web can render immediately (fail-open to Stripe).
+    ready: typeof window === 'undefined' ? true : !isCapacitorBuildBundle(),
     isNative: isNativeCapacitorApp(),
     isIosNative: isIosNativeApp(),
     allowStripePurchases: canUseStripePurchases(),
