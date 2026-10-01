@@ -11,34 +11,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import {
   upsertVpSubscriptionFromRevenueCat,
+  verifyRevenueCatWebhookAuth,
   type RevenueCatWebhookEvent,
 } from '@/lib/vp-apple-billing-sync';
 
 export const runtime = 'nodejs';
-
-function timingSafeEqualString(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let out = 0;
-  for (let i = 0; i < a.length; i++) out |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return out === 0;
-}
-
-/** Accept `Bearer <secret>`, `Authorization: <secret>`, or raw secret match. */
-export function verifyRevenueCatWebhookAuth(
-  authorizationHeader: string | null,
-  secret: string
-): boolean {
-  if (!secret || !authorizationHeader) return false;
-  const header = authorizationHeader.trim();
-  const bearer = header.toLowerCase().startsWith('bearer ')
-    ? header.slice(7).trim()
-    : header;
-  return (
-    timingSafeEqualString(header, secret) ||
-    timingSafeEqualString(bearer, secret) ||
-    timingSafeEqualString(header, `Bearer ${secret}`)
-  );
-}
 
 export async function POST(request: NextRequest) {
   const secret = process.env.REVENUECAT_WEBHOOK_SECRET?.trim() || '';

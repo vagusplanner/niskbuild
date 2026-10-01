@@ -150,7 +150,7 @@ async function main() {
   assert(expire.status === 'canceled' && expire.planForceFree, 'status expiration', 'EXPIRATION → canceled/free', rows);
 
   const { verifyRevenueCatWebhookAuth } = await import(
-    '../app/api/webhooks/revenuecat/route'
+    '../lib/vp-apple-billing-sync'
   );
   const secret = 'test-rc-secret-value';
   assert(verifyRevenueCatWebhookAuth(`Bearer ${secret}`, secret), 'webhook auth bearer', 'Bearer accepted', rows);

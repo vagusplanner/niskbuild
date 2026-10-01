@@ -61,6 +61,30 @@ export type RevenueCatWebhookEvent = {
   presented_offering_id?: string | null;
 };
 
+function timingSafeEqualString(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let out = 0;
+  for (let i = 0; i < a.length; i++) out |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return out === 0;
+}
+
+/** Accept `Bearer <secret>`, `Authorization: <secret>`, or raw secret match. */
+export function verifyRevenueCatWebhookAuth(
+  authorizationHeader: string | null,
+  secret: string
+): boolean {
+  if (!secret || !authorizationHeader) return false;
+  const header = authorizationHeader.trim();
+  const bearer = header.toLowerCase().startsWith('bearer ')
+    ? header.slice(7).trim()
+    : header;
+  return (
+    timingSafeEqualString(header, secret) ||
+    timingSafeEqualString(bearer, secret) ||
+    timingSafeEqualString(header, `Bearer ${secret}`)
+  );
+}
+
 export function mapEntitlementsToVpPlan(
   entitlementIds: string[] | null | undefined,
   productId?: string | null
