@@ -16,8 +16,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import AIBusinessInsights from '@/components/analytics/AIBusinessInsights';
 import AIPlanRecommendation from '@/components/billing/AIPlanRecommendation';
 import IosWebSubscriptionNotice from '@/components/billing/IosWebSubscriptionNotice';
+import IosPurchasePanel, { IosRestorePurchasesButton } from '@/components/billing/IosPurchasePanel';
 import { useBillingStatus } from '@/hooks/useBillingStatus';
-import { canUseStripePurchases } from '@/lib/vp-platform';
+import { canUseStripePurchases, useVpPlatform } from '@/lib/vp-platform';
+import { canUseAppleIap, findPackageForPlan, purchasePackage } from '@/lib/revenuecat';
+import { WEB_SUB_MANAGE_MESSAGE, isEqualOrHigherPlan, normalizePlanId } from '@/lib/vp-plan-rank';
+import { getVpApiFetchHeaders } from '@/api/base44Client';
 
 export default function BillingPage() {
   const queryClient = useQueryClient();
@@ -25,7 +29,10 @@ export default function BillingPage() {
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [isProcessingCheckout, setIsProcessingCheckout] = useState(false);
-  const allowStripePurchases = canUseStripePurchases();
+  // Reactive: re-check after Capacitor ready so first paint cannot lock Stripe forever.
+  const { allowStripePurchases, ready: platformReady } = useVpPlatform();
+  const appleIap = canUseAppleIap();
+  const allowPurchases = allowStripePurchases || appleIap;
 
   const {
     isLoading: subLoading,
@@ -71,9 +78,67 @@ export default function BillingPage() {
     enabled: !!user?.email
   });
 
-  // Upgrade mutation
+  // Upgrade mutation (Stripe on web/Android; RevenueCat on iOS)
   const upgradeMutation = useMutation({
     mutationFn: async ({ planId, planName, billingCycle, overridePriceId }) => {
+      if (appleIap && !allowStripePurchases) {
+        setIsProcessingCheckout(true);
+        const loadingToast = toast.loading('Starting App Store purchase…');
+        try {
+          // Dual-purchase: block if web Stripe sub is equal/higher
+          const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+          const statusRes = await fetch(`${apiBase}/api/vagus-planner/billing-status`, {
+            credentials: 'include',
+            headers: await getVpApiFetchHeaders(),
+          });
+          if (statusRes.ok) {
+            const statusData = await statusRes.json();
+            const existingPlan = normalizePlanId(statusData?.plan || 'free');
+            const existingProvider = String(statusData?.subscription?.provider || '').toLowerCase();
+            const existingStatus = String(statusData?.subscription?.status || statusData?.status || '').toLowerCase();
+            const entitled = ['active', 'trialing', 'past_due'].includes(existingStatus);
+            const isStripe =
+              existingProvider === 'stripe' ||
+              Boolean(statusData?.subscription?.stripe_subscription_id) ||
+              statusData?.source === 'profiles';
+            if (
+              entitled &&
+              existingPlan !== 'free' &&
+              isStripe &&
+              isEqualOrHigherPlan(existingPlan, planId)
+            ) {
+              throw new Error(WEB_SUB_MANAGE_MESSAGE);
+            }
+          }
+
+          const { pkg, error } = await findPackageForPlan({
+            planId,
+            billingCycle: billingCycle === 'annual' || billingCycle === 'yearly' ? 'annual' : 'monthly',
+            editionPreference: String(planId).includes('islamic') ? 'islamic' : 'standard',
+          });
+          if (error || !pkg) {
+            throw new Error(error || 'No App Store package found for this plan');
+          }
+          await purchasePackage(pkg);
+          toast.dismiss(loadingToast);
+          toast.success('Purchase successful! Unlocking…');
+          await queryClient.invalidateQueries({ queryKey: ['billingStatus'] });
+          await queryClient.invalidateQueries({ queryKey: ['planAccess'] });
+          await queryClient.invalidateQueries({ queryKey: ['islamicAccess'] });
+          setShowPlanComparison(false);
+          setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['billingStatus'] });
+            queryClient.invalidateQueries({ queryKey: ['planAccess'] });
+          }, 2500);
+        } catch (error) {
+          toast.dismiss(loadingToast);
+          throw error;
+        } finally {
+          setIsProcessingCheckout(false);
+        }
+        return;
+      }
+
       if (!canUseStripePurchases()) {
         toast.info('This is a premium feature.');
         return;
@@ -139,7 +204,12 @@ export default function BillingPage() {
     },
     onError: (error) => {
       console.error('Upgrade error:', error);
-      toast.error(error.message || 'Failed to start checkout. Please try again.');
+      const msg = error?.message || 'Failed to start checkout. Please try again.';
+      if (/cancel|cancelled|PURCHASE_CANCELLED/i.test(msg)) {
+        toast.info('Purchase cancelled');
+      } else {
+        toast.error(msg);
+      }
       setIsProcessingCheckout(false);
     }
   });
@@ -234,7 +304,7 @@ export default function BillingPage() {
     }
   };
 
-  if (subLoading) {
+  if (subLoading || !platformReady) {
     return (
       <div className="space-y-6 p-6">
         <div className="text-center py-12">
@@ -262,11 +332,21 @@ export default function BillingPage() {
       </div>
 
       {!allowStripePurchases && !platformOwnerBypass && (
-        <IosWebSubscriptionNotice />
+        appleIap ? (
+          <div className="space-y-3">
+            <IosPurchasePanel
+              requiredPlan="Pro"
+              description="Subscribe with Apple In-App Purchase. Manage or cancel anytime in Settings → Apple ID → Subscriptions."
+            />
+            <IosRestorePurchasesButton />
+          </div>
+        ) : (
+          <IosWebSubscriptionNotice />
+        )
       )}
 
-      {/* Free Trial CTA — shown prominently for free users (not platform owners); web/Android only */}
-      {allowStripePurchases && currentSubscription.plan === 'free' && !platformOwnerBypass && (
+      {/* Free Trial CTA — shown prominently for free users (not platform owners); web/Android Stripe or iOS IAP */}
+      {allowPurchases && currentSubscription.plan === 'free' && !platformOwnerBypass && (
         <div className="rounded-2xl bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 p-5 sm:p-6 text-white shadow-xl">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="flex-1">
@@ -311,7 +391,7 @@ export default function BillingPage() {
             platformOwnerBypass={platformOwnerBypass}
             onManage={allowStripePurchases ? handleManageSubscription : undefined}
             onUpgrade={
-              allowStripePurchases
+              allowPurchases
                 ? (planId) => {
                     if (planId !== currentSubscription.plan) {
                       setShowPlanComparison(true);
@@ -319,7 +399,11 @@ export default function BillingPage() {
                   }
                 : undefined
             }
-            onCancel={() => cancelMutation.mutate()}
+            onCancel={
+              String(currentSubscription?.provider || '').toLowerCase() === 'apple'
+                ? undefined
+                : () => cancelMutation.mutate()
+            }
           />
         </div>
         {allowStripePurchases && currentSubscription.plan !== 'free' && !platformOwnerBypass && (
@@ -344,8 +428,8 @@ export default function BillingPage() {
         <UsageTracker usageData={usageData} plan={currentSubscription.plan} />
       </section>
 
-      {/* AI Plan Recommendation — purchase CTA hidden on iOS native */}
-      {allowStripePurchases && !platformOwnerBypass && currentSubscription.plan !== 'enterprise' && currentSubscription.plan !== 'enterprise_islamic' && (
+      {/* AI Plan Recommendation — Stripe or Apple IAP */}
+      {allowPurchases && !platformOwnerBypass && currentSubscription.plan !== 'enterprise' && currentSubscription.plan !== 'enterprise_islamic' && (
         <section>
           <AIPlanRecommendation
             currentPlan={currentSubscription.plan}
@@ -355,8 +439,8 @@ export default function BillingPage() {
         </section>
       )}
 
-      {/* Upgrade Section — web/Android only */}
-      {allowStripePurchases && !platformOwnerBypass && currentSubscription.plan === 'free' && (
+      {/* Upgrade Section */}
+      {allowPurchases && !platformOwnerBypass && currentSubscription.plan === 'free' && (
         <Card className="bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-950/40 dark:to-cyan-950/40 border-teal-200 dark:border-teal-800">
           <CardHeader>
             <CardTitle className="text-teal-900 dark:text-teal-100">Ready to unlock more features?</CardTitle>
@@ -375,21 +459,27 @@ export default function BillingPage() {
         </Card>
       )}
 
-      {/* Plan Comparison Modal — never open purchase dialog on iOS native */}
-      <Dialog open={allowStripePurchases && showPlanComparison} onOpenChange={(open) => {
+      {/* Plan Comparison Modal — Stripe (web/Android) or Apple IAP (iOS) */}
+      <Dialog open={allowPurchases && showPlanComparison} onOpenChange={(open) => {
         if (!isProcessingCheckout) setShowPlanComparison(open);
       }}>
         <DialogContent className="max-w-[95vw] sm:max-w-6xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 z-[200]">
           <DialogHeader>
             <DialogTitle>Upgrade Your Plan</DialogTitle>
             <DialogDescription>
-              {isProcessingCheckout ? 'Processing your checkout...' : 'Choose the plan that best fits your needs'}
+              {isProcessingCheckout
+                ? appleIap
+                  ? 'Opening App Store purchase…'
+                  : 'Processing your checkout...'
+                : 'Choose the plan that best fits your needs'}
             </DialogDescription>
           </DialogHeader>
           {isProcessingCheckout ? (
             <div className="flex flex-col items-center justify-center py-12">
               <div className="animate-spin w-12 h-12 border-4 border-teal-600 border-t-transparent rounded-full mb-4"></div>
-              <p className="text-slate-600 dark:text-slate-400">Preparing your checkout session...</p>
+              <p className="text-slate-600 dark:text-slate-400">
+                {appleIap ? 'Preparing App Store purchase…' : 'Preparing your checkout session...'}
+              </p>
             </div>
           ) : (
             <PlanComparison

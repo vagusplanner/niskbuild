@@ -18,8 +18,9 @@ import { motion } from 'framer-motion';
 import { Moon, Lock, Star, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useIslamicEdition } from '@/hooks/useIslamicEdition';
-import { canUseStripePurchases } from '@/lib/vp-platform';
-import IosWebSubscriptionNotice from '@/components/billing/IosWebSubscriptionNotice';
+import { useVpPlatform } from '@/lib/vp-platform';
+import IosPurchasePanel, { IosUpgradeButton } from '@/components/billing/IosPurchasePanel';
+import { canUseAppleIap } from '@/lib/revenuecat';
 
 const ISLAMIC_HIGHLIGHTS = [
   { icon: '🕌', text: 'Never miss a prayer — Adhan alerts & Qibla finder' },
@@ -34,7 +35,8 @@ const ISLAMIC_HIGHLIGHTS = [
 
 function UpgradePrompt({ compact = false }) {
   const navigate = useNavigate();
-  const allowStripePurchases = canUseStripePurchases();
+  const { allowStripePurchases } = useVpPlatform();
+  const appleIap = canUseAppleIap();
 
   if (compact) {
     return (
@@ -43,13 +45,13 @@ function UpgradePrompt({ compact = false }) {
           <Moon className="w-4 h-4 text-amber-600 dark:text-amber-400" />
         </div>
         <div className="flex-1 min-w-0">
-          {allowStripePurchases ? (
+          {allowStripePurchases || appleIap ? (
             <>
               <p className="text-sm font-bold text-amber-800 dark:text-amber-200">Islamic Edition Required</p>
               <p className="text-xs text-amber-600 dark:text-amber-400">Upgrade to access prayer, Quran, Zakat & more.</p>
             </>
           ) : (
-            <IosWebSubscriptionNotice compact className="text-amber-700 dark:text-amber-400" />
+            <p className="text-xs text-amber-700 dark:text-amber-400">This is a premium feature.</p>
           )}
         </div>
         {allowStripePurchases && (
@@ -60,6 +62,15 @@ function UpgradePrompt({ compact = false }) {
           >
             Upgrade
           </Button>
+        )}
+        {appleIap && !allowStripePurchases && (
+          <IosUpgradeButton
+            planId="basic_islamic"
+            editionPreference="islamic"
+            label="Upgrade"
+            size="sm"
+            className="bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:opacity-90 flex-shrink-0 h-8 text-xs font-bold"
+          />
         )}
       </div>
     );
@@ -107,8 +118,14 @@ function UpgradePrompt({ compact = false }) {
           <p className="text-xs text-slate-400">
             Starting from <span className="text-amber-600 dark:text-amber-400 font-bold">$9.99/month</span> · 14-day free trial · Cancel anytime
           </p>
+        ) : appleIap ? (
+          <IosPurchasePanel
+            requiredPlan="Basic Islamic"
+            editionPreference="islamic"
+            description="Subscribe with Apple to unlock Islamic Edition."
+          />
         ) : (
-          <IosWebSubscriptionNotice />
+          <p className="text-sm text-slate-500">This is a premium feature.</p>
         )}
 
         <div className="flex flex-col gap-2">
@@ -119,6 +136,14 @@ function UpgradePrompt({ compact = false }) {
             >
               Upgrade to Islamic Edition <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
+          )}
+          {appleIap && !allowStripePurchases && (
+            <IosUpgradeButton
+              planId="basic_islamic"
+              editionPreference="islamic"
+              label="Upgrade to Islamic Edition"
+              className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold h-11 hover:opacity-90 shadow-lg shadow-amber-400/20"
+            />
           )}
           <Button variant="outline" className="w-full h-11 text-slate-500" onClick={() => navigate('/dashboard')}>
             Back to Dashboard

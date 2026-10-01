@@ -7,22 +7,12 @@
  * service-worker Notification API (icon + badge). Keep it aligned with AppIcon.
  */
 
+import { isNativeCapacitorApp } from '@/lib/vp-platform';
+
 const APP_ICON = '/logo/icon-192.png';
 
-let nativeChecked = false;
-let nativePlatform = false;
-
 export function isNativeCapacitor() {
-  if (typeof window === 'undefined') return false;
-  if (nativeChecked) return nativePlatform;
-  try {
-    const cap = window.Capacitor;
-    nativePlatform = Boolean(cap?.isNativePlatform?.());
-  } catch {
-    nativePlatform = false;
-  }
-  nativeChecked = true;
-  return nativePlatform;
+  return isNativeCapacitorApp();
 }
 
 export function hasWebNotifications() {

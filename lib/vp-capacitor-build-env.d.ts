@@ -11,9 +11,13 @@ export function warnIfMissingVpSupabaseEnv(forExport?: boolean): void;
 
 export function buildVpCapacitorBuildEnv(forExport?: boolean): {
   CAPACITOR_BUILD: string;
+  VITE_CAPACITOR_BUILD: string;
   VITE_API_BASE_URL: string;
   VITE_SUPABASE_URL: string;
   VITE_SUPABASE_ANON_KEY: string;
+  VITE_REVENUECAT_IOS_API_KEY: string;
 };
+
+export function resolveVpRevenueCatIosApiKey(): string;
 
 export function requireVpApiBaseUrlForAppStoreExport(): string;

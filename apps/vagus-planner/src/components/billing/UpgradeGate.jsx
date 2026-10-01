@@ -4,8 +4,10 @@ import { createPageUrl } from '@/utils';
 import { Zap, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { canUseStripePurchases } from '@/lib/vp-platform';
-import IosWebSubscriptionNotice from '@/components/billing/IosWebSubscriptionNotice';
+import { useVpPlatform } from '@/lib/vp-platform';
+import IosPurchasePanel, { IosUpgradeButton } from '@/components/billing/IosPurchasePanel';
+import { canUseAppleIap } from '@/lib/revenuecat';
+import { normalizePlanId } from '@/lib/vp-plan-rank';
 
 /**
  * UpgradeGate — UX-only blur overlay + upgrade CTA.
@@ -14,8 +16,8 @@ import IosWebSubscriptionNotice from '@/components/billing/IosWebSubscriptionNot
  * This component is NOT authorization — enforce paid actions in
  * VP functions / LLM / plan-access APIs.
  *
- * On iOS native (Guideline 3.1.1): Upgrade CTAs are hidden; only a generic
- * premium message is shown — no website, no purchase path.
+ * On iOS native: RevenueCat in-app purchase CTAs (Guideline 3.1.1).
+ * Web / Android: Stripe via Billing.
  */
 export default function UpgradeGate({
   locked,
@@ -26,9 +28,11 @@ export default function UpgradeGate({
   className,
   minimal = false,
 }) {
-  if (!locked) return children;
+  const { allowStripePurchases } = useVpPlatform();
+  const appleIap = canUseAppleIap();
+  const planId = normalizePlanId(requiredPlan) || 'pro';
 
-  const allowStripePurchases = canUseStripePurchases();
+  if (!locked) return children;
 
   if (minimal) {
     return (
@@ -38,7 +42,7 @@ export default function UpgradeGate({
             <Zap className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
           </div>
           <div className="flex-1 min-w-0">
-            {allowStripePurchases ? (
+            {allowStripePurchases || appleIap ? (
               <>
                 <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
                   {feature} requires {requiredPlan}
@@ -48,7 +52,7 @@ export default function UpgradeGate({
                 )}
               </>
             ) : (
-              <IosWebSubscriptionNotice compact className="text-amber-700 dark:text-amber-400" />
+              <p className="text-xs text-amber-700 dark:text-amber-400">This is a premium feature.</p>
             )}
           </div>
           {allowStripePurchases && (
@@ -57,6 +61,14 @@ export default function UpgradeGate({
                 Upgrade
               </Button>
             </Link>
+          )}
+          {appleIap && !allowStripePurchases && (
+            <IosUpgradeButton
+              planId={planId}
+              label="Upgrade"
+              size="sm"
+              className="bg-amber-500 hover:bg-amber-600 text-white text-xs px-3 h-8 flex-shrink-0"
+            />
           )}
         </div>
         <div className="opacity-40 pointer-events-none select-none">
@@ -95,8 +107,15 @@ export default function UpgradeGate({
               </Link>
               <p className="text-xs text-slate-400 mt-2">14-day free trial • No credit card needed</p>
             </>
+          ) : appleIap ? (
+            <IosPurchasePanel
+              className="mt-2 text-left border-0 bg-transparent p-0"
+              feature={feature}
+              requiredPlan={requiredPlan}
+              description={description}
+            />
           ) : (
-            <IosWebSubscriptionNotice className="mt-2 text-left" />
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">This is a premium feature.</p>
           )}
         </div>
       </div>

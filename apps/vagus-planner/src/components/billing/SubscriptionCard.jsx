@@ -5,8 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { AlertCircle, Calendar, CreditCard, Zap } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { canUseStripePurchases } from '@/lib/vp-platform';
-import IosWebSubscriptionNotice from '@/components/billing/IosWebSubscriptionNotice';
+import { useVpPlatform } from '@/lib/vp-platform';
+import { canUseAppleIap } from '@/lib/revenuecat';
+import IosPurchasePanel from '@/components/billing/IosPurchasePanel';
 
 const PLAN_COLORS = {
   free: { bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-slate-700', badge: 'bg-slate-100 text-slate-700' },
@@ -18,9 +19,11 @@ const PLAN_COLORS = {
 export default function SubscriptionCard({ subscription, onManage, onUpgrade, onCancel }) {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const colors = PLAN_COLORS[subscription.plan];
-  const allowStripePurchases = canUseStripePurchases();
+  const { allowStripePurchases } = useVpPlatform();
+  const appleIap = canUseAppleIap();
+  const allowPurchases = allowStripePurchases || appleIap;
   const showManage = allowStripePurchases && typeof onManage === 'function';
-  const showUpgrade = allowStripePurchases && typeof onUpgrade === 'function';
+  const showUpgrade = allowPurchases && typeof onUpgrade === 'function';
 
   return (
     <Card className={cn(colors.bg, colors.border, 'border-2')}>
@@ -104,7 +107,12 @@ export default function SubscriptionCard({ subscription, onManage, onUpgrade, on
 
         {/* Actions */}
         <div className="flex flex-col gap-3 pt-4 border-t border-slate-200">
-          {!allowStripePurchases && <IosWebSubscriptionNotice compact />}
+          {!allowStripePurchases && appleIap && (
+            <IosPurchasePanel compact requiredPlan="Pro" />
+          )}
+          {!allowStripePurchases && !appleIap && (
+            <p className="text-xs text-slate-500">This is a premium feature.</p>
+          )}
           <div className="flex gap-3">
           {subscription.plan !== 'free' && (
             <>

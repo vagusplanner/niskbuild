@@ -1,4 +1,4 @@
-import { isNativeCapacitorApp } from '@/lib/vp-platform';
+import { isCapacitorBuildBundle, isNativeCapacitorApp } from '@/lib/vp-platform';
 
 /**
  * True when VP is served as a static bundle (deploy proxy or local vp-live publish),
@@ -18,6 +18,8 @@ export function isStaticBundleContext() {
 export function usesHashRouter() {
   if (isStaticBundleContext()) return true;
   if (isNativeCapacitorApp()) return true;
+  // Cap-exported www always needs HashRouter (even before bridge detection resolves).
+  if (isCapacitorBuildBundle()) return true;
   if (typeof window !== 'undefined') {
     const proto = window.location.protocol;
     if (proto === 'capacitor:' || proto === 'ionic:') return true;

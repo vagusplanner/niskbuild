@@ -16,8 +16,9 @@ import {
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { canUseStripePurchases } from '@/lib/vp-platform';
-import IosWebSubscriptionNotice from '@/components/billing/IosWebSubscriptionNotice';
+import { useVpPlatform } from '@/lib/vp-platform';
+import { canUseAppleIap } from '@/lib/revenuecat';
+import IosPurchasePanel from '@/components/billing/IosPurchasePanel';
 
 const planFeatures = {
   free: {
@@ -156,11 +157,13 @@ export default function EnhancedSubscriptionCard({
     return 'bg-teal-500';
   };
 
-  const allowStripePurchases = canUseStripePurchases();
+  const { allowStripePurchases } = useVpPlatform();
+  const appleIap = canUseAppleIap();
+  const allowPurchases = allowStripePurchases || appleIap;
   const showPaidBillingUi =
     !isPlatformOwnerAccess && subscription.plan !== 'free';
   const showUpgrade =
-    allowStripePurchases &&
+    allowPurchases &&
     !isPlatformOwnerAccess &&
     subscription.plan !== 'enterprise' &&
     subscription.plan !== 'enterprise_islamic' &&
@@ -168,13 +171,15 @@ export default function EnhancedSubscriptionCard({
   const showManage =
     allowStripePurchases && showPaidBillingUi && typeof onManage === 'function';
   const statusLower = String(subscription.status || '').toLowerCase();
-  // Cancel is not a purchase — never hide it behind canUseStripePurchases().
+  const isAppleProvider = String(subscription?.provider || '').toLowerCase() === 'apple';
+  // Cancel Stripe only — Apple cancels via App Store Settings
   const showCancel =
     !isPlatformOwnerAccess &&
+    !isAppleProvider &&
     subscription.plan !== 'free' &&
     !['canceled', 'cancelled', 'incomplete_expired'].includes(statusLower) &&
     typeof onCancel === 'function';
-  const showIosWebNotice = !allowStripePurchases && !isPlatformOwnerAccess;
+  const showIosPurchaseHint = !allowStripePurchases && appleIap && !isPlatformOwnerAccess;
 
   return (
     <Card className="relative overflow-hidden">
@@ -239,7 +244,18 @@ export default function EnhancedSubscriptionCard({
       </CardHeader>
 
       <CardContent className="space-y-6">
-        {showIosWebNotice && <IosWebSubscriptionNotice />}
+        {showIosPurchaseHint && (
+          <IosPurchasePanel
+            compact
+            requiredPlan={subscription.plan === 'free' ? 'Pro' : subscription.plan}
+            description="Subscribe with Apple to upgrade."
+          />
+        )}
+        {isAppleProvider && showPaidBillingUi && (
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Managed through Apple. Cancel or change plans in Settings → Apple ID → Subscriptions.
+          </p>
+        )}
 
         {showCancel && (
           <div className="pt-1">

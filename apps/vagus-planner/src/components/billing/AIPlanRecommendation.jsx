@@ -8,13 +8,16 @@ import { Sparkles, TrendingUp, CheckCircle, AlertCircle, Loader2 } from 'lucide-
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { requireVpAiFunctions } from '@/lib/vp-registered-functions';
-import { canUseStripePurchases } from '@/lib/vp-platform';
-import IosWebSubscriptionNotice from '@/components/billing/IosWebSubscriptionNotice';
+import { useVpPlatform } from '@/lib/vp-platform';
+import { canUseAppleIap } from '@/lib/revenuecat';
+import IosPurchasePanel from '@/components/billing/IosPurchasePanel';
 
 export default function AIPlanRecommendation({ currentPlan, usageData, onUpgrade }) {
   const available = requireVpAiFunctions('recommendUpgradePlan');
   const [recommendation, setRecommendation] = useState(null);
-  const allowStripePurchases = canUseStripePurchases();
+  const { allowStripePurchases } = useVpPlatform();
+  const appleIap = canUseAppleIap();
+  const allowPurchases = allowStripePurchases || appleIap;
 
   const analyzeMutation = useMutation({
     mutationFn: async () => {
@@ -174,7 +177,7 @@ export default function AIPlanRecommendation({ currentPlan, usageData, onUpgrade
 
           {/* Action Buttons */}
           <div className="flex flex-col gap-3 pt-2">
-            {allowStripePurchases && typeof onUpgrade === 'function' ? (
+            {allowPurchases && typeof onUpgrade === 'function' ? (
               <div className="flex gap-3">
                 <Button
                   onClick={() => onUpgrade(recommendation.recommended_plan)}
@@ -197,7 +200,14 @@ export default function AIPlanRecommendation({ currentPlan, usageData, onUpgrade
               </div>
             ) : (
               <>
-                <IosWebSubscriptionNotice />
+                {appleIap ? (
+                  <IosPurchasePanel
+                    compact
+                    requiredPlan={recommendation.recommended_plan || 'Pro'}
+                  />
+                ) : (
+                  <p className="text-sm text-slate-500">This is a premium feature.</p>
+                )}
                 <Button
                   onClick={() => analyzeMutation.mutate()}
                   variant="outline"
