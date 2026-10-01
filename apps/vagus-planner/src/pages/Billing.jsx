@@ -26,8 +26,32 @@ import {
   canUseAppleIap,
   ensureRevenueCatReady,
   findPackageForPlan,
+  getIapDebugLogs,
   purchasePackage,
 } from '@/lib/revenuecat';
+
+/** Cap-only on-screen trail — survives Xcode console attach races. */
+function IapDebugStrip({ enabled }) {
+  const [lines, setLines] = React.useState(() => (enabled ? getIapDebugLogs() : []));
+  React.useEffect(() => {
+    if (!enabled) return undefined;
+    const tick = () => setLines(getIapDebugLogs());
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [enabled]);
+  if (!enabled || !lines.length) return null;
+  return (
+    <details className="rounded-lg border border-amber-300/80 bg-amber-50 text-amber-950 text-xs">
+      <summary className="cursor-pointer select-none px-3 py-2 font-medium">
+        IAP debug log ({lines.length})
+      </summary>
+      <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-all px-3 pb-3 font-mono leading-snug">
+        {lines.join('\n')}
+      </pre>
+    </details>
+  );
+}
 
 export default function BillingPage() {
   const queryClient = useQueryClient();
@@ -344,6 +368,8 @@ export default function BillingPage() {
         <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100">Billing & Subscription</h1>
         <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Manage your plan, invoices, and usage</p>
       </div>
+
+      <IapDebugStrip enabled={appleIap} />
 
       {!allowStripePurchases && !platformOwnerBypass && (
         appleIap ? (

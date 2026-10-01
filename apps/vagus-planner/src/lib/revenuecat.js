@@ -33,6 +33,78 @@ let configureGeneration = 0;
 /** Cached Purchases plugin after first successful dynamic import. */
 let purchasesPlugin = null;
 
+/** Ring-buffer of recent IAP logs — survives Xcode console attach races. */
+const IAP_DEBUG_STORAGE_KEY = 'vp_iap_debug_logs';
+const IAP_DEBUG_MAX_LINES = 40;
+const iapDebugLines = [];
+
+function readPersistedIapDebugLogs() {
+  try {
+    if (typeof sessionStorage === 'undefined') return [];
+    const raw = sessionStorage.getItem(IAP_DEBUG_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistIapDebugLogs() {
+  try {
+    if (typeof sessionStorage === 'undefined') return;
+    sessionStorage.setItem(
+      IAP_DEBUG_STORAGE_KEY,
+      JSON.stringify(iapDebugLines.slice(-IAP_DEBUG_MAX_LINES))
+    );
+  } catch {
+    // private mode / quota — ignore
+  }
+}
+
+/** Seed in-memory buffer from a prior page load in this tab session. */
+try {
+  for (const line of readPersistedIapDebugLogs()) {
+    iapDebugLines.push(line);
+  }
+} catch {
+  // ignore
+}
+
+/**
+ * Console + sessionStorage ring buffer. Sync-safe — call before any await so
+ * cold-start / late Xcode console attach still retains the trail.
+ */
+export function iapDebugLog(...args) {
+  const ts = new Date().toISOString().slice(11, 23);
+  const text = args
+    .map((a) => {
+      if (a == null) return String(a);
+      if (typeof a === 'string') return a;
+      if (a instanceof Error) return a.message;
+      try {
+        return JSON.stringify(a);
+      } catch {
+        return String(a);
+      }
+    })
+    .join(' ');
+  const line = `${ts} ${text}`;
+  iapDebugLines.push(line);
+  if (iapDebugLines.length > IAP_DEBUG_MAX_LINES) {
+    iapDebugLines.splice(0, iapDebugLines.length - IAP_DEBUG_MAX_LINES);
+  }
+  persistIapDebugLogs();
+  console.log(...args);
+}
+
+export function getIapDebugLogs() {
+  const fromStore = readPersistedIapDebugLogs();
+  // Prefer live buffer; fall back to store if empty.
+  const lines = iapDebugLines.length ? iapDebugLines.slice() : fromStore;
+  return lines.slice(-IAP_DEBUG_MAX_LINES);
+}
+
 function iosApiKey() {
   try {
     const raw =
@@ -98,7 +170,7 @@ function invokePurchasesConfigure(Purchases, config) {
   // platform was captured as "web" at registerPlugin time — hanging with no
   // "To Native -> Purchases.configure".
   if (typeof cap?.nativePromise === 'function') {
-    console.log(
+    iapDebugLog(
       '[RevenueCat] configure invoke via Capacitor.nativePromise(Purchases, configure)'
     );
     return {
@@ -107,7 +179,7 @@ function invokePurchasesConfigure(Purchases, config) {
     };
   }
 
-  console.log('[RevenueCat] configure invoke via Purchases.configure(config) proxy');
+  iapDebugLog('[RevenueCat] configure invoke via Purchases.configure(config) proxy');
   return {
     path: 'pluginProxy',
     pending: Purchases.configure(config),
@@ -116,10 +188,10 @@ function invokePurchasesConfigure(Purchases, config) {
 
 async function getPurchases() {
   if (purchasesPlugin) {
-    console.log('[RevenueCat] Purchases plugin import (cached)');
+    iapDebugLog('[RevenueCat] Purchases plugin import (cached)');
     return purchasesPlugin;
   }
-  console.log('[RevenueCat] Purchases plugin import start');
+  iapDebugLog('[RevenueCat] Purchases plugin import start');
   try {
     const mod = await withTimeout(
       import('@revenuecat/purchases-capacitor'),
@@ -138,7 +210,7 @@ async function getPurchases() {
     purchasesPlugin = resolved;
     // Cap registerPlugin proxy has empty Object.keys — also probe known methods.
     const probe = ['configure', 'getOfferings', 'purchasePackage', 'logIn', 'logOut'];
-    console.log('[RevenueCat] Purchases plugin import ✓', {
+    iapDebugLog('[RevenueCat] Purchases plugin import ✓', {
       typeofConfigure: typeof purchasesPlugin.configure,
       configureIsFunction: typeof purchasesPlugin.configure === 'function',
       moduleKeys: Object.keys(mod || {}),
@@ -166,6 +238,18 @@ export function canUseAppleIap() {
  * Configure RevenueCat once on iOS. Safe to call repeatedly.
  * Waits for Capacitor bridge first so configure cannot hang on a cold start.
  * Soft-timeouts every await so an in-flight Cap-auth configure cannot block purchase forever.
+ *
+ * Ordering (definitive — single-threaded JS):
+ * 1. Sync guards (platform / apiKey / already configured).
+ * 2. If configurePromise set → join (log) → await with soft timeout.
+ * 3. Else start a new in-flight:
+ *    a. Invoke async IIFE — body runs SYNC until first await:
+ *       logs "IIFE entered", then "ensureCapacitorReady start", kicks off Cap ready.
+ *    b. First await yields → IIFE returns pending Promise P.
+ *    c. Assign configurePromise = P, then sync-log "configurePromise stored".
+ *       (Joiners can attach only after this store; body has ALWAYS already started.)
+ *    d. Later: Cap ready ✓ → import Purchases → "about to call Purchases.configure"
+ *       → nativePromise/proxy → configured = true.
  */
 export async function configureRevenueCat(appUserId) {
   if (!isIosNativeApp()) return { ok: false, reason: 'not_ios' };
@@ -182,13 +266,13 @@ export async function configureRevenueCat(appUserId) {
   }
 
   if (configured) {
-    console.log('[RevenueCat] configure skip (already configured)');
+    iapDebugLog('[RevenueCat] configure skip (already configured)');
     return { ok: true };
   }
 
   // Join in-flight configure with a soft wait — never inherit an infinite hang.
   if (configurePromise) {
-    console.log('[RevenueCat] configure joining in-flight promise');
+    iapDebugLog('[RevenueCat] configure joining in-flight promise');
     try {
       const joined = await withTimeout(
         configurePromise,
@@ -206,9 +290,15 @@ export async function configureRevenueCat(appUserId) {
   }
 
   const gen = ++configureGeneration;
-  configurePromise = (async () => {
+  // RHS IIFE runs sync-to-first-await BEFORE configurePromise is assigned.
+  // Split assign so we can log store as its own sync step (ordering proof on device).
+  const pending = (async () => {
+    // SYNC — executes before the outer `configurePromise = pending` assignment.
+    iapDebugLog('[RevenueCat] configure async IIFE entered (sync, before store)', {
+      gen,
+    });
     try {
-      console.log('[RevenueCat] ensureCapacitorReady start');
+      iapDebugLog('[RevenueCat] ensureCapacitorReady start');
       await withTimeout(
         ensureCapacitorReady(),
         CAPACITOR_READY_TIMEOUT_MS,
@@ -218,7 +308,7 @@ export async function configureRevenueCat(appUserId) {
         console.warn('[RevenueCat] configure abandoned after ensureCapacitorReady');
         return { ok: false, reason: 'abandoned' };
       }
-      console.log('[RevenueCat] ensureCapacitorReady ✓');
+      iapDebugLog('[RevenueCat] ensureCapacitorReady ✓');
 
       const Purchases = await getPurchases();
       if (gen !== configureGeneration) {
@@ -242,7 +332,7 @@ export async function configureRevenueCat(appUserId) {
       }
 
       const cap = getWindowCapacitor();
-      console.log('[RevenueCat] about to call Purchases.configure', {
+      iapDebugLog('[RevenueCat] about to call Purchases.configure', {
         apiKey: apiKeyLogShape(apiKeyNow),
         optionKeys: Object.keys(config),
         typeofConfigure: typeof Purchases?.configure,
@@ -265,15 +355,15 @@ export async function configureRevenueCat(appUserId) {
       let configureInvoked = false;
       let invokePath = 'none';
       try {
-        const { path, pending } = invokePurchasesConfigure(Purchases, config);
+        const { path, pending: nativePending } = invokePurchasesConfigure(Purchases, config);
         invokePath = path;
         configureInvoked = true;
-        console.log('[RevenueCat] configure() invoked — awaiting native result', {
+        iapDebugLog('[RevenueCat] configure() invoked — awaiting native result', {
           path: invokePath,
-          isThenable: typeof pending?.then === 'function',
+          isThenable: typeof nativePending?.then === 'function',
         });
         await withTimeout(
-          pending,
+          nativePending,
           CONFIGURE_TIMEOUT_MS,
           'Purchases.configure (native await)'
         );
@@ -295,7 +385,7 @@ export async function configureRevenueCat(appUserId) {
       }
       configured = true;
       lastConfigureError = null;
-      console.log('[RevenueCat] configure ✓', { path: invokePath });
+      iapDebugLog('[RevenueCat] configure ✓', { path: invokePath });
       return { ok: true };
     } catch (err) {
       if (gen !== configureGeneration) {
@@ -309,6 +399,10 @@ export async function configureRevenueCat(appUserId) {
     }
   })();
 
+  configurePromise = pending;
+  // SYNC — same turn as IIFE start; joiners only appear after this line's turn yields.
+  iapDebugLog('[RevenueCat] configurePromise stored — joiners may attach now', { gen });
+
   return configurePromise;
 }
 
@@ -316,7 +410,7 @@ export async function configureRevenueCat(appUserId) {
  * Ensure SDK is configured (and optionally logged in) before purchase/offerings.
  */
 export async function ensureRevenueCatReady(appUserId) {
-  console.log('[RevenueCat] ensureRevenueCatReady enter', {
+  iapDebugLog('[RevenueCat] ensureRevenueCatReady enter', {
     hasAppUserId: Boolean(appUserId && String(appUserId).trim()),
     alreadyConfigured: configured,
     hasInFlight: Boolean(configurePromise),
@@ -335,13 +429,13 @@ export async function ensureRevenueCatReady(appUserId) {
         }
         if (typeof appUserId === 'string' && appUserId.trim()) {
           try {
-            console.log('[RevenueCat] ensureReady logIn start');
+            iapDebugLog('[RevenueCat] ensureReady logIn start');
             await withTimeout(
               revenueCatLogIn(appUserId.trim()),
               CONFIGURE_TIMEOUT_MS,
               'ensureReady logIn'
             );
-            console.log('[RevenueCat] ensureReady logIn ✓');
+            iapDebugLog('[RevenueCat] ensureReady logIn ✓');
           } catch (err) {
             // Purchase can still proceed; attribution may be anonymous until logIn succeeds.
             logErr('[RevenueCat] ensureReady logIn failed (continuing):', err);
@@ -352,7 +446,7 @@ export async function ensureRevenueCatReady(appUserId) {
       ENSURE_READY_TIMEOUT_MS,
       'ensureRevenueCatReady'
     );
-    console.log('[RevenueCat] ensureRevenueCatReady exit ✓');
+    iapDebugLog('[RevenueCat] ensureRevenueCatReady exit ✓');
     return result;
   } catch (err) {
     logErr('[RevenueCat] ensureRevenueCatReady failed:', err);
