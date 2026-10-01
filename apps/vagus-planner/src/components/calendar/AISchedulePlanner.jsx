@@ -186,7 +186,11 @@ export default function AISchedulePlanner({ isOpen, onClose, onEventsCreated }) 
       const message = err?.message ?? String(err);
       if (/limit|upgrade|402|quota|paid plan/i.test(message)) {
         setQuotaBlocked(true);
-        toast.error(canUseStripePurchases() ? message : 'This is a premium feature.');
+        toast.error(
+          canUseStripePurchases()
+            ? message
+            : 'Upgrade in Billing to continue with AI Scheduling.'
+        );
         queryClient.invalidateQueries({ queryKey: ['planAccess'] });
       } else {
         toast.error('Failed to generate schedule — please try again');

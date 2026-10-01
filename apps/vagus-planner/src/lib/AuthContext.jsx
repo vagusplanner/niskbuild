@@ -5,6 +5,7 @@ import { mapSupabaseUserToVpUser } from './vp-auth-user';
 import { isStaticBundleContext, redirectToVpLogin } from './static-bundle';
 import { ensureVpBillingProfile } from './ensureVpBillingProfile';
 import { confirmLogoutIfUnsaved } from './unsaved-work';
+import { revenueCatLogIn, revenueCatLogOut } from './revenuecat';
 
 const AuthContext = createContext();
 
@@ -48,6 +49,9 @@ function applyUserState(authUser, { setUser, setIsAuthenticated, setAuthError })
   if (vpUser) {
     setAuthError(null);
     void ensureVpBillingProfile(vpUser.id);
+    void revenueCatLogIn(vpUser.id);
+  } else {
+    void revenueCatLogOut();
   }
 }
 
@@ -138,6 +142,7 @@ export const AuthProvider = ({ children }) => {
       setAuthError(null);
       setAuthChecked(true);
       void ensureVpBillingProfile(vpUser?.id);
+      if (vpUser?.id) void revenueCatLogIn(vpUser.id);
       return { user: vpUser, session: data.session };
     } catch (error) {
       console.error('Sign in error:', error);
@@ -164,6 +169,7 @@ export const AuthProvider = ({ children }) => {
       setAuthChecked(true);
       if (vpUser?.id) {
         void ensureVpBillingProfile(vpUser.id);
+        void revenueCatLogIn(vpUser.id);
       }
       return { user: vpUser, session: data.session };
     } catch (error) {
@@ -178,6 +184,7 @@ export const AuthProvider = ({ children }) => {
 
   const signOut = async () => {
     try {
+      await revenueCatLogOut();
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       setUser(null);

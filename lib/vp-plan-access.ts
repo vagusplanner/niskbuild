@@ -10,6 +10,7 @@ import {
   resolvePaidIslamicAccess,
   type IslamicAccessInput,
 } from '@/lib/vp-islamic-access';
+import { pickHighestRankPlan } from '@/lib/vp-plan-rank';
 import {
   getAdminCompedGrantTier,
   isPlatformOwnerGatingActive,
@@ -52,19 +53,23 @@ export function resolveEffectivePlan(input: PlanAccessInput): EffectivePlanResul
 
   const islamic = resolvePaidIslamicAccess(input);
 
-  const subs = input.subscriptions ?? [];
-  for (const sub of subs) {
-    const plan = normalizePlanId(sub.plan) || 'free';
-    const status = typeof sub.status === 'string' ? sub.status.toLowerCase().trim() : '';
-    if (plan && plan !== 'free' && isEntitledSubscriptionStatus(status)) {
-      return {
-        plan,
-        status,
-        source: 'vp_subscriptions',
-        hasPaidIslamicAccess: isPaidIslamicPlan(plan),
-        isPaid: true,
-      };
-    }
+  const titledSubs = (input.subscriptions ?? [])
+    .map((sub) => ({
+      plan: normalizePlanId(sub.plan) || 'free',
+      status: typeof sub.status === 'string' ? sub.status.toLowerCase().trim() : '',
+    }))
+    .filter(
+      (sub) => sub.plan && sub.plan !== 'free' && isEntitledSubscriptionStatus(sub.status)
+    );
+  const bestSub = pickHighestRankPlan(titledSubs);
+  if (bestSub) {
+    return {
+      plan: bestSub.plan,
+      status: bestSub.status,
+      source: 'vp_subscriptions',
+      hasPaidIslamicAccess: isPaidIslamicPlan(bestSub.plan),
+      isPaid: true,
+    };
   }
 
   const tier = normalizePlanId(input.profile?.subscription_tier) || 'free';

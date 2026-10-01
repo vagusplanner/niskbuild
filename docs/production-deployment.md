@@ -76,6 +76,8 @@ Vagus Planner **does** need these at **build time** on its own deployment:
 | `STRIPE_SECRET_KEY` | Stripe **live** secret key |
 | `STRIPE_WEBHOOK_SECRET` | Signing secret for `POST /api/webhooks` |
 | `NEXT_PUBLIC_STRIPE_*` | Price IDs per tier (see `lib/stripe-price-ids.ts`) |
+| `REVENUECAT_WEBHOOK_SECRET` | Shared secret for `POST /api/webhooks/revenuecat` (set the same value as the Authorization header in the RevenueCat dashboard webhook config) |
+| `VITE_REVENUECAT_IOS_API_KEY` | RevenueCat **iOS public** SDK key (e.g. `appl_…`). Baked into Capacitor / App Store builds via `buildVpCapacitorBuildEnv`. Safe to embed in the client. |
 
 Configure the Stripe webhook endpoint:
 
@@ -84,6 +86,17 @@ https://<your-domain>/api/webhooks
 ```
 
 Events: `checkout.session.completed`, `customer.subscription.*`, `invoice.paid`.
+
+Configure the RevenueCat webhook (Vagus Planner Apple IAP only — keep SE8/NiskBuild Stripe isolated):
+
+```
+https://<your-domain>/api/webhooks/revenuecat
+```
+
+1. In RevenueCat → Project → Integrations → Webhooks, add the URL above.
+2. Set Authorization header to the same value as `REVENUECAT_WEBHOOK_SECRET` (raw secret or `Bearer <secret>` both work).
+3. Apply `supabase/vp-apple-iap-migration.sql` before going live (adds `provider` + Apple fields on `firstparty.vp_subscriptions`).
+4. For Cap builds, set `VITE_REVENUECAT_IOS_API_KEY` then rebuild/sync iOS.
 
 ### Recommended — AI & email
 

@@ -84,6 +84,7 @@ import SidebarTools from '@/components/sidebar/SidebarTools';
       import WelcomeEmailTrigger from '@/components/auth/WelcomeEmailTrigger';
       import CapacitorPushRegistration from '@/components/notifications/CapacitorPushRegistration';
 import CapacitorStatusBarSetup from '@/components/mobile/CapacitorStatusBarSetup';
+import CapacitorRevenueCatAuth from '@/components/billing/CapacitorRevenueCatAuth';
 import { filterNavItems, isPageHiddenFromNav } from '@/lib/nav-v1-scope';
 import {
   hasCompletedLegalConsent,
@@ -846,6 +847,7 @@ export default function Layout({ children, currentPageName }) {
       <ServiceWorkerManager />
       <CapacitorPushRegistration />
       <CapacitorStatusBarSetup />
+      <CapacitorRevenueCatAuth />
 
       {/* GDPR legal consent gate */}
       <React.Suspense fallback={null}>

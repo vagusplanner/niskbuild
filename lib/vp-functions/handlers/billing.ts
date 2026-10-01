@@ -11,6 +11,8 @@ import {
 } from '@/lib/stripe-subscription-product';
 import { hasComplimentaryProductAccess } from '@/lib/access-grant';
 import { ALREADY_HAVE_ACCESS_MESSAGE } from '@/lib/checkout-access-block';
+import { blockStripeCheckoutIfAppleActive } from '@/lib/vp-dual-purchase-guard';
+import { normalizePlanId } from '@/lib/vp-islamic-access';
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY?.trim();
 const stripe = stripeSecret ? new Stripe(stripeSecret) : null;
@@ -38,6 +40,21 @@ export const createStripeCheckout: VpFunctionHandler = async ({ request, user, p
       : null;
 
   const tier = mapPlanToTier(planName);
+  const requestedPlan =
+    normalizePlanId(
+      typeof planName === 'string'
+        ? planName.toLowerCase().includes('islamic')
+          ? String(planName).toLowerCase().replace(/\s+/g, '_')
+          : tier
+        : tier
+    ) || tier;
+
+  const adminForGuard = createAdminClient();
+  const appleBlock = await blockStripeCheckoutIfAppleActive(adminForGuard, user.id, requestedPlan);
+  if (appleBlock.blocked) {
+    return { ok: false, error: appleBlock.message, status: 403, code: 'APPLE_SUB_ACTIVE' };
+  }
+
   const interval = normalizePriceInterval(billingCycle);
   const vpOrigin = vpAppOrigin(request);
 

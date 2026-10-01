@@ -56,7 +56,7 @@ export default function AICalendarSummaryCard() {
         toast.error(
           canUseStripePurchases()
             ? (message || 'Free AI summary limit reached — upgrade for unlimited refreshes.')
-            : 'This is a premium feature.'
+            : 'Upgrade in Billing to continue with AI Calendar Summary.'
         );
         queryClient.invalidateQueries({ queryKey: ['planAccess'] });
       } else {

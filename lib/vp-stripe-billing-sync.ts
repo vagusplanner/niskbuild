@@ -205,6 +205,7 @@ export async function upsertVpSubscriptionFromStripe(
 
   const period = subscriptionPeriodUnix(subscription);
   const row = {
+    provider: 'stripe',
     user_id: userId,
     user_email: email || '',
     plan: forceCanceled ? 'free' : plan || 'free',

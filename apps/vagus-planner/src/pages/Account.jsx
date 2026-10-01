@@ -241,7 +241,9 @@ export default function Account() {
     const edition = checked ? 'islamic' : 'standard';
     if (edition === 'islamic' && !hasPaidIslamicAccess) {
       if (!canUseStripePurchases()) {
-        toast.info('This is a premium feature.');
+        // iOS: send user to Billing for Apple IAP Islamic plans
+        toast.info('Upgrade to an Islamic plan to enable Islamic Edition.');
+        navigate('/Billing');
         return;
       }
       toast.error('Islamic Edition requires an active Islamic plan. Upgrade in Billing.');
@@ -587,7 +589,12 @@ export default function Account() {
                     platformOwnerBypass={platformOwnerBypass}
                     onManage={async () => {
                       if (!canUseStripePurchases()) {
-                        toast.info('This is a premium feature.');
+                        toast.info(
+                          String(subscription?.provider || '').toLowerCase() === 'apple'
+                            ? 'Manage your subscription in Settings → Apple ID → Subscriptions.'
+                            : 'Open Billing to upgrade with Apple.'
+                        );
+                        navigate('/Billing');
                         return;
                       }
                       try {
@@ -600,14 +607,14 @@ export default function Account() {
                         toast.error('Failed');
                       }
                     }}
-                    onUpgrade={
-                      canUseStripePurchases()
-                        ? () => {
-                            navigate('/Billing');
-                          }
-                        : undefined
-                    }
+                    onUpgrade={() => {
+                      navigate('/Billing');
+                    }}
                     onCancel={async () => {
+                      if (String(subscription?.provider || '').toLowerCase() === 'apple') {
+                        toast.info('Cancel in Settings → Apple ID → Subscriptions.');
+                        return;
+                      }
                       try {
                         const result = await base44.functions.invoke('cancelStripeSubscription', {
                           subscriptionId: subscription?.stripe_subscription_id || '',
