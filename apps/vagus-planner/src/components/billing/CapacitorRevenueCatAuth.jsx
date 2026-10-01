@@ -20,19 +20,35 @@ export default function CapacitorRevenueCatAuth() {
 
     (async () => {
       try {
+        console.log('[CapacitorRevenueCatAuth] init start', {
+          isAuthenticated,
+          hasUserId: Boolean(user?.id),
+        });
         await ensureCapacitorReady();
         if (cancelled) return;
+        console.log('[CapacitorRevenueCatAuth] configure start');
         const result = await configureRevenueCat(user?.id);
         if (cancelled) return;
         if (!result?.ok) {
-          console.error('[CapacitorRevenueCatAuth] configure not ready:', result?.reason);
+          console.error(
+            '[CapacitorRevenueCatAuth] configure not ready:',
+            result?.reason,
+            result?.error instanceof Error ? result.error.stack : result?.error
+          );
           return;
         }
+        console.log('[CapacitorRevenueCatAuth] configure ✓');
         if (isAuthenticated && user?.id) {
+          console.log('[CapacitorRevenueCatAuth] logIn start');
           await revenueCatLogIn(user.id);
+          console.log('[CapacitorRevenueCatAuth] logIn done');
         }
       } catch (err) {
-        console.error('[CapacitorRevenueCatAuth] init failed:', err);
+        console.error(
+          '[CapacitorRevenueCatAuth] init failed:',
+          err instanceof Error ? err.message : err,
+          err instanceof Error ? err.stack : undefined
+        );
       }
     })();
 

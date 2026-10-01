@@ -97,25 +97,38 @@ export default function BillingPage() {
           console.log('[Billing] Apple IAP purchase start', { planId, billingCycle });
 
           // Soft dual-purchase guard (5s cap) — never block forever before RC native.
+          console.log('[Billing] Apple IAP dual-guard start');
           await assertNoBlockingWebSub(planId, {
             plan: billingPlan,
             status: billingStatus,
             source: billingSource,
             subscription: billingSubscription,
           });
+          console.log('[Billing] Apple IAP dual-guard done');
 
+          console.log('[Billing] Apple IAP ensureRevenueCatReady start');
           await ensureRevenueCatReady();
+          console.log('[Billing] Apple IAP ensureRevenueCatReady done');
 
+          console.log('[Billing] Apple IAP findPackageForPlan start');
           const { pkg, error } = await findPackageForPlan({
             planId,
             billingCycle: billingCycle === 'annual' || billingCycle === 'yearly' ? 'annual' : 'monthly',
             editionPreference: String(planId).includes('islamic') ? 'islamic' : 'standard',
           });
+          console.log('[Billing] Apple IAP findPackageForPlan done', {
+            hasPkg: Boolean(pkg),
+            packageId: pkg?.identifier,
+            productId: pkg?.product?.identifier,
+            error: error || null,
+          });
           if (error || !pkg) {
             console.error('[Billing] Apple IAP no package', { planId, billingCycle, error });
             throw new Error(error || 'No App Store package found for this plan');
           }
+          console.log('[Billing] Apple IAP purchasePackage start');
           await purchasePackage(pkg);
+          console.log('[Billing] Apple IAP purchasePackage done');
           toast.dismiss(loadingToast);
           toast.success('Purchase successful! Unlocking…');
           await queryClient.invalidateQueries({ queryKey: ['billingStatus'] });
@@ -127,7 +140,11 @@ export default function BillingPage() {
             queryClient.invalidateQueries({ queryKey: ['planAccess'] });
           }, 2500);
         } catch (error) {
-          console.error('[Billing] Apple IAP purchase failed:', error);
+          console.error(
+            '[Billing] Apple IAP purchase failed:',
+            error instanceof Error ? error.message : error,
+            error instanceof Error ? error.stack : undefined
+          );
           toast.dismiss(loadingToast);
           throw error;
         } finally {

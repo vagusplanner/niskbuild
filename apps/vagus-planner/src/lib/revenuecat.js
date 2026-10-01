@@ -9,14 +9,29 @@ import { normalizePlanId, planRank } from '@/lib/vp-plan-rank';
 const OFFERING_STANDARD = 'standard';
 const OFFERING_ISLAMIC = 'islamic';
 
-/** Soft ceiling so purchase UI never spins forever waiting on native/network. */
+/** Soft ceilings so purchase UI never spins forever waiting on native/network. */
+const CAPACITOR_READY_TIMEOUT_MS = 8000;
+const IMPORT_TIMEOUT_MS = 10000;
 const CONFIGURE_TIMEOUT_MS = 15000;
 const OFFERINGS_TIMEOUT_MS = 20000;
 const PURCHASE_BRIDGE_TIMEOUT_MS = 120000;
+/**
+ * Max wait when joining an in-flight configure started elsewhere (e.g. Cap auth).
+ * Keep short enough to abandon a hung Cap-auth configure and retry, but long enough
+ * for a healthy cold start (cap ready + import + configure).
+ */
+const IN_FLIGHT_CONFIGURE_WAIT_MS =
+  CAPACITOR_READY_TIMEOUT_MS + IMPORT_TIMEOUT_MS + CONFIGURE_TIMEOUT_MS + 2000;
+/** Whole ensureReady budget: in-flight abandon/retry + optional logIn. */
+const ENSURE_READY_TIMEOUT_MS = IN_FLIGHT_CONFIGURE_WAIT_MS + CONFIGURE_TIMEOUT_MS + 5000;
 
 let configurePromise = null;
 let configured = false;
 let lastConfigureError = null;
+/** Bumped when abandoning a hung in-flight configure so stale success cannot win. */
+let configureGeneration = 0;
+/** Cached Purchases plugin after first successful dynamic import. */
+let purchasesPlugin = null;
 
 function iosApiKey() {
   try {
@@ -40,12 +55,34 @@ function withTimeout(promise, ms, label) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
+function logErr(label, err) {
+  const msg = err instanceof Error ? err.message : String(err);
+  const stack = err instanceof Error ? err.stack : undefined;
+  console.error(label, msg, stack || err);
+}
+
 async function getPurchases() {
-  const mod = await import('@revenuecat/purchases-capacitor');
-  if (!mod?.Purchases) {
-    throw new Error('RevenueCat Purchases plugin failed to load');
+  if (purchasesPlugin) {
+    console.log('[RevenueCat] Purchases plugin import (cached)');
+    return purchasesPlugin;
   }
-  return mod.Purchases;
+  console.log('[RevenueCat] Purchases plugin import start');
+  try {
+    const mod = await withTimeout(
+      import('@revenuecat/purchases-capacitor'),
+      IMPORT_TIMEOUT_MS,
+      'Purchases plugin import'
+    );
+    if (!mod?.Purchases) {
+      throw new Error('RevenueCat Purchases plugin failed to load');
+    }
+    purchasesPlugin = mod.Purchases;
+    console.log('[RevenueCat] Purchases plugin import ✓');
+    return purchasesPlugin;
+  } catch (err) {
+    logErr('[RevenueCat] Purchases plugin import failed:', err);
+    throw err;
+  }
 }
 
 export function isRevenueCatConfigured() {
@@ -59,6 +96,7 @@ export function canUseAppleIap() {
 /**
  * Configure RevenueCat once on iOS. Safe to call repeatedly.
  * Waits for Capacitor bridge first so configure cannot hang on a cold start.
+ * Soft-timeouts every await so an in-flight Cap-auth configure cannot block purchase forever.
  */
 export async function configureRevenueCat(appUserId) {
   if (!isIosNativeApp()) return { ok: false, reason: 'not_ios' };
@@ -70,13 +108,50 @@ export async function configureRevenueCat(appUserId) {
     return { ok: false, reason: 'missing_api_key' };
   }
 
-  if (configured) return { ok: true };
-  if (configurePromise) return configurePromise;
+  if (configured) {
+    console.log('[RevenueCat] configure skip (already configured)');
+    return { ok: true };
+  }
 
+  // Join in-flight configure with a soft wait — never inherit an infinite hang.
+  if (configurePromise) {
+    console.log('[RevenueCat] configure joining in-flight promise');
+    try {
+      const joined = await withTimeout(
+        configurePromise,
+        IN_FLIGHT_CONFIGURE_WAIT_MS,
+        'configureRevenueCat (in-flight)'
+      );
+      return joined;
+    } catch (err) {
+      logErr('[RevenueCat] in-flight configure timed out; resetting for retry:', err);
+      configurePromise = null;
+      configured = false;
+      configureGeneration += 1; // invalidate hung starter
+      // fall through to start a fresh configure
+    }
+  }
+
+  const gen = ++configureGeneration;
   configurePromise = (async () => {
     try {
-      await ensureCapacitorReady();
+      console.log('[RevenueCat] ensureCapacitorReady start');
+      await withTimeout(
+        ensureCapacitorReady(),
+        CAPACITOR_READY_TIMEOUT_MS,
+        'ensureCapacitorReady'
+      );
+      if (gen !== configureGeneration) {
+        console.warn('[RevenueCat] configure abandoned after ensureCapacitorReady');
+        return { ok: false, reason: 'abandoned' };
+      }
+      console.log('[RevenueCat] ensureCapacitorReady ✓');
+
       const Purchases = await getPurchases();
+      if (gen !== configureGeneration) {
+        console.warn('[RevenueCat] configure abandoned after Purchases import');
+        return { ok: false, reason: 'abandoned' };
+      }
       const config = { apiKey };
       if (typeof appUserId === 'string' && appUserId.trim()) {
         config.appUserID = appUserId.trim();
@@ -89,15 +164,22 @@ export async function configureRevenueCat(appUserId) {
         CONFIGURE_TIMEOUT_MS,
         'Purchases.configure'
       );
+      if (gen !== configureGeneration) {
+        console.warn('[RevenueCat] configure abandoned after Purchases.configure');
+        return { ok: false, reason: 'abandoned' };
+      }
       configured = true;
       lastConfigureError = null;
       console.log('[RevenueCat] configure ✓');
       return { ok: true };
     } catch (err) {
+      if (gen !== configureGeneration) {
+        return { ok: false, reason: 'abandoned' };
+      }
       configurePromise = null;
       configured = false;
       lastConfigureError = err;
-      console.error('[RevenueCat] configure failed:', err);
+      logErr('[RevenueCat] configure failed:', err);
       return { ok: false, reason: 'configure_failed', error: err };
     }
   })();
@@ -109,23 +191,48 @@ export async function configureRevenueCat(appUserId) {
  * Ensure SDK is configured (and optionally logged in) before purchase/offerings.
  */
 export async function ensureRevenueCatReady(appUserId) {
-  const result = await configureRevenueCat(appUserId);
-  if (!configured) {
-    const detail =
-      lastConfigureError instanceof Error
-        ? lastConfigureError.message
-        : result?.reason || 'not_configured';
-    throw new Error(`RevenueCat is not ready (${detail})`);
+  console.log('[RevenueCat] ensureRevenueCatReady enter', {
+    hasAppUserId: Boolean(appUserId && String(appUserId).trim()),
+    alreadyConfigured: configured,
+    hasInFlight: Boolean(configurePromise),
+  });
+
+  try {
+    const result = await withTimeout(
+      (async () => {
+        const cfg = await configureRevenueCat(appUserId);
+        if (!configured) {
+          const detail =
+            lastConfigureError instanceof Error
+              ? lastConfigureError.message
+              : cfg?.reason || 'not_configured';
+          throw new Error(`RevenueCat is not ready (${detail})`);
+        }
+        if (typeof appUserId === 'string' && appUserId.trim()) {
+          try {
+            console.log('[RevenueCat] ensureReady logIn start');
+            await withTimeout(
+              revenueCatLogIn(appUserId.trim()),
+              CONFIGURE_TIMEOUT_MS,
+              'ensureReady logIn'
+            );
+            console.log('[RevenueCat] ensureReady logIn ✓');
+          } catch (err) {
+            // Purchase can still proceed; attribution may be anonymous until logIn succeeds.
+            logErr('[RevenueCat] ensureReady logIn failed (continuing):', err);
+          }
+        }
+        return { ok: true };
+      })(),
+      ENSURE_READY_TIMEOUT_MS,
+      'ensureRevenueCatReady'
+    );
+    console.log('[RevenueCat] ensureRevenueCatReady exit ✓');
+    return result;
+  } catch (err) {
+    logErr('[RevenueCat] ensureRevenueCatReady failed:', err);
+    throw err;
   }
-  if (typeof appUserId === 'string' && appUserId.trim()) {
-    try {
-      await revenueCatLogIn(appUserId.trim());
-    } catch (err) {
-      // Purchase can still proceed; attribution may be anonymous until logIn succeeds.
-      console.error('[RevenueCat] ensureReady logIn failed (continuing):', err);
-    }
-  }
-  return { ok: true };
 }
 
 export async function revenueCatLogIn(supabaseUserId) {
@@ -135,9 +242,14 @@ export async function revenueCatLogIn(supabaseUserId) {
     if (!configured) return;
     const Purchases = await getPurchases();
     console.log('[RevenueCat] logIn → native');
-    await Purchases.logIn({ appUserID: String(supabaseUserId) });
+    await withTimeout(
+      Purchases.logIn({ appUserID: String(supabaseUserId) }),
+      CONFIGURE_TIMEOUT_MS,
+      'Purchases.logIn'
+    );
+    console.log('[RevenueCat] logIn ✓');
   } catch (err) {
-    console.error('[RevenueCat] logIn failed:', err);
+    logErr('[RevenueCat] logIn failed:', err);
   }
 }
 
@@ -147,7 +259,7 @@ export async function revenueCatLogOut() {
     const Purchases = await getPurchases();
     await Purchases.logOut();
   } catch (err) {
-    console.error('[RevenueCat] logOut failed:', err);
+    logErr('[RevenueCat] logOut failed:', err);
   }
 }
 
@@ -249,6 +361,7 @@ function summarizePackages(packages) {
  * @returns {Promise<{ offering: object|null, packages: object[], error?: string }>}
  */
 export async function getOfferingPackages(offeringId = OFFERING_STANDARD) {
+  console.log('[RevenueCat] getOfferingPackages start', { offeringId });
   await configureRevenueCat();
   if (!configured) {
     return {
@@ -321,7 +434,7 @@ export async function getOfferingPackages(offeringId = OFFERING_STANDARD) {
 
     return { offering, packages };
   } catch (err) {
-    console.error('[RevenueCat] getOfferings failed:', err);
+    logErr('[RevenueCat] getOfferings failed:', err);
     return {
       offering: null,
       packages: [],
@@ -338,11 +451,19 @@ export async function findPackageForPlan({
   billingCycle = 'monthly',
   editionPreference = 'standard',
 }) {
+  console.log('[RevenueCat] findPackageForPlan start', {
+    planId,
+    billingCycle,
+    editionPreference,
+  });
   const offeringId = offeringIdForEdition(
     planId?.includes('islamic') ? 'islamic' : editionPreference
   );
   const { packages, error } = await getOfferingPackages(offeringId);
-  if (error) return { pkg: null, error, packages: packages || [] };
+  if (error) {
+    console.error('[RevenueCat] findPackageForPlan offerings error:', error);
+    return { pkg: null, error, packages: packages || [] };
+  }
 
   const want = normalizePlanId(planId);
   const wantCycle = billingCycle === 'annual' || billingCycle === 'yearly' ? 'annual' : 'monthly';
@@ -401,6 +522,7 @@ function toBridgePackage(pkg) {
 }
 
 export async function purchasePackage(pkg) {
+  console.log('[RevenueCat] purchasePackage enter');
   await configureRevenueCat();
   if (!configured) throw new Error('RevenueCat is not configured');
   if (!pkg) throw new Error('No package selected');
@@ -422,11 +544,18 @@ export async function purchasePackage(pkg) {
     productId: aPackage.product?.identifier,
     offering: aPackage.presentedOfferingContext?.offeringIdentifier,
   });
-  return withTimeout(
-    Purchases.purchasePackage({ aPackage }),
-    PURCHASE_BRIDGE_TIMEOUT_MS,
-    'Purchases.purchasePackage'
-  );
+  try {
+    const result = await withTimeout(
+      Purchases.purchasePackage({ aPackage }),
+      PURCHASE_BRIDGE_TIMEOUT_MS,
+      'Purchases.purchasePackage'
+    );
+    console.log('[RevenueCat] purchasePackage ✓');
+    return result;
+  } catch (err) {
+    logErr('[RevenueCat] purchasePackage failed:', err);
+    throw err;
+  }
 }
 
 export async function restorePurchases() {

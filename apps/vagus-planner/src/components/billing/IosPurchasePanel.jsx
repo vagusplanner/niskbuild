@@ -51,7 +51,9 @@ function stripeBlocksRequestedPlan(data, requestedPlan) {
  * Pass cachedStatus from useBillingStatus when available.
  */
 export async function assertNoBlockingWebSub(requestedPlan, cachedStatus = null) {
+  console.log('[IAP] dual-guard enter', { requestedPlan, hasCached: Boolean(cachedStatus) });
   if (stripeBlocksRequestedPlan(cachedStatus, requestedPlan)) {
+    console.log('[IAP] dual-guard blocked by cached Stripe sub');
     throw new Error(WEB_SUB_MANAGE_MESSAGE);
   }
 
@@ -61,9 +63,23 @@ export async function assertNoBlockingWebSub(requestedPlan, cachedStatus = null)
 
   const checkPromise = (async () => {
     try {
+      console.log('[IAP] dual-guard headers start');
+      // Soft-cap getSession so a hung auth client cannot burn the whole 5s budget silently.
+      let headers = { 'Content-Type': 'application/json' };
+      try {
+        headers = await Promise.race([
+          getVpApiFetchHeaders(),
+          new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('getVpApiFetchHeaders timed out')), 3000);
+          }),
+        ]);
+      } catch (hdrErr) {
+        console.warn('[IAP] dual-guard headers skipped:', hdrErr?.message || hdrErr);
+      }
+      console.log('[IAP] dual-guard fetch start');
       const res = await fetch(`${apiBase()}/api/vagus-planner/billing-status`, {
         credentials: 'include',
-        headers: await getVpApiFetchHeaders(),
+        headers,
         signal: controller?.signal,
       });
       if (timedOut) return 'skip';
@@ -73,6 +89,7 @@ export async function assertNoBlockingWebSub(requestedPlan, cachedStatus = null)
       if (stripeBlocksRequestedPlan(data, requestedPlan)) {
         throw new Error(WEB_SUB_MANAGE_MESSAGE);
       }
+      console.log('[IAP] dual-guard fetch ok');
       return 'ok';
     } catch (err) {
       if (err instanceof Error && err.message === WEB_SUB_MANAGE_MESSAGE) throw err;
@@ -99,9 +116,14 @@ export async function assertNoBlockingWebSub(requestedPlan, cachedStatus = null)
     if (outcome === 'timeout') {
       console.warn('[IAP] dual-purchase check timed out — continuing to App Store purchase');
     }
+    console.log('[IAP] dual-guard exit', { outcome });
   } catch (err) {
     if (err instanceof Error && err.message === WEB_SUB_MANAGE_MESSAGE) throw err;
-    console.warn('[IAP] dual-purchase check skipped:', err?.message || err);
+    console.warn(
+      '[IAP] dual-purchase check skipped:',
+      err?.message || err,
+      err instanceof Error ? err.stack : undefined
+    );
   } finally {
     if (timer) clearTimeout(timer);
     // Swallow late rejections after timeout won the race (avoid unhandledrejection).
@@ -131,12 +153,19 @@ export function IosUpgradeButton({
     setBusy(true);
     try {
       console.log('[IosUpgradeButton] purchase start', { planId, billingCycle });
+      console.log('[IosUpgradeButton] dual-guard start');
       await assertNoBlockingWebSub(planId);
+      console.log('[IosUpgradeButton] ensureRevenueCatReady start');
       await ensureRevenueCatReady();
+      console.log('[IosUpgradeButton] findPackageForPlan start');
       const { pkg, error } = await findPackageForPlan({
         planId,
         billingCycle,
         editionPreference: planId.includes('islamic') ? 'islamic' : editionPreference,
+      });
+      console.log('[IosUpgradeButton] findPackageForPlan done', {
+        hasPkg: Boolean(pkg),
+        error: error || null,
       });
       if (error || !pkg) {
         console.error('[IosUpgradeButton] no package', { planId, billingCycle, error });
@@ -144,7 +173,9 @@ export function IosUpgradeButton({
         navigate(createPageUrl('Billing'));
         return;
       }
+      console.log('[IosUpgradeButton] purchasePackage start');
       await purchasePackage(pkg);
+      console.log('[IosUpgradeButton] purchasePackage done');
       toast.success('Purchase successful — unlocking…');
       queryClient.invalidateQueries({ queryKey: ['billingStatus'] });
       queryClient.invalidateQueries({ queryKey: ['planAccess'] });
@@ -160,7 +191,11 @@ export function IosUpgradeButton({
       } else if (msg === WEB_SUB_MANAGE_MESSAGE) {
         toast.error(WEB_SUB_MANAGE_MESSAGE);
       } else {
-        console.error('[IosUpgradeButton] purchase failed:', err);
+        console.error(
+          '[IosUpgradeButton] purchase failed:',
+          msg,
+          err instanceof Error ? err.stack : err
+        );
         toast.error(msg || 'Purchase failed');
       }
     } finally {
