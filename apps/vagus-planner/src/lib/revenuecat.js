@@ -186,10 +186,30 @@ function invokePurchasesConfigure(Purchases, config) {
   };
 }
 
+/**
+ * Cap `registerPlugin` proxies are unintentional Thenables: the Proxy get-trap
+ * returns a native method wrapper for ANY missing prop — including `then` /
+ * `catch` / `finally` (ionic-team/capacitor#8472, Cap 7.x still affected).
+ *
+ * Returning the proxy from an `async` function (or any `Promise.resolve(proxy)`)
+ * makes the engine call `proxy.then(resolve, reject)` →
+ * `nativePromise('Purchases', 'then', …)` → indefinite hang on iOS with NO
+ * further JS logs. That matches device evidence: import ✓ then silence until
+ * the 35s in-flight join timeout; `about to call Purchases.configure` never runs.
+ *
+ * Always box in a plain object so Promise resolution does not Thenable-unwrap.
+ */
+function boxPurchasesPlugin(plugin) {
+  return { Purchases: plugin };
+}
+
 async function getPurchases() {
   if (purchasesPlugin) {
-    iapDebugLog('[RevenueCat] Purchases plugin import (cached)');
-    return purchasesPlugin;
+    iapDebugLog('[RevenueCat] Purchases plugin import (cached)', {
+      typeofThen: typeof purchasesPlugin.then,
+    });
+    // MUST box — raw `return purchasesPlugin` hangs (Cap thenable proxy).
+    return boxPurchasesPlugin(purchasesPlugin);
   }
   iapDebugLog('[RevenueCat] Purchases plugin import start');
   try {
@@ -209,17 +229,20 @@ async function getPurchases() {
     }
     purchasesPlugin = resolved;
     // Cap registerPlugin proxy has empty Object.keys — also probe known methods.
+    // typeofThen === 'function' proves the Cap#8472 Thenable footgun is live.
     const probe = ['configure', 'getOfferings', 'purchasePackage', 'logIn', 'logOut'];
     iapDebugLog('[RevenueCat] Purchases plugin import ✓', {
       typeofConfigure: typeof purchasesPlugin.configure,
       configureIsFunction: typeof purchasesPlugin.configure === 'function',
+      typeofThen: typeof purchasesPlugin.then,
       moduleKeys: Object.keys(mod || {}),
       purchasesKeys: Object.keys(purchasesPlugin || {}),
       methodTypes: Object.fromEntries(
         probe.map((k) => [k, typeof purchasesPlugin?.[k]])
       ),
     });
-    return purchasesPlugin;
+    // MUST box — raw return hangs after this log (Promise.resolve Thenable unwrap).
+    return boxPurchasesPlugin(purchasesPlugin);
   } catch (err) {
     logErr('[RevenueCat] Purchases plugin import failed:', err);
     throw err;
@@ -248,8 +271,8 @@ export function canUseAppleIap() {
  *    b. First await yields → IIFE returns pending Promise P.
  *    c. Assign configurePromise = P, then sync-log "configurePromise stored".
  *       (Joiners can attach only after this store; body has ALWAYS already started.)
- *    d. Later: Cap ready ✓ → import Purchases → "about to call Purchases.configure"
- *       → nativePromise/proxy → configured = true.
+ *    d. Later: Cap ready ✓ → import Purchases (boxed return — Cap#8472) →
+ *       "about to call Purchases.configure" → nativePromise/proxy → configured.
  */
 export async function configureRevenueCat(appUserId) {
   if (!isIosNativeApp()) return { ok: false, reason: 'not_ios' };
@@ -310,14 +333,27 @@ export async function configureRevenueCat(appUserId) {
       }
       iapDebugLog('[RevenueCat] ensureCapacitorReady ✓');
 
-      const Purchases = await getPurchases();
+      // getPurchases boxes the Cap proxy — await must resolve past Cap#8472 Thenable hang.
+      iapDebugLog('[RevenueCat] getPurchases await start');
+      const { Purchases } = await getPurchases();
+      iapDebugLog('[RevenueCat] getPurchases await resolved (boxed)', {
+        hasPurchases: Boolean(Purchases),
+        typeofThen: typeof Purchases?.then,
+      });
       if (gen !== configureGeneration) {
         console.warn('[RevenueCat] configure abandoned after Purchases import');
         return { ok: false, reason: 'abandoned' };
       }
 
       // Re-resolve at call site — catch empty key even if an earlier check passed.
-      const apiKeyNow = iosApiKey();
+      iapDebugLog('[RevenueCat] resolving apiKey at configure invoke');
+      let apiKeyNow;
+      try {
+        apiKeyNow = iosApiKey();
+      } catch (err) {
+        iapDebugLog('[RevenueCat] iosApiKey threw', err);
+        throw err;
+      }
       if (!apiKeyNow) {
         const err = new Error(
           'VITE_REVENUECAT_IOS_API_KEY empty at configure invoke (was present at entry?)'
@@ -325,24 +361,39 @@ export async function configureRevenueCat(appUserId) {
         console.error('[RevenueCat] apiKey missing at invoke', apiKeyLogShape(apiKeyNow));
         throw err;
       }
+      iapDebugLog('[RevenueCat] apiKey ok', apiKeyLogShape(apiKeyNow));
 
       const config = { apiKey: apiKeyNow };
       if (typeof appUserId === 'string' && appUserId.trim()) {
         config.appUserID = appUserId.trim();
       }
+      iapDebugLog('[RevenueCat] config object built', { optionKeys: Object.keys(config) });
 
       const cap = getWindowCapacitor();
+      // Log FIRST before any Cap property evaluation that could hang.
       iapDebugLog('[RevenueCat] about to call Purchases.configure', {
         apiKey: apiKeyLogShape(apiKeyNow),
         optionKeys: Object.keys(config),
         typeofConfigure: typeof Purchases?.configure,
         configureIsFunction: typeof Purchases?.configure === 'function',
+        typeofThen: typeof Purchases?.then,
         purchasesKeys: Object.keys(Purchases || {}),
-        capPlatform: cap?.getPlatform?.(),
-        capIsNative: cap?.isNativePlatform?.(),
-        purchasesPluginAvailable: cap?.isPluginAvailable?.('Purchases'),
         hasNativePromise: typeof cap?.nativePromise === 'function',
       });
+      // Cap probes AFTER the landmark log so they cannot hide "about to call".
+      try {
+        iapDebugLog('[RevenueCat] cap probe', {
+          capPlatform: typeof cap?.getPlatform === 'function' ? cap.getPlatform() : null,
+          capIsNative:
+            typeof cap?.isNativePlatform === 'function' ? cap.isNativePlatform() : null,
+          purchasesPluginAvailable:
+            typeof cap?.isPluginAvailable === 'function'
+              ? cap.isPluginAvailable('Purchases')
+              : null,
+        });
+      } catch (err) {
+        iapDebugLog('[RevenueCat] cap probe threw (continuing)', err);
+      }
 
       if (typeof Purchases?.configure !== 'function' && typeof cap?.nativePromise !== 'function') {
         throw new Error(
@@ -459,7 +510,7 @@ export async function revenueCatLogIn(supabaseUserId) {
   try {
     await configureRevenueCat(supabaseUserId);
     if (!configured) return;
-    const Purchases = await getPurchases();
+    const { Purchases } = await getPurchases();
     console.log('[RevenueCat] logIn → native');
     await withTimeout(
       Purchases.logIn({ appUserID: String(supabaseUserId) }),
@@ -475,7 +526,7 @@ export async function revenueCatLogIn(supabaseUserId) {
 export async function revenueCatLogOut() {
   if (!isIosNativeApp() || !configured) return;
   try {
-    const Purchases = await getPurchases();
+    const { Purchases } = await getPurchases();
     await Purchases.logOut();
   } catch (err) {
     logErr('[RevenueCat] logOut failed:', err);
@@ -593,7 +644,7 @@ export async function getOfferingPackages(offeringId = OFFERING_STANDARD) {
   }
 
   try {
-    const Purchases = await getPurchases();
+    const { Purchases } = await getPurchases();
     console.log('[RevenueCat] getOfferings → native', { offeringId });
     const raw = await withTimeout(
       Purchases.getOfferings(),
@@ -757,7 +808,7 @@ export async function purchasePackage(pkg) {
     );
   }
 
-  const Purchases = await getPurchases();
+  const { Purchases } = await getPurchases();
   console.log('[RevenueCat] purchasePackage → native', {
     packageId: aPackage.identifier,
     productId: aPackage.product?.identifier,
@@ -780,7 +831,7 @@ export async function purchasePackage(pkg) {
 export async function restorePurchases() {
   await configureRevenueCat();
   if (!configured) throw new Error('RevenueCat is not configured');
-  const Purchases = await getPurchases();
+  const { Purchases } = await getPurchases();
   console.log('[RevenueCat] restorePurchases → native');
   return Purchases.restorePurchases();
 }
