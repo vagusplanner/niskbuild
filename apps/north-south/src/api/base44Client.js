@@ -1,7 +1,7 @@
 /**
  * Phase 1 auth — Supabase.
  * Live entities: LeadershipGoal, GoalCheckIn, CoachingSession, Commitment,
- * LearningPath, Booking (SELECT/list only — writes need service-role handlers).
+ * LearningPath, Booking (create via /api/north-south/bookings; confirm staff-only).
  * Remaining entities: list/filter/get return empty until their milestones;
  * create/update/delete still reject so writes aren't silently dropped.
  *
@@ -15,6 +15,7 @@ import {
   nsRedirectToLogin,
   updateNsMe,
 } from '@/lib/ns-auth'
+import { apiBase, getNsApiFetchHeaders, nsApiJson } from '@/lib/ns-api'
 import { createBookingEntity } from '@/lib/ns-entities/booking'
 import { createCoachingSessionEntity } from '@/lib/ns-entities/coaching-session'
 import { createCommitmentEntity } from '@/lib/ns-entities/commitment'
@@ -22,6 +23,8 @@ import { createGoalCheckInEntity } from '@/lib/ns-entities/goal-check-in'
 import { createLeadershipGoalEntity } from '@/lib/ns-entities/leadership-goal'
 import { createLearningPathEntity } from '@/lib/ns-entities/learning-path'
 import { supabase } from '@/lib/supabase'
+
+export { getNsApiFetchHeaders }
 
 function notMigrated(op) {
   return Promise.reject(
@@ -43,41 +46,45 @@ function entityStub(name) {
   }
 }
 
-function apiBase() {
-  return (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
-}
+async function invokeManageCalendarEvent(params = {}) {
+  const action = params.action
+  const bookingId = params.bookingId || params.booking_id
+  if (!bookingId) {
+    return { data: { success: false, error: 'bookingId is required' } }
+  }
 
-/** Bearer token for cross-origin NS API calls. Same-origin Vite proxy still uses cookies when present. */
-export async function getNsApiFetchHeaders(extra = {}) {
-  const headers = { ...extra }
-  try {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-    const token = session?.access_token
-    if (token) {
-      headers.Authorization = `Bearer ${token}`
+  if (action === 'create' || action === 'confirm') {
+    try {
+      const data = await nsApiJson(`/api/north-south/bookings/${bookingId}/confirm`, {})
+      return { data }
+    } catch (err) {
+      return {
+        data: {
+          success: false,
+          error: err?.message || 'Failed to confirm booking',
+          code: err?.data?.code,
+        },
+      }
     }
-  } catch {
-    // Cookie session may still authenticate same-origin web requests.
   }
-  return headers
-}
 
-async function nsApiJson(path, body, { method = 'POST' } = {}) {
-  const response = await fetch(`${apiBase()}${path}`, {
-    method,
-    headers: await getNsApiFetchHeaders({ 'Content-Type': 'application/json' }),
-    credentials: 'include',
-    body: JSON.stringify(body),
-  })
-  const data = await response.json().catch(() => ({}))
-  if (!response.ok) {
-    const message =
-      typeof data?.error === 'string' ? data.error : `Request failed (${response.status})`
-    throw new Error(message)
+  if (action === 'reschedule' || action === 'cancel') {
+    return {
+      data: {
+        success: false,
+        error:
+          'Reschedule/cancel Calendar updates are not available yet. Confirm with Meet is live for staff.',
+        code: 'NOT_IN_SCOPE',
+      },
+    }
   }
-  return data
+
+  return {
+    data: {
+      success: false,
+      error: `Unknown manageCalendarEvent action: ${action || '(none)'}`,
+    },
+  }
 }
 
 export const base44 = {
@@ -216,7 +223,12 @@ export const base44 = {
     },
   },
   functions: {
-    invoke: (name, ..._a) => notMigrated(`functions.invoke(${name})`),
+    invoke: async (name, params) => {
+      if (name === 'manageCalendarEvent') {
+        return invokeManageCalendarEvent(params || {})
+      }
+      return notMigrated(`functions.invoke(${name})`)
+    },
   },
 }
 

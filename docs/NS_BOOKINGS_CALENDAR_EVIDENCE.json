@@ -1,0 +1,95 @@
+{
+  "created_at": "2026-10-02T23:20:00.000Z",
+  "summary": "P1 booking create + UI wiring verified. P2 OAuth routes live on production with NS_GOOGLE_CALENDAR_* configured. P3 confirm blocked only on interactive coach Google consent (passkey). Meet event not yet created.",
+  "ns_foundation": {
+    "applied": true,
+    "ns_bookings": { "ok": true },
+    "ns_staff_seeded": {
+      "user_id": "fa2f7283-1a5d-401d-8a00-dbc418ae81ef",
+      "email": "sofiane.kemih@gmail.com",
+      "role": "coach"
+    },
+    "oauth_states_provider_migration": {
+      "file": "supabase/ns-google-calendar-oauth-migration.sql",
+      "applied": false,
+      "note": "ns_google_calendar check constraint not yet widened; connect falls back to google_calendar provider until migration is applied"
+    }
+  },
+  "env": {
+    "local_NS_GOOGLE_CALENDAR_CLIENT_ID": false,
+    "local_NS_GOOGLE_CALENDAR_CLIENT_SECRET": false,
+    "local_NS_GOOGLE_CALENDAR_REDIRECT_URI": false,
+    "vercel_production_NS_GOOGLE_CALENDAR_*": true,
+    "note": "Sensitive secrets on Vercel Production cannot be pulled to .env.local; production status confirmed configured=true, client_id_suffix=nt.com, redirect_uri=https://www.niskbuild.com/api/north-south/google-calendar/callback, scope includes calendar.events"
+  },
+  "booking_ui": {
+    "method": "real browser against http://127.0.0.1:5177/book (logged in)",
+    "booking_id": "b47c2827-dd14-40b5-8281-dd6ba79aed4b",
+    "status": "pending",
+    "client_name": "UI Booker 6bfa67",
+    "client_email": "ns-ui-6bfa67@example.com",
+    "session_type": "1:1 Strategy Session",
+    "preferred_date": "2026-10-03",
+    "preferred_time": "15:30",
+    "timezone": "Europe/London",
+    "db_verified": true
+  },
+  "booking_api_production": {
+    "booking_id": "85ff7898-a49f-4d23-bafb-51cc0b22df8b",
+    "api_base": "https://www.niskbuild.com",
+    "status": "pending",
+    "db_verified": true
+  },
+  "oauth": {
+    "production_status": {
+      "configured": true,
+      "connected": false,
+      "isStaff": true,
+      "redirect_uri": "https://www.niskbuild.com/api/north-south/google-calendar/callback",
+      "scope": "https://www.googleapis.com/auth/calendar.events openid https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile"
+    },
+    "connect_authorize_url_generated": true,
+    "oauth_state_stored": true,
+    "interactive_consent": {
+      "attempted": true,
+      "coach_email": "sofiane.kemih@gmail.com",
+      "blocker": "Google Accounts passkey challenge (Too many failed attempts) — cannot complete consent without human device unlock / password",
+      "guidance": "As sofiane.kemih@gmail.com (OAuth test user), open My Sessions → Connect Calendar on NS, complete Google consent for calendar.events, then Confirm a pending booking."
+    }
+  },
+  "confirm": {
+    "attempted_against": "https://www.niskbuild.com",
+    "result": "409 not_connected",
+    "calendar_event_id": null,
+    "meet_link": null,
+    "google_event_fetch": null
+  },
+  "gaps": [
+    "Apply supabase/ns-google-calendar-oauth-migration.sql on production Supabase (widens oauth_states provider check for ns_google_calendar)",
+    "Complete interactive Google OAuth as coach sofiane.kemih@gmail.com (passkey/password required — cannot automate)",
+    "After connect: POST /api/north-south/bookings/{id}/confirm as staff; re-run scripts/ns-booking-calendar-evidence.mjs with NS_API_BASE=https://www.niskbuild.com to fill meet_link + Google API fetch",
+    "Copy NS_GOOGLE_CALENDAR_* from Vercel into local .env.local for local Meet testing (secrets not pullable)"
+  ],
+  "paths_built": [
+    "app/api/north-south/bookings/route.ts",
+    "app/api/north-south/bookings/[id]/confirm/route.ts",
+    "app/api/north-south/google-calendar/connect/route.ts",
+    "app/api/north-south/google-calendar/callback/route.ts",
+    "app/api/north-south/google-calendar/status/route.ts",
+    "app/api/north-south/google-calendar/disconnect/route.ts",
+    "lib/ns-google-calendar/oauth.ts",
+    "lib/ns-google-calendar/tokens.ts",
+    "lib/ns-google-calendar/events.ts",
+    "lib/ns-staff.ts",
+    "lib/ns-api-cors.ts",
+    "lib/buffer/oauth-state.ts",
+    "apps/north-south/src/lib/ns-api.js",
+    "apps/north-south/src/lib/ns-entities/booking.js",
+    "apps/north-south/src/api/base44Client.js",
+    "apps/north-south/src/pages/BookSession.jsx",
+    "apps/north-south/src/pages/MyBookings.jsx",
+    "supabase/ns-google-calendar-oauth-migration.sql",
+    ".env.example",
+    "scripts/ns-booking-calendar-evidence.mjs"
+  ]
+}

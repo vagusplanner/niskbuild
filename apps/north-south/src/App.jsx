@@ -72,6 +72,7 @@ const AuthenticatedApp = () => {
       <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />
       <Route path="/resources" element={<AuthGuard><Resources /></AuthGuard>} />
       <Route path="/my-bookings" element={<AuthGuard><MyBookings /></AuthGuard>} />
+      <Route path="/bookings" element={<AuthGuard><MyBookings /></AuthGuard>} />
       <Route path="/goals" element={<AuthGuard><GoalTracker /></AuthGuard>} />
       {/* Public blog/insights occupies /insights; performance UI lives here */}
       <Route path="/performance-insights" element={<AuthGuard><PerformanceInsights /></AuthGuard>} />

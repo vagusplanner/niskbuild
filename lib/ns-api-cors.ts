@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const NS_API_CORS_METHODS = 'GET, POST, OPTIONS';
+const NS_API_CORS_METHODS = 'GET, POST, DELETE, OPTIONS';
 const NS_API_CORS_HEADERS = 'Content-Type, Authorization';
 
 /** Recognized North South client origins (local Vite, production host, Vercel). */

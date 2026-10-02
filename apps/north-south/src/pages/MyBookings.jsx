@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { apiBase, getNsApiFetchHeaders, nsApiJson } from "@/lib/ns-api";
+import { supabase } from "@/lib/supabase";
 import Navbar from "../components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Calendar, Clock, Video, RefreshCw, X, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Calendar, Clock, Video, RefreshCw, X, CheckCircle, AlertCircle, Loader2, Link2 } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
 
 const statusColors = {
   pending: "bg-amber-100 text-amber-700",
@@ -12,6 +14,23 @@ const statusColors = {
   completed: "bg-blue-100 text-blue-700",
   cancelled: "bg-red-100 text-red-700",
 };
+
+async function resolveIsNsStaff() {
+  try {
+    const { data, error } = await supabase.schema("firstparty").rpc("ns_is_staff");
+    if (!error && data != null) return Boolean(data);
+  } catch {
+    /* fall through */
+  }
+  try {
+    const status = await nsApiJson("/api/north-south/google-calendar/status", undefined, {
+      method: "GET",
+    });
+    return Boolean(status?.isStaff);
+  } catch {
+    return false;
+  }
+}
 
 export default function MyBookings() {
   const [bookings, setBookings] = useState([]);
@@ -21,6 +40,9 @@ export default function MyBookings() {
   const [newDate, setNewDate] = useState("");
   const [newTime, setNewTime] = useState("");
   const [toast, setToast] = useState(null);
+  const [isStaff, setIsStaff] = useState(false);
+  const [calendarStatus, setCalendarStatus] = useState(null);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -29,18 +51,66 @@ export default function MyBookings() {
 
   const load = async () => {
     setLoading(true);
-    const data = await base44.entities.Booking.list("-created_date", 50);
-    setBookings(data.filter(b => b.status !== "cancelled"));
-    setLoading(false);
+    try {
+      const [data, staff] = await Promise.all([
+        base44.entities.Booking.list("-created_date", 50),
+        resolveIsNsStaff(),
+      ]);
+      setIsStaff(staff);
+      setBookings(data.filter((b) => b.status !== "cancelled"));
+      if (staff) {
+        try {
+          const status = await nsApiJson("/api/north-south/google-calendar/status", undefined, {
+            method: "GET",
+          });
+          setCalendarStatus(status);
+        } catch {
+          setCalendarStatus(null);
+        }
+      }
+    } catch (err) {
+      showToast(err?.message || "Failed to load bookings", "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
+
+  useEffect(() => {
+    const flag = searchParams.get("ns_google_calendar");
+    if (!flag) return;
+    if (flag === "connected") {
+      showToast("Google Calendar connected for North South.");
+      load();
+    } else if (flag === "denied") {
+      showToast("Google Calendar connection was denied.", "error");
+    } else {
+      showToast(`Google Calendar connect failed (${flag}).`, "error");
+    }
+    const next = new URLSearchParams(searchParams);
+    next.delete("ns_google_calendar");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const handleConfirm = async (booking) => {
+    if (!isStaff) {
+      showToast("Only the coach can confirm sessions.", "error");
+      return;
+    }
     setActionLoading(booking.id);
-    const res = await base44.functions.invoke("manageCalendarEvent", { action: "create", bookingId: booking.id });
+    const res = await base44.functions.invoke("manageCalendarEvent", {
+      action: "create",
+      bookingId: booking.id,
+    });
     if (res.data?.success) {
-      showToast("Session confirmed! Calendar invite sent.");
+      showToast(
+        res.data.meet_link
+          ? "Session confirmed! Meet invite sent."
+          : "Session confirmed! Calendar invite sent."
+      );
       load();
     } else {
       showToast(res.data?.error || "Failed to confirm session.", "error");
@@ -48,11 +118,43 @@ export default function MyBookings() {
     setActionLoading(null);
   };
 
+  const handleConnectCalendar = async () => {
+    setActionLoading("connect");
+    try {
+      const returnTo = window.location.href.split("?")[0];
+      // Must use VITE_API_BASE_URL — NS SPA hosts (north-south-blond / nsconsultd)
+      // do not serve /api/north-south/*; those routes live on the NiskBuild API.
+      const response = await fetch(
+        `${apiBase()}/api/north-south/google-calendar/connect?return_to=${encodeURIComponent(returnTo)}`,
+        {
+          headers: {
+            Accept: "application/json",
+            ...(await getNsApiFetchHeaders()),
+          },
+          credentials: "include",
+        }
+      );
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.authorizeUrl) {
+        showToast(data.error || "Could not start Calendar connect.", "error");
+        return;
+      }
+      window.location.href = data.authorizeUrl;
+    } catch (err) {
+      showToast(err?.message || "Could not start Calendar connect.", "error");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleReschedule = async (booking) => {
     if (!newDate || !newTime) return;
     setActionLoading(booking.id);
     const res = await base44.functions.invoke("manageCalendarEvent", {
-      action: "reschedule", bookingId: booking.id, newDate, newTime
+      action: "reschedule",
+      bookingId: booking.id,
+      newDate,
+      newTime,
     });
     if (res.data?.success) {
       showToast("Session rescheduled! Calendar invite updated.");
@@ -67,7 +169,10 @@ export default function MyBookings() {
   const handleCancel = async (booking) => {
     if (!confirm(`Cancel session: ${booking.session_type}?`)) return;
     setActionLoading(booking.id);
-    const res = await base44.functions.invoke("manageCalendarEvent", { action: "cancel", bookingId: booking.id });
+    const res = await base44.functions.invoke("manageCalendarEvent", {
+      action: "cancel",
+      bookingId: booking.id,
+    });
     if (res.data?.success) {
       showToast("Session cancelled.");
       load();
@@ -86,7 +191,36 @@ export default function MyBookings() {
           <p className="font-inter text-sm text-muted-foreground">Manage your upcoming coaching sessions.</p>
         </div>
 
-        {/* Toast */}
+        {isStaff && (
+          <div className="mb-8 rounded-2xl border border-border bg-card p-5 flex flex-wrap items-center justify-between gap-3">
+            <div className="space-y-1">
+              <p className="font-inter text-sm font-medium text-foreground">Coach Google Calendar</p>
+              <p className="font-inter text-xs text-muted-foreground">
+                {calendarStatus?.connected
+                  ? `Connected${calendarStatus.googleAccountEmail ? ` as ${calendarStatus.googleAccountEmail}` : ""}. Confirm creates a Meet invite.`
+                  : calendarStatus?.configured === false
+                    ? "OAuth env not configured on the API host yet."
+                    : "Connect once so Confirm can create Meet links and email invites."}
+              </p>
+            </div>
+            {!calendarStatus?.connected && (
+              <Button
+                size="sm"
+                className="rounded-full gap-1.5"
+                onClick={handleConnectCalendar}
+                disabled={actionLoading === "connect"}
+              >
+                {actionLoading === "connect" ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Link2 className="w-3.5 h-3.5" />
+                )}
+                Connect Calendar
+              </Button>
+            )}
+          </div>
+        )}
+
         {toast && (
           <div className={`fixed top-6 right-6 z-50 flex items-center gap-2 px-5 py-3 rounded-2xl shadow-lg font-inter text-sm ${toast.type === "error" ? "bg-red-50 text-red-700 border border-red-200" : "bg-green-50 text-green-700 border border-green-200"}`}>
             {toast.type === "error" ? <AlertCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
@@ -107,7 +241,7 @@ export default function MyBookings() {
           </div>
         ) : (
           <div className="space-y-4">
-            {bookings.map(b => (
+            {bookings.map((b) => (
               <div key={b.id} className="bg-card rounded-2xl border border-border p-6 space-y-4">
                 <div className="flex items-start justify-between flex-wrap gap-3">
                   <div className="space-y-1">
@@ -117,6 +251,12 @@ export default function MyBookings() {
                         {b.status}
                       </span>
                     </div>
+                    {isStaff && b.client_name && (
+                      <p className="font-inter text-sm text-muted-foreground">
+                        {b.client_name}
+                        {b.client_email ? ` · ${b.client_email}` : ""}
+                      </p>
+                    )}
                     <div className="flex items-center gap-4 font-inter text-sm text-muted-foreground flex-wrap">
                       {b.preferred_date && (
                         <span className="flex items-center gap-1.5">
@@ -140,7 +280,7 @@ export default function MyBookings() {
                   </div>
 
                   <div className="flex items-center gap-2 flex-wrap">
-                    {b.status === "pending" && (
+                    {isStaff && b.status === "pending" && (
                       <Button size="sm" className="rounded-full gap-1.5" onClick={() => handleConfirm(b)} disabled={actionLoading === b.id}>
                         {actionLoading === b.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
                         Confirm & Send Invite
@@ -162,18 +302,20 @@ export default function MyBookings() {
                   </div>
                 </div>
 
-                {/* Reschedule panel */}
                 {rescheduleId === b.id && (
                   <div className="bg-secondary/40 rounded-xl p-5 space-y-4 border border-border">
                     <p className="font-inter text-sm font-medium text-foreground">Select a new date & time</p>
+                    <p className="font-inter text-xs text-muted-foreground">
+                      Calendar reschedule is not wired yet — this will return an honest unavailable message.
+                    </p>
                     <div className="grid sm:grid-cols-2 gap-3">
                       <div className="space-y-1.5">
                         <label className="font-inter text-xs text-muted-foreground">New Date</label>
-                        <Input type="date" value={newDate} onChange={e => setNewDate(e.target.value)} className="rounded-xl" />
+                        <Input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} className="rounded-xl" />
                       </div>
                       <div className="space-y-1.5">
                         <label className="font-inter text-xs text-muted-foreground">New Time</label>
-                        <Input type="time" value={newTime} onChange={e => setNewTime(e.target.value)} className="rounded-xl" />
+                        <Input type="time" value={newTime} onChange={(e) => setNewTime(e.target.value)} className="rounded-xl" />
                       </div>
                     </div>
                     <div className="flex gap-2">

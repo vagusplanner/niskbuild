@@ -130,7 +130,21 @@ Use the **www** host (or `niskbuild.com` after apex platform-redirect is disable
 | `GOOGLE_CALENDAR_CLIENT_ID` | Google OAuth client ID for Vagus Planner Calendar sync (Web application) |
 | `GOOGLE_CALENDAR_CLIENT_SECRET` | Google OAuth client secret for Calendar sync |
 | `GOOGLE_CALENDAR_REDIRECT_URI` | Optional but recommended: exact callback URL, e.g. `https://www.niskbuild.com/api/vagus-planner/google-calendar/callback` |
+| `NS_GOOGLE_CALENDAR_CLIENT_ID` | Separate OAuth client for North South Calendar Sync (write + Meet) — not the VP client |
+| `NS_GOOGLE_CALENDAR_CLIENT_SECRET` | North South Calendar Sync client secret |
+| `NS_GOOGLE_CALENDAR_REDIRECT_URI` | Exact callback, e.g. `https://www.niskbuild.com/api/north-south/google-calendar/callback` |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | GitHub integration |
+
+### Google Calendar OAuth (North South — bookings / Meet)
+
+Separate Google Cloud OAuth client from Vagus Planner. Do **not** widen the VP client scopes.
+
+1. OAuth client name: **North South Calendar Sync** (Web application).
+2. Redirect URI: `https://www.niskbuild.com/api/north-south/google-calendar/callback` (and local `http://localhost:3000/api/north-south/google-calendar/callback` if testing locally).
+3. Scopes: `https://www.googleapis.com/auth/calendar.events` (+ openid / userinfo.email / userinfo.profile).
+4. Env vars on NiskBuild Vercel: `NS_GOOGLE_CALENDAR_CLIENT_ID` / `NS_GOOGLE_CALENDAR_CLIENT_SECRET` / `NS_GOOGLE_CALENDAR_REDIRECT_URI`.
+5. SQL: `supabase/ns-google-calendar-oauth-migration.sql` (adds `ns_google_calendar` to `oauth_states` provider check).
+6. Coach connects via My Sessions → Connect Calendar; confirm creates Meet + invites client.
 
 ### Google Calendar OAuth (Vagus Planner)
 

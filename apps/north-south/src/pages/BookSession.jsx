@@ -14,10 +14,24 @@ const sessionTypes = {
 };
 
 export default function BookSession() {
-  const [form, setForm] = useState({ client_name: "", client_email: "", client_company: "", service_tier: "", session_type: "", preferred_date: "", preferred_time: "", timezone: "UTC", message: "" });
+  const [form, setForm] = useState({
+    client_name: "",
+    client_email: "",
+    client_company: "",
+    service_tier: "",
+    session_type: "",
+    preferred_date: "",
+    preferred_time: "",
+    timezone:
+      typeof Intl !== "undefined"
+        ? Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
+        : "UTC",
+    message: "",
+  });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+  const [createdBookingId, setCreatedBookingId] = useState(null);
 
   const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
 
@@ -26,7 +40,8 @@ export default function BookSession() {
     setLoading(true);
     setSubmitError(null);
     try {
-      await base44.entities.Booking.create({ ...form, status: "pending" });
+      const created = await base44.entities.Booking.create({ ...form, status: "pending" });
+      setCreatedBookingId(created?.id || null);
       setSubmitted(true);
     } catch (err) {
       setSubmitError(
@@ -48,7 +63,10 @@ export default function BookSession() {
           </div>
           <h2 className="font-cormorant text-4xl font-light text-foreground">Booking Received</h2>
           <p className="font-inter text-muted-foreground">Thank you, {form.client_name}. I'll be in touch within 24 hours to confirm your session details.</p>
-          <Button className="rounded-full px-8" onClick={() => setSubmitted(false)}>Book Another</Button>
+          {createdBookingId && (
+            <p className="font-inter text-xs text-muted-foreground">Request ID: {createdBookingId}</p>
+          )}
+          <Button className="rounded-full px-8" onClick={() => { setSubmitted(false); setCreatedBookingId(null); }}>Book Another</Button>
         </div>
       </div>
     </div>

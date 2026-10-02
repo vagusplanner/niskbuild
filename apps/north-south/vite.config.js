@@ -16,7 +16,8 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        // Prefer VITE_API_BASE_URL in .env.local when Next is not on :3000
+        target: process.env.NS_API_PROXY_TARGET || 'http://localhost:3000',
         changeOrigin: true,
       },
     },

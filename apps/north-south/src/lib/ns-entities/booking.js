@@ -1,18 +1,20 @@
 /**
  * Booking → firstparty.ns_bookings
  *
- * Schema grants authenticated SELECT only. Inserts/updates/deletes are
- * service_role (create-booking / calendar handlers) — not client PostgREST.
- * This adapter implements real list/filter/get; write methods reject honestly.
+ * Schema grants authenticated SELECT only. Creates go through
+ * POST /api/north-south/bookings (service_role). Confirm via
+ * POST /api/north-south/bookings/[id]/confirm (staff). Reschedule/cancel
+ * Calendar updates are not in scope yet.
  */
+
+import { apiBase, getNsApiFetchHeaders } from '@/lib/ns-api'
 
 const NS_SCHEMA = 'firstparty'
 const TABLE = 'ns_bookings'
 
-const WRITE_UNAVAILABLE =
-  'Booking writes are not available from the client. ' +
-  'ns_bookings is SELECT-only for authenticated users; create/update/cancel ' +
-  'require a service-role API handler (not built yet).'
+const RESCHEDULE_CANCEL_UNAVAILABLE =
+  'Booking reschedule/cancel Calendar updates are not available yet. ' +
+  'Confirm with Meet is live for staff; reschedule/cancel will follow.'
 
 /** Base44 sort tokens → PostgREST order column (created_date → created_at). */
 function parseSort(sort) {
@@ -35,10 +37,6 @@ function mapRow(row) {
 
 function table(supabase) {
   return supabase.schema(NS_SCHEMA).from(TABLE)
-}
-
-function rejectWrite(op) {
-  return Promise.reject(new Error(`${WRITE_UNAVAILABLE} (attempted: Booking.${op})`))
 }
 
 export function createBookingEntity(supabase) {
@@ -72,14 +70,32 @@ export function createBookingEntity(supabase) {
     return data ? mapRow(data) : null
   }
 
+  async function create(payload = {}) {
+    const response = await fetch(`${apiBase()}/api/north-south/bookings`, {
+      method: 'POST',
+      headers: await getNsApiFetchHeaders({ 'Content-Type': 'application/json' }),
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      const message =
+        typeof data?.error === 'string' ? data.error : `Booking create failed (${response.status})`
+      throw new Error(message)
+    }
+    return mapRow(data)
+  }
+
   return {
     list,
     filter,
     get,
-    create: (..._a) => rejectWrite('create'),
-    update: (..._a) => rejectWrite('update'),
-    delete: (..._a) => rejectWrite('delete'),
+    create,
+    update: (..._a) =>
+      Promise.reject(new Error(`${RESCHEDULE_CANCEL_UNAVAILABLE} (attempted: Booking.update)`)),
+    delete: (..._a) =>
+      Promise.reject(new Error(`${RESCHEDULE_CANCEL_UNAVAILABLE} (attempted: Booking.delete)`)),
   }
 }
 
-export { WRITE_UNAVAILABLE as BOOKING_WRITE_UNAVAILABLE }
+export { RESCHEDULE_CANCEL_UNAVAILABLE as BOOKING_WRITE_UNAVAILABLE }

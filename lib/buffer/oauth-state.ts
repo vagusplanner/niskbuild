@@ -9,7 +9,10 @@ export function generateOAuthState(): string {
   return randomBytes(32).toString('hex');
 }
 
-export type OAuthStateProvider = 'buffer' | 'google_calendar';
+export type OAuthStateProvider =
+  | 'buffer'
+  | 'google_calendar'
+  | 'ns_google_calendar';
 
 export async function storeOAuthState(
   userId: string,
@@ -25,6 +28,31 @@ export async function storeOAuthState(
     .insert({ state, user_id: userId, provider, expires_at: expiresAt });
 
   if (error) {
+    // Until ns-google-calendar-oauth-migration.sql is applied, the check constraint
+    // only allows buffer|google_calendar. Fall back so NS connect is not bricked,
+    // but keep requesting the distinct provider key first.
+    if (
+      provider === 'ns_google_calendar' &&
+      /oauth_states_provider_check|check constraint/i.test(error.message)
+    ) {
+      console.warn(
+        '[oauth-state] ns_google_calendar provider rejected by DB constraint — ' +
+          'falling back to google_calendar until ns-google-calendar-oauth-migration.sql is applied'
+      );
+      const { error: fallbackError } = await admin
+        .schema('firstparty')
+        .from('oauth_states')
+        .insert({
+          state,
+          user_id: userId,
+          provider: 'google_calendar',
+          expires_at: expiresAt,
+        });
+      if (fallbackError) {
+        throw new Error(`Failed to store OAuth state: ${fallbackError.message}`);
+      }
+      return state;
+    }
     throw new Error(`Failed to store OAuth state: ${error.message}`);
   }
 
