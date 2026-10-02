@@ -108,6 +108,7 @@ https://<your-domain>/api/webhooks/revenuecat
 | `RESEND_API_KEY` | Transactional email |
 | `EMAIL_FROM` | Sender, e.g. `NiskBuild <support@niskbuild.com>` |
 | `EMAIL_FROM_VP` | Vagus Planner sender. Default if unset: `Vagus Planner <support@vagusplanner.com>`. Requires the vagusplanner.com domain verified in Resend (DKIM `resend._domainkey` is already published). |
+| `EMAIL_FROM_NS` | North South sender. Default if unset: `North South <hello@niskbuild.com>` (niskbuild.com is verified in Resend). Optional `NS_EMAIL_ALLOWLIST` comma-list for public contact/lead recipients. |
 | `CRON_SECRET` | Bearer secret for `/api/cron/email-lifecycle` and VP reminders (Vercel Cron) |
 | `RESEND_WEBHOOK_SECRET` | Resend webhook **Signing secret** (`whsec_...`) from Resend → Webhooks — used for Svix verification on `/api/webhooks/resend` |
 

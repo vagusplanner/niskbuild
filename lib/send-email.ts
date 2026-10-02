@@ -8,11 +8,20 @@ interface SendEmailOptions {
   from?: string;
 }
 
-export function resolveEmailFrom(product: 'niskbuild' | 'vagus-planner' = 'niskbuild'): string {
+export function resolveEmailFrom(
+  product: 'niskbuild' | 'vagus-planner' | 'north-south' = 'niskbuild'
+): string {
   if (product === 'vagus-planner') {
     return (
       process.env.EMAIL_FROM_VP?.trim() ||
       'Vagus Planner <support@vagusplanner.com>'
+    );
+  }
+  if (product === 'north-south') {
+    // niskbuild.com is verified in Resend (same as NiskBuild / Mabrour From domains).
+    return (
+      process.env.EMAIL_FROM_NS?.trim() ||
+      'North South <hello@niskbuild.com>'
     );
   }
   return process.env.EMAIL_FROM || 'NiskBuild <support@niskbuild.com>';
