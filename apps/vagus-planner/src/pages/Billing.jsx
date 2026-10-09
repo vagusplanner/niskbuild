@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { RoleGuard } from '@/components/auth/RoleGuard';
@@ -27,6 +27,7 @@ import {
   ensureRevenueCatReady,
   findPackageForPlan,
   getIapDebugLogs,
+  loadStoreKitPriceCatalog,
   purchasePackage,
 } from '@/lib/revenuecat';
 
@@ -62,6 +63,26 @@ export default function BillingPage() {
   // Reactive: re-check after Capacitor ready so first paint cannot lock Stripe forever.
   const { allowStripePurchases, ready: platformReady } = useVpPlatform();
   const appleIap = canUseAppleIap();
+  const [iosStoreKitHasFreeTrial, setIosStoreKitHasFreeTrial] = useState(false);
+  useEffect(() => {
+    if (!(appleIap && !allowStripePurchases)) {
+      setIosStoreKitHasFreeTrial(false);
+      return undefined;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { anyFreeTrial } = await loadStoreKitPriceCatalog();
+        if (!cancelled) setIosStoreKitHasFreeTrial(Boolean(anyFreeTrial));
+      } catch {
+        if (!cancelled) setIosStoreKitHasFreeTrial(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [appleIap, allowStripePurchases]);
+
   const allowPurchases = allowStripePurchases || appleIap;
 
   const {
@@ -385,17 +406,31 @@ export default function BillingPage() {
         )
       )}
 
-      {/* Free Trial CTA — shown prominently for free users (not platform owners); web/Android Stripe or iOS IAP */}
+      {/* Upgrade CTA — free users (not platform owners). iOS: no trial/no-card copy unless StoreKit trial exists. */}
       {allowPurchases && currentSubscription.plan === 'free' && !platformOwnerBypass && (
         <div className="rounded-2xl bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 p-5 sm:p-6 text-white shadow-xl">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <Zap className="w-5 h-5 text-yellow-300" />
-                <span className="text-sm font-semibold text-teal-100 uppercase tracking-wide">14-Day Free Trial</span>
+                <span className="text-sm font-semibold text-teal-100 uppercase tracking-wide">
+                  {appleIap && !allowStripePurchases
+                    ? (iosStoreKitHasFreeTrial ? 'App Store Free Trial' : 'Upgrade')
+                    : '14-Day Free Trial'}
+                </span>
               </div>
-              <h2 className="text-xl sm:text-2xl font-bold mb-1">Try Pro — completely free</h2>
-              <p className="text-teal-100 text-sm">No credit card required. Cancel anytime. Full access to all features.</p>
+              <h2 className="text-xl sm:text-2xl font-bold mb-1">
+                {appleIap && !allowStripePurchases
+                  ? (iosStoreKitHasFreeTrial ? 'Try Pro with an App Store trial' : 'Upgrade to Pro')
+                  : 'Try Pro — completely free'}
+              </h2>
+              <p className="text-teal-100 text-sm">
+                {appleIap && !allowStripePurchases
+                  ? (iosStoreKitHasFreeTrial
+                      ? 'Free trial offered through Apple. Cancel anytime in Settings → Apple ID → Subscriptions.'
+                      : 'Subscribe with Apple In-App Purchase. Cancel anytime in Settings → Apple ID → Subscriptions.')
+                  : 'No credit card required. Cancel anytime. Full access to all features.'}
+              </p>
               <div className="flex items-center gap-4 mt-3">
                 <div className="flex items-center gap-1.5 text-sm text-teal-100">
                   <Star className="w-4 h-4 text-yellow-300" />
@@ -415,7 +450,9 @@ export default function BillingPage() {
               onClick={() => setShowPlanComparison(true)}
               className="bg-white text-teal-700 hover:bg-teal-50 font-bold px-6 py-3 text-base rounded-xl shadow-lg whitespace-nowrap flex-shrink-0 min-h-[48px]"
             >
-              Start Free Trial <ArrowRight className="w-4 h-4 ml-2" />
+              {appleIap && !allowStripePurchases
+                ? (iosStoreKitHasFreeTrial ? <>Start Free Trial <ArrowRight className="w-4 h-4 ml-2" /></> : <>Upgrade <ArrowRight className="w-4 h-4 ml-2" /></>)
+                : <>Start Free Trial <ArrowRight className="w-4 h-4 ml-2" /></>}
             </Button>
           </div>
         </div>

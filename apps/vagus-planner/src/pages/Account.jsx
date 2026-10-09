@@ -16,6 +16,7 @@ import {
   Shield,
   Lock,
   SlidersHorizontal,
+  Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,7 +24,8 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import PullToRefresh from '@/components/mobile/PullToRefresh';
-import { canUseStripePurchases } from '@/lib/vp-platform';
+import { canUseStripePurchases, isIosNativeApp } from '@/lib/vp-platform';
+import { canUseAppleIap } from '@/lib/revenuecat';
 
 import AccountSettings from '@/components/profile/AccountSettings';
 import AccountSecurityPanel from '@/components/profile/AccountSecurityPanel';
@@ -275,11 +277,18 @@ export default function Account() {
   };
 
   const {
+    plan,
     subscription,
     invoices = [],
     refetch: refetchBilling,
+    isPaid,
     platformOwnerBypass = false,
   } = useBillingStatus();
+  const showUpgradeEntry =
+    !platformOwnerBypass &&
+    !isPaid &&
+    String(plan || subscription?.plan || 'free').toLowerCase() === 'free';
+
 
   const { data: usageData = [] } = useQuery({
     queryKey: ['usage', user?.email],
@@ -343,6 +352,30 @@ export default function Account() {
               animate={{ opacity: 1, x: 0 }}
               className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
             >
+              {showUpgradeEntry && (
+                <motion.button
+                  type="button"
+                  whileHover={{ y: -3 }}
+                  onClick={() => navigate('/Billing')}
+                  className="sm:col-span-2 lg:col-span-3 group relative overflow-hidden rounded-2xl p-4 text-left bg-gradient-to-br from-teal-600 via-cyan-600 to-blue-600 shadow-md hover:shadow-xl transition-all"
+                  aria-label="Upgrade"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-white/20 rounded-xl shrink-0">
+                      <Zap className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold text-white">Upgrade</p>
+                      <p className="text-xs text-white/80 mt-0.5">
+                        {canUseAppleIap() || isIosNativeApp()
+                          ? 'Subscribe with Apple In-App Purchase — open plans'
+                          : 'View plans and unlock premium features'}
+                      </p>
+                    </div>
+                    <span className="text-xs font-bold text-white/90 shrink-0">Open →</span>
+                  </div>
+                </motion.button>
+              )}
               {SECTIONS.map((s) => (
                 <motion.button
                   key={s.id}

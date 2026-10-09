@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { Check, X, Sparkles, Moon, Calendar, Mail, Zap, Shield, Users } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Check, X, Sparkles, Moon, Calendar, Mail, Shield, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { canUseStripePurchases, useVpPlatform } from '@/lib/vp-platform';
-import { canUseAppleIap } from '@/lib/revenuecat';
+import { canUseAppleIap, loadStoreKitPriceCatalog } from '@/lib/revenuecat';
 import IosWebSubscriptionNotice from '@/components/billing/IosWebSubscriptionNotice';
 
 const STANDARD_PLANS = [
@@ -206,9 +206,24 @@ const colorMap = {
   purple: { badge: 'bg-purple-100 text-purple-700', border: 'border-t-purple-500', btn: 'bg-purple-600 hover:bg-purple-700', ring: '' },
 };
 
-function PlanCard({ plan, currentPlan, billingCycle, onUpgrade, isProcessing, selectedPlan, islamicMode, allowPurchases }) {
+function PlanCard({
+  plan,
+  currentPlan,
+  billingCycle,
+  onUpgrade,
+  isProcessing,
+  selectedPlan,
+  islamicMode,
+  allowPurchases,
+  appleIap,
+  storePrice,
+}) {
   const colors = colorMap[plan.color] || colorMap.slate;
   const isCurrentPlan = plan.id === currentPlan;
+  const useStoreKitPrice = Boolean(appleIap && !canUseStripePurchases());
+  const storePriceString = storePrice?.priceString || null;
+  const planHasStoreTrial = Boolean(storePrice?.hasFreeTrial);
+  const iosCta = planHasStoreTrial ? 'Start Free Trial' : 'Subscribe';
 
   return (
     <div className={cn('relative flex flex-col h-full transition-all duration-200', plan.popular && 'lg:scale-105 z-10')}>
@@ -255,12 +270,34 @@ function PlanCard({ plan, currentPlan, billingCycle, onUpgrade, isProcessing, se
 
           <CardDescription className="text-xs mt-1">{plan.description}</CardDescription>
 
-          {/* Pricing */}
+          {/* Pricing — iOS: StoreKit priceString; web/Android: hardcoded USD */}
           <div className="mt-3">
             {plan.contactOnly ? (
               <div>
                 <span className="text-2xl font-black text-slate-900 dark:text-slate-100">Custom</span>
                 <p className="text-xs text-slate-500 mt-1">Tailored to your organisation</p>
+              </div>
+            ) : plan.price === 0 ? (
+              <div className="flex items-baseline gap-1">
+                <span className="text-3xl font-black text-slate-900 dark:text-slate-100">Free</span>
+                <span className="text-slate-400 text-sm">forever</span>
+              </div>
+            ) : useStoreKitPrice ? (
+              <div>
+                <div className="flex items-baseline gap-1 flex-wrap">
+                  <span className="text-3xl font-black text-slate-900 dark:text-slate-100">
+                    {storePriceString || '…'}
+                  </span>
+                  <span className="text-slate-400 text-sm">
+                    {billingCycle === 'annual' ? '/year' : '/month'}
+                  </span>
+                </div>
+                {!storePriceString && (
+                  <p className="text-xs text-slate-500 mt-1">Loading App Store price…</p>
+                )}
+                {planHasStoreTrial && (
+                  <p className="text-xs text-green-600 font-medium mt-1">Includes App Store free trial</p>
+                )}
               </div>
             ) : billingCycle === 'annual' && plan.annualPrice ? (
               <div>
@@ -269,11 +306,6 @@ function PlanCard({ plan, currentPlan, billingCycle, onUpgrade, isProcessing, se
                   <span className="text-slate-400 text-sm">/year</span>
                 </div>
                 <p className="text-xs text-green-600 font-medium">${(plan.annualPrice / 12).toFixed(2)}/month — save {Math.round((1 - (plan.annualPrice / 12) / plan.price) * 100)}%</p>
-              </div>
-            ) : plan.price === 0 ? (
-              <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-black text-slate-900 dark:text-slate-100">Free</span>
-                <span className="text-slate-400 text-sm">forever</span>
               </div>
             ) : (
               <div className="flex items-baseline gap-1">
@@ -295,12 +327,18 @@ function PlanCard({ plan, currentPlan, billingCycle, onUpgrade, isProcessing, se
               <IosWebSubscriptionNotice compact className="text-center" />
             )
           ) : plan.contactOnly ? (
-            <a
-              href="mailto:team@vagusplanner.com?subject=Enterprise%20Plan%20Enquiry"
-              className="w-full flex items-center justify-center gap-2 h-9 px-4 rounded-md text-sm font-semibold transition-colors bg-purple-600 hover:bg-purple-700 text-white"
-            >
-              <Mail className="w-4 h-4" /> Contact Sales
-            </a>
+            useStoreKitPrice ? (
+              <div className="w-full flex items-center justify-center gap-2 h-9 px-4 rounded-md text-sm font-semibold bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-200">
+                <Mail className="w-4 h-4" /> Contact Sales
+              </div>
+            ) : (
+              <a
+                href="mailto:team@vagusplanner.com?subject=Enterprise%20Plan%20Enquiry"
+                className="w-full flex items-center justify-center gap-2 h-9 px-4 rounded-md text-sm font-semibold transition-colors bg-purple-600 hover:bg-purple-700 text-white"
+              >
+                <Mail className="w-4 h-4" /> Contact Sales
+              </a>
+            )
           ) : (
             <Button
               onClick={() => {
@@ -313,14 +351,16 @@ function PlanCard({ plan, currentPlan, billingCycle, onUpgrade, isProcessing, se
             >
               {isProcessing && selectedPlan === plan.id ? (
                 <><div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2" />Processing...</>
-              ) : isCurrentPlan ? 'Current Plan' : plan.id === 'free' ? 'Free Forever' : plan.cta}
+              ) : isCurrentPlan ? 'Current Plan' : plan.id === 'free' ? 'Free Forever' : (useStoreKitPrice ? iosCta : plan.cta)}
             </Button>
           )}
 
           {allowPurchases && !plan.contactOnly && plan.id !== 'free' && (
             <p className="text-center text-xs text-slate-400 -mt-2">
-              {canUseAppleIap() && !canUseStripePurchases()
-                ? 'Billed through Apple · Cancel anytime in Settings'
+              {useStoreKitPrice
+                ? (planHasStoreTrial
+                    ? 'Billed through Apple · Free trial via App Store · Cancel in Settings'
+                    : 'Billed through Apple · Cancel anytime in Settings')
                 : '14-day free trial · No card required · Cancel anytime'}
             </p>
           )}
@@ -355,6 +395,27 @@ export default function PlanComparison({ currentPlan, onUpgrade, isProcessing = 
   const { allowStripePurchases } = useVpPlatform();
   const appleIap = canUseAppleIap();
   const allowPurchases = allowStripePurchases || appleIap;
+  const useStoreKitPrice = Boolean(appleIap && !allowStripePurchases);
+  const [storePrices, setStorePrices] = useState({});
+  const [iosHasAnyFreeTrial, setIosHasAnyFreeTrial] = useState(false);
+
+  useEffect(() => {
+    if (!useStoreKitPrice) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { byKey, anyFreeTrial } = await loadStoreKitPriceCatalog();
+        if (cancelled) return;
+        setStorePrices(byKey || {});
+        setIosHasAnyFreeTrial(Boolean(anyFreeTrial));
+      } catch (err) {
+        console.warn('[PlanComparison] StoreKit price load failed:', err?.message || err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [useStoreKitPrice, showIslamicCatalog]);
 
   const plans = showIslamicCatalog ? ISLAMIC_PLANS : STANDARD_PLANS;
 
@@ -407,8 +468,10 @@ export default function PlanComparison({ currentPlan, onUpgrade, isProcessing = 
           <h2 className="text-2xl font-black text-slate-900 dark:text-slate-100">Simple, Transparent Pricing</h2>
           {allowPurchases ? (
             <p className="text-slate-500 text-sm mt-1">
-              {appleIap && !allowStripePurchases
-                ? 'Subscribe through the App Store · Cancel anytime in Settings'
+              {useStoreKitPrice
+                ? (iosHasAnyFreeTrial
+                    ? 'Subscribe through the App Store · Free trial where offered · Cancel in Settings'
+                    : 'Subscribe through the App Store · Cancel anytime in Settings')
                 : '14-day free trial on all paid plans · No credit card required · Cancel anytime'}
             </p>
           ) : (
@@ -449,6 +512,8 @@ export default function PlanComparison({ currentPlan, onUpgrade, isProcessing = 
             selectedPlan={selectedPlan}
             islamicMode={showIslamicCatalog}
             allowPurchases={allowPurchases}
+            appleIap={appleIap}
+            storePrice={storePrices[`${plan.id}:${billingCycle === 'annual' ? 'annual' : 'monthly'}`]}
           />
         ))}
       </div>

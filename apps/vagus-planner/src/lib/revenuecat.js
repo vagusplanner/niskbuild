@@ -850,4 +850,55 @@ export function sortPackagesForDisplay(packages) {
   });
 }
 
+
+/**
+ * Detect a StoreKit free trial from RevenueCat product.introPrice (price === 0).
+ */
+export function packageHasStoreKitFreeTrial(pkg) {
+  const intro = pkg?.product?.introPrice;
+  if (!intro || typeof intro !== 'object') return false;
+  if (typeof intro.price === 'number' && intro.price === 0) return true;
+  const ps = String(intro.priceString || '').trim().toLowerCase();
+  return ps === 'free' || ps === '0' || ps.endsWith('0.00') || /^[^\d]*0([.,]0+)?$/.test(ps);
+}
+
+/**
+ * Load localized App Store prices for plan cards.
+ * @returns {Promise<{
+ *   byKey: Record<string, { priceString: string|null, hasFreeTrial: boolean, productId: string|null }>,
+ *   anyFreeTrial: boolean,
+ *   error?: string
+ * }>}
+ * Key format: `${planId}:${monthly|annual}`
+ */
+export async function loadStoreKitPriceCatalog() {
+  const byKey = {};
+  let anyFreeTrial = false;
+  const errors = [];
+
+  for (const offeringId of [OFFERING_STANDARD, OFFERING_ISLAMIC]) {
+    const { packages, error } = await getOfferingPackages(offeringId);
+    if (error) errors.push(error);
+    for (const pkg of packages || []) {
+      const plan = planIdFromPackage(pkg);
+      if (!plan) continue;
+      const cycle = billingCycleFromPackage(pkg);
+      const priceString = pkg?.product?.priceString || null;
+      const hasFreeTrial = packageHasStoreKitFreeTrial(pkg);
+      if (hasFreeTrial) anyFreeTrial = true;
+      byKey[`${plan}:${cycle}`] = {
+        priceString,
+        hasFreeTrial,
+        productId: productIdentifierOf(pkg) || null,
+      };
+    }
+  }
+
+  return {
+    byKey,
+    anyFreeTrial,
+    error: Object.keys(byKey).length ? undefined : errors[0] || 'No StoreKit packages loaded',
+  };
+}
+
 export { OFFERING_STANDARD, OFFERING_ISLAMIC };

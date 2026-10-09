@@ -8,7 +8,7 @@ import { filterNavItems } from '@/lib/nav-v1-scope';
 import {
   Calendar, Moon, Heart, Plane, MessageSquare, User,
   CheckCircle2, Clock, Brain, ChevronRight, Sunrise, Star,
-  Target, BookOpen, Utensils, Activity, Plus, DollarSign, Users
+  Target, BookOpen, Utensils, Activity, Plus, DollarSign, Users, Zap
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useTranslation } from 'react-i18next';
@@ -27,6 +27,9 @@ import { toHijri } from '@/components/utils/hijriUtils';
 import { isIosNativeApp } from '@/lib/vp-platform';
 import { localDateString, localDayBoundsIso } from '@/lib/local-date';
 import { vpQueryKeys } from '@/lib/vp-query-keys';
+import { useBillingStatus } from '@/hooks/useBillingStatus';
+import { canUseAppleIap } from '@/lib/revenuecat';
+import { Button } from '@/components/ui/button';
 
 function getTimeGreeting(t) {
   const h = new Date().getHours();
@@ -110,6 +113,12 @@ export default function DashboardPage() {
     isLoading: islamicEditionLoading,
     islamicModeForNav: islamicMode,
   } = useIslamicEdition();
+  const { plan: billingPlan, isPaid, platformOwnerBypass, isLoading: billingLoading } = useBillingStatus();
+  const showUpgradeEntry =
+    !billingLoading &&
+    !platformOwnerBypass &&
+    !isPaid &&
+    String(billingPlan || 'free').toLowerCase() === 'free';
 
   const { data: events = [] } = useQuery({
     queryKey: vpQueryKeys.todayEvents,
@@ -264,6 +273,38 @@ export default function DashboardPage() {
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }}>
           <QuickCaptureBar islamicMode={islamicMode} />
         </motion.div>
+
+        {/* ── Upgrade entry (App Store review / free accounts) ── */}
+        {showUpgradeEntry && (
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+            <div
+              className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-2xl shadow-md"
+              style={{
+                background: 'linear-gradient(135deg, #0D4F6C 0%, #1D6FB8 55%, #2980B9 100%)',
+                border: '1px solid rgba(232,184,75,0.45)',
+              }}
+            >
+              <div className="flex items-start gap-3 flex-1 min-w-0">
+                <div className="p-2 rounded-xl bg-white/15 shrink-0">
+                  <Zap className="w-5 h-5 text-[#E8B84B]" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-white">Upgrade</p>
+                  <p className="text-xs text-white/80 mt-0.5">
+                    {canUseAppleIap() || isIosNativeApp()
+                      ? 'Unlock Pro with Apple In-App Purchase — view plans and subscribe.'
+                      : 'Unlock Pro and premium features — view plans and subscribe.'}
+                  </p>
+                </div>
+              </div>
+              <Link to={createPageUrl('Billing')} className="shrink-0">
+                <Button className="w-full sm:w-auto bg-[#E8B84B] hover:bg-[#d4a63d] text-[#0D1A2A] font-bold min-h-[44px]">
+                  Upgrade
+                </Button>
+              </Link>
+            </div>
+          </motion.div>
+        )}
 
         {/* ── Stat Cards ── */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}>
