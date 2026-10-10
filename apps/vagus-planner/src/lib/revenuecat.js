@@ -14,7 +14,8 @@ const CAPACITOR_READY_TIMEOUT_MS = 8000;
 const IMPORT_TIMEOUT_MS = 10000;
 const CONFIGURE_TIMEOUT_MS = 15000;
 const OFFERINGS_TIMEOUT_MS = 20000;
-const PURCHASE_BRIDGE_TIMEOUT_MS = 120000;
+/** Max wait for native StoreKit purchase sheet / bridge — clears UI stuck states. */
+const PURCHASE_BRIDGE_TIMEOUT_MS = 60000;
 /**
  * Max wait when joining an in-flight configure started elsewhere (e.g. Cap auth).
  * Keep short enough to abandon a hung Cap-auth configure and retry, but long enough
@@ -248,6 +249,57 @@ async function getPurchases() {
     throw err;
   }
 }
+
+const IAP_DEBUG_UI_LS_KEY = 'vp_iap_debug';
+
+/**
+ * On-screen IAP debug strip — OFF by default in TestFlight / App Store.
+ * Enable only via: Vite DEV, VITE_IAP_DEBUG=1, localStorage vp_iap_debug=1, or ?iapdebug=1.
+ * Logging to the ring buffer still runs regardless (see iapDebugLog).
+ */
+export function isIapDebugUiEnabled() {
+  try {
+    if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) return true;
+    if (typeof import.meta !== 'undefined' && String(import.meta.env?.VITE_IAP_DEBUG || '') === '1') {
+      return true;
+    }
+    if (typeof window === 'undefined') return false;
+    try {
+      if (window.localStorage?.getItem(IAP_DEBUG_UI_LS_KEY) === '1') return true;
+    } catch {
+      /* private mode */
+    }
+    const q = new URLSearchParams(window.location.search || '');
+    if (q.get('iapdebug') === '1') return true;
+    const hash = String(window.location.hash || '');
+    const qi = hash.indexOf('?');
+    if (qi >= 0) {
+      const hq = new URLSearchParams(hash.slice(qi + 1));
+      if (hq.get('iapdebug') === '1') return true;
+    }
+  } catch {
+    /* ignore */
+  }
+  return false;
+}
+
+/** True when the user dismissed the App Store sheet / cancelled the purchase. */
+export function isPurchaseUserCancelled(err) {
+  if (!err) return false;
+  if (err === 'userCancelled' || err === 'USER_CANCELLED') return true;
+  if (typeof err === 'object') {
+    if (err.userCancelled === true || err.userCanceled === true) return true;
+    const code = err.code ?? err.errorCode ?? err.error_code;
+    if (code === 1 || code === '1' || code === 'PURCHASE_CANCELLED' || code === 'PURCHASE_CANCELED') {
+      return true;
+    }
+    const nested = err.error || err.cause || err.details;
+    if (nested && nested !== err && isPurchaseUserCancelled(nested)) return true;
+  }
+  const msg = err instanceof Error ? err.message : String(err?.message || err || '');
+  return /cancel|cancelled|canceled|user.?cancel|PURCHASE_CANCELLED|PURCHASE_CANCELED/i.test(msg);
+}
+
 
 export function isRevenueCatConfigured() {
   return configured && Boolean(iosApiKey());

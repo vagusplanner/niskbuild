@@ -13,6 +13,7 @@ import {
   canUseAppleIap,
   ensureRevenueCatReady,
   findPackageForPlan,
+  isPurchaseUserCancelled,
   purchasePackage,
 } from '@/lib/revenuecat';
 import {
@@ -151,6 +152,10 @@ export function IosUpgradeButton({
 
   const onPurchase = async () => {
     setBusy(true);
+    // Belt-and-suspenders: never leave the button stuck if a native call hangs.
+    const safety = setTimeout(() => {
+      setBusy(false);
+    }, 60000);
     try {
       console.log('[IosUpgradeButton] purchase start', { planId, billingCycle });
       console.log('[IosUpgradeButton] dual-guard start');
@@ -185,20 +190,21 @@ export function IosUpgradeButton({
         queryClient.invalidateQueries({ queryKey: ['planAccess'] });
       }, 2000);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (/cancel|cancelled|PURCHASE_CANCELLED/i.test(msg)) {
+      if (isPurchaseUserCancelled(err)) {
         toast.info('Purchase cancelled');
-      } else if (msg === WEB_SUB_MANAGE_MESSAGE) {
+      } else if (err instanceof Error && err.message === WEB_SUB_MANAGE_MESSAGE) {
         toast.error(WEB_SUB_MANAGE_MESSAGE);
       } else {
+        const msg = err instanceof Error ? err.message : String(err);
         console.error(
           '[IosUpgradeButton] purchase failed:',
           msg,
           err instanceof Error ? err.stack : err
         );
-        toast.error(msg || 'Purchase failed');
+        toast.error(msg || 'Purchase failed. Please try again.');
       }
     } finally {
+      clearTimeout(safety);
       setBusy(false);
     }
   };

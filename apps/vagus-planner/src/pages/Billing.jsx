@@ -27,11 +27,13 @@ import {
   ensureRevenueCatReady,
   findPackageForPlan,
   getIapDebugLogs,
+  isIapDebugUiEnabled,
+  isPurchaseUserCancelled,
   loadStoreKitPriceCatalog,
   purchasePackage,
 } from '@/lib/revenuecat';
 
-/** Cap-only on-screen trail — survives Xcode console attach races. */
+/** Cap-only on-screen trail — gated by isIapDebugUiEnabled (off in TestFlight/App Store). */
 function IapDebugStrip({ enabled }) {
   const [lines, setLines] = React.useState(() => (enabled ? getIapDebugLogs() : []));
   React.useEffect(() => {
@@ -138,6 +140,10 @@ export default function BillingPage() {
       if (appleIap && !allowStripePurchases) {
         setIsProcessingCheckout(true);
         const loadingToast = toast.loading('Starting App Store purchase…');
+        const safety = setTimeout(() => {
+          setIsProcessingCheckout(false);
+          toast.dismiss(loadingToast);
+        }, 60000);
         try {
           console.log('[Billing] Apple IAP purchase start', { planId, billingCycle });
 
@@ -185,14 +191,22 @@ export default function BillingPage() {
             queryClient.invalidateQueries({ queryKey: ['planAccess'] });
           }, 2500);
         } catch (error) {
+          toast.dismiss(loadingToast);
+          if (isPurchaseUserCancelled(error)) {
+            toast.info('Purchase cancelled');
+            return;
+          }
           console.error(
             '[Billing] Apple IAP purchase failed:',
             error instanceof Error ? error.message : error,
             error instanceof Error ? error.stack : undefined
           );
-          toast.dismiss(loadingToast);
-          throw error;
+          const msg =
+            error instanceof Error ? error.message : String(error || 'Purchase failed');
+          toast.error(msg || 'Purchase failed. Please try again.');
+          return;
         } finally {
+          clearTimeout(safety);
           setIsProcessingCheckout(false);
         }
         return;
@@ -262,15 +276,19 @@ export default function BillingPage() {
       }
     },
     onError: (error) => {
+      if (isPurchaseUserCancelled(error)) {
+        // Cancel already surfaced (or silent) — never show as a hard error.
+        setIsProcessingCheckout(false);
+        return;
+      }
       console.error('Upgrade error:', error);
       const msg = error?.message || 'Failed to start checkout. Please try again.';
-      if (/cancel|cancelled|PURCHASE_CANCELLED/i.test(msg)) {
-        toast.info('Purchase cancelled');
-      } else {
-        toast.error(msg);
-      }
+      toast.error(msg);
       setIsProcessingCheckout(false);
-    }
+    },
+    onSettled: () => {
+      setIsProcessingCheckout(false);
+    },
   });
 
   // Cancel subscription — server resolves id from vp_subscriptions or profiles.subscription_id
@@ -390,7 +408,7 @@ export default function BillingPage() {
         <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Manage your plan, invoices, and usage</p>
       </div>
 
-      <IapDebugStrip enabled={appleIap} />
+      <IapDebugStrip enabled={isIapDebugUiEnabled()} />
 
       {!allowStripePurchases && !platformOwnerBypass && (
         appleIap ? (
