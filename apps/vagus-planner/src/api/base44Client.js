@@ -1,1 +1,9 @@
-export { base44, SDK, createAxiosClient, supabase, getVpApiFetchHeaders, default } from '@/lib/base44-compat';
+export {
+  base44,
+  SDK,
+  createAxiosClient,
+  supabase,
+  getVpApiFetchHeaders,
+  consumeVpApiSessionTimedOut,
+  default,
+} from '@/lib/base44-compat';

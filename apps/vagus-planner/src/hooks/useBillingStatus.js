@@ -4,19 +4,79 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { getVpApiFetchHeaders } from '@/api/base44Client';
+import {
+  consumeVpApiSessionTimedOut,
+  getVpApiFetchHeaders,
+} from '@/api/base44Client';
+import { iapDebugLog } from '@/lib/revenuecat';
+
+const BILLING_STATUS_SESSION_TIMEOUT_MS = 4000;
+const BILLING_STATUS_FETCH_TIMEOUT_MS = 10000;
 
 async function fetchBillingStatus() {
   const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
-  const res = await fetch(`${apiBase}/api/vagus-planner/billing-status`, {
-    credentials: 'include',
-    headers: await getVpApiFetchHeaders(),
-  });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || 'Could not load billing status');
+
+  let headers;
+  let sessionTimer;
+  try {
+    headers = await Promise.race([
+      getVpApiFetchHeaders(),
+      new Promise((_, reject) => {
+        sessionTimer = setTimeout(
+          () => reject(new Error('BILLING_STATUS_SESSION_TIMEOUT')),
+          BILLING_STATUS_SESSION_TIMEOUT_MS
+        );
+      }),
+    ]);
+  } catch (err) {
+    if (String(err?.message || err) === 'BILLING_STATUS_SESSION_TIMEOUT') {
+      iapDebugLog('[billing-status] stage=session timed out');
+      throw new Error('Could not load billing information');
+    }
+    throw err;
+  } finally {
+    if (sessionTimer) clearTimeout(sessionTimer);
   }
-  return res.json();
+
+  if (consumeVpApiSessionTimedOut()) {
+    iapDebugLog('[billing-status] stage=session timed out');
+    throw new Error('Could not load billing information');
+  }
+
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const fetchTimer = setTimeout(() => {
+    try {
+      controller?.abort();
+    } catch {
+      /* ignore */
+    }
+  }, BILLING_STATUS_FETCH_TIMEOUT_MS);
+
+  try {
+    const res = await fetch(`${apiBase}/api/vagus-planner/billing-status`, {
+      credentials: 'include',
+      headers,
+      signal: controller?.signal,
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || 'Could not load billing status');
+    }
+    return res.json();
+  } catch (err) {
+    if (
+      err?.name === 'AbortError' ||
+      String(err?.message || '')
+        .toLowerCase()
+        .includes('aborted')
+    ) {
+      iapDebugLog('[billing-status] stage=fetch timed out');
+      throw new Error('Could not load billing information');
+    }
+    throw err;
+  } finally {
+    clearTimeout(fetchTimer);
+  }
 }
 
 export function useBillingStatus() {
@@ -37,6 +97,7 @@ export function useBillingStatus() {
   return {
     isLoading: query.isLoading,
     error: query.error,
+    hasData: data != null,
     plan: data?.plan ?? subscription.plan ?? 'free',
     status: data?.status ?? subscription.status ?? 'active',
     source: data?.source ?? null,

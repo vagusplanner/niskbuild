@@ -22,7 +22,7 @@ import IosPurchasePanel, {
 } from '@/components/billing/IosPurchasePanel';
 import AppleIapLegalBlock from '@/components/legal/AppleIapLegalBlock';
 import { useBillingStatus } from '@/hooks/useBillingStatus';
-import { canUseStripePurchases, useVpPlatform } from '@/lib/vp-platform';
+import { canUseStripePurchases, isIosNativeApp, useVpPlatform } from '@/lib/vp-platform';
 import {
   canUseAppleIap,
   ensureRevenueCatReady,
@@ -90,13 +90,33 @@ export default function BillingPage() {
 
   const {
     isLoading: subLoading,
+    error: billingError,
+    hasData: hasBillingData,
     subscription: billingSubscription,
     invoices = [],
-    platformOwnerBypass = false,
+    platformOwnerBypass: rawPlatformOwnerBypass = false,
     plan: billingPlan,
     status: billingStatus,
     source: billingSource,
+    refetch: refetchBillingStatus,
   } = useBillingStatus();
+
+  // Never leave the spinner up forever (Cap getSession / fetch hangs).
+  const [loadDeadlinePassed, setLoadDeadlinePassed] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setLoadDeadlinePassed(true), 12000);
+    return () => clearTimeout(t);
+  }, []);
+
+  const showBillingLoading =
+    (subLoading || !platformReady) && !loadDeadlinePassed;
+  const billingStatusFailed =
+    Boolean(billingError) ||
+    (loadDeadlinePassed && (!hasBillingData || subLoading || !platformReady));
+
+  // Fail closed: never treat a failed/timed-out load as paid / platform-owner.
+  const platformOwnerBypass =
+    hasBillingData && !billingStatusFailed ? rawPlatformOwnerBypass : false;
 
   // Handle Stripe redirect back
   React.useEffect(() => {
@@ -382,7 +402,7 @@ export default function BillingPage() {
     }
   };
 
-  if (subLoading || !platformReady) {
+  if (showBillingLoading) {
     return (
       <div className="space-y-6 p-6">
         <div className="text-center py-12">
@@ -393,12 +413,29 @@ export default function BillingPage() {
     );
   }
 
-  // Authoritative plan from billing-status (same resolver as plan-access gating)
-  const currentSubscription = billingSubscription || {
-    plan: 'free',
-    status: 'active',
-    user_email: user?.email
+  // Authoritative plan from billing-status (same resolver as plan-access gating).
+  // On failure/timeout: stay free — never fail open into paid access.
+  const currentSubscription =
+    hasBillingData && !billingStatusFailed
+      ? billingSubscription || {
+          plan: 'free',
+          status: 'active',
+          user_email: user?.email,
+        }
+      : {
+          plan: 'free',
+          status: 'active',
+          user_email: user?.email,
+        };
+
+  const handleRetryBilling = () => {
+    setLoadDeadlinePassed(false);
+    void refetchBillingStatus();
   };
+
+  // iOS error path: Restore + legal always visible; no Stripe / web pay CTAs.
+  const iosNativeBilling = appleIap && !allowStripePurchases;
+  const iosShell = isIosNativeApp();
 
   return (
     <RoleGuard requiredFeature="billing">
@@ -411,24 +448,57 @@ export default function BillingPage() {
 
       <IapDebugStrip enabled={isIapDebugUiEnabled()} />
 
+      {billingStatusFailed && (
+        <div
+          className="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 space-y-3"
+          role="alert"
+          data-testid="billing-status-error"
+        >
+          <p className="text-sm text-amber-950 dark:text-amber-100 font-medium">
+            We couldn&apos;t load your billing information.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-[44px]"
+            onClick={handleRetryBilling}
+          >
+            Retry
+          </Button>
+        </div>
+      )}
+
       {!allowStripePurchases && !platformOwnerBypass && (
         appleIap ? (
           <div className="space-y-3">
-            <IosPurchasePanel
-              requiredPlan="Pro"
-              description="Subscribe with Apple In-App Purchase. Manage or cancel anytime in Settings → Apple ID → Subscriptions."
-              showLegalBlock={false}
-            />
+            {platformReady && (
+              <IosPurchasePanel
+                requiredPlan="Pro"
+                description="Subscribe with Apple In-App Purchase. Manage or cancel anytime in Settings → Apple ID → Subscriptions."
+                showLegalBlock={false}
+              />
+            )}
             <IosRestorePurchasesButton />
             <AppleIapLegalBlock />
           </div>
         ) : (
-          <IosWebSubscriptionNotice />
+          !billingStatusFailed && <IosWebSubscriptionNotice />
         )
       )}
 
+      {/* Error fallback: keep Restore + legal on iOS when the main IAP block did not render */}
+      {billingStatusFailed && iosShell && !appleIap && !platformOwnerBypass && (
+        <div className="space-y-3">
+          <IosRestorePurchasesButton />
+          <AppleIapLegalBlock />
+        </div>
+      )}
+
       {/* Upgrade CTA — free users (not platform owners). iOS: no trial/no-card copy unless StoreKit trial exists. */}
-      {allowPurchases && currentSubscription.plan === 'free' && !platformOwnerBypass && (
+      {allowPurchases &&
+        currentSubscription.plan === 'free' &&
+        !platformOwnerBypass &&
+        !(billingStatusFailed && !iosNativeBilling) && (
         <div className="rounded-2xl bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 p-5 sm:p-6 text-white shadow-xl">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="flex-1">
@@ -504,7 +574,10 @@ export default function BillingPage() {
             }
           />
         </div>
-        {allowStripePurchases && currentSubscription.plan !== 'free' && !platformOwnerBypass && (
+        {allowStripePurchases &&
+          !billingStatusFailed &&
+          currentSubscription.plan !== 'free' &&
+          !platformOwnerBypass && (
           <div>
             <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900 dark:text-slate-100 mb-3 sm:mb-4">Payment</h2>
             <PaymentMethodManager
@@ -527,7 +600,11 @@ export default function BillingPage() {
       </section>
 
       {/* AI Plan Recommendation — Stripe or Apple IAP */}
-      {allowPurchases && !platformOwnerBypass && currentSubscription.plan !== 'enterprise' && currentSubscription.plan !== 'enterprise_islamic' && (
+      {allowPurchases &&
+        !platformOwnerBypass &&
+        !(billingStatusFailed && !iosNativeBilling) &&
+        currentSubscription.plan !== 'enterprise' &&
+        currentSubscription.plan !== 'enterprise_islamic' && (
         <section>
           <AIPlanRecommendation
             currentPlan={currentSubscription.plan}
@@ -538,7 +615,10 @@ export default function BillingPage() {
       )}
 
       {/* Upgrade Section */}
-      {allowPurchases && !platformOwnerBypass && currentSubscription.plan === 'free' && (
+      {allowPurchases &&
+        !platformOwnerBypass &&
+        currentSubscription.plan === 'free' &&
+        !(billingStatusFailed && !iosNativeBilling) && (
         <Card className="bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-950/40 dark:to-cyan-950/40 border-teal-200 dark:border-teal-800">
           <CardHeader>
             <CardTitle className="text-teal-900 dark:text-teal-100">Ready to unlock more features?</CardTitle>
@@ -558,7 +638,13 @@ export default function BillingPage() {
       )}
 
       {/* Plan Comparison Modal — Stripe (web/Android) or Apple IAP (iOS) */}
-      <Dialog open={allowPurchases && showPlanComparison} onOpenChange={(open) => {
+      <Dialog
+        open={
+          allowPurchases &&
+          showPlanComparison &&
+          !(billingStatusFailed && !iosNativeBilling)
+        }
+        onOpenChange={(open) => {
         if (!isProcessingCheckout) setShowPlanComparison(open);
       }}>
         <DialogContent className="max-w-[95vw] sm:max-w-6xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 z-[200]">
