@@ -23,6 +23,7 @@ import {
 } from '@/lib/vp-plan-rank';
 import { useBillingStatus } from '@/hooks/useBillingStatus';
 import { getVpApiFetchHeaders } from '@/api/base44Client';
+import AppleIapLegalBlock from '@/components/legal/AppleIapLegalBlock';
 
 function apiBase() {
   return (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
@@ -242,6 +243,8 @@ export default function IosPurchasePanel({
   feature,
   description,
   editionPreference = 'standard',
+  /** When false, caller renders AppleIapLegalBlock nearby (e.g. Billing + Restore). */
+  showLegalBlock = true,
 }) {
   const navigate = useNavigate();
   const planId = normalizePlanId(requiredPlan) || 'pro';
@@ -257,19 +260,22 @@ export default function IosPurchasePanel({
 
   if (compact) {
     return (
-      <div className={cn('flex items-center gap-2 flex-wrap', className)}>
-        <p className="text-xs text-slate-600 dark:text-slate-300 flex-1 min-w-0">
-          {feature
-            ? `${feature} requires ${requiredPlan}`
-            : `Upgrade to ${requiredPlan} to unlock.`}
-        </p>
-        <IosUpgradeButton
-          planId={islamic && !planId.includes('islamic') ? `${planId}_islamic` : planId}
-          editionPreference={islamic ? 'islamic' : 'standard'}
-          label="Upgrade"
-          size="sm"
-          className="bg-teal-600 hover:bg-teal-700 text-white text-xs px-3 h-8"
-        />
+      <div className={cn('space-y-2', className)}>
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="text-xs text-slate-600 dark:text-slate-300 flex-1 min-w-0">
+            {feature
+              ? `${feature} requires ${requiredPlan}`
+              : `Upgrade to ${requiredPlan} to unlock.`}
+          </p>
+          <IosUpgradeButton
+            planId={islamic && !planId.includes('islamic') ? `${planId}_islamic` : planId}
+            editionPreference={islamic ? 'islamic' : 'standard'}
+            label="Upgrade"
+            size="sm"
+            className="bg-teal-600 hover:bg-teal-700 text-white text-xs px-3 h-8"
+          />
+        </div>
+        {showLegalBlock && <AppleIapLegalBlock />}
       </div>
     );
   }
@@ -303,6 +309,7 @@ export default function IosPurchasePanel({
           View plans
         </Button>
       </div>
+      {showLegalBlock && <AppleIapLegalBlock />}
     </div>
   );
 }

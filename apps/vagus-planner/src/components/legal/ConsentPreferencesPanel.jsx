@@ -13,6 +13,7 @@ import {
   hasCompletedLegalConsent,
 } from '@/lib/gdpr-consent';
 import { createPageUrl } from '@/utils';
+import AccountLegalLinks from '@/components/legal/AccountLegalLinks';
 
 /**
  * Account → Privacy & Consent: view/withdraw consents (esp. Article 9).
@@ -89,6 +90,7 @@ export default function ConsentPreferencesPanel({ userEmail }) {
 
   return (
     <div className="space-y-4">
+      <AccountLegalLinks />
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">

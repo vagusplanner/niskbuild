@@ -20,6 +20,7 @@ import IosPurchasePanel, {
   IosRestorePurchasesButton,
   assertNoBlockingWebSub,
 } from '@/components/billing/IosPurchasePanel';
+import AppleIapLegalBlock from '@/components/legal/AppleIapLegalBlock';
 import { useBillingStatus } from '@/hooks/useBillingStatus';
 import { canUseStripePurchases, useVpPlatform } from '@/lib/vp-platform';
 import {
@@ -416,8 +417,10 @@ export default function BillingPage() {
             <IosPurchasePanel
               requiredPlan="Pro"
               description="Subscribe with Apple In-App Purchase. Manage or cancel anytime in Settings → Apple ID → Subscriptions."
+              showLegalBlock={false}
             />
             <IosRestorePurchasesButton />
+            <AppleIapLegalBlock />
           </div>
         ) : (
           <IosWebSubscriptionNotice />
@@ -577,19 +580,24 @@ export default function BillingPage() {
               </p>
             </div>
           ) : (
-            <PlanComparison
-              currentPlan={currentSubscription.plan}
-              isProcessing={isProcessingCheckout || upgradeMutation.isPending}
-              onUpgrade={(planId, billingCycle, priceId) => {
-                if (planId !== currentSubscription.plan && planId !== 'free') {
-                  const planNames = {
-                    basic: 'Basic', pro: 'Pro', enterprise: 'Enterprise',
-                    basic_islamic: 'Basic Islamic', pro_islamic: 'Pro Islamic', enterprise_islamic: 'Enterprise Islamic'
-                  };
-                  upgradeMutation.mutate({ planId, planName: planNames[planId] || planId, billingCycle, overridePriceId: priceId });
-                }
-              }}
-            />
+            <>
+              <PlanComparison
+                currentPlan={currentSubscription.plan}
+                isProcessing={isProcessingCheckout || upgradeMutation.isPending}
+                onUpgrade={(planId, billingCycle, priceId) => {
+                  if (planId !== currentSubscription.plan && planId !== 'free') {
+                    const planNames = {
+                      basic: 'Basic', pro: 'Pro', enterprise: 'Enterprise',
+                      basic_islamic: 'Basic Islamic', pro_islamic: 'Pro Islamic', enterprise_islamic: 'Enterprise Islamic'
+                    };
+                    upgradeMutation.mutate({ planId, planName: planNames[planId] || planId, billingCycle, overridePriceId: priceId });
+                  }
+                }}
+              />
+              {appleIap && !allowStripePurchases && (
+                <AppleIapLegalBlock className="mt-4" />
+              )}
+            </>
           )}
         </DialogContent>
       </Dialog>

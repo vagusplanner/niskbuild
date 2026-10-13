@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useVpPlatform } from '@/lib/vp-platform';
 import IosPurchasePanel, { IosUpgradeButton } from '@/components/billing/IosPurchasePanel';
+import AppleIapLegalBlock from '@/components/legal/AppleIapLegalBlock';
 import { canUseAppleIap } from '@/lib/revenuecat';
 import { normalizePlanId } from '@/lib/vp-plan-rank';
 
@@ -71,6 +72,7 @@ export default function UpgradeGate({
             />
           )}
         </div>
+        {appleIap && !allowStripePurchases && <AppleIapLegalBlock />}
         <div className="opacity-40 pointer-events-none select-none">
           {children}
         </div>
