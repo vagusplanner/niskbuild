@@ -29,38 +29,57 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '')
 
-/** Cap devices can hang forever on getSession — soft-cap for all VP API callers. */
-const VP_API_SESSION_TIMEOUT_MS = 4000
-
 let lastVpApiSessionTimedOut = false
 
-/** True if the latest getVpApiFetchHeaders call hit the getSession soft-timeout. */
+/** True if the latest getVpApiFetchHeaders({ sessionTimeoutMs }) call hit getSession soft-timeout. */
 export function consumeVpApiSessionTimedOut() {
   const hit = lastVpApiSessionTimedOut
   lastVpApiSessionTimedOut = false
   return hit
 }
 
-/** Bearer token for cross-origin VP API calls (e.g. Capacitor). Web preview still uses cookies. */
-export async function getVpApiFetchHeaders() {
+/**
+ * Bearer token for cross-origin VP API calls (e.g. Capacitor). Web preview still uses cookies.
+ * Default (no options): identical to 83a07d7 — await getSession() with no timeout.
+ * Optional `{ sessionTimeoutMs }` (billing-status only): race getSession; on timeout return
+ * headers without Authorization and set consumeVpApiSessionTimedOut().
+ *
+ * @param {{ sessionTimeoutMs?: number }} [options]
+ */
+export async function getVpApiFetchHeaders(options) {
   const headers = { 'Content-Type': 'application/json' }
   lastVpApiSessionTimedOut = false
+  const sessionTimeoutMs =
+    options &&
+    typeof options.sessionTimeoutMs === 'number' &&
+    options.sessionTimeoutMs > 0
+      ? options.sessionTimeoutMs
+      : null
   try {
-    const sessionResult = await Promise.race([
-      supabase.auth.getSession().then((result) => ({ timedOut: false, result })),
-      new Promise((resolve) => {
-        setTimeout(() => resolve({ timedOut: true }), VP_API_SESSION_TIMEOUT_MS)
-      }),
-    ])
-    if (sessionResult?.timedOut) {
-      lastVpApiSessionTimedOut = true
-      // Soft-fail: continue without Bearer (same-origin cookies may still work on web).
-      return headers
-    }
-    const session = sessionResult?.result?.data?.session
-    const token = session?.access_token
-    if (token) {
-      headers.Authorization = `Bearer ${token}`
+    if (sessionTimeoutMs == null) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (token) {
+        headers.Authorization = `Bearer ${token}`
+      }
+    } else {
+      const sessionResult = await Promise.race([
+        supabase.auth.getSession().then((result) => ({ timedOut: false, result })),
+        new Promise((resolve) => {
+          setTimeout(() => resolve({ timedOut: true }), sessionTimeoutMs)
+        }),
+      ])
+      if (sessionResult?.timedOut) {
+        lastVpApiSessionTimedOut = true
+        return headers
+      }
+      const session = sessionResult?.result?.data?.session
+      const token = session?.access_token
+      if (token) {
+        headers.Authorization = `Bearer ${token}`
+      }
     }
   } catch {
     // Cookie session may still authenticate same-origin web requests.

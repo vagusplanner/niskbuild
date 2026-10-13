@@ -16,27 +16,9 @@ const BILLING_STATUS_FETCH_TIMEOUT_MS = 10000;
 async function fetchBillingStatus() {
   const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
-  let headers;
-  let sessionTimer;
-  try {
-    headers = await Promise.race([
-      getVpApiFetchHeaders(),
-      new Promise((_, reject) => {
-        sessionTimer = setTimeout(
-          () => reject(new Error('BILLING_STATUS_SESSION_TIMEOUT')),
-          BILLING_STATUS_SESSION_TIMEOUT_MS
-        );
-      }),
-    ]);
-  } catch (err) {
-    if (String(err?.message || err) === 'BILLING_STATUS_SESSION_TIMEOUT') {
-      iapDebugLog('[billing-status] stage=session timed out');
-      throw new Error('Could not load billing information');
-    }
-    throw err;
-  } finally {
-    if (sessionTimer) clearTimeout(sessionTimer);
-  }
+  const headers = await getVpApiFetchHeaders({
+    sessionTimeoutMs: BILLING_STATUS_SESSION_TIMEOUT_MS,
+  });
 
   if (consumeVpApiSessionTimedOut()) {
     iapDebugLog('[billing-status] stage=session timed out');
