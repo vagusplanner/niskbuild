@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { getVpApiBaseUrl } from '@/lib/vp-env';
 import { useQuery } from '@tanstack/react-query';
 import { base44, getVpApiFetchHeaders } from '@/api/base44Client';
 
@@ -74,7 +75,7 @@ function resolveEditionPreferenceDetailed(userSettings) {
 }
 
 async function fetchIslamicAccess() {
-  const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+  const apiBase = getVpApiBaseUrl();
   const res = await fetch(`${apiBase}/api/vagus-planner/islamic-access`, {
     credentials: 'include',
     headers: await getVpApiFetchHeaders(),

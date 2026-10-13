@@ -3,6 +3,7 @@
  * Mount once in Layout — registers APNs token with NiskBuild once session is available.
  */
 import { useEffect, useRef } from 'react';
+import { getVpApiBaseUrl } from '@/lib/vp-env';
 import { getVpApiFetchHeaders, supabase } from '@/api/base44Client';
 
 /**
@@ -11,7 +12,7 @@ import { getVpApiFetchHeaders, supabase } from '@/api/base44Client';
  * capacitor:// or file:// — those are local WebView origins, not NiskBuild.
  */
 function apiOrigin() {
-  const fromEnv = (import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/$/, '');
+  const fromEnv = getVpApiBaseUrl();
   if (fromEnv) return fromEnv;
 
   if (typeof window !== 'undefined') {

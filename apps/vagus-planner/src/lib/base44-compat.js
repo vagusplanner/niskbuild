@@ -1,3 +1,4 @@
+import { getVpApiBaseUrl } from '@/lib/vp-env';
 // =============================================
 // Base44 Compatibility Layer for Vagus Planner
 // Maps Base44 SDK calls to Supabase
@@ -2200,7 +2201,7 @@ export const base44 = {
       }
       console.log(`📡 Invoke function: ${name}`, payload)
       try {
-        const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
+        const apiBase = getVpApiBaseUrl()
         const response = await fetch(`${apiBase}/api/vagus-planner/functions`, {
           method: 'POST',
           headers: await getVpApiFetchHeaders(),
@@ -2263,7 +2264,7 @@ export const base44 = {
         console.log('🤖 InvokeLLM:', requestBody)
 
         try {
-          const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
+          const apiBase = getVpApiBaseUrl()
           const response = await fetch(`${apiBase}/api/vagus-planner/llm`, {
             method: 'POST',
             headers: await getVpApiFetchHeaders(),
@@ -2355,7 +2356,7 @@ export const base44 = {
         console.log('📧 SendEmail:', { to, subject })
 
         try {
-          const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
+          const apiBase = getVpApiBaseUrl()
           const response = await fetch(`${apiBase}/api/email`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

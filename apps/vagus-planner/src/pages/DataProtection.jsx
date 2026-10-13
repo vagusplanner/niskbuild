@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getVpApiBaseUrl } from '@/lib/vp-env';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
@@ -32,7 +33,7 @@ export default function DataProtectionPage() {
   const exportMyData = async () => {
     setExporting(true);
     try {
-      const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+      const apiBase = getVpApiBaseUrl();
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
       const res = await fetch(`${apiBase}/api/vagus-planner/gdpr/export`, {

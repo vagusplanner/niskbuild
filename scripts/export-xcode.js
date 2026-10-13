@@ -112,6 +112,12 @@ function main() {
   rmrf(WWW_DIR);
   copyDir(VP_DIST, WWW_DIR);
 
+  log('3/4', 'Verifying baked Cap env in www bundle…');
+  run(
+    `node "${path.join(ROOT, 'scripts', 'check-vp-capacitor-bundle-env.mjs')}" "${WWW_DIR}" --label=www`,
+    ROOT
+  );
+
   const iosDir = path.join(CAP_DIR, 'ios');
   if (!fs.existsSync(iosDir)) {
     log('3/4', 'Creating iOS platform (first run)…');
@@ -120,6 +126,15 @@ function main() {
 
   run('npx cap sync ios', CAP_DIR);
   applyVpIosNativeConfig(CAP_DIR);
+
+  const iosPublic = path.join(CAP_DIR, 'ios', 'App', 'App', 'public');
+  if (fs.existsSync(iosPublic)) {
+    log('3/4', 'Verifying baked Cap env in ios public…');
+    run(
+      `node "${path.join(ROOT, 'scripts', 'check-vp-capacitor-bundle-env.mjs')}" "${iosPublic}" --label=ios-public`,
+      ROOT
+    );
+  }
 
   log('4/4', 'Opening Xcode…');
   openXcode();

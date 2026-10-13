@@ -4,6 +4,7 @@
  */
 
 import { getVpApiFetchHeaders } from '@/api/base44Client';
+import { getVpApiBaseUrl } from '@/lib/vp-env';
 
 let inFlight = null;
 let lastOkUserId = null;
@@ -15,7 +16,7 @@ export async function ensureVpBillingProfile(userId) {
 
   inFlight = (async () => {
     try {
-      const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+      const apiBase = getVpApiBaseUrl();
       const res = await fetch(`${apiBase}/api/vagus-planner/ensure-profile`, {
         method: 'POST',
         credentials: 'include',

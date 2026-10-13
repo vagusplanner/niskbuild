@@ -2,6 +2,7 @@
  * iOS-native purchase CTAs via RevenueCat (replaces "This is a premium feature").
  */
 import React, { useState } from 'react';
+import { getVpApiBaseUrl } from '@/lib/vp-env';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -26,7 +27,7 @@ import { getVpApiFetchHeaders } from '@/api/base44Client';
 import AppleIapLegalBlock from '@/components/legal/AppleIapLegalBlock';
 
 function apiBase() {
-  return (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+  return getVpApiBaseUrl();
 }
 
 const DUAL_PURCHASE_CHECK_MS = 5000;
@@ -245,10 +246,32 @@ export default function IosPurchasePanel({
   editionPreference = 'standard',
   /** When false, caller renders AppleIapLegalBlock nearby (e.g. Billing + Restore). */
   showLegalBlock = true,
+  /** When set (or already on Billing), open plan comparison instead of navigating to /Billing. */
+  onViewPlans,
 }) {
   const navigate = useNavigate();
   const planId = normalizePlanId(requiredPlan) || 'pro';
   const islamic = editionPreference === 'islamic' || planId.includes('islamic');
+
+  const handleViewPlans = () => {
+    if (typeof onViewPlans === 'function') {
+      onViewPlans();
+      return;
+    }
+    try {
+      const path = window.location?.pathname || '';
+      const hash = window.location?.hash || '';
+      const onBilling =
+        /\/Billing\/?$/i.test(path) || /#\/?Billing/i.test(hash);
+      if (onBilling) {
+        window.dispatchEvent(new CustomEvent('vp_open_plan_comparison'));
+        return;
+      }
+    } catch {
+      /* fall through to navigate */
+    }
+    navigate(createPageUrl('Billing'));
+  };
 
   if (!canUseAppleIap()) {
     return (
@@ -304,7 +327,7 @@ export default function IosPurchasePanel({
         <Button
           variant="outline"
           className="w-full sm:w-auto"
-          onClick={() => navigate(createPageUrl('Billing'))}
+          onClick={handleViewPlans}
         >
           View plans
         </Button>

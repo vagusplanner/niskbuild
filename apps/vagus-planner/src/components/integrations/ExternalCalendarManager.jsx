@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { getVpApiBaseUrl } from '@/lib/vp-env';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44, getVpApiFetchHeaders } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -23,7 +24,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { createPageUrl } from '@/utils';
 
 function apiBase() {
-  return (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+  return getVpApiBaseUrl();
 }
 
 function errorMessage(err, fallback) {

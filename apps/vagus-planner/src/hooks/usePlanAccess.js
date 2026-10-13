@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
+import { getVpApiBaseUrl } from '@/lib/vp-env';
 import { getVpApiFetchHeaders } from '@/api/base44Client';
 
 async function fetchPlanAccess() {
-  const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+  const apiBase = getVpApiBaseUrl();
   const res = await fetch(`${apiBase}/api/vagus-planner/plan-access`, {
     credentials: 'include',
     headers: await getVpApiFetchHeaders(),

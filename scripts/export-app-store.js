@@ -214,12 +214,27 @@ function main() {
   rmrf(WWW_DIR);
   copyDir(VP_DIST, WWW_DIR);
 
+  log('3/5', 'Verifying baked Cap env in www bundle…');
+  run(
+    `node "${path.join(ROOT, 'scripts', 'check-vp-capacitor-bundle-env.mjs')}" "${WWW_DIR}" --label=www`,
+    ROOT
+  );
+
   if (!fs.existsSync(IOS_PROJECT)) {
     run('npx cap add ios', CAP_DIR);
   }
 
   run('npx cap sync ios', CAP_DIR);
   applyVpIosNativeConfig(CAP_DIR);
+
+  const iosPublic = path.join(CAP_DIR, 'ios', 'App', 'App', 'public');
+  if (fs.existsSync(iosPublic)) {
+    log('3/5', 'Verifying baked Cap env in ios public…');
+    run(
+      `node "${path.join(ROOT, 'scripts', 'check-vp-capacitor-bundle-env.mjs')}" "${iosPublic}" --label=ios-public`,
+      ROOT
+    );
+  }
 
   log('4/5', 'Packaging Xcode project…');
   if (flags.zipProject || flags.json) {

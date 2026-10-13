@@ -249,6 +249,7 @@ export default function EnhancedSubscriptionCard({
             compact
             requiredPlan={subscription.plan === 'free' ? 'Pro' : subscription.plan}
             description="Subscribe with Apple to upgrade."
+            showLegalBlock={false}
           />
         )}
         {isAppleProvider && showPaidBillingUi && (

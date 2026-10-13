@@ -4,6 +4,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
+import { getVpApiBaseUrl } from '@/lib/vp-env';
 import {
   consumeVpApiSessionTimedOut,
   getVpApiFetchHeaders,
@@ -14,7 +15,7 @@ const BILLING_STATUS_SESSION_TIMEOUT_MS = 4000;
 const BILLING_STATUS_FETCH_TIMEOUT_MS = 10000;
 
 async function fetchBillingStatus() {
-  const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+  const apiBase = getVpApiBaseUrl();
 
   const headers = await getVpApiFetchHeaders({
     sessionTimeoutMs: BILLING_STATUS_SESSION_TIMEOUT_MS,

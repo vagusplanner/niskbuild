@@ -108,6 +108,13 @@ export default function BillingPage() {
     return () => clearTimeout(t);
   }, []);
 
+  // IosPurchasePanel "View plans" while already on Billing (or via custom event).
+  useEffect(() => {
+    const open = () => setShowPlanComparison(true);
+    window.addEventListener('vp_open_plan_comparison', open);
+    return () => window.removeEventListener('vp_open_plan_comparison', open);
+  }, []);
+
   const showBillingLoading =
     (subLoading || !platformReady) && !loadDeadlinePassed;
   const billingStatusFailed =
@@ -476,6 +483,7 @@ export default function BillingPage() {
                 requiredPlan="Pro"
                 description="Subscribe with Apple In-App Purchase. Manage or cancel anytime in Settings → Apple ID → Subscriptions."
                 showLegalBlock={false}
+                onViewPlans={() => setShowPlanComparison(true)}
               />
             )}
             <IosRestorePurchasesButton />

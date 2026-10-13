@@ -4,6 +4,7 @@
  */
 
 import { ensureCapacitorReady, isIosNativeApp } from '@/lib/vp-platform';
+import { stripWrappingQuotes } from '@/lib/vp-env';
 import { normalizePlanId, planRank } from '@/lib/vp-plan-rank';
 
 const OFFERING_STANDARD = 'standard';
@@ -112,8 +113,7 @@ function iosApiKey() {
       typeof import.meta !== 'undefined'
         ? import.meta.env?.VITE_REVENUECAT_IOS_API_KEY
         : undefined;
-    const key = typeof raw === 'string' ? raw.trim() : '';
-    return key;
+    return stripWrappingQuotes(typeof raw === 'string' ? raw : '');
   } catch {
     return '';
   }

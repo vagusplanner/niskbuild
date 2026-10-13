@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { getVpApiBaseUrl } from '@/lib/vp-env';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -51,7 +52,7 @@ export default function ConsentPreferencesPanel({ userEmail }) {
 
   const exportData = async () => {
     try {
-      const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+      const apiBase = getVpApiBaseUrl();
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
       const res = await fetch(`${apiBase}/api/vagus-planner/gdpr/export`, {
